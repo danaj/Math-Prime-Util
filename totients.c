@@ -321,9 +321,9 @@ UV jordan_totient(UV k, UV n) {
 
 
 
-static int _totpred(UV n, UV maxd) {
+static bool _totpred(UV n, UV maxd) {
   UV i, ndivisors, *divs;
-  int res;
+  bool res;
 
   if (n & 1) return 0;
   if ((n & (n-1)) == 0) return 1;
@@ -346,7 +346,7 @@ static int _totpred(UV n, UV maxd) {
   return res;
 }
 
-int is_totient(UV n) {
+bool is_totient(UV n) {
   return (n == 0 || (n & 1))  ?  (n==1)  :  _totpred(n,n);
 }
 

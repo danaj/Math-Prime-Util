@@ -3,6 +3,6 @@
 
 #include "ptypes.h"
 
-extern int is_aks_prime(UV n);
+extern bool is_aks_prime(UV n);
 
 #endif

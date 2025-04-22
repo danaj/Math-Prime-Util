@@ -18,7 +18,7 @@
 #define SWAP4(x,y) { UV t; t=x; x=y; y=t;  t=x##8; x##8=y##8; y##8=t; }
 
 /* is_congruent_number(n).  OEIS A003273. */
-int is_congruent_number(UV n) {
+bool is_congruent_number(UV n) {
   UV N, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
   UV m8 = n % 8;
   int i, j, nfactors;
@@ -383,6 +383,4 @@ int is_congruent_number(UV n) {
     }
     return (sols[0] == sols[1]);
   }
-
-  return -1;
 }

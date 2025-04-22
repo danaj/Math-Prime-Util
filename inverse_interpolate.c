@@ -183,7 +183,7 @@ UV interpolate_with_approx(UV n,
                            UV tol,
                            UV (*fnth)(UV n),
                            UV (*fcnt)(UV n),
-                           int (*fis)(UV n)   /* optional */
+                           bool (*fis)(UV n)   /* optional */
                           ) {
   UV approx_nth_n, guess, gn, count, ming = 0, maxg = UV_MAX;
 

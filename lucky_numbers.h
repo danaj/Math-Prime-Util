@@ -3,7 +3,7 @@
 
 #include "ptypes.h"
 
-extern int is_lucky(UV n);
+extern bool is_lucky(UV n);
 
 extern uint32_t* lucky_sieve32(UV *size, uint32_t n);
 extern UV*       lucky_sieve64(UV *size, UV n);

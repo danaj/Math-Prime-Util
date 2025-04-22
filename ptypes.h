@@ -51,6 +51,7 @@ typedef __int8 int8_t;
   #include <stdio.h>
   #include <stdlib.h>
   #include <ctype.h>
+  #include <stdbool.h>
   typedef unsigned long UV;
   typedef   signed long IV;
   typedef        double NV;

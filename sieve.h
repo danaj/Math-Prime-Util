@@ -6,10 +6,10 @@
 #include "util.h"
 
 extern unsigned char* sieve_erat30(UV end);
-extern int sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth);
-extern int sieve_segment(unsigned char* mem, UV startd, UV endd);
+extern bool sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth);
+extern bool sieve_segment(unsigned char* mem, UV startd, UV endd);
 extern void* start_segment_primes(UV low, UV high, unsigned char** segmentmem);
-extern int next_segment_primes(void* vctx, UV* base, UV* low, UV* high);
+extern bool next_segment_primes(void* vctx, UV* base, UV* low, UV* high);
 extern void end_segment_primes(void* vctx);
 
 /* Generate primes P[0] = 2, P[1] = 3, P[2] = 5, .... */
@@ -25,7 +25,7 @@ extern uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offse
 
 
 
-static const UV wheel30[] = {1, 7, 11, 13, 17, 19, 23, 29};
+static const unsigned char wheel30[] = {1, 7, 11, 13, 17, 19, 23, 29};
 /* Used for moving between primes */
 static const unsigned char nextwheel30[30] = {
     1,  7,  7,  7,  7,  7,  7, 11, 11, 11, 11, 13, 13, 17, 17,
@@ -68,7 +68,7 @@ static const unsigned char clearprev30[30] =
 
 
 #ifdef FUNC_is_prime_in_sieve
-static int is_prime_in_sieve(const unsigned char* sieve, UV p) {
+static bool is_prime_in_sieve(const unsigned char* sieve, UV p) {
   UV d = p/30;
   UV m = p - d*30;
   /* If m isn't part of the wheel, we return 0 */

@@ -190,7 +190,7 @@ UV irand64(void* ctx)
 
 /*****************************************************************************/
 
-int is_csprng_well_seeded(void *ctx)
+bool is_csprng_well_seeded(void *ctx)
 {
   chacha_context_t *cs = ctx;
   return cs->goodseed;

@@ -127,7 +127,7 @@ static int _power_factor(UV n, UV *factors)
 }
 
 /* Find one factor of an input n. */
-int factor_one(UV n, UV *factors, int primality, int trial)
+int factor_one(UV n, UV *factors, bool primality, bool trial)
 {
   int nfactors;
   if (n < 4) {
@@ -480,6 +480,10 @@ UV divisor_sum(UV n, UV k)
 
 
 
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+
 
 static int found_factor(UV n, UV f, UV* factors)
 {
@@ -493,6 +497,11 @@ static int found_factor(UV n, UV f, UV* factors)
   factors[1-i] = f2;
   MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
   return 2;
+}
+static int no_factor(UV n, UV* factors)
+{
+  factors[0] = n;
+  return 1;
 }
 
 /* Knuth volume 2, algorithm C.
@@ -508,7 +517,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
   r = (sqn*sqn) - n;
 
   while (r != 0) {
-    if (rounds-- == 0) { factors[0] = n; return 1; }
+    if (rounds-- == 0) return no_factor(n,factors);
     r += x;
     x += 2;
     do {
@@ -582,14 +591,13 @@ int holf_factor(UV n, UV *factors, UV rounds)
       return found_factor(n, f, factors);
     }
   }
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 static int holf32(uint32_t n, UV *factors, uint32_t rounds) {
   UV npre, ni;    /* These should be 64-bit */
   uint32_t s, m, f;
 
-  if (n < 3) { factors[0] = n; return 1; }
+  if (n < 3) return no_factor(n,factors);
   if (!(n&1)) { factors[0] = 2; factors[1] = n/2; return 2; }
   if (is_perfect_square(n)) { factors[0] = factors[1] = isqrt(n); return 2; }
 
@@ -609,8 +617,7 @@ static int holf32(uint32_t n, UV *factors, uint32_t rounds) {
     if (ni >= (ni+npre)) break; /* We've overflowed */
     ni += npre;
   }
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 
 
@@ -692,8 +699,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
     }
     return found_factor(n, f, factors);
   }
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 #else
 /* Pollard Rho with Brent's updates. */
@@ -748,8 +754,7 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
     }
     return found_factor(n, f, factors);
   }
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 #endif
 
@@ -806,8 +811,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
     }
     return found_factor(n, f, factors);
   }
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 
 /* Pollard's P-1 */
@@ -863,7 +867,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
     } END_DO_FOR_EACH_PRIME
     PMINUS1_RECOVER_A;
   }
-  if (a == 0) { factors[0] = n; return 1; }
+  if (a == 0) return no_factor(n,factors);
   f = gcd_ui(a-1, n);
 
   /* If we found more than one factor in stage 1, backup and single step */
@@ -1128,9 +1132,8 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in squfof_factor");
 
   /* Too big */
-  if (n > SQUFOF_MAX) {
-    factors[0] = n;  return 1;
-  }
+  if (n > SQUFOF_MAX)
+    return no_factor(n,factors);
 
   for (i = 0; i < NSQUFOF_MULT; i++) {
     mult_save[i].valid = -1;
@@ -1183,10 +1186,7 @@ int squfof_factor(UV n, UV *factors, UV rounds)
       rounds_done += mult_save[i].imax;   /* Assume we did all rounds */
     }
   }
-
-  /* No factors found */
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 
 #define SQR_TAB_SIZE 512
@@ -1201,7 +1201,7 @@ static void make_sqr_tab(void) {
 
 /* Lehman written and tuned by Warren D. Smith.
  * Revised by Ben Buhrow and Dana Jacobsen. */
-int lehman_factor(UV n, UV *factors, int do_trial) {
+int lehman_factor(UV n, UV *factors, bool do_trial) {
   const double Tune = ((n >> 31) >> 5) ? 3.5 : 5.0;
   double x, sqrtn;
   UV a,c,kN,kN4,B2;
@@ -1224,7 +1224,7 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
     }
   }
 
-  if (n >= UVCONST(8796393022207)) { factors[0] = n; return 1; }
+  if (n >= UVCONST(8796393022207)) return no_factor(n,factors);
   Bred = B / (Tune * Tune * Tune);
   B2 = B*B;
   kN = 0;
@@ -1236,7 +1236,7 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
     if (k&1) { inc = 4; r = (k+n) % 4; }
     else     { inc = 2; r = 1; }
     kN += n;
-    if (kN >= UVCONST(1152921504606846976)) { factors[0] = n; return 1; }
+    if (kN >= UVCONST(1152921504606846976)) return no_factor(n,factors);
     kN4 = kN*4;
 
     x = (k < SQR_TAB_SIZE) ? sqrtn * sqr_tab[k] : sqrt((double)kN);
@@ -1271,8 +1271,7 @@ int lehman_factor(UV n, UV *factors, int do_trial) {
     if (ip >= NPRIMES_SMALL)  ip = NPRIMES_SMALL-1;
     return trial_factor(n, factors, primes_small[ip], B);
   }
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 
 /* Chebyshev polynomials of the first kind T_n(x) = V_n(2x,1) / 2. */
@@ -1304,8 +1303,7 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
   } END_DO_FOR_EACH_PRIME
   if (f > 1 && f < n)
     return found_factor(n, f, factors);
-  factors[0] = n;
-  return 1;
+  return no_factor(n,factors);
 }
 
 
@@ -1313,7 +1311,7 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
 static const uint32_t _fr_chunk = 256*1024;
 
 /* Help performance by doing a cube root sieve for small ranges */
-static int _fr_full_sieve(UV sqrtn, UV range)  /* range = hi-lo */
+static bool _fr_full_sieve(UV sqrtn, UV range)  /* range = hi-lo */
 {
   if (sqrtn <   10000000U) return 1;               /* Below 10^14 */
   if (sqrtn <   35000000U) return (range >   900); /* Below 10^15 */
@@ -1324,7 +1322,7 @@ static int _fr_full_sieve(UV sqrtn, UV range)  /* range = hi-lo */
   return (range > 19000);
 }
 
-static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int square_free)
+static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, bool square_free)
 {
   UV *N, j, n, sqrthi, sievelim;
   sqrthi = isqrt(hi);
@@ -1392,12 +1390,12 @@ static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, int 
   Safefree(N);
 }
 
-factor_range_context_t factor_range_init(UV lo, UV hi, int square_free) {
+factor_range_context_t factor_range_init(UV lo, UV hi, bool square_free) {
   factor_range_context_t ctx;
   ctx.lo = lo;
   ctx.hi = hi;
   ctx.n = lo-1;
-  ctx.is_square_free = square_free ? 1 : 0;
+  ctx.is_square_free = square_free;
   if (hi-lo+1 > 100) {        /* Sieve in chunks */
     if (square_free) ctx._noffset = (hi <= 42949672965UL) ? 10 : 15;
     else             ctx._noffset = BITS_PER_WORD - clz(hi);

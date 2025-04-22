@@ -54,7 +54,7 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
 }
 
 /* Fermat pseudoprime */
-int is_pseudoprime(UV const n, UV a)
+bool is_pseudoprime(UV const n, UV a)
 {
   if (n < 3) return (n == 2);
   if (!(n&1) && !(a&1)) return 0;
@@ -76,7 +76,7 @@ int is_pseudoprime(UV const n, UV a)
 }
 
 /* Euler (aka Euler-Jacobi) pseudoprime:  a^((n-1)/2) = (a|n) mod n */
-int is_euler_pseudoprime(UV const n, UV a)
+bool is_euler_pseudoprime(UV const n, UV a)
 {
   if (n < 3) return (n == 2);
   if (!(n&1)) return 0;
@@ -118,7 +118,7 @@ int is_euler_pseudoprime(UV const n, UV a)
  * A tiny bit (~1 percent) faster than base 2 Fermat or M-R.
  * More stringent than base 2 Fermat, but a subset of base 2 M-R.
  */
-int is_euler_plumb_pseudoprime(UV const n)
+bool is_euler_plumb_pseudoprime(UV const n)
 {
   UV ap;
   uint32_t nmod8 = n & 0x7;
@@ -144,7 +144,7 @@ int is_euler_plumb_pseudoprime(UV const n)
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
  */
-int miller_rabin(UV const n, const UV *bases, int nbases)
+bool miller_rabin(UV const n, const UV *bases, int nbases)
 {
 #if USE_MONTMATH
   MPUassert(n > 2, "MR called with n <= 2");
@@ -204,7 +204,7 @@ int miller_rabin(UV const n, const UV *bases, int nbases)
   return 1;
 }
 
-int BPSW(UV const n)
+bool BPSW(UV const n)
 {
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
@@ -286,7 +286,7 @@ int BPSW(UV const n)
  * None of them have any false positives for the BPSW test.  Also see the
  * "almost extra strong" test.
  */
-int is_lucas_pseudoprime(UV n, int strength)
+bool is_lucas_pseudoprime(UV n, int strength)
 {
   IV P, Q, D;
   UV U, V, Pu, Qu, Qk, d, s;
@@ -506,7 +506,7 @@ return is_euler_pseudoprime(n,Qk);
  * With increment = 1, these results will be a subset of the extra-strong
  * Lucas pseudoprimes.  With increment = 2, we produce Pari's results.
  */
-int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
+bool is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 {
   UV P, V, W, d, s, b;
 
@@ -517,7 +517,7 @@ int is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 
   /* Ensure small primes work with large increments. */
   if ( (increment >= 16 && n <= 331) || (increment > 148 && n <= 631) )
-    return !!is_prob_prime(n);
+    return is_prob_prime(n);
 
   P = select_extra_strong_parameters(n, increment);
   if (P == 0) return 0;
@@ -678,7 +678,7 @@ static void calc_perrin_sig(UV* S, UV n) {
 #endif
 }
 
-int is_perrin_pseudoprime(UV n, uint32_t restricted)
+bool is_perrin_pseudoprime(UV n, uint32_t restricted)
 {
   int jacobi, i;
   UV S[6];
@@ -758,7 +758,7 @@ int is_perrin_pseudoprime(UV n, uint32_t restricted)
   return 0;
 }
 
-int is_frobenius_pseudoprime(UV n, IV P, IV Q)
+bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
 {
   UV U, V, t, Vcomp;
   int k = 0;
@@ -794,7 +794,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
 
   t = gcd_ui(n, Pu*Qu*Du);
   if (t != 1) {
-    if (t == n) return !!is_prob_prime(n);
+    if (t == n) return is_prob_prime(n);
     return 0;
   }
   if (k == 0) {
@@ -823,7 +823,7 @@ int is_frobenius_pseudoprime(UV n, IV P, IV Q)
  *
  * The paper claims there are no 64-bit counterexamples.
  */
-int is_frobenius_khashin_pseudoprime(UV n)
+bool is_frobenius_khashin_pseudoprime(UV n)
 {
   int k = 2;
   UV ea, ra, rb, a, b, d = n-1, c = 1;
@@ -899,7 +899,7 @@ int is_frobenius_khashin_pseudoprime(UV n)
  * it is mainly useful for numbers larger than 2^64 as an additional
  * non-correlated test.
  */
-int is_frobenius_underwood_pseudoprime(UV n)
+bool is_frobenius_underwood_pseudoprime(UV n)
 {
   int j, bit;
   UV x, result, a, b, np1, len, t1;
@@ -1016,7 +1016,7 @@ int is_mersenne_prime(UV p)
       return 1;
   return (p < LAST_CHECKED_MERSENNE) ? 0 : -1;
 }
-int lucas_lehmer(UV p)
+bool lucas_lehmer(UV p)
 {
   UV k, V, mp;
 
@@ -1042,7 +1042,7 @@ static const uint16_t mr_bases_hash32[256] = {
  * 2) For performance, assume trial division has already been done.
  * 3) Make it as fast as possible.
  */
-int MR32(uint32_t n) {
+bool MR32(uint32_t n) {
   uint32_t x = n;
 
   if (x < 11) return (x == 2 || x == 3 || x == 5 || x == 7);
@@ -1058,7 +1058,7 @@ int MR32(uint32_t n) {
 
 /******************************************************************************/
 
-int is_prob_prime(UV n)
+bool is_prob_prime(UV n)
 {
 #if BITS_PER_WORD == 64
   if (n > UVCONST(4294967295)) { /* input is >= 2^32, UV is 64-bit*/
@@ -1070,19 +1070,19 @@ int is_prob_prime(UV n)
     if (!(n%73) || !(n%79) || !(n%83) || !(n%89))   return 0;
     /* AESLSP test costs about 1.5 Selfridges, vs. ~2.2 for strong Lucas.
      * This makes the full BPSW test cost about 2.5x M-R tests for a prime. */
-    return 2*BPSW(n);
+    return BPSW(n);
   } else {
 #else
   {
 #endif
     uint32_t x = n;
-    if (x < 11) return (x == 2 || x == 3 || x == 5 || x == 7) ? 2 : 0;
+    if (x < 11) return (x == 2 || x == 3 || x == 5 || x == 7) ? 1 : 0;
     if (!(x%2) || !(x%3) || !(x%5) || !(x%7))       return 0;
-    if (x <  121) /* 11*11 */                       return 2;
+    if (x <  121) /* 11*11 */                       return 1;
     if (!(x%11) || !(x%13) || !(x%17) || !(x%19) ||
         !(x%23) || !(x%29) || !(x%31) || !(x%37) ||
         !(x%41) || !(x%43) || !(x%47) || !(x%53))   return 0;
-    if (x < 3481) /* 59*59 */                       return 2;
+    if (x < 3481) /* 59*59 */                       return 1;
     /* Trial division crossover point depends on platform */
     if (!USE_MONTMATH && n < 500000) {
       uint32_t f = 59;
@@ -1097,8 +1097,8 @@ int is_prob_prime(UV n)
         { if ((x%f) == 0)  return 0; }  f += 4;
         { if ((x%f) == 0)  return 0; }  f += 6;
       }
-      return 2;
+      return 1;
     }
-    return 2*MR32(x);
+    return MR32(x);
   }
 }

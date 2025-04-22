@@ -268,7 +268,7 @@ static char _small[NSMALL-3+1][NSMALL-2+1] = {
   {0,0,2,0,0,0,0,3,0,0,0,0,0,0},
 };
 
-static int _sqrtmod_small_return(UV *s, UV a, UV n) {
+static bool _sqrtmod_small_return(UV *s, UV a, UV n) {
   if (n == 0) return 0;
   if (a >= n) a %= n;
   if (n > 2 && a > 1) {
@@ -278,20 +278,20 @@ static int _sqrtmod_small_return(UV *s, UV a, UV n) {
   if (s != 0) *s = a;
   return 1;
 }
-static int _sqrtmod_return(UV r, UV *s, UV a, UV p) {
+static bool _sqrtmod_return(UV r, UV *s, UV a, UV p) {
   if (p-r < r)  r = p-r;
   if (mulmod(r, r, p) != (a % p)) return 0;
   if (s != 0) *s = r;
   return 1;
 }
-int sqrtmodp(UV *s, UV a, UV p) {
+bool sqrtmodp(UV *s, UV a, UV p) {
   if (p == 0) return 0;
   if (a >= p) a %= p;
   if (p <= NSMALL || a <= 1) return _sqrtmod_small_return(s,a,p);
   return _sqrtmod_return(_sqrtmod_prime(a,p), s, a, p);
 }
 
-int sqrtmod(UV *s, UV a, UV n) {
+bool sqrtmod(UV *s, UV a, UV n) {
   /* return rootmod(s, a, 2, n); */
   if (n == 0) return 0;
   if (a >= n) a %= n;
@@ -306,7 +306,7 @@ int sqrtmod(UV *s, UV a, UV n) {
 /*                          K-TH ROOT OF N MOD M                              */
 /******************************************************************************/
 
-static int _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
+static bool _rootmod_return(UV r, UV *s, UV a, UV k, UV p) {
   if (k == 2 && p-r < r)  r = p-r;
   if (powmod(r, k, p) != (a % p)) return 0;
   if (s != 0) *s = r;
@@ -519,7 +519,7 @@ static UV* _trial_allrootmod(UV* nroots, UV a, UV g, UV n) {
 
 #if USE_ROOTMOD_SPLITK
 /* Given a solution to r^k = a mod p^(e-1), return r^k = a mod p^e */
-static int _hensel_lift(UV *re, UV r, UV a, UV k, UV pe) {
+static bool _hensel_lift(UV *re, UV r, UV a, UV k, UV pe) {
   UV f, fp, d;
 
   /* UV pe = ipow(p, e); */
@@ -723,7 +723,7 @@ static UV _rootmod_composite2(UV a, UV k, UV n) {
 }
 #endif
 
-int rootmodp(UV *s, UV a, UV k, UV p) {
+bool rootmodp(UV *s, UV a, UV k, UV p) {
   UV r;
   if (p == 0) return 0;
   if (a >= p) a %= p;
@@ -741,7 +741,7 @@ int rootmodp(UV *s, UV a, UV k, UV p) {
   return _rootmod_return(r, s, a, k, p);
 }
 
-int rootmod(UV *s, UV a, UV k, UV n) {
+bool rootmod(UV *s, UV a, UV k, UV n) {
   UV r;
   if (n == 0) return 0;
   if (a >= n) a %= n;

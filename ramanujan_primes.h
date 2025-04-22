@@ -3,7 +3,7 @@
 
 #include "ptypes.h"
 
-extern int is_ramanujan_prime(UV n);
+extern bool is_ramanujan_prime(UV n);
 
 extern UV* n_ramanujan_primes(UV n);
 extern UV* n_range_ramanujan_primes(UV nlo, UV nhi);

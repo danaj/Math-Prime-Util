@@ -3,8 +3,9 @@
 
 #include "ptypes.h"
 
+/* returns power */
 extern int prime_power(UV n, UV* prime);
-static INLINE int is_prime_power(UV n) { return !!prime_power(n,0); }
+static INLINE bool is_prime_power(UV n) { return !!prime_power(n,0); }
 
 extern UV  next_prime_power(UV x);
 extern UV  prev_prime_power(UV x);

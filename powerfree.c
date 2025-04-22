@@ -26,7 +26,7 @@ static UV fprod(UV n, UV r) {
   return P;
 }
 
-int is_powerfree(UV n, uint32_t k)
+bool is_powerfree(UV n, uint32_t k)
 {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];

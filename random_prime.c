@@ -76,7 +76,7 @@ UV random_prime(void* ctx, UV lo, UV hi)
 
 /* Note that 7 chosen bases or the first 12 prime bases are enough
  * to guarantee sucess.  We could choose to limit to those. */
-int is_mr_random(void* ctx, UV n, UV k) {
+bool is_mr_random(void* ctx, UV n, UV k) {
   if (k >= 3*(n/4))
     return is_prob_prime(n);
 

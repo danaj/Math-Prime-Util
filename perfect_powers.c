@@ -14,7 +14,7 @@
 /*                             PERFECT POWERS                                 */
 /******************************************************************************/
 
-int is_perfect_power(UV n) {
+bool is_perfect_power(UV n) {
   return (n == 1) || (powerof(n) > 1);
 }
 

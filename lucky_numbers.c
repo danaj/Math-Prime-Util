@@ -599,7 +599,7 @@ static int _test_lucky_to(UV lsize, UV *beg, UV *end) {
   return ret;
 }
 
-int is_lucky(UV n) {
+bool is_lucky(UV n) {
   UV i, l, quo, pos, lsize;
   int res;
 

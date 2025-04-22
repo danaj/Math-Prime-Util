@@ -3,7 +3,7 @@
 
 #include "ptypes.h"
 
-extern int is_powerful(UV n, UV k);
+extern bool is_powerful(UV n, UV k);
 
 extern UV powerful_count(UV n, UV k);
 

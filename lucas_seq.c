@@ -251,7 +251,7 @@ UV lucasumod(UV P, UV Q, UV k, UV n)
 
 
 #define OVERHALF(v)  ( (UV)((v>=0)?v:-v) > (UVCONST(1) << (BITS_PER_WORD/2-1)) )
-int lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
+bool lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
 {
   IV Uh, Vl, Vh, Ql, Qh;
   int j, s, n;

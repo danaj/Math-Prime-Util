@@ -63,7 +63,7 @@ static unsigned long _iset_pos(const UV* arr, UV mask, UV val) {
   return h;
 }
 
-int iset_contains(const iset_t set, UV val) {
+bool iset_contains(const iset_t set, UV val) {
   if (val == 0) return set.contains_zero;
   return set.arr[_iset_pos(set.arr, set.mask, val)] == val;
 }
@@ -87,7 +87,7 @@ static void _iset_resize(iset_t *set) {
   set->mask = newmask;
 }
 
-int iset_add(iset_t *set, UV val, int sign) {
+bool iset_add(iset_t *set, UV val, int sign) {
   if (sign == 0)
     set->type = ISET_TYPE_INVALID;
   else if (val > (UV)IV_MAX)
@@ -276,7 +276,7 @@ iset_t iset_symdiff_of(const iset_t A, const iset_t B) {
   if ((A.contains_zero + B.contains_zero) == 1)  iset_add(&s,0,1);
   return s;
 }
-int iset_is_subset_of(const iset_t A, const iset_t B) {
+bool iset_is_subset_of(const iset_t A, const iset_t B) {
   int samesign = (iset_sign(A) == iset_sign(B));
   unsigned long i;
   UV v;

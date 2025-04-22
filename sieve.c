@@ -14,7 +14,7 @@
 #include "prime_counts.h"
 
 /* Is it better to do a partial sieve + primality tests vs. full sieve? */
-static int do_partial_sieve(UV startp, UV endp) {
+static bool do_partial_sieve(UV startp, UV endp) {
   UV range = endp - startp;
   if (USE_MONTMATH) range /= 8;  /* Fast primality tests */
 #if BITS_PER_WORD == 64
@@ -275,7 +275,7 @@ static void _sieve_range(unsigned char* mem, const unsigned char* sieve, UV star
   } END_DO_FOR_EACH_SIEVE_PRIME;
 }
 
-int sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth)
+bool sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth)
 {
   const unsigned char* sieve;
   UV startp = 30*startd,  endp = (endd >= (UV_MAX/30)) ? UV_MAX-2 : 30*endd+29;
@@ -292,7 +292,7 @@ int sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth)
 }
 
 /* Segmented mod-30 wheel sieve */
-int sieve_segment(unsigned char* mem, UV startd, UV endd)
+bool sieve_segment(unsigned char* mem, UV startd, UV endd)
 {
   const unsigned char* sieve;
   UV startp = 30*startd,  endp = (endd >= (UV_MAX/30)) ? UV_MAX-2 : 30*endd+29;
@@ -333,7 +333,7 @@ int sieve_segment(unsigned char* mem, UV startd, UV endd)
   return 1;
 }
 
-int sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray, uint32_t wsize)
+bool sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray, uint32_t wsize)
 {
   uint32_t i = 0, limit, start_base_prime;
   uint32_t segsize = endd - startd + 1;
@@ -474,7 +474,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
   return (void*) ctx;
 }
 
-int next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
+bool next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
 {
   UV seghigh_d, range_d;
   segment_context_t* ctx = (segment_context_t*) vctx;

@@ -256,7 +256,7 @@ static int _test_keystream(void) {
   return 1;
 }
 
-int chacha_selftest(void) {
+bool chacha_selftest(void) {
   if (_test_qr() && _test_core() && _test_keystream())
     return 1;
   return 0;
@@ -269,7 +269,7 @@ int chacha_selftest(void) { return 1; }
 /*   API                                                                     */
 /*****************************************************************************/
 
-void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, char good)
+void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, bool good)
 {
   if (bytes < 40) croak("Not enough seed bytes given to ChaCha\n");
   init_context(cs, data, 1);

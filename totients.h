@@ -12,7 +12,8 @@ extern UV  totient_factored(UV n, UV nfacs, UV* fac, UV* exp);
 extern UV  totient(UV n);
 
 extern UV  jordan_totient(UV k, UV n);
-extern int is_totient(UV n);
+
+extern bool is_totient(UV n);
 
 extern UV  inverse_totient_count(UV n);
 extern UV* inverse_totient_list(UV *ntotients, UV n);

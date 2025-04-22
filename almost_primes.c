@@ -386,13 +386,13 @@ UV nth_almost_prime_approx(uint32_t k, UV n) {
   return inverse_interpolate_k(lo, 0, n, k, &apca, 0);
 }
 
-static UV  _cb_nth3(UV n) { return nth_almost_prime_approx(3,n); }
-static UV  _cb_cnt3(UV n) { return almost_prime_count(3,n); }
-static int _cb_is3(UV n)  { return is_almost_prime(3,n); }
+static UV   _cb_nth3(UV n) { return nth_almost_prime_approx(3,n); }
+static UV   _cb_cnt3(UV n) { return almost_prime_count(3,n); }
+static bool _cb_is3(UV n)  { return is_almost_prime(3,n); }
 
-static UV  _cb_nth4(UV n) { return nth_almost_prime_approx(4,n); }
-static UV  _cb_cnt4(UV n) { return almost_prime_count(4,n); }
-static int _cb_is4(UV n)  { return is_almost_prime(4,n); }
+static UV   _cb_nth4(UV n) { return nth_almost_prime_approx(4,n); }
+static UV   _cb_cnt4(UV n) { return almost_prime_count(4,n); }
+static bool _cb_is4(UV n)  { return is_almost_prime(4,n); }
 
 UV nth_almost_prime(uint32_t k, UV n) {
   UV r, lo, hi;
@@ -966,7 +966,7 @@ UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
   #define MAX_CHEN_PRIME UVCONST(4294967291)
 #endif
 
-int is_chen_prime(UV n) {
+bool is_chen_prime(UV n) {
   if (n < 2 || n > MAX_CHEN_PRIME) return 0;
   return (is_prime(n) && (is_prime(n+2) || is_semiprime(n+2)));
 }

@@ -24,7 +24,7 @@ int contfrac(UV** cfrac, UV *rem, UV num, UV den)
   return steps;
 }
 
-int next_calkin_wilf(UV* num, UV* den)
+bool next_calkin_wilf(UV* num, UV* den)
 {
   UV n, d;
   if (num == 0 || den == 0) return 0;
@@ -47,7 +47,7 @@ int next_calkin_wilf(UV* num, UV* den)
   *num = d;
   return 1;
 }
-int next_stern_brocot(UV* num, UV* den)
+bool next_stern_brocot(UV* num, UV* den)
 {
   UV n, d;
   if (num == 0 || den == 0) return 0;
@@ -127,7 +127,7 @@ UV stern_brocot_n(UV num, UV den)
 }
 
 
-int nth_calkin_wilf(UV* num, UV* den, UV n)
+bool nth_calkin_wilf(UV* num, UV* den, UV n)
 {
   uint32_t b = 1;
   UV p = 0, q = 1;    /* p odd  q even */
@@ -140,7 +140,7 @@ int nth_calkin_wilf(UV* num, UV* den, UV n)
   *den = q;
   return 1;
 }
-int nth_stern_brocot(UV* num, UV* den, UV n)
+bool nth_stern_brocot(UV* num, UV* den, UV n)
 {
   UV p = 1, q = 1;    /* p odd  q even */
   while (n > 1) {
@@ -172,7 +172,7 @@ UV farey_length(uint32_t n)
   return (t == 0)  ?  0  :  1 + sumtotient(n);
 }
 
-int next_farey(uint32_t n, uint32_t* p, uint32_t* q)
+bool next_farey(uint32_t n, uint32_t* p, uint32_t* q)
 {
   IV ivu, ivg;
   UV u, uvp, uvq;
@@ -285,7 +285,7 @@ int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
   return 1;
 }
 #else
-static int _walk_to_k(uint32_t a, uint32_t n, uint32_t k, uint32_t* p, uint32_t* q)
+static bool _walk_to_k(uint32_t a, uint32_t n, uint32_t k, uint32_t* p, uint32_t* q)
 {
   uint32_t g, j, p0, q0, p1, q1, p2, q2;
 
@@ -310,7 +310,7 @@ static int _walk_to_k(uint32_t a, uint32_t n, uint32_t k, uint32_t* p, uint32_t*
   *q = q1;
   return 1;
 }
-int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
+bool kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
 {
   uint32_t lo = 1, hi = n;
   UV cnt = 1;

@@ -3,6 +3,6 @@
 
 #include "ptypes.h"
 
-extern int is_congruent_number(UV n);
+extern bool is_congruent_number(UV n);
 
 #endif

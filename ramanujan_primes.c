@@ -316,8 +316,9 @@ UV nth_ramanujan_prime(UV n) {
   return rn;
 }
 
-int is_ramanujan_prime(UV n) {
+bool is_ramanujan_prime(UV n) {
   UV i, d, *L, swin, rn;
+  bool res;
 
   if (!is_prime(n))  return 0;
   if (n < 17)        return (n == 2 || n == 11);
@@ -338,9 +339,9 @@ int is_ramanujan_prime(UV n) {
    */
 
   L = _ramanujan_prime_window(n, &swin, &rn);
-  d = (L[rn] == n);
+  res = (L[rn] == n);
   Safefree(L);
-  return d;
+  return res;
 }
 
 #if BITS_PER_WORD == 64

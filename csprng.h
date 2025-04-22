@@ -21,7 +21,7 @@ extern UV       irand64(void *ctx);
 
 /*****************************************************************************/
 
-extern int is_csprng_well_seeded(void *ctx);
+extern bool is_csprng_well_seeded(void *ctx);
 
 extern NV drand64(void *ctx);
 

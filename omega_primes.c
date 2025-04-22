@@ -23,7 +23,7 @@
 /*                              OMEGA PRIMES                                  */
 /******************************************************************************/
 
-int is_omega_prime(uint32_t k, UV n) {
+bool is_omega_prime(uint32_t k, UV n) {
   if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }
   if (k > 0 && !(n% 3)) { k--; do { n /=  3; } while (!(n% 3)); }
   if (k > 0 && !(n% 5)) { k--; do { n /=  5; } while (!(n% 5)); }

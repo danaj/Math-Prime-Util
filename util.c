@@ -100,9 +100,9 @@ static int _call_gmp = 0;
 void _XS_set_callgmp(int v) { _call_gmp = v; }
 int  _XS_get_callgmp(void) { return _call_gmp; }
 
-static int _secure = 0;
+static bool _secure = 0;
 void _XS_set_secure(void) { _secure = 1; }
-int  _XS_get_secure(void) { return _secure; }
+bool  _XS_get_secure(void) { return _secure; }
 
 /* We'll use this little static sieve to quickly answer small values of
  *   is_prime, next_prime, prev_prime, prime_count
@@ -143,17 +143,16 @@ static const unsigned short primes_tiny[] =
    409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503};
 #define NPRIMES_TINY (sizeof(primes_tiny)/sizeof(primes_tiny[0]))
 
-/* Return of 2 if n is prime, 0 if not.  Do it fast. */
-int is_prime(UV n)
+/* Return true if n is prime, false if not.  Do it fast. */
+bool is_prime(UV n)
 {
   if (n <= 10)
-    return (n == 2 || n == 3 || n == 5 || n == 7) ? 2 : 0;
+    return (n == 2 || n == 3 || n == 5 || n == 7);
 
   if (n < UVCONST(200000000)) {
     UV d = n/30;
     UV m = n - d*30;
     unsigned char mtab = masktab30[m];  /* Bitmask in mod30 wheel */
-    const unsigned char* sieve;
 
     /* Return 0 if a multiple of 2, 3, or 5 */
     if (mtab == 0)
@@ -161,15 +160,16 @@ int is_prime(UV n)
 
     /* Check static tiny sieve */
     if (d < NPRIME_SIEVE30)
-      return (prime_sieve30[d] & mtab) ? 0 : 2;
+      return ((prime_sieve30[d] & mtab) == 0);
 
     if (!(n%7) || !(n%11) || !(n%13)) return 0;
 
     /* Check primary cache */
     if (n <= get_prime_cache(0,0)) {
+      const unsigned char* sieve;
       int isprime = -1;
       if (n <= get_prime_cache(0, &sieve))
-        isprime = 2*((sieve[d] & mtab) == 0);
+        isprime = ((sieve[d] & mtab) == 0);
       release_prime_cache(sieve);
       if (isprime >= 0)
         return isprime;
@@ -1257,13 +1257,13 @@ UV is_quasi_carmichael(UV n) {
   return nbases;
 }
 
-int is_semiprime(UV n) {
+bool is_semiprime(UV n) {
   UV sp, p, n3, factors[2];
 
   if (n < 6) return (n == 4);
-  if (!(n&1)) return !!is_prob_prime(n>>1);
-  if (!(n%3)) return !!is_prob_prime(n/3);
-  if (!(n%5)) return !!is_prob_prime(n/5);
+  if (!(n&1)) return is_prob_prime(n>>1);
+  if (!(n%3)) return is_prob_prime(n/3);
+  if (!(n%5)) return is_prob_prime(n/5);
   /* 27% of random inputs left */
   n3 = icbrt(n);
   for (sp = 4; sp < 60; sp++) {
@@ -1271,7 +1271,7 @@ int is_semiprime(UV n) {
     if (p > n3)
       break;
     if ((n % p) == 0)
-      return !!is_prob_prime(n/p);
+      return is_prob_prime(n/p);
   }
   /* 9.8% of random inputs left */
   if (is_def_prime(n)) return 0;
@@ -1286,11 +1286,11 @@ int is_semiprime(UV n) {
   if (factor_one(n, factors, 0, 0) != 2) return 0;
   return (is_def_prime(factors[0]) && is_def_prime(factors[1]));
 }
-int is_almost_prime(UV k, UV n) {
+bool is_almost_prime(UV k, UV n) {
   UV p, sp;
 
   if (k == 0) return (n == 1);
-  if (k == 1) return !!is_prob_prime(n);
+  if (k == 1) return is_prob_prime(n);
   if (k == 2) return is_semiprime(n);
 
   if ((n >> k) == 0) return 0;  /* The smallest k-almost prime is 2^k */
@@ -1311,14 +1311,14 @@ int is_almost_prime(UV k, UV n) {
     p = primes_tiny[sp];
   }
   if (k == 0) return (n == 1);
-  if (k == 1) return !!is_prob_prime(n);
+  if (k == 1) return is_prob_prime(n);
   if (k == 2) return is_semiprime(n);
   if (n < ipowsafe(p,k)) return 0;
 
   return ((UV)prime_bigomega(n) == k);
 }
 
-int is_fundamental(UV n, int neg) {
+bool is_fundamental(UV n, int neg) {
   uint32_t r = n & 15;
   if (r) {
     if (neg) r = 16-r;
@@ -1371,7 +1371,7 @@ int moebius(UV n) {
   { uint32_t psq = p*p;  if (psq > n) return 1;  if ((n % psq) == 0) return 0; }
 
 static const uint32_t _isf[8] = {3840601326,1856556782,3941394158,2362371810,3970362990,3471729898,4008603310,3938642668};
-int is_square_free(UV n) {
+bool is_square_free(UV n) {
   if (n < 256)  return (_isf[n >> 5] & (1U << (n % 32))) != 0;
 
   if (!(n % 4) || !(n % 9) || !(n % 25) || !(n % 49) || !(n %121) || !(n %169))
@@ -1392,7 +1392,7 @@ int is_square_free(UV n) {
   }
 }
 
-int is_perfect_number(UV n) {
+bool is_perfect_number(UV n) {
   UV v, m;
   if (n == 0 || (n & 1)) return 0;
 
@@ -1447,8 +1447,8 @@ UV qnr(UV n) {
   return 0;
 }
 
-int is_qr(UV a, UV n) {
-  int res;
+bool is_qr(UV a, UV n) {
+  bool res;
   if (n == 0) return (a == 1);    /* Should return undef */
   if (n <= 2) return 1;
   if (a >= n) a %= n;
@@ -1573,7 +1573,7 @@ UV znprimroot(UV n) {
   return 0;
 }
 
-int is_primitive_root(UV a, UV n, int nprime) {
+bool is_primitive_root(UV a, UV n, int nprime) {
   UV p, phi, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
 
@@ -1861,7 +1861,8 @@ static UV _facmod_mont(UV n, UV m) {
 #endif
 
 UV factorialmod(UV n, UV m) {  /*  n! mod m */
-  UV i, m_prime, d = n, res = 1;
+  UV i, d = n, res = 1;
+  bool m_prime;
 
   if (n >= m || m == 1) return 0;
   if (n <= 1 || m == 2) return (n <= 1);
@@ -2083,7 +2084,7 @@ static UV _binomial_lucas_mod_prime_power(UV n, UV k, UV p, UV q) {
   return res;
 }
 
-int binomialmod(UV *res, UV n, UV k, UV m) {
+bool binomialmod(UV *res, UV n, UV k, UV m) {
 
   if (m <= 1)           { *res = 0; return 1; }
   if (k == 0 || k >= n) { *res = (k == 0 || k == n); return 1; }
@@ -2114,7 +2115,7 @@ int binomialmod(UV *res, UV n, UV k, UV m) {
         fac[i] = ipow(fac[i], exp[i]);
       }
     }
-    return (chinese(res, 0, bin, fac, nfactors) == 1);
+    return chinese(res, 0, bin, fac, nfactors);
   }
   return 0;
 }
@@ -2234,7 +2235,7 @@ int happy_height(UV n, uint32_t base, uint32_t exponent) {
  * but handles the case where IV_MAX < lcm <= UV_MAX.
  * status = 1 means good result, 0 means try another method.
  */
-static int _simple_chinese(UV *r, UV *mod, UV* a, UV* n, UV num) {
+static bool _simple_chinese(UV *r, UV *mod, UV* a, UV* n, UV num) {
   UV i, lcm = 1, res = 0;
   if (num == 0) { *r = 0; if (mod) *mod = 0; return 1; }  /* Dubious return */
 
@@ -2298,7 +2299,7 @@ int chinese(UV *r, UV *mod, UV* a, UV* n, UV num) {
   return 1;
 }
 
-int prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
+bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
   if (n == 0) return 0;
   if (kstatus < 0) {
     if (*a != 0) *a = modinverse(*a, n);
@@ -2443,7 +2444,7 @@ int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN ble
   return 0; /* equal */
 }
 
-int from_digit_string(UV* rn, const char* s, int base)
+bool from_digit_string(UV* rn, const char* s, int base)
 {
   UV max, n = 0;
   int i, len;
@@ -2466,7 +2467,7 @@ int from_digit_string(UV* rn, const char* s, int base)
   return 1;
 }
 
-int from_digit_to_UV(UV* rn, UV* r, int len, int base)
+bool from_digit_to_UV(UV* rn, UV* r, int len, int base)
 {
   UV d, n = 0;
   int i;
@@ -2482,7 +2483,7 @@ int from_digit_to_UV(UV* rn, UV* r, int len, int base)
 }
 
 
-int from_digit_to_str(char** rstr, UV* r, int len, int base)
+bool from_digit_to_str(char** rstr, UV* r, int len, int base)
 {
   char *so, *s;
   int i;
@@ -2704,7 +2705,7 @@ static int _catalan_vtest(UV n, UV p) {
       return 1;
   return 0;
 }
-int is_catalan_pseudoprime(UV n) {
+bool is_catalan_pseudoprime(UV n) {
   UV m, a;
   int i;
 
@@ -3012,7 +3013,7 @@ UV frobenius_number(UV* A, uint32_t alen)
  * Bonet 2008 gives O(n log n) algorithms using a bit more space.
  */
 
-int num_to_perm(UV k, int n, int *vec) {
+bool num_to_perm(UV k, int n, int *vec) {
   int i, j, t, si = 0;
   UV f = factorial(n-1);
 
@@ -3037,7 +3038,7 @@ int num_to_perm(UV k, int n, int *vec) {
   return 1;
 }
 
-int perm_to_num(int n, int *vec, UV *rank) {
+bool perm_to_num(int n, int *vec, UV *rank) {
   int i, j, k;
   UV f, num = 0;
   f = factorial(n-1);
@@ -3144,7 +3145,7 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
   } \
   if (k < nextprime) return (n <= k);
 
-int is_smooth(UV n, UV k) {
+bool is_smooth(UV n, UV k) {
   UV fac[MPU_MAX_FACTORS+1];
   uint32_t i, p, pn;
   int nfac;
@@ -3185,7 +3186,7 @@ int is_smooth(UV n, UV k) {
   nfac = factor_exp(n, fac, 0);
   return (fac[nfac-1] <= k);
 }
-int is_rough(UV n, UV k) {
+bool is_rough(UV n, UV k) {
   UV fac[MPU_MAX_FACTORS+1];
   int nfac;
 
@@ -3243,7 +3244,7 @@ static UV _divsum1(UV prod, UV f, uint32_t e) {
   return prod * fmult;
 }
 
-int is_practical(UV n) {
+bool is_practical(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   UV prod;
@@ -3268,7 +3269,7 @@ int is_practical(UV n) {
   return 1;
 }
 
-int is_delicate_prime(UV n, uint32_t b) {
+bool is_delicate_prime(UV n, uint32_t b) {
 
   if (b < 2) croak("is_delicate_prime base must be >= 2");
   if (b == 10 && n < 100)  return 0;  /* All 1,2,3,4 digit inputs are false */
@@ -3345,7 +3346,7 @@ int is_delicate_prime(UV n, uint32_t b) {
 }
 
 
-int is_sum_of_two_squares(UV n) {
+bool is_sum_of_two_squares(UV n) {
   UV i, nfacs, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
   if (n < 3) return 1;
 
@@ -3371,7 +3372,7 @@ int is_sum_of_two_squares(UV n) {
   return 1;
 }
 
-int is_sum_of_three_squares(UV n) {
+bool is_sum_of_three_squares(UV n) {
   UV tz = valuation(n,2);
   return ((tz & 1) == 1) || (((n>>tz) % 8) != 7);
 }
@@ -3389,7 +3390,7 @@ static UV halfgcd(UV m, UV u) {
 }
 
 /* Given an initial root, solve */
-static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
+static bool corn_one(UV *x, UV *y, UV u, UV d, UV p) {
   UV rk = halfgcd(p, u);
   u = negmod(sqrmod(rk,p),p);
   u = (u % d == 0)  ?  u/d  :  0;
@@ -3402,7 +3403,7 @@ static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
 }
 #else
 /* Given an initial root, solve.  Algorithm 2.3.12 of C&P */
-static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
+static bool corn_one(UV *x, UV *y, UV u, UV d, UV p) {
   UV a = p;
   UV b = (2*u < p) ? p-u : u;
   UV c = isqrt(p);
@@ -3419,9 +3420,9 @@ static int corn_one(UV *x, UV *y, UV u, UV d, UV p) {
 #endif
 
   /* Cornacchia-Smith run over each root. */
-static int corn_all(UV *x, UV *y, UV d, UV p) {
+static bool corn_all(UV *x, UV *y, UV d, UV p) {
   UV negd = negmod(d,p),  i, nroots, *roots;
-  int success = 0;
+  bool success = 0;
   roots = allsqrtmod(&nroots, negd, p);
   if (roots) {
     for (i = 0; i < nroots/2 && !success; i++)
@@ -3431,7 +3432,7 @@ static int corn_all(UV *x, UV *y, UV d, UV p) {
   return success;
 }
 
-int cornacchia(UV *x, UV *y, UV d, UV p) {
+bool cornacchia(UV *x, UV *y, UV d, UV p) {
   UV u, negd = negmod(d, p), limu;
 
   if (p == 0) {

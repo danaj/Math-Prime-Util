@@ -13,7 +13,7 @@
 #include "constants.h"
 #include "inverse_interpolate.h"
 
-int is_powerful(UV n, UV k) {
+bool is_powerful(UV n, UV k) {
   UV pk;
   int res;
 

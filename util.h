@@ -18,17 +18,19 @@ extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);
 extern void _XS_set_callgmp(int v);
 /* Disable all manual seeding */
-extern int  _XS_get_secure(void);
+extern bool  _XS_get_secure(void);
 extern void _XS_set_secure(void);
 
-extern int is_prime(UV x);
-extern UV  next_prime(UV x);
-extern UV  prev_prime(UV x);
+extern bool is_prime(UV x);
+extern UV   next_prime(UV x);
+extern UV   prev_prime(UV x);
 
 extern void print_primes(UV low, UV high, int fd);
 
+/* TODO: is_power should just return a bool */
 extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
+
 extern UV rootint(UV n, UV k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
 extern UV lcmsafe(UV x, UV u);  /* returns 0 if overflows */
@@ -69,10 +71,11 @@ extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
 
 extern UV pisano_period(UV n);
 
+/* 0 overflow, -1 no inverse, 1 ok */
 extern int chinese(UV *r, UV *lcm, UV* a, UV* n, UV num);/* Chinese Remainder */
 
 /* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
-extern int prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
+extern bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
 
 /* Division and remainder.  Returns remainder. */
 extern IV tdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem trunc */
@@ -81,36 +84,37 @@ extern IV cdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem ceiling */
 extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
 extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
 
-extern UV  carmichael_lambda(UV n);
-extern int moebius(UV n);
-extern UV  exp_mangoldt(UV n);
-extern UV  znprimroot(UV n);
-extern UV  znorder(UV a, UV n);
+extern UV   carmichael_lambda(UV n);
+extern int  moebius(UV n);
+extern UV   exp_mangoldt(UV n);
+extern UV   znprimroot(UV n);
+extern UV   znorder(UV a, UV n);
 /* nprime says to assume n = p or n = 2p.  Skips power and primality tests. */
-extern int is_primitive_root(UV a, UV n, int nprime);
-extern UV  factorialmod(UV n, UV m);
-extern int binomialmod(UV *res, UV n, UV k, UV m);
-extern int is_square_free(UV n);
-extern int is_perfect_number(UV n);
-extern int is_fundamental(UV n, int neg);
-extern int is_semiprime(UV n);
-extern int is_almost_prime(UV k, UV n);
-extern int is_cyclic(UV n);
-extern int is_carmichael(UV n);
-extern UV  is_quasi_carmichael(UV n);  /* Returns number of bases */
-extern UV  pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
-extern UV  qnr(UV n);
-extern int is_qr(UV a, UV n);          /* kronecker that works for composites */
-extern int is_practical(UV n);
-extern int is_delicate_prime(UV n, uint32_t b);
-extern int happy_height(UV n, uint32_t base, uint32_t exponent);
+extern bool is_primitive_root(UV a, UV n, int nprime);
+extern UV   factorialmod(UV n, UV m);
+extern bool binomialmod(UV *res, UV n, UV k, UV m);
 
-extern int is_smooth(UV n, UV k);
-extern int is_rough(UV n, UV k);
+extern bool is_square_free(UV n);
+extern bool is_perfect_number(UV n);
+extern bool is_fundamental(UV n, int neg);
+extern bool is_semiprime(UV n);
+extern bool is_almost_prime(UV k, UV n);
+extern int  is_cyclic(UV n);
+extern int  is_carmichael(UV n);
+extern UV   is_quasi_carmichael(UV n);  /* Returns number of bases */
+extern UV   pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
+extern UV   qnr(UV n);
+extern bool is_qr(UV a, UV n);         /* kronecker that works for composites */
+extern bool is_practical(UV n);
+extern bool is_delicate_prime(UV n, uint32_t b);
+extern int  happy_height(UV n, uint32_t base, uint32_t exponent);
 
-extern int is_sum_of_two_squares(UV n);
-extern int is_sum_of_three_squares(UV n);
-extern int cornacchia(UV *x, UV *y, UV d, UV p);
+extern bool is_smooth(UV n, UV k);
+extern bool is_rough(UV n, UV k);
+
+extern bool is_sum_of_two_squares(UV n);
+extern bool is_sum_of_three_squares(UV n);
+extern bool cornacchia(UV *x, UV *y, UV d, UV p);
 
 extern UV debruijn_psi(UV x, UV y);
 extern UV buchstab_phi(UV x, UV y);
@@ -124,21 +128,24 @@ extern IV ramanujan_tau(UV n);
 
 extern char* pidigits(int digits);
 
+/* min defines if min or max.  Return of 0 means select a, 1 means select b. */
 extern int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN blen);
 extern int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
 
-extern int from_digit_string(UV* n, const char* s, int base);
-extern int from_digit_to_UV(UV* rn, UV* r, int len, int base);
-extern int from_digit_to_str(char** rstr, UV* r, int len, int base);
-extern int to_digit_array(int* bits, UV n, int base, int length);
-extern int to_digit_string(char *s, UV n, int base, int length);
-extern int to_string_128(char s[40], IV hi, UV lo);
+extern bool from_digit_string(UV* n, const char* s, int base);
+extern bool from_digit_to_UV(UV* rn, UV* r, int len, int base);
+extern bool from_digit_to_str(char** rstr, UV* r, int len, int base);
+/* These return length */
+extern int  to_digit_array(int* bits, UV n, int base, int length);
+extern int  to_digit_string(char *s, UV n, int base, int length);
+extern int  to_string_128(char s[40], IV hi, UV lo);
 
+/* Returns 1 if good, 0 if bad, -1 if non canon, 2 ok but out of range */
 extern int validate_zeckendorf(const char* str);
-extern UV from_zeckendorf(const char* str);
+extern UV  from_zeckendorf(const char* str);
 extern char* to_zeckendorf(UV n);
 
-extern int is_catalan_pseudoprime(UV n);
+extern bool is_catalan_pseudoprime(UV n);
 
 extern UV  polygonal_root(UV n, UV k, int* overflow);
 
@@ -147,8 +154,8 @@ extern UV  consecutive_integer_lcm(UV n);
 
 extern UV  frobenius_number(UV* A, uint32_t alen);
 
-extern int num_to_perm(UV rank, int n, int *vec);
-extern int perm_to_num(int n, int *vec, UV *rank);
+extern bool num_to_perm(UV rank, int n, int *vec);
+extern bool perm_to_num(int n, int *vec, UV *rank);
 extern void randperm(void* ctx, UV n, UV k, UV *S);
 
 extern UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors);
@@ -230,7 +237,7 @@ static UV lcm_ui(UV x, UV y) {
 
 #ifdef FUNC_is_perfect_square
 /* See:  http://mersenneforum.org/showpost.php?p=110896 */
-static int is_perfect_square(UV n)
+static bool is_perfect_square(UV n)
 {
   uint32_t m;
 #if BITS_PER_WORD == 64
@@ -253,7 +260,7 @@ static int is_perfect_square(UV n)
 #endif
 
 #ifdef FUNC_is_perfect_cube
-static int is_perfect_cube(UV n)
+static bool is_perfect_cube(UV n)
 {
   uint32_t m;
   m = n % 117; if ((m*833230740) & (m*120676722) & 813764715) return 0;
@@ -266,7 +273,7 @@ static int is_perfect_cube(UV n)
 #endif
 
 #ifdef FUNC_is_perfect_fifth
-static int is_perfect_fifth(UV n)
+static bool is_perfect_fifth(UV n)
 {
   UV m;
   if ((n & 3) == 2) return 0;
@@ -280,7 +287,7 @@ static int is_perfect_fifth(UV n)
 #endif
 
 #ifdef FUNC_is_perfect_seventh
-static int is_perfect_seventh(UV n)
+static bool is_perfect_seventh(UV n)
 {
   UV m;
   /* if ((n & 3) == 2) return 0; */

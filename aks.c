@@ -302,7 +302,7 @@ static int test_anr(UV a, UV n, UV r)
  *  compete with the earlier primality proving methods like ECPP and
  *  cyclotomy." - conclusion regarding memory consumption
  */
-int is_aks_prime(UV n)
+bool is_aks_prime(UV n)
 {
   UV r, s, a, starta = 1;
 

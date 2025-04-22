@@ -79,7 +79,7 @@ UV sum_primes64(UV n) {
  * assuming the uint128_t type is available.  The result is returned as
  * two 64-bit results. */
 
-int sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
+bool sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
 #if HAVE_SUM_PRIMES128
   uint128_t *S;
   UV *V, j, k, r, r2, p;
@@ -152,9 +152,9 @@ static const UV sum_table_2e8[] =
 #define N_SUM_TABLE  (sizeof(sum_table_2e8)/sizeof(sum_table_2e8[0]))
 #endif
 
-int sum_primes(UV low, UV high, UV *return_sum) {
+bool sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
-  int overflow = 0;
+  bool overflow = 0;
 
   if (low <= 2 && high >= 100000) {
     *return_sum = sum_primes64(high);

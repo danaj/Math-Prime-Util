@@ -1669,7 +1669,7 @@ void is_prime(IN SV* svn)
       switch (ix) {
         case 0:
         case 1:
-        case 2:  ret = is_prime(n); break;
+        case 2:  ret = 2*is_prime(n); break;
         case 3:  ret = BPSW(n); break;
         case 4:  ret = is_aks_prime(n); break;
         case 5:  ret = is_lucas_pseudoprime(n, 0); break;
@@ -1780,7 +1780,7 @@ void is_gaussian_prime(IN SV* sva, IN SV* svb)
       if (a < HALF_WORD && b < HALF_WORD) {
         UV aa = a*a, bb = b*b;
         if (UV_MAX-aa >= bb)
-          RETURN_NPARITY( is_prime(aa+bb) );
+          RETURN_NPARITY( 2*is_prime(aa+bb) );
       }
     }
     _vcallsub_with_gmp(0.52,"is_gaussian_prime");
@@ -5867,10 +5867,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if (amax > n) amax = n;
       if (nmin < 1) nmin = 1;
       if (nmax > n) nmax = n;
-      if (primeq != 0 && primeq != -1) primeq = 2;  /* -1, 0, or 2 */
+      if (primeq != 0 && primeq != -1) primeq = 1;  /* -1, 0, or 1 */
     }
 
-    if (primeq == 2) {
+    if (primeq == 1) {
       UV prev =                 prev_prime(amax+1);
       UV next = amin <= 2 ? 2 : next_prime(amin-1);
       if (amin < next)  amin = next;

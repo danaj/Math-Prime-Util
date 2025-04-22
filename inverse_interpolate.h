@@ -29,6 +29,6 @@ extern UV inverse_interpolate_k(UV lo, UV hi, UV n, UV k, UV (*func)(UV mid, UV 
  * For example, perfect_power has a super fast count function, so we want
  * to narrow down quickly.  It also has fast next/prev functions.
  */
-extern UV interpolate_with_approx(UV n, UV *gcount, UV tol, UV (*fnth)(UV n), UV (*fcnt)(UV n), int (*fis)(UV n));
+extern UV interpolate_with_approx(UV n, UV *gcount, UV tol, UV (*fnth)(UV n), UV (*fcnt)(UV n), bool (*fis)(UV n));
 
 #endif
