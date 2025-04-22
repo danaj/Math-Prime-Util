@@ -174,12 +174,12 @@ UV farey_length(uint32_t n)
 
 int next_farey(uint32_t n, uint32_t* p, uint32_t* q)
 {
-  IV ivu, ivv, ivg;
+  IV ivu, ivg;
   UV u, uvp, uvq;
 
   if (n == 0 || p == 0 || q == 0 || *p >= *q) return 0;
 
-  ivg = gcdext( (IV)*p, (IV)*q, &ivu, &ivv, 0, 0);
+  ivg = gcdext( (IV)*p, (IV)*q, &ivu, 0, 0, 0);
 
   u = ivu;
   uvp = *p / ivg;

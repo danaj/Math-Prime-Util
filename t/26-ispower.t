@@ -75,7 +75,7 @@ plan tests => 0
             + 7 + scalar(keys %powers) + scalar(@negpowers)
             + 6  # tests for 3,5,7 power
             + 3  # is_square
-            + 6  # is_sum_of_squares
+            + 7  # is_sum_of_squares
             + 0;
 
 is_deeply( [map { is_power($_) } 0 .. $#pow1],        \@pow1,  "is_power 0 .. $#pow1" );
@@ -181,4 +181,10 @@ is_deeply(
   [map { is_sum_of_squares($_) } (209, 437, 713, 1333, 2021)],
   [0,0,0,0,0],
   "is_sum_of_squares (k=2) for selected non-representable integers"
+);
+
+is_deeply(
+  [map { is_sum_of_squares($_,3) } (qw/0 6 7 8 9 1145141919810 245657627368729 12345678987654321 185724285729475816451975/)],
+  [1,1,0,1,1,1,1,1,0],
+  "is_sum_of_squares (k=3) for selected integers"
 );
