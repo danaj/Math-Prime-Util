@@ -34,7 +34,7 @@ my @roots = (
   [ 3, 29, "68630377364883"],
 );
 
-plan tests => 0 + 4  # sqrtint
+plan tests => 0 + 6  # sqrtint
                 + 6  # rootint
                 + 6; # logint
 
@@ -43,6 +43,8 @@ is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtin
 is( sqrtint(1524155677489), 1234567, "sqrtint(1234567^2) = 1234567" );
 is( sqrtint(1524158146623), 1234567, "sqrtint(1234568^2-1) = 1234567" );
 is( sqrtint(1524155677488), 1234566, "sqrtint(1234567^2-1) = 1234566" );
+is( sqrtint("4503599761588224"), 67108864, "sqrtint((2^26+1)*(2^26+1)-1) = 2^26" );
+is( sqrtint("425822367781739534"), 652550662, "sqrtint(425822367781739534) = 652550662" );
 
 ###### rootint
 # TODO: croak if n < 0 or k < 1

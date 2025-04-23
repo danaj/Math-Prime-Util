@@ -274,7 +274,7 @@ UV semiprime_count_range(UV lo, UV hi)
 
   /* Now it gets interesting.  lo > 4, hi > 400. */
 
-  if ((hi-lo+1) < hi / (isqrt(hi)*200)) {
+  if ((hi-lo+1) < hi / ((UV)isqrt(hi)*200)) {
     MPUverbose(2, "semiprimes %"UVuf"-%"UVuf" via iteration\n", lo, hi);
     return _range_semiprime_count_iterate(lo,hi);
   }

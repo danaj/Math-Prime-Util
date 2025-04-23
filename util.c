@@ -687,9 +687,10 @@ int is_power(UV n, UV a)
 {
   int ret;
   if (a > 0) {
+    uint32_t r;  /* The root */
     if (a == 1 || n <= 1) return 1;
     if ((a % 2) == 0)
-      return !is_perfect_square(n) ? 0 : (a == 2) ? 1 : is_power(isqrt(n),a>>1);
+      return !is_perfect_square_ret(n,&r) ? 0 : (a == 2) ? 1 : is_power(r,a>>1);
     if ((a % 3) == 0)
       return !is_perfect_cube(n) ? 0 : (a == 3) ? 1 : is_power(icbrt(n),a/3);
     if ((a % 5) == 0)
@@ -2858,7 +2859,10 @@ UV polygonal_root(UV n, UV k, int* overflow) {
   MPUassert(k >= 3, "is_polygonal root < 3");
   *overflow = 0;
   if (n <= 1) return n;
-  if (k == 4) return is_perfect_square(n) ? isqrt(n) : 0;
+  if (k == 4) {
+    uint32_t root;
+    return is_perfect_square_ret(n,&root)  ?  root  :  0;
+  }
   if (k == 3) {
     if (n >= UV_MAX/8) *overflow = 1;
     D = n << 3;
@@ -3406,13 +3410,13 @@ static bool corn_one(UV *x, UV *y, UV u, UV d, UV p) {
 static bool corn_one(UV *x, UV *y, UV u, UV d, UV p) {
   UV a = p;
   UV b = (2*u < p) ? p-u : u;
-  UV c = isqrt(p);
+  uint32_t c = isqrt(p);
   while (b > c) {  UV t = a % b; a = b; b = t;  }
   u = p - b*b;
   u = (u % d == 0)  ?  u/d  :  0;
-  if (u && is_perfect_square(u)) {
+  if (u && is_perfect_square_ret(u,&c)) {
     *x = b;
-    *y = isqrt(u);
+    *y = c;
     return 1;
   }
   return 0;
@@ -3434,6 +3438,7 @@ static bool corn_all(UV *x, UV *y, UV d, UV p) {
 
 bool cornacchia(UV *x, UV *y, UV d, UV p) {
   UV u, negd = negmod(d, p), limu;
+  uint32_t root;
 
   if (p == 0) {
     *x = *y = 0;
@@ -3441,8 +3446,8 @@ bool cornacchia(UV *x, UV *y, UV d, UV p) {
   }
 
   if (d == 0) {
-    if (!is_perfect_square(p))  return 0;
-    *x = isqrt(p);  *y = 0;
+    if (!is_perfect_square_ret(p,&root))  return 0;
+    *x = root;  *y = 0;
     return 1;
   }
 
@@ -3461,8 +3466,8 @@ bool cornacchia(UV *x, UV *y, UV d, UV p) {
    */
   for (u = 0, limu = isqrt(p/d);  u <= limu;  u++) {
     UV t = p - d*u*u;
-    if (is_perfect_square(t)) {
-      *x = isqrt(t);  *y = u;  return 1;
+    if (is_perfect_square_ret(t,&root)) {
+      *x = root;  *y = u;  return 1;
     }
   }
 

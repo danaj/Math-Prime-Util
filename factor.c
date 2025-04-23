@@ -533,13 +533,14 @@ int fermat_factor(UV n, UV *factors, UV rounds)
 int holf_factor(UV n, UV *factors, UV rounds)
 {
   UV i, s, m, f;
+  uint32_t root;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in holf_factor");
 
   /* We skip the perfect-square test for s in the loop, so we
    * will never succeed if n is a perfect square.  Test that now. */
-  if (is_perfect_square(n))
-    return found_factor(n, isqrt(n), factors);
+  if (is_perfect_square_ret(n,&root))
+    return found_factor(n, root, factors);
 
   if (n <= (UV_MAX >> 6)) {    /* Try with premultiplier first */
     UV npre = n * ( (n <= (UV_MAX >> 13)) ? 720 :
@@ -547,35 +548,17 @@ int holf_factor(UV n, UV *factors, UV rounds)
                     (n <= (UV_MAX >> 10)) ? 360 :
                     (n <= (UV_MAX >>  8)) ?  60 : 30 );
     UV ni = npre;
-#if 0                              /* Straightforward */
     while (rounds--) {
-      s = isqrt(ni) + 1;
+      s = 1 + (UV)isqrt(ni);
       m = (s*s) - ni;
-      if (is_perfect_square(m)) {
-        f = gcd_ui(n, s - isqrt(m));
+      if (is_perfect_square_ret(m, &root)) {
+        f = gcd_ui(n, s - root);
         if (f > 1 && f < n)
           return found_factor(n, f, factors);
       }
       if (ni >= (ni+npre)) break;
       ni += npre;
     }
-#else                              /* More optimized */
-    while (rounds--) {
-      s = 1 + (UV)sqrt((double)ni);
-      m = (s*s) - ni;
-      f = m & 127;
-      if (!((f*0x8bc40d7d) & (f*0xa1e2f5d1) & 0x14020a)) {
-        f = (UV)sqrt((double)m);
-        if (m == f*f) {
-          f = gcd_ui(n, s - f);
-          if (f > 1 && f < n)
-            return found_factor(n, f, factors);
-        }
-      }
-      if (ni >= (ni+npre)) break;
-      ni += npre;
-    }
-#endif
   }
 
   for (i = 1; i <= rounds; i++) {
@@ -584,9 +567,8 @@ int holf_factor(UV n, UV *factors, UV rounds)
      * so we won't be able to accurately detect it anyway. */
     s++;    /* s = ceil(sqrt(n*i)) */
     m = sqrmod(s, n);
-    if (is_perfect_square(m)) {
-      f = isqrt(m);
-      f = gcd_ui( (s>f) ? s-f : f-s, n);
+    if (is_perfect_square_ret(m, &root)) {
+      f = gcd_ui( (s>root) ? s-root : root-s, n);
       /* This should always succeed, but with overflow concerns.... */
       return found_factor(n, f, factors);
     }
@@ -599,20 +581,16 @@ static int holf32(uint32_t n, UV *factors, uint32_t rounds) {
 
   if (n < 3) return no_factor(n,factors);
   if (!(n&1)) { factors[0] = 2; factors[1] = n/2; return 2; }
-  if (is_perfect_square(n)) { factors[0] = factors[1] = isqrt(n); return 2; }
+  if (is_perfect_square_ret(n,&f)) { factors[0] = factors[1] = f; return 2; }
 
   ni = npre = (UV) n * ((BITS_PER_WORD == 64) ? 5040 : 1);
   while (rounds--) {
-    s = 1 + (uint32_t)sqrt((double)ni);
+    s = 1 + isqrt(ni);
     m = ((UV)s*(UV)s) - ni;
-    f = m & 127;
-    if (!((f*0x8bc40d7d) & (f*0xa1e2f5d1) & 0x14020a)) {
-      f = (uint32_t)sqrt((double)m);
-      if (m == f*f) {
-        f = gcd_ui(n, s - f);
-        if (f > 1 && f < n)
-          return found_factor(n, f, factors);
-      }
+    if (is_perfect_square_ret(m, &f)) {
+      f = gcd_ui(n, s - f);
+      if (f > 1 && f < n)
+        return found_factor(n, f, factors);
     }
     if (ni >= (ni+npre)) break; /* We've overflowed */
     ni += npre;
@@ -1022,6 +1000,7 @@ typedef struct
 static UV squfof_unit(UV n, mult_t* mult_save)
 {
   SQUFOF_TYPE imax,i,Q0,Qn,bn,b0,P,bbn,Ro,S,So,t1,t2;
+  uint32_t root;
 
   P = mult_save->P;
   bn = mult_save->bn;
@@ -1061,17 +1040,13 @@ static UV squfof_unit(UV n, mult_t* mult_save)
       SQUARE_SEARCH_ITERATION;
 
       /* Even iteration.  Check for square: Qn = S*S */
-      t2 = Qn & 127;
-      if (!((t2*0x8bc40d7d) & (t2*0xa1e2f5d1) & 0x14020a)) {
-        t1 = (uint32_t) sqrt(Qn);
-        if (Qn == t1*t1)
-          break;
-      }
+      if (is_perfect_square_ret(Qn,&root))
+        break;
 
       /* Odd iteration. */
       SQUARE_SEARCH_ITERATION;
     }
-    S = t1; /* isqrt(Qn); */
+    S = root; /* isqrt(Qn); */
     mult_save->it = i;
 
     /* Reduce to G0 */
@@ -1251,13 +1226,9 @@ int lehman_factor(UV n, UV *factors, bool do_trial) {
     U = x + B2/(2*x);
     for (a = b;  a <= U;  c += inc*(a+a+inc), a += inc) {
       /* Check for perfect square */
-      b = c & 127;
-      if (!((b*0x8bc40d7d) & (b*0xa1e2f5d1) & 0x14020a)) {
-        b = (uint32_t) sqrt(c);
-        if (c == b*b) {
-          B2 = gcd_ui(a+b, n);
-          return found_factor(n, B2, factors);
-        }
+      if (is_perfect_square_ret(c,&b)) {
+        B2 = gcd_ui(a+b, n);
+        return found_factor(n, B2, factors);
       }
     }
   }
@@ -1855,6 +1826,7 @@ UV znlog_solve(UV a, UV g, UV p, UV n) {
     if (aorder != 0 && gorder % aorder != 0) return 0;
   }
 
+  /* This is confusing */
   sqrtn = (n == 0) ? 0 : isqrt(n);
   if (n == 0) n = p-1;
 
@@ -1935,7 +1907,7 @@ UV znlog(UV a, UV g, UV p) {
 
 
 /* Compile with:
- *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c prime_counts.c prime_count_cache.c lmo.c legendre_phi.c real.c inverse_interpolate.c -lm
+ *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c prime_counts.c prime_count_cache.c lmo.c legendre_phi.c real.c inverse_interpolate.c rootmod.c lucas_seq.c prime_powers.c -lm
  */
 #ifdef FACTOR_STANDALONE
 #include <errno.h>

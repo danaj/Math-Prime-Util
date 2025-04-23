@@ -225,13 +225,14 @@ static UV _sqrtmod_composite(UV a, UV n) {
   UV r, s, t, i, fe, N, inv;
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
+  uint32_t root;
   int nfactors;
 
   if (n == 0) return UV_MAX;
   /* TODO: if (is_perfect_square(a))  return (isqrt(a) % n); */
   if (a >= n) a %= n;
-  if (n <= 2 || a <= 1)      return a;
-  if (is_perfect_square(a))  return isqrt(a);
+  if (n <= 2 || a <= 1)                return a;
+  if (is_perfect_square_ret(a,&root))  return root;
 
   nfactors = factor_exp(n, fac, exp);
   N = ipow(fac[0], exp[0]);

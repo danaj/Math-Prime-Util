@@ -164,22 +164,23 @@ extern UV gcdz(UV x, UV y);
 
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
 #include <math.h>
-static UV isqrt(UV n) {
-  UV root;
-#if BITS_PER_WORD == 32
-  if (n >= UVCONST(4294836225)) return UVCONST(65535);
+static uint32_t isqrt(UV n) {
+  UV root = sqrt((double)n);
+#if BITS_PER_WORD == 64
+  if (n >= UVCONST(4503599627370496)) {   /* Below 2^52, sqrt() is exact */
+    if (n >= UVCONST(18446744065119617025)) return UVCONST(4294967295);
+    if (root*root > n)  root--;
+    if ((root+1)*(root+1) <= n)  root++;
+  }
 #else
-  if (n >= UVCONST(18446744065119617025)) return UVCONST(4294967295);
+  if (n >= UVCONST(4294836225)) return UVCONST(65535);
 #endif
-  root = (UV) sqrt((double)n);
-  if (root*root > n)  root--;
-  if ((root+1)*(root+1) <= n)  root++;
   return root;
 }
 #endif
 
 #if defined(FUNC_icbrt) || defined(FUNC_is_perfect_cube)
-static UV icbrt(UV n) {
+static uint32_t icbrt(UV n) {
   UV b, root = 0;
 #if BITS_PER_WORD == 32
   int s = 30;
@@ -236,27 +237,23 @@ static UV lcm_ui(UV x, UV y) {
 #endif
 
 #ifdef FUNC_is_perfect_square
-/* See:  http://mersenneforum.org/showpost.php?p=110896 */
-static bool is_perfect_square(UV n)
+static bool is_perfect_square_ret(UV n, uint32_t *root)
 {
-  uint32_t m;
+  UV r;
+  /* Fast filters reject 95.0% of non-squares */
 #if BITS_PER_WORD == 64
-  /* Step 1, reject 81.3% of non-squares */
-  m = n &  63; if ((UVCONST(1) << m) & UVCONST(0xfdfdfdedfdfcfdec)) return 0;
-  /* Step 2, reject 95.0% of non-squares (both filters) */
-  m = n %  45; if ((UVCONST(1) << m) & UVCONST(0xfffffeeb7df6f9ec)) return 0;
-  /* Adding 77 rejects 98.5% of non-squares (all filters) */
-  /*m = n %  77; if ((m*0x00498ba1) & (m*0xd124ba4d) & 0xe1c05000) return 0;*/
+  if ((UVCONST(1) << (n&63)) & UVCONST(0xfdfdfdedfdfcfdec)) return 0;
+  if ((UVCONST(1) << (n%45)) & UVCONST(0xfffffeeb7df6f9ec)) return 0;
 #else
-  /* Step 1, reject 78.1% of non-squares */
-  m = n &  31; if ((1U << m) & 0xfdfcfdec) return 0;
-  /* Step 2, reject 95.0% of non-squares (both filters) */
+  uint32_t m;
+  if ((1U << (n&31)) & 0xfdfcfdec) return 0;
   m = n % 105; if ((m*0xd24554cd) & (m*0x0929579a) & 0x38020141) return 0;
 #endif
-  /* Step 3, do the square root instead of any more rejections */
-  m = isqrt(n);
-  return (UV)m*(UV)m == n;
+  r = isqrt(n);
+  if (root != 0) *root = r;
+  return (r*r == n);
 }
+#define is_perfect_square(n)  is_perfect_square_ret(n,0)
 #endif
 
 #ifdef FUNC_is_perfect_cube
