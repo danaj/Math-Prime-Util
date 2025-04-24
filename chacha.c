@@ -56,7 +56,7 @@
        (p)[3] = (((_v) >> 24) & 0xFFU); } while (0)
 #endif
 
-static void init_context(chacha_context_t *ctx, const unsigned char *seed, int init_buffer)
+static void init_context(chacha_context_t *ctx, const unsigned char *seed, bool init_buffer)
 {
   uint32_t *x = ctx->state;
 

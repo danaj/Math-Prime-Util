@@ -49,7 +49,7 @@ void sort_iv_array(IV* L, unsigned long len)
 {
   (void) qsort(L, len, sizeof(IV), _snumcmp);
 }
-void sort_dedup_uv_array(UV* L, int data_is_signed, unsigned long *len)
+void sort_dedup_uv_array(UV* L, bool data_is_signed, unsigned long *len)
 {
   unsigned long i, j;
   if (*len > 1) {
@@ -1319,7 +1319,7 @@ bool is_almost_prime(UV k, UV n) {
   return ((UV)prime_bigomega(n) == k);
 }
 
-bool is_fundamental(UV n, int neg) {
+bool is_fundamental(UV n, bool neg) {
   uint32_t r = n & 15;
   if (r) {
     if (neg) r = 16-r;
@@ -1574,7 +1574,7 @@ UV znprimroot(UV n) {
   return 0;
 }
 
-bool is_primitive_root(UV a, UV n, int nprime) {
+bool is_primitive_root(UV a, UV n, bool nprime) {
   UV p, phi, fac[MPU_MAX_FACTORS+1];
   int i, nfacs;
 
@@ -2421,7 +2421,7 @@ int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen) {
  * 2. Compare to a/alen using min or max based on first arg.
  * 3. Return 0 to select a, 1 to select b.
  */
-int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN blen)
+bool strnum_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
   int aneg, bneg;
   STRLEN i;
@@ -2854,7 +2854,7 @@ IV hclassno(UV n) {
   return 12*h + ((b2*3 == n) ? 4 : square && !(n&1) ? 6 : 0);
 }
 
-UV polygonal_root(UV n, UV k, int* overflow) {
+UV polygonal_root(UV n, UV k, bool* overflow) {
   UV D, R;
   MPUassert(k >= 3, "is_polygonal root < 3");
   *overflow = 0;

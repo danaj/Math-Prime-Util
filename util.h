@@ -6,7 +6,7 @@
 extern void sort_uv_array(UV* L, unsigned long len);
 extern void sort_iv_array(IV* L, unsigned long len);
 
-extern void sort_dedup_uv_array(UV* L, int data_is_signed, unsigned long *len);
+extern void sort_dedup_uv_array(UV* L, bool data_is_signed, unsigned long *len);
 
 extern unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len);
 extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
@@ -90,13 +90,13 @@ extern UV   exp_mangoldt(UV n);
 extern UV   znprimroot(UV n);
 extern UV   znorder(UV a, UV n);
 /* nprime says to assume n = p or n = 2p.  Skips power and primality tests. */
-extern bool is_primitive_root(UV a, UV n, int nprime);
+extern bool is_primitive_root(UV a, UV n, bool nprime);
 extern UV   factorialmod(UV n, UV m);
 extern bool binomialmod(UV *res, UV n, UV k, UV m);
 
 extern bool is_square_free(UV n);
 extern bool is_perfect_number(UV n);
-extern bool is_fundamental(UV n, int neg);
+extern bool is_fundamental(UV n, bool neg);
 extern bool is_semiprime(UV n);
 extern bool is_almost_prime(UV k, UV n);
 extern int  is_cyclic(UV n);
@@ -129,7 +129,7 @@ extern IV ramanujan_tau(UV n);
 extern char* pidigits(int digits);
 
 /* min defines if min or max.  Return of 0 means select a, 1 means select b. */
-extern int strnum_minmax(int min, const char* a, STRLEN alen, const char* b, STRLEN blen);
+extern bool strnum_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN blen);
 extern int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 extern bool from_digit_string(UV* n, const char* s, int base);
@@ -147,7 +147,7 @@ extern char* to_zeckendorf(UV n);
 
 extern bool is_catalan_pseudoprime(UV n);
 
-extern UV  polygonal_root(UV n, UV k, int* overflow);
+extern UV  polygonal_root(UV n, UV k, bool* overflow);
 
 extern UV  npartitions(UV n);
 extern UV  consecutive_integer_lcm(UV n);

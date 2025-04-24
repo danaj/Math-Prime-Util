@@ -1428,7 +1428,7 @@ void factor_range_destroy(factor_range_context_t *ctx) {
 /* Find number of factors for all values in a range */
 /******************************************************************************/
 
-unsigned char* range_nfactor_sieve(UV lo, UV hi, int with_multiplicity) {
+unsigned char* range_nfactor_sieve(UV lo, UV hi, bool with_multiplicity) {
   unsigned char* nf;
   UV *N, i, range = hi-lo+1, sqrtn = isqrt(hi);
 
@@ -1690,7 +1690,7 @@ static UV bsgs_hash_put_get(bsgs_page_top_t* pagetop, UV v, UV i) {
   return 0;
 }
 
-static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, int race_rho) {
+static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, bool race_rho) {
   bsgs_page_top_t PAGES;
   UV i, m, maxm, hashmap_count;
   UV aa, S, gm, T, gs_i, bs_i;

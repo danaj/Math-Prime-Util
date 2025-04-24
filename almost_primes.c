@@ -700,7 +700,7 @@ UV max_almost_prime_count(uint32_t k) {
  * I suspect there are far more efficient methods.
  */
 
-static void _tidy_list(UV **list, UV *Lsize, UV *count, int minimal) {
+static void _tidy_list(UV **list, UV *Lsize, UV *count, bool minimal) {
   UV *L = *list;
 
   if (*count > 1) {

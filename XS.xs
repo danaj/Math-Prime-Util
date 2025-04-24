@@ -2377,8 +2377,8 @@ is_prime_power(IN SV* svn, IN SV* svroot = 0)
 void
 is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
   PREINIT:
-    int status, result, overflow;
-    UV n, root;
+    UV n;
+    int status;
   PPCODE:
     if (svroot != 0 && !SvROK(svroot))
       croak("is_polygonal: third argument not a scalar reference");
@@ -2389,9 +2389,9 @@ is_polygonal(IN SV* svn, IN UV k, IN SV* svroot = 0)
     if (status == -1)
       RETURN_NPARITY(0);
     if (status == 1) {
-      overflow = 0;
-      root = polygonal_root(n, k, &overflow);
-      result = (n == 0) || root;
+      bool overflow = 0;
+      UV root = polygonal_root(n, k, &overflow);
+      UV result = (n == 0) || root;
       if (!overflow) {
         if (result && svroot != 0)
           sv_setuv(SvRV(svroot), root);

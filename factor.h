@@ -32,7 +32,7 @@ extern UV* divisor_list(UV n, UV *num_divisors, UV maxd);
 extern int prime_omega(UV n);     /* number of distinct prime factors */
 extern int prime_bigomega(UV n);  /* number of prime factors w/ multiplicity */
 /* bigomega => with_multiplicity=1        omega => with_multiplicity=0 */
-extern unsigned char* range_nfactor_sieve(UV lo, UV hi, int with_multiplicity);
+extern unsigned char* range_nfactor_sieve(UV lo, UV hi, bool with_multiplicity);
 
 /* Factoring all numbers in a range. */
 typedef struct {
