@@ -3747,6 +3747,7 @@ sub prime_count_upper {
   # Panaitopol 1999:      x/(logx-1.112)       x >= 4
   # Dusart 1999:          x/logx*(1+1/logx+2.51/logxlogx)   x >= 355991
   # Dusart 2010:          x/logx*(1+1/logx+2.334/logxlogx)  x >= 2_953_652_287
+  # Dusart 2018:          x/lx*(1+1/lx+2/lxlx+7.59/lxlxlx)  x > 1
   # Axler 2014:           x/(logx-1-1/logx-3.35/logxlogx...) x >= e^3.804
   # Büthe 2014 7.4        Schoenfeld bounds hold to x <= 1.4e25
   # Axler 2017 Prop 2.2   Schoenfeld bounds hold to x <= 5.5e25
@@ -3760,7 +3761,9 @@ sub prime_count_upper {
   #
   # See https://arxiv.org/pdf/2404.17165 page 9 for Mossinghoff and Trudgian.
   # Page 26 also points out the Dusart 2018 improvement to Schoenfeld.
-  # https://math.colgate.edu/~integers/y34/y34.pdf
+  #   https://math.colgate.edu/~integers/y34/y34.pdf
+  # Axler 2022:
+  #   https://arxiv.org/pdf/2203.05917
 
   my($result,$a);
   my $fl1 = log($x);

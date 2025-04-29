@@ -19,7 +19,7 @@ extern int is_mersenne_prime(UV p);
 extern bool lucas_lehmer(UV p);
 
 #if defined(FUNC_is_strong_pseudoprime)
-static int is_strong_pseudoprime(UV n, UV base) {
+static bool is_strong_pseudoprime(UV n, UV base) {
   return miller_rabin(n, &base, 1);
 }
 #endif

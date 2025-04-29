@@ -1667,8 +1667,8 @@ void is_prime(IN SV* svn)
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == 1) {
       switch (ix) {
-        case 0:
-        case 1:
+        case 0:  ret = 2*is_prime(n); break;
+        case 1:  ret = 2*is_prob_prime(n); break;
         case 2:  ret = 2*is_prime(n); break;
         case 3:  ret = BPSW(n); break;
         case 4:  ret = is_aks_prime(n); break;
