@@ -25,6 +25,9 @@ extern bool is_prime(UV x);
 extern UV   next_prime(UV x);
 extern UV   prev_prime(UV x);
 
+/* Simple estimate for upper limit:  max_nprimes(n) >= prime_count(n) */
+extern UV   max_nprimes(UV n);
+
 extern void print_primes(UV low, UV high, int fd);
 
 /* TODO: is_power should just return a bool */
@@ -161,6 +164,22 @@ extern void randperm(void* ctx, UV n, UV k, UV *S);
 extern UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors);
 
 extern UV gcdz(UV x, UV y);
+
+
+/* Inputs are assumed to be UNSIGNED */
+/* These could use a static table if that turned out better */
+
+#define is_divis_2_3(n)     ( (n)%2 == 0 || (n) % 3 == 0 )
+
+#if defined(__arm64__)
+#define is_divis_2_3_5(n)   ( (n)%2 == 0 || (0x1669>>((n)%15))&1 )
+#else
+#define is_divis_2_3_5(n)   ( (n)%2 == 0 || (n) % 3 == 0 || (n) % 5 == 0 )
+#endif
+/* 2,3,5 could use the single test:  (0x1f75d77d >> (n % 30)) & 1  */
+
+#define is_divis_2_3_5_7(n) ( is_divis_2_3_5(n) || (n) % 7 == 0 )
+
 
 #if defined(FUNC_isqrt) || defined(FUNC_is_perfect_square)
 #include <math.h>

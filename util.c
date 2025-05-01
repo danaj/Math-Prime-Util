@@ -146,30 +146,26 @@ static const unsigned short primes_tiny[] =
 /* Return true if n is prime, false if not.  Do it fast. */
 bool is_prime(UV n)
 {
-  if (n <= 10)
-    return (n == 2 || n == 3 || n == 5 || n == 7);
+  if (n < UVCONST(500000000)) {
 
-  if (n < UVCONST(200000000)) {
-    UV d = n/30;
-    UV m = n - d*30;
-    unsigned char mtab = masktab30[m];  /* Bitmask in mod30 wheel */
-
-    /* Return 0 if a multiple of 2, 3, or 5 */
-    if (mtab == 0)
-      return 0;
+    if (n < 11) return 0xAC >> n & 1;
+    if (is_divis_2_3_5_7(n)) return 0;
 
     /* Check static tiny sieve */
-    if (d < NPRIME_SIEVE30)
-      return ((prime_sieve30[d] & mtab) == 0);
-
-    if (!(n%7) || !(n%11) || !(n%13)) return 0;
+    if (n < 30*NPRIME_SIEVE30) {
+      UV d = n/30,  m = n - d*30;
+      return ((prime_sieve30[d] & masktab30[m]) == 0);
+    }
 
     /* Check primary cache */
     if (n <= get_prime_cache(0,0)) {
       const unsigned char* sieve;
       int isprime = -1;
-      if (n <= get_prime_cache(0, &sieve))
-        isprime = ((sieve[d] & mtab) == 0);
+      if (!(n%11) || !(n%13)) return 0;
+      if (n <= get_prime_cache(0, &sieve)) {
+        UV d = n/30,  m = n - d*30;
+        isprime = ((sieve[d] & masktab30[m]) == 0);
+      }
       release_prime_cache(sieve);
       if (isprime >= 0)
         return isprime;
@@ -228,6 +224,35 @@ UV prev_prime(UV n)
     m = prevwheel30[m];
   } while (!is_prob_prime(n));
   return n;
+}
+
+/* We're trying to quickly give a reasonable monotonic upper prime count */
+UV max_nprimes(UV n)
+{
+  /* 2-bit error term of the 1..726 func so 0-143 gives exact results */
+  static const uint32_t _cor[9] = {0x415556af,0x01400001,0x00014140,0x01150100,0x14001515,0xa5515014,0x01555696,0xbea95501,0xeaabfaba};
+  double r;
+
+  if (n < 727)
+    return (13 + n - 7*n*n/16384)/4
+           -  (n < 144  ?  _cor[n/16] >> n%16*2 & 3  :  0);
+
+  r = 1/log(n);
+
+  if (n <     59471) /* Special */
+    return (UV)(n*r * (1 + r*(1 + 2.47687*r))) + 1;
+
+  if (n <   1333894) /* Dusart 2018   x > 1 */
+    return n*r * (1 + r*(1 + 2.53816*r));
+
+  if (n < 883495117) /* Dusart 2022   x > 1 */
+    return n*r * (1 + r*(1 + r*(2 + 7.59*r)));
+
+  /* We could use better bounds with Li(n) but that is MUCH slower. */
+  /* Use prime_count_upper(n) if you want tighter bounds. */
+
+  /* Axler 2022 x > 1    Prp 4.6 */
+  return n*r * (1 + r*(1 + r*(2 + r*(6.024334 + r*(24.024334 + r*(120.12167 + r*(720.73002 + 6098*r)))))));
 }
 
 /******************************************************************************/
@@ -1427,7 +1452,7 @@ UV qnr(UV n) {
   } else {
 #if 0 /* Not terrible, but does more work than we need. */
     for (a = 2; a < n; a = next_prime(a))
-      if (!_sqrtmod_composite(a, n))
+      if (!sqrtmod(0, a, n))
         return a;
 #endif
     UV fac[MPU_MAX_FACTORS+1];

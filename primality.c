@@ -1007,7 +1007,7 @@ bool is_frobenius_underwood_pseudoprime(UV n)
  * instead we'll use a table. */
 #define NUM_KNOWN_MERSENNE_PRIMES 52
 static const uint32_t _mersenne_primes[NUM_KNOWN_MERSENNE_PRIMES] = {2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161,74207281,77232917,82589933,136279841};
-#define LAST_CHECKED_MERSENNE 69369389
+#define LAST_CHECKED_MERSENNE 72633229
 int is_mersenne_prime(UV p)
 {
   int i;
@@ -1060,15 +1060,8 @@ static const uint16_t mr_bases_hash32[256] = {  /* requires div 2,3,5 */
 /* Correct for any 32-bit input. */
 bool MR32(uint32_t n) {
 
-  if (n < 11) return 0xAC >> n & 1;  /* Bits 2, 3, 5 and 7 */
-#if 1
-  if (!(n%2) || !(n%3) || !(n%5)) return 0;
-#else  /* This seems to be faster */
-  {
-    static const uint8_t _div235[30] = {1,0,1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1,1,0};
-    if (_div235[n%30]) return 0;
-  }
-#endif
+  if (n < 11) return 0xAC >> n & 1;   /* equal to 2, 3, 5 or 7 */
+  if (is_divis_2_3_5(n)) return 0;    /* divis by 2, 3, or 5   */
   return is_strong_pseudoprime(n, mr_bases_hash32[n >> 8 & 255]);
 }
 
@@ -1078,7 +1071,7 @@ bool is_prob_prime(UV n)
 {
 #if BITS_PER_WORD == 64
   if (n > UVCONST(4294967295)) { /* input is >= 2^32, UV is 64-bit*/
-    if (!(n%2) || !(n%3) || !(n%5) || !(n%7))       return 0;
+    if (is_divis_2_3_5_7(n))                        return 0;
     if (!(n%11) || !(n%13) || !(n%17) || !(n%19) ||
         !(n%23) || !(n%29) || !(n%31) || !(n%37) ||
         !(n%41) || !(n%43) || !(n%47) || !(n%53))   return 0;
@@ -1094,7 +1087,7 @@ bool is_prob_prime(UV n)
 
     if (x < 11) return 0xAC >> x & 1;  /* Bits 2, 3, 5 and 7 */
 
-    if (!(x%2) || !(x%3) || !(x%5) || !(x%7))       return 0;
+    if (is_divis_2_3_5_7(x))                        return 0;
     if (x <  121) /* 11*11 */                       return 1;
 
     if (!(x%11) || !(x%13) || !(x%17) || !(x%19) ||

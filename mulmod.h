@@ -8,6 +8,19 @@
 /* This will be true if we think mulmods are fast */
 #define MULMODS_ARE_FAST 1
 
+/*                x86-64               ARM              RISC-V
+ * umul 64->128   mul  -> rdx:rax      umulh/mul        mulhu/mulu
+ * smul 64->128   imul -> rdx:rax      smulh/mul        mulsu/muls
+ * udiv 128->64   div  -> q:rax r:rdx                   divu (RV128I)
+ * sdiv 128->64   idiv -> q:rax r:rdx                   divs (RV128I)
+ * clmul 64->128  pclmulqdq -> xmm     pmull/pmull2     clmul/clmulh
+ *
+ * __int128 (GCC, clang, CUDA 11.5+)
+ * MSVC std::_Unsigned128 in <__msvc_int128.hpp>
+ * C23 _BitInt(128)  (clang 14+, gcc 14+)
+ */
+
+
 #if (BITS_PER_WORD == 32) && HAVE_STD_U64
 
   /* We have 64-bit available, but UV is 32-bit.  Do the math in 64-bit.
