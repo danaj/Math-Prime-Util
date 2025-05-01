@@ -181,6 +181,10 @@ typedef __int8 int8_t;
     #define HAVE_UINT128 1
     typedef unsigned __int128 uint128_t;
   #endif
+#elif defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
+  /* Should have included <stdint.h> and <limits.h> already */
+  #define HAVE_UINT128 1
+  typedef unsigned _BitInt(128) uint128_t;
 #else
   #define HAVE_UINT128 0
 #endif
