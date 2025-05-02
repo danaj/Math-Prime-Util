@@ -14,100 +14,166 @@
 #include "keyval.h"
 
 
+static UV _totient_fac(uint32_t nfacs, UV* facs) {
+  uint32_t i;
+  UV totient = 1, lastf = 0;
+  /* n=0 is factored as (0) so it correctly returns 0. */
+  for (i = 0; i < nfacs; i++) {
+    UV f = facs[i];
+    if (f == lastf) { totient *= f;               }
+    else            { totient *= f-1;  lastf = f; }
+  }
+  return totient;
+}
+
+
+UV totient(UV n) {
+  UV factors[MPU_MAX_FACTORS+1];
+  uint32_t nfactors = factor(n, factors);
+  return _totient_fac(nfactors, factors);
+}
+
+
 UV* range_totient(UV lo, UV hi) {
-  UV* totients;
-  UV i, seg_base, seg_low, seg_high, count = hi-lo+1;
-  unsigned char* segment;
-  void* ctx;
+  UV i, count = hi-lo+1, *totients;
 
   if (hi < lo) croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
   New(0, totients, count, UV);
 
-  /* Do via factoring if very small or if we have a small range */
-  if (hi < 100 || count <= 10 || hi/count > 1000) {
-    for (i = 0; i < count; i++)
-      totients[i] = totient(lo+i);
-    return totients;
-  }
+  if (lo > 0) {  /* With a non-zero start, use our ranged factoring */
 
-  if (hi == UV_MAX) {
-    totients[--count] = totient(UV_MAX);
-    hi--;
-  }
+    factor_range_context_t fctx;
+    fctx = factor_range_init(lo, hi, 0);
+    for (i = 0; i < count; i++) {
+      uint32_t nfactors = factor_range_next(&fctx);
+      totients[i] = _totient_fac(nfactors, fctx.factors);
+    }
+    factor_range_destroy(&fctx);
 
-  /* If doing a full sieve, do it monolithic.  Faster. */
-  if (lo == 0) {
-    UV* prime;
-    double loghi = log(hi);
-    UV max_index = (hi < 67)     ? 18
-                 : (hi < 355991) ? 15+(hi/(loghi-1.09))
-                 : (hi/loghi) * (1.0+1.0/loghi+2.51/(loghi*loghi));
-    UV j, index, nprimes = 0;
+  } else {  /* start at zero */
 
-    New(0, prime, max_index, UV);  /* could use prime_count_upper(hi) */
+    static const uint8_t small_totients[] = {0,1,1,2,2,4,2,6,4,6,4,10,4,12,6,8};
+    uint32_t sqrthi, nprimes, *prime, j;
+
+    if (hi < sizeof small_totients/sizeof *small_totients) {
+      for (i = 0; i <= hi; i++)
+        totients[i] = small_totients[i];
+      return totients;
+    }
+
+    if (hi == UV_MAX) {
+      totients[--count] = totient(UV_MAX);
+      hi--;
+    }
+
+    sqrthi = isqrt(hi);
+    New(0, prime, max_nprimes(sqrthi), uint32_t);
+    nprimes = 0;
+    prime[nprimes++] = 2;
+
     memset(totients, 0, count * sizeof(UV));
+    totients[1] = 1;
+    totients[2] = 1;
+
     for (i = 2; i <= hi/2; i++) {
-      index = 2*i;
-      if ( !(i&1) ) {
-        if (i == 2) { totients[2] = 1; prime[nprimes++] = 2; }
-        totients[index] = totients[i]*2;
-      } else {
-        if (totients[i] == 0) {
-          totients[i] = i-1;
+      UV toti = totients[i];
+      if (i % 2 == 0) {
+        totients[i*2] = toti * 2;
+        continue;
+      }
+      if (toti == 0) {
+        totients[i] = toti = i-1;
+        if (i <= sqrthi)
           prime[nprimes++] = i;
+      }
+      totients[i*2] = toti;
+      for (j=1; j < nprimes; j++) {
+        UV index = i*prime[j];
+        if (index > hi) break;
+        if (i % prime[j] == 0) {
+          totients[index] = toti * prime[j];
+          break;
         }
-        for (j=0; j < nprimes && index <= hi; index = i*prime[++j]) {
-          if (i % prime[j] == 0) {
-            totients[index] = totients[i]*prime[j];
-            break;
-          } else {
-            totients[index] = totients[i]*(prime[j]-1);
-          }
-        }
+        totients[index] = toti * (prime[j] - 1);
       }
     }
     Safefree(prime);
+
     /* All totient values have been filled in except the primes.  Mark them. */
-    for (i = ((hi/2) + 1) | 1; i <= hi; i += 2)
+    for (i |= 1; i <= hi; i += 2)
       if (totients[i] == 0)
         totients[i] = i-1;
-    totients[1] = 1;
-    totients[0] = 0;
-    return totients;
-  }
 
-  for (i = 0; i < count; i++) {
-    UV v = lo+i, nv = v;
-    if (v % 2 == 0)  nv -= nv/2;
-    if (v % 3 == 0)  nv -= nv/3;
-    if (v % 5 == 0)  nv -= nv/5;
-    totients[i] = nv;
   }
-
-  ctx = start_segment_primes(7, hi/2, &segment);
-  while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-    START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
-      for (i = P_GT_LO(2*p,p,lo); i >= lo && i <= hi; i += p)
-        totients[i-lo] -= totients[i-lo]/p;
-    } END_DO_FOR_EACH_SIEVE_PRIME
-  }
-  end_segment_primes(ctx);
-
-  /* Fill in all primes */
-  for (i = (lo | 1) - lo; i < count; i += 2)
-    if (totients[i] == i+lo)
-      totients[i]--;
-  if (lo <= 1) totients[1-lo] = 1;
 
   return totients;
 }
 
+
+
 /******************************************************************************/
+
 
 #define HAVE_SUMTOTIENT_128 (BITS_PER_WORD == 64 && HAVE_UINT128)
 #define MAX_TOTSUM ( (BITS_PER_WORD == 64) ? UVCONST(7790208950) : 118868 )
 /* sumtotient(7790208950) = 2^64 - 1664739356 */
 /* sumtotient(7790208951) = 2^64 + 2584983748 */
+
+
+/* Direct method: split the computation into two loops running over sqrtn.
+ *
+ * Page 7 of https://www.mimuw.edu.pl/~pan/papers/farey-esa.pdf
+ * https://math.stackexchange.com/a/1740370/117584
+ */
+
+static UV _sumtotient_direct(UV n) {
+  UV finalsum, *sumcache2;
+  uint32_t sqrtn, sum, i, j, k, *sumcache1;
+  bool flag;
+
+  if (n <= 2)  return n;
+  if (n > MAX_TOTSUM)  return 0;
+
+  sqrtn = isqrt(n);
+  flag = (n < (UV)sqrtn * ((UV)sqrtn+1));   /* Does n/r == r ? */
+
+  sumcache2 = range_totient(0, sqrtn);
+
+  New(0, sumcache1, sqrtn+1, uint32_t);
+  for (sum = 1, i = 2; i <= sqrtn; i++) {
+    sum += sumcache2[i];
+    sumcache1[i] = sum;
+  }
+  if (flag)  sumcache2[sqrtn] = sumcache1[sqrtn];
+
+  for (i = sqrtn - flag;  i > 0;  i--) {
+    const UV m = n/i;
+    const uint32_t s = isqrt(m);
+    UV sum = (m+1)/2 * (m|1);      /* m*(m+1)/2; */
+    sum -= (m - m/2);              /* k=1 */
+
+    for (k = 2, j = k*i; j <= sqrtn; k++) {
+      sum -= sumcache2[j];
+      sum -= (m/k - m/(k+1)) * sumcache1[k];
+      j += i;
+    }
+    for (; k <= s; k++) {
+      sum -= sumcache1[m/k];
+      sum -= (m/k - m/(k+1)) * sumcache1[k];
+    }
+    if (m < (UV)s * ((UV)s+1))
+      sum += sumcache1[s];
+
+    sumcache2[i] = sum;
+  }
+  finalsum = sumcache2[1];
+  Safefree(sumcache1);
+  Safefree(sumcache2);
+  return finalsum;
+}
+
+
+/* Recursive method using a cache.  */
 
 typedef struct {
   UV    hsize;
@@ -134,10 +200,13 @@ static UV _sumt(UV n, const UV *cdata, UV csize, sumt_hash_t thash) {
   if (s > lim)
     sum -= ((n/s) - (n/(s+1))) * _CACHED_SUMT(s);
 
-  thash.nhash[hn] = n;
-  thash.shash[hn] = sum;
+  if (thash.nhash[hn] == 0 || thash.nhash[hn] > n) {
+    thash.nhash[hn] = n;
+    thash.shash[hn] = sum;
+  }
   return sum;
 }
+
 UV sumtotient(UV n) {
   UV sum, i, csize, *sumcache;
   sumt_hash_t thash;
@@ -145,15 +214,9 @@ UV sumtotient(UV n) {
   if (n <= 2)  return n;
   if (n > MAX_TOTSUM)  return 0;
 
-  if (n < 500) {    /* For very small values, do a simple sum */
-    UV *phi = range_totient(0,n);
-    for (sum = 0, i = 1; i <= n; i++)
-      sum += phi[i];
-    Safefree(phi);
-    return sum;
-  }
+  if (n < 3500) return _sumtotient_direct(n);
 
-  csize = ((n < 1900) ? 2 : 1)  * icbrt(n) * icbrt(n);
+  csize = icbrt(n) * icbrt(n);
 
   sumcache = range_totient(0, csize-1);
   for (i = 2; i < csize; i++)
@@ -169,6 +232,8 @@ UV sumtotient(UV n) {
   Safefree(sumcache);
   return sum;
 }
+
+
 
 #if HAVE_SUMTOTIENT_128
 #define _CACHED_SUMT128(x) \
@@ -244,50 +309,9 @@ int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
 #endif
 
 
+/******************************************************************************/
+/******************************************************************************/
 
-UV totient_factored(UV n, UV nfacs, UV* fac, UV* exp) {
-  UV i, totient = 1;
-  if (n <= 1) return n;
-  /* while ((n & 0x3) == 0) { n >>= 1; totient <<= 1; }         */
-  /* if    ((n & 0x1) == 0) { n >>= 1; nfacs--; fac++; exp++; } */
-  if (fac[0] == 2) {  /* Handle factors of 2 more efficiently */
-    n       >>= exp[0];
-    totient <<= (exp[0]-1);
-    nfacs--; fac++; exp++;
-  }
-  for (i = 0; i < nfacs; i++) {
-    UV f = fac[i], e = exp[i];
-    totient *= f-1;
-    while (e > 1) { totient *= f; e--; }
-  }
-  return totient;
-}
-#if 0
-UV totient(UV n) {
-  UV nfacs, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-  if (n <= 1) return n;
-  nfacs = factor_exp(n, fac, exp); /* factor and calculate totient */
-  return totient_factored(n, nfacs, fac, exp);
-}
-#else
-UV totient(UV n) {
-  UV i, nfacs, totient, lastf, facs[MPU_MAX_FACTORS+1];
-  if (n <= 1) return n;
-  totient = 1;
-  /* phi(2m) = 2phi(m) if m even, phi(m) if m odd */
-  while ((n & 0x3) == 0) { n >>= 1; totient <<= 1; }
-  if ((n & 0x1) == 0) { n >>= 1; }
-  /* factor and calculate totient */
-  nfacs = factor(n, facs);
-  lastf = 0;
-  for (i = 0; i < nfacs; i++) {
-    UV f = facs[i];
-    if (f == lastf) { totient *= f;               }
-    else            { totient *= f-1;  lastf = f; }
-  }
-  return totient;
-}
-#endif
 
 static const UV jordan_overflow[5] =
 #if BITS_PER_WORD == 64
@@ -320,6 +344,8 @@ UV jordan_totient(UV k, UV n) {
 }
 
 
+/******************************************************************************/
+
 
 static bool _totpred(UV n, UV maxd) {
   UV i, ndivisors, *divs;
@@ -349,6 +375,9 @@ static bool _totpred(UV n, UV maxd) {
 bool is_totient(UV n) {
   return (n == 0 || (n & 1))  ?  (n==1)  :  _totpred(n,n);
 }
+
+
+/******************************************************************************/
 
 
 UV inverse_totient_count(UV n) {
