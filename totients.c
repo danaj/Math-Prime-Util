@@ -61,33 +61,27 @@ UV* range_totient(UV lo, UV hi) {
       return totients;
     }
 
-    if (hi == UV_MAX) {
+    if (hi == UV_MAX) {  /* Ensure we don't have any overflow issues */
       totients[--count] = totient(UV_MAX);
       hi--;
     }
 
+    /* prime[] will hold primes from 3 to sqrthi */
     sqrthi = isqrt(hi);
     New(0, prime, max_nprimes(sqrthi), uint32_t);
     nprimes = 0;
-    prime[nprimes++] = 2;
 
     memset(totients, 0, count * sizeof(UV));
     totients[1] = 1;
-    totients[2] = 1;
 
-    for (i = 2; i <= hi/2; i++) {
+    for (i = 1; i <= hi/2; i += 2) {
       UV toti = totients[i];
-      if (i % 2 == 0) {
-        totients[i*2] = toti * 2;
-        continue;
-      }
       if (toti == 0) {
         totients[i] = toti = i-1;
         if (i <= sqrthi)
           prime[nprimes++] = i;
       }
-      totients[i*2] = toti;
-      for (j=1; j < nprimes; j++) {
+      for (j = 0;  j < nprimes;  j++) {
         UV index = i*prime[j];
         if (index > hi) break;
         if (i % prime[j] == 0) {
@@ -96,11 +90,15 @@ UV* range_totient(UV lo, UV hi) {
         }
         totients[index] = toti * (prime[j] - 1);
       }
+      /* Fill in even values as we go */
+      totients[i*2] = toti;
+      if (i+1 <= hi/2)
+        totients[2*i+2] = totients[i+1] * 2;
     }
     Safefree(prime);
 
     /* All totient values have been filled in except the primes.  Mark them. */
-    for (i |= 1; i <= hi; i += 2)
+    for (; i <= hi; i += 2)
       if (totients[i] == 0)
         totients[i] = i-1;
 
@@ -182,11 +180,20 @@ typedef struct {
 } sumt_hash_t;
 #define _CACHED_SUMT(x) \
   (((x)<csize)  ?  cdata[x]  :  _sumt((x), cdata, csize, thash))
+
 static UV _sumt(UV n, const UV *cdata, UV csize, sumt_hash_t thash) {
-  UV sum, s, k, lim, hn = n % thash.hsize;
+  UV sum, s, k, lim, hn;
+  uint32_t const probes = 8;
+  uint32_t hashk;
 
   if (n < csize) return cdata[n];
-  if (thash.nhash[hn] == n)  return thash.shash[hn];
+
+  hn = n % thash.hsize;
+  for (hashk = 0; hashk <= probes; hashk++) {
+    if (thash.nhash[hn] == n)  return thash.shash[hn];
+    if (thash.nhash[hn] == 0)  break;
+    hn = (hn+1 < thash.hsize) ? hn+1 : 0;
+  }
 
   sum = (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
   s = isqrt(n);
@@ -200,29 +207,34 @@ static UV _sumt(UV n, const UV *cdata, UV csize, sumt_hash_t thash) {
   if (s > lim)
     sum -= ((n/s) - (n/(s+1))) * _CACHED_SUMT(s);
 
-  if (thash.nhash[hn] == 0 || thash.nhash[hn] > n) {
-    thash.nhash[hn] = n;
-    thash.shash[hn] = sum;
+  for (; hashk <= probes; hashk++) {
+    if (thash.nhash[hn] == 0) {
+      thash.nhash[hn] = n;
+      thash.shash[hn] = sum;
+      break;
+    }
+    hn = (hn+1 < thash.hsize) ? hn+1 : 0;
   }
   return sum;
 }
 
 UV sumtotient(UV n) {
-  UV sum, i, csize, *sumcache;
+  UV sum, i, cbrtn, csize, *sumcache;
   sumt_hash_t thash;
 
   if (n <= 2)  return n;
   if (n > MAX_TOTSUM)  return 0;
 
-  if (n < 3500) return _sumtotient_direct(n);
+  if (n < 4000) return _sumtotient_direct(n);
 
-  csize = icbrt(n) * icbrt(n);
+  cbrtn = icbrt(n);
+  csize = cbrtn * cbrtn;
 
   sumcache = range_totient(0, csize-1);
   for (i = 2; i < csize; i++)
     sumcache[i] += sumcache[i-1];
 
-  thash.hsize = next_prime(10 + csize/16);
+  thash.hsize = next_prime(10 + 4*cbrtn);
   Newz(0, thash.nhash, thash.hsize, UV);
   New( 0, thash.shash, thash.hsize, UV);
 
@@ -245,10 +257,19 @@ typedef struct {
 } sumt_hash_128_t;
 static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash) {
   uint128_t sum;
-  UV s, k, lim, hn = n % thash.hsize;
+  UV s, k, lim, hn;
+  uint32_t const probes = 16;
+  uint32_t const hinc = 1 + ((n >> 8) & 15);  /* mitigate clustering */
+  uint32_t hashk;
 
   if (n < csize) return cdata[n];
-  if (thash.nhash[hn] == n)  return thash.shash[hn];
+
+  hn = n % thash.hsize;
+  for (hashk = 0; hashk <= probes; hashk++) {
+    if (thash.nhash[hn] == n)  return thash.shash[hn];
+    if (thash.nhash[hn] == 0)  break;
+    hn = (hn+hinc < thash.hsize) ? hn+hinc : hn+hinc-thash.hsize;
+  }
 
   sum = (n & 1)  ?  (uint128_t)n * ((n+1)>>1)  :  (uint128_t)(n+1) * (n>>1);
   s = isqrt(n);
@@ -261,42 +282,55 @@ static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash
   if (s > lim)
     sum -= ((n/s) - (n/(s+1))) * _CACHED_SUMT128(s);
 
-  thash.nhash[hn] = n;
-  thash.shash[hn] = sum;
+  for (; hashk <= probes; hashk++) {
+    if (thash.nhash[hn] == 0) {
+      thash.nhash[hn] = n;
+      thash.shash[hn] = sum;
+      break;
+    }
+    hn = (hn+hinc < thash.hsize) ? hn+hinc : hn+hinc-thash.hsize;
+  }
 
   return sum;
 }
 
 int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
-  UV i, cbrtn, csize, *sumcache;
+  UV i, cbrtn, csize, hsize, *sumcache;
   uint128_t sum;
   sumt_hash_128_t thash;
 
   if (n <= 2)  { *hi_sum = 0;  *lo_sum = n; return 1; }
+  /* sumtotient(2^64-1) < 2^128, so we can't overflow. */
 
   cbrtn = icbrt(n);
-  csize = 1 * cbrtn * cbrtn;
-  if (csize > 400000000U)  csize = 400000000;  /* Limit to 3GB */
+  csize = 0.6 * cbrtn * cbrtn;
+  hsize = 8 * cbrtn;         /* 12.5% filled with csize = 1 * n^(2/3) */
+
+  if (csize > 400000000U) {  /* Limit to 3GB */
+    csize = 400000000;
+    hsize = isqrt(n);
+  }
 
   sumcache = range_totient(0, csize-1);
   for (i = 2; i < csize; i++)
     sumcache[i] += sumcache[i-1];
 
-#if 0
-  thash.hsize = (n <= UVCONST( 10000000000000))  ?    500009
-              : (n <= UVCONST(100000000000000))  ?   8000009
-                                                 :  24000001;
-#else
-  thash.hsize = next_prime(10 + (cbrtn * cbrtn)/128);
-  /* if (thash.hsize > 290000000U) thash.hsize=290000000U; */ /* Limit to 7GB */
-#endif
-  /* printf("hsize %lu  csize %lu  sumcache[%lu] = %lu\n", thash.hsize, csize, csize-1, sumcache[csize-1]); */
+  /* Arguably we should expand the hash as it fills. */
+  thash.hsize = next_prime( 16 + hsize );
   Newz(0, thash.nhash, thash.hsize, UV);
   New( 0, thash.shash, thash.hsize, uint128_t);
 
   sum = _sumt128(n, sumcache, csize, thash);
   *hi_sum = (sum >> 64) & UV_MAX;
   *lo_sum = (sum      ) & UV_MAX;
+
+  if (_XS_get_verbose() >= 2) {
+    UV filled = 0;
+    for (i = 0; i < thash.hsize; i++)
+      filled += (thash.nhash[i] != 0);
+    printf("  128-bit totsum   phi %6.1lfMB  hash size %6.1lfMB, fill: %6.2lf%%\n", csize*sizeof(UV)/1048576.0, thash.hsize*3*sizeof(UV)/1048576.0, 100.0 * (double)filled / (double)thash.hsize);
+  }
+
   Safefree(thash.nhash);
   Safefree(thash.shash);
   Safefree(sumcache);
