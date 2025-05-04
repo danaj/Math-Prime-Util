@@ -1154,7 +1154,7 @@ IV rising_factorial_s(IV n, UV m)
   return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
 }
 
-int is_cyclic(UV n) {
+bool is_cyclic(UV n) {
   UV phi, facs[MPU_MAX_FACTORS+1];
   int i, nfacs;
 
@@ -1183,7 +1183,7 @@ int is_cyclic(UV n) {
   return gcd_ui(n, phi) == 1;        /* cyclic <=> coprime with totient */
 }
 
-int is_carmichael(UV n) {
+bool is_carmichael(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV exp[MPU_MAX_FACTORS+1];
   int i, nfactors;
@@ -1224,7 +1224,7 @@ int is_carmichael(UV n) {
   return 1;
 }
 
-static int is_quasi_base(int nfactors, UV *fac, UV p, UV b) {
+static bool is_quasi_base(int nfactors, UV *fac, UV p, UV b) {
   int i;
   for (i = 0; i < nfactors; i++) {
     UV d = fac[i] - b;
@@ -2130,7 +2130,7 @@ bool binomialmod(UV *res, UV n, UV k, UV m) {
     UV bin[MPU_MAX_FACTORS+1];
     UV fac[MPU_MAX_FACTORS+1];
     UV exp[MPU_MAX_FACTORS+1];
-    int i, nfactors = factor_exp(m, fac, exp);
+    int i, cret, nfactors = factor_exp(m, fac, exp);
     for (i = 0; i < nfactors; i++) {
       if (exp[i] == 1) {
         bin[i] = _binomial_lucas_mod_prime(n, k, fac[i]);
@@ -2141,9 +2141,10 @@ bool binomialmod(UV *res, UV n, UV k, UV m) {
         fac[i] = ipow(fac[i], exp[i]);
       }
     }
-    return chinese(res, 0, bin, fac, nfactors);
+    /* chinese with p^e as modulos, so should never get -1 back */
+    cret = chinese(res, 0, bin, fac, nfactors);
+    return (cret == 1);
   }
-  return 0;
 }
 
 /* Pisano period.  */
@@ -3298,7 +3299,7 @@ bool is_practical(UV n) {
   return 1;
 }
 
-bool is_delicate_prime(UV n, uint32_t b) {
+int is_delicate_prime(UV n, uint32_t b) {
 
   if (b < 2) croak("is_delicate_prime base must be >= 2");
   if (b == 10 && n < 100)  return 0;  /* All 1,2,3,4 digit inputs are false */

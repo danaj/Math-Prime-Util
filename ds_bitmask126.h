@@ -191,7 +191,7 @@ static BMTYPE _bitmask126_find_index(bitmask126_t *bm, BMTYPE *idx) {
   return wi;
 }
 
-static BMTYPE bitmask126_val(bitmask126_t *bm, BMTYPE idx) {
+static INLINE BMTYPE bitmask126_val(bitmask126_t *bm, BMTYPE idx) {
   BMTYPE wi;
   uint32_t bit;
 

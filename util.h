@@ -102,14 +102,14 @@ extern bool is_perfect_number(UV n);
 extern bool is_fundamental(UV n, bool neg);
 extern bool is_semiprime(UV n);
 extern bool is_almost_prime(UV k, UV n);
-extern int  is_cyclic(UV n);
-extern int  is_carmichael(UV n);
+extern bool is_cyclic(UV n);
+extern bool is_carmichael(UV n);
 extern UV   is_quasi_carmichael(UV n);  /* Returns number of bases */
 extern UV   pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
 extern UV   qnr(UV n);
 extern bool is_qr(UV a, UV n);         /* kronecker that works for composites */
 extern bool is_practical(UV n);
-extern bool is_delicate_prime(UV n, uint32_t b);
+extern int  is_delicate_prime(UV n, uint32_t b);
 extern int  happy_height(UV n, uint32_t base, uint32_t exponent);
 
 extern bool is_smooth(UV n, UV k);
