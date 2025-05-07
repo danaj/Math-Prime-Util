@@ -5,7 +5,6 @@
 
 #define USE_PHI_CACHE 1
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #include "lehmer.h"
 #include "util.h"
 #include "cache.h"

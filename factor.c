@@ -4,7 +4,6 @@
 #include <math.h>
 
 #define FUNC_isqrt  1
-#define FUNC_icbrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
 #define FUNC_clz 1

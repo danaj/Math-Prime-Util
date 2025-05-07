@@ -34,7 +34,8 @@ extern void print_primes(UV low, UV high, int fd);
 extern uint32_t powerof(UV n);
 extern int is_power(UV n, UV a);
 
-extern UV rootint(UV n, UV k);
+extern uint32_t icbrt(UV n);
+extern UV rootint(UV n, uint32_t k);
 extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
 extern UV lcmsafe(UV x, UV u);  /* returns 0 if overflows */
 extern UV valuation(UV n, UV k);
@@ -186,9 +187,6 @@ extern UV gcdz(UV x, UV y);
 #if defined(FUNC_is_perfect_square) && !defined(FUNC_isqrt)
   #define FUNC_isqrt 1
 #endif
-#if defined(FUNC_is_perfect_cube)   && !defined(FUNC_icbrt)
-  #define FUNC_icbrt 1
-#endif
 #if defined(FUNC_lcm_ui) && !defined(FUNC_gcd_ui)
   #define FUNC_gcd_ui 1
 #endif
@@ -336,29 +334,6 @@ static uint32_t isqrt(UV n) {
 #else
   if (n >= UVCONST(4294836225)) return UVCONST(65535);
 #endif
-  return root;
-}
-#endif
-
-#if defined(FUNC_icbrt)
-/* Rather slow method from Hacker's Delight */
-static uint32_t icbrt(UV n) {
-  UV b, root = 0;
-#if BITS_PER_WORD == 32
-  int s = 30;
-  if (n >= UVCONST(4291015625)) return UVCONST(1625);
-#else
-  int s = 63;
-  if (n >= UVCONST(18446724184312856125)) return UVCONST(2642245);
-#endif
-  for ( ; s >= 0; s -= 3) {
-    root += root;
-    b = 3*root*(root+1)+1;
-    if ((n >> s) >= b) {
-      n -= b << s;
-      root++;
-    }
-  }
   return root;
 }
 #endif

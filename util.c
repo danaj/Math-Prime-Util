@@ -6,7 +6,6 @@
 
 #include "ptypes.h"
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #define FUNC_lcm_ui 1
 #define FUNC_ctz 1
 #define FUNC_log2floor 1
@@ -726,31 +725,141 @@ int is_power(UV n, UV a)
   return (ret == 1) ? 0 : ret;
 }
 
+/******************************************************************************/
+
+static float _cbrtf(float x)
+{
+  float t, r;
+  union { float f; uint32_t i; } xx = { x };
+  xx.i = (xx.i + 2129874493)/3;
+  t = xx.f;
+  /* One round of Halley's method gets to 15.53 bits */
+  r = t * t * t;
+  t *= (x + (x + r)) / ((x + r) + r);
+#if BITS_PER_WORD > 45
+  /* A second round gets us the 21.5 bits we need. */
+  r = t * t * t;
+  t += t * (x - r) / (x + (r + r));
+#endif
+  return t;
+} 
+uint32_t icbrt(UV n) {
+  if (n > 0) {
+    uint32_t root = (float)(_cbrtf((float)n) + 0.375f);
+    UV rem = n - (UV)root * root * root;
+    return root - ((IV)rem < 0);
+  }
+  return 0;
+}
+
+/******************************************************************************/
+
+static UV _ipow(unsigned b, unsigned e, unsigned bit)
+{
+  UV r = b;
+  while (bit >>= 1) {
+    r *= r;
+    if (e & bit)
+      r *= b;
+  }
+  return r;
+}
+/* Estimate the kth root of n.
+ * Correct (+/- 0) if n is a perfect power, otherwise +/- 1.
+ * Requires k >= 3 so a float can exactly represent the kth root.
+ */
+static unsigned _est_root(UV n, unsigned k, unsigned msbit)
+{
+  const int iterations = (k <= 6) ? 2 : (k <= 19) ? 1 : 0;
+  const float y = n, fk = (int)k;
+  union { float f; uint32_t i; } both32 = { y };
+  const uint32_t float_one = (uint32_t)127 << 23;
+  float x;
+  int i;
+  if (n == 0) return 0;
+  if (k >= BITS_PER_WORD/2) {
+    if (k >= BITS_PER_WORD || n < (UV)1 << k) return 1;
+    return 2 + (n > (UV)1 << k && k <= MPU_MAX_POW3);
+  }
+  /* Get a simple initial estimte */
+  both32.i = (both32.i - float_one) / k + float_one;
+  x = both32.f;
+  /*
+   * Improve it with up to two rounds of Halley's method.
+   * Newton's (quadratic) method for a root of x^k - y == 0 is
+   * x += (y - x^k) / (k * x^(k-1))
+   * which simplifies a lot for fixed k, but for variable k,
+   * Halley's (cubic) method is not much more complex:
+   * x += 2*x*(y-x^k) / (k*(x^k+y) - (y - x^k))
+   */
+  for (i = 0; i < iterations; i++) {
+    float err, xk = x;
+    unsigned j = msbit;
+    while (j >>= 1) {
+      xk *= xk;
+      if (j & k)
+        xk *= x;
+    }
+    err = xk - y;
+    x -= 2.0f*x*err / (fk*(xk+y) + err);
+  }
+  return (int)(x + 0.375);
+}
+/* Internal use only, k MUST be between 4 and 15, n > 0 */
+/* This trims a lot over the generic version */
+# define MAX_IROOTN ((BITS_PER_WORD == 64) ? 15 : 10)
+static uint32_t _irootn(UV n, uint32_t k)
+{
+  uint32_t const msb = 4 << (k >= 8);
+  uint32_t const r   = _est_root(n,k,msb);
+  return r - ((IV)(n - _ipow(r,k,msb)) < 0);
+}
+
+/******************************************************************************/
+
 #if BITS_PER_WORD == 64
 static const uint32_t root_max[1+MPU_MAX_POW3] = {0,0,4294967295U,2642245,65535,7131,1625,565,255,138,84,56,40,30,23,19,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3};
 #else
 static const uint32_t root_max[1+MPU_MAX_POW3] = {0,0,65535,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
 #endif
 
-UV rootint(UV n, UV k) {
-  UV lo, hi, max;
-  if (k == 0) return 0;
-  if (k == 1) return n;
-  if (k == 2) return isqrt(n);
-  if (k == 3) return icbrt(n);
+UV rootint(UV n, uint32_t k)
+{
+  if (n <= 1) return (k != 0 && n != 0);
 
-  /* Bracket between powers of 2, but never exceed max power so ipow works */
-  max = 1 + ((k > MPU_MAX_POW3) ? 2 : root_max[k]);
-  lo = UVCONST(1) << (log2floor(n)/k);
-  hi = ((lo*2) < max) ? lo*2 : max;
-
-  /* Binary search */
-  while (lo < hi) {
-    UV mid = lo + (hi-lo)/2;
-    if (ipow(mid,k) <= n) lo = mid+1;
-    else                  hi = mid;
+  /* Switch from 0 to M makes significantly faster dispatch */
+  switch (k) {
+    case 0:  return 0;
+    case 1:  return n;
+    case 2:  return isqrt(n);
+    case 3:  return icbrt(n);
+    case 4:  return isqrt(isqrt(n));
+    case 5:  return _irootn(n,5);
+    case 6:  return _irootn(n,6);
+    case 7:  return _irootn(n,7);
+    case 8:  return _irootn(n,8);
+    default: break;
   }
-  return lo-1;
+  /* Be careful of the order these are done. */
+  if (n >> k == 0) return 1;
+  if (k > MPU_MAX_POW3) return 1 + (k < BITS_PER_WORD);
+
+  if (k <= MAX_IROOTN)   /* Faster up to about k=24 */
+    return _irootn(n,k);
+
+  /* Binary search for root */
+  {
+    uint32_t lo = 1U << (log2floor(n)/k);
+    uint32_t hi = root_max[k];
+    if (hi >= lo*2) hi = lo*2 - 1;
+
+    while (lo < hi) {
+      uint32_t mid = lo + (hi-lo+1)/2;
+      if (ipow(mid,k) > n) hi = mid-1;
+      else                 lo = mid;
+    }
+    return lo;
+  }
 }
 
 /* Like ipow but returns UV_MAX if overflow */
@@ -770,6 +879,10 @@ UV ipowsafe(UV n, UV k) {
   }
   return p;
 }
+
+
+/******************************************************************************/
+
 
 /* Like lcm_ui, but returns 0 if overflow */
 UV lcmsafe(UV x, UV y) {

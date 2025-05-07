@@ -61,7 +61,6 @@
 #define PHI_SIEVE_MULT 13
 
 #define FUNC_isqrt 1
-#define FUNC_icbrt 1
 #include "util.h"
 #include "constants.h"
 #include "prime_counts.h"
