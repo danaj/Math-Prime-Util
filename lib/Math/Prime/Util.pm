@@ -4832,6 +4832,10 @@ Given an integer C<n>, returns C<1> if C<n> is a perfect power,
 and C<0> otherwise.  That is, if C<n = c^k> for some non-zero
 integer C<c> with C<k> greater than 1.
 
+If C<n=0>, 0 is returned.
+By the definition above, the base C<c> must be non-zero.
+This matches the behavior of L</is_power>.
+
 This is L<OEIS series A001597|http://oeis.org/A001597>.
 
 =head2 next_perfect_power
