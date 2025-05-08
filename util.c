@@ -742,7 +742,7 @@ static float _cbrtf(float x)
   t += t * (x - r) / (x + (r + r));
 #endif
   return t;
-} 
+}
 uint32_t icbrt(UV n) {
   if (n > 0) {
     uint32_t root = (float)(_cbrtf((float)n) + 0.375f);
@@ -765,49 +765,62 @@ static UV _ipow(unsigned b, unsigned e, unsigned bit)
   return r;
 }
 /* Estimate the kth root of n.
+ *
  * Correct (+/- 0) if n is a perfect power, otherwise +/- 1.
  * Requires k >= 3 so a float can exactly represent the kth root.
+ *
+ * This version is heavily trimmed for internal use with rootint's prefilters.
+ *
+ *      n > 1
+ *      n>>k != 0   <=>   n < 1<<k
+ *      4  <  k  <=  MAX_IROOTN (32-bit: 10  64-bit: 15)
  */
-static unsigned _est_root(UV n, unsigned k, unsigned msbit)
+static uint32_t _est_root(UV n, unsigned k, unsigned msbit)
 {
-  const int iterations = (k <= 6) ? 2 : (k <= 19) ? 1 : 0;
-  const float y = n, fk = (int)k;
+  const float y = n;
   union { float f; uint32_t i; } both32 = { y };
   const uint32_t float_one = (uint32_t)127 << 23;
-  float x;
-  int i;
-  if (n == 0) return 0;
-  if (k >= BITS_PER_WORD/2) {
-    if (k >= BITS_PER_WORD || n < (UV)1 << k) return 1;
-    return 2 + (n > (UV)1 << k && k <= MPU_MAX_POW3);
-  }
-  /* Get a simple initial estimte */
-  both32.i = (both32.i - float_one) / k + float_one;
+  float x, err, xk;
+
+  if (k == 4) return (int)(sqrtf(sqrtf(y)) + 0.5f);
+
+  /* The standard floating-point trick for an initial estimate,
+   * but using two constants for variable k.  The constants
+   * are chosen to be perfect for k=5 and very close to ideal
+   * for k=6.  As k increases, the relative accuracy needed
+   * decreases, so higher k can tolerate a lot of slop.
+   *
+   * One problem is that n==1 underflows.  We could fix this
+   * (add k<<20 before division and subtract 1<<10 after), but
+   * it's simpelr just to special case n==1. */
+
+  both32.i = (both32.i - float_one - 89788) / k + float_one - 282298;
   x = both32.f;
-  /*
-   * Improve it with up to two rounds of Halley's method.
+
+  /* Improve it with one round of Halley's method.
+   *
    * Newton's (quadratic) method for a root of x^k - y == 0 is
-   * x += (y - x^k) / (k * x^(k-1))
+   *     x += (y - x^k) / (k * x^(k-1))
    * which simplifies a lot for fixed k, but for variable k,
    * Halley's (cubic) method is not much more complex:
-   * x += 2*x*(y-x^k) / (k*(x^k+y) - (y - x^k))
-   */
-  for (i = 0; i < iterations; i++) {
-    float err, xk = x;
-    unsigned j = msbit;
-    while (j >>= 1) {
-      xk *= xk;
-      if (j & k)
-        xk *= x;
-    }
-    err = xk - y;
-    x -= 2.0f*x*err / (fk*(xk+y) + err);
+   *     x += 2*x*(y-x^k) / (k*(y+x^k) - (y - x^k))
+   * For all k >= 5, one round suffices.
+   * Since k < 5 is handled already, this works for us. */
+
+  xk = x;
+  while (msbit >>= 1) {
+    xk *= xk;
+    if (k & msbit)
+      xk *= x;
   }
-  return (int)(x + 0.375);
+
+  err = y - xk;
+  x += 2.0f*x*err / ((float)(int)k*(y+xk) - err);
+  return (int)(x + 0.5f);
 }
-/* Internal use only, k MUST be between 4 and 15, n > 0 */
-/* This trims a lot over the generic version */
-# define MAX_IROOTN ((BITS_PER_WORD == 64) ? 15 : 10)
+
+/* Trimmed for internal use.  k MUST be between 4 and 15, n > 1 */
+#define MAX_IROOTN ((BITS_PER_WORD == 64) ? 15 : 10)
 static uint32_t _irootn(UV n, uint32_t k)
 {
   uint32_t const msb = 4 << (k >= 8);
@@ -827,27 +840,28 @@ UV rootint(UV n, uint32_t k)
 {
   if (n <= 1) return (k != 0 && n != 0);
 
-  /* Switch from 0 to M makes significantly faster dispatch */
   switch (k) {
     case 0:  return 0;
     case 1:  return n;
     case 2:  return isqrt(n);
     case 3:  return icbrt(n);
-    case 4:  return isqrt(isqrt(n));
+    case 4:  return _irootn(n,4);
     case 5:  return _irootn(n,5);
-    case 6:  return _irootn(n,6);
-    case 7:  return _irootn(n,7);
-    case 8:  return _irootn(n,8);
     default: break;
   }
-  /* Be careful of the order these are done. */
-  if (n >> k == 0) return 1;
-  if (k > MPU_MAX_POW3) return 1 + (k < BITS_PER_WORD);
 
-  if (k <= MAX_IROOTN)   /* Faster up to about k=24 */
-    return _irootn(n,k);
+  /*            MAX_IROOTN  <  BITS_PER_WORD/2  <  MPU_MAX_POW3  */
+  /*  32-bit:       10               16                 20       */
+  /*  64-bit:       15               32                 40       */
 
-  /* Binary search for root */
+  if (n >> k == 0)           return 1;
+
+  if (k <= MAX_IROOTN)       return _irootn(n,k);
+
+  if (k > MPU_MAX_POW3)      return 1 + (k < BITS_PER_WORD);
+  if (k >= BITS_PER_WORD/2)  return 2 + (n >= ipow(3,k));
+
+  /* k is now in range 11-15 (32-bit), 16-31 (64-bit).  Binary search. */
   {
     uint32_t lo = 1U << (log2floor(n)/k);
     uint32_t hi = root_max[k];
