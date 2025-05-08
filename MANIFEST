@@ -322,6 +322,7 @@ xt/test-primes-script2.pl
 xt/test-factor-yafu.pl
 xt/test-nextprime-yafu.pl
 xt/test-ispower.pl
+xt/test-rootint.pl
 xt/test-sets.pl
 xt/test-znlog.pl
 xt/totientsum.pl
