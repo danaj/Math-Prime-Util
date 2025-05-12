@@ -366,15 +366,6 @@ bool sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray
 
 /**************************************************************************/
 
-static UV simple_prime_count_upper(UV n) {
-  double pc, logn = log(n);
-  if (n < 5)                return 0 + (n>1) + (n>2);
-  if (n < 355991)           pc = n / (logn-1.112);
-  else if (n < 2953652287U) pc = n / logn * (1 + 1/logn + 2.51 / (logn*logn));
-  else                      pc = n / logn * (1 + 1/logn + 2.334 / (logn*logn));
-  return (UV) ceil(pc);
-}
-
 typedef struct {
   UV lod;
   UV hid;
@@ -457,7 +448,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
       /* Bump to one more than needed. */
       limit = next_prime(limit);
       /* We'll make space for this many */
-      nprimes = simple_prime_count_upper(limit);
+      nprimes = max_nprimes(limit);
       MPUverbose(4, "segment sieve %lu - %lu, primes to %lu (max %lu)\n", (unsigned long)low, (unsigned long)high, (unsigned long)limit, (unsigned long)nprimes);
       New(0, warray, nprimes, wheel_t);
       START_DO_FOR_EACH_PRIME(0,limit) {
@@ -551,7 +542,7 @@ uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset)
   uint32_t *P, i = offset;
 
   if (n < 2) { *list = 0; return 0; }
-  New(0, P, prime_count_upper(n) + offset + 3, uint32_t);   /* Allocate list */
+  New(0, P, max_nprimes(n) + offset + 3, uint32_t);         /* Allocate list */
   if (offset > 0)  memset(P, 0, offset * sizeof(uint32_t)); /* Zero to offset */
   P[i++] = 2;  P[i++] = 3;  P[i++] = 5;                     /* Fill in 2/3/5 */
 

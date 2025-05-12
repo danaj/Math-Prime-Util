@@ -121,10 +121,7 @@ static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
   *number_of_primes = range_prime_sieve_32(&plist, n, 1);
 #else
   uint32 i = 0;
-  double logn = log(n);
-  uint32 max_index = (n < 67)     ? 18
-                   : (n < 355991) ? 15+(n/(logn-1.09))
-                   : (n/logn) * (1.0+1.0/logn+2.51/(logn*logn));
+  uint32 max_index = max_nprimes(n);
   *number_of_primes = 0;
   New(0, plist, max_index+1, uint32_t);
   plist[0] = 0;
