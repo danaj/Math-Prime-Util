@@ -311,7 +311,7 @@ bool is_aks_prime(UV n)
   if (n == 2)
     return 1;
 
-  if (is_power(n, 0))
+  if (powerof(n) > 1)
     return 0;
 
   if (n > 11 && ( !(n%2) || !(n%3) || !(n%5) || !(n%7) || !(n%11) )) return 0;

@@ -2205,7 +2205,7 @@ void is_square(IN SV* svn)
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (ix == 3 && status == -1) {  /* is_perfect_power special behavior */
       n = neg_iv(n);
-      ret = is_power(n,0);
+      ret = powerof(n);
       /* A power with exponent other than 0,1,2,4,8,... is ok */
       ret = (n == 1 || (ret > 2 && (ret & (ret-1)) != 0));
     }
@@ -2331,24 +2331,31 @@ is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
   PREINIT:
     int status, ret;
     UV n;
+    uint32_t root;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status != 0) {
-      if (status == -1) {
-        /* Negative n with even positive k return 0. */
-        if (k > 0 && !(k & 1))  RETURN_NPARITY(0);
-        n = neg_iv(n);
-      }
-      ret = is_power(n, k);
-      if (status == -1 && k == 0) {
-        ret >>= valuation(ret,2);
-        if (ret == 1) ret = 0;
+      if (k != 0) {
+        if (status == -1) {
+          if (k % 2 == 0)  RETURN_NPARITY(0);  /* negative n even k return 0 */
+          n = neg_iv(n);
+        }
+        ret = is_power_ret(n, k, &root);
+      } else {  /* k = 0 */
+        if (status == -1)
+          n = neg_iv(n);
+        ret = powerof_ret(n, &root);
+        if (status == -1 && ret % 2 == 0) {
+          uint32_t v = valuation(ret,2);
+          ret >>= v;
+          root = ipow(root,1U << v);
+          if (ret == 1) ret = 0;
+        }
       }
       if (ret && svroot != 0) {
-        UV root = rootint(n, k ? k : (UV)ret);
         if (!SvROK(svroot)) croak("is_power: third argument not a scalar reference");
         if (status == 1) sv_setuv(SvRV(svroot),  root);
-        else             sv_setiv(SvRV(svroot), -root);
+        else             sv_setiv(SvRV(svroot), -(IV)root);
       }
       RETURN_NPARITY(ret);
     }
@@ -2677,13 +2684,13 @@ void next_perfect_power(IN SV* svn)
       if (n == 1) XSRETURN_UV(1);
       do {
         n = prev_perfect_power(n);
-        power = is_power(n,0);
+        power = powerof(n);
       } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
       XSRETURN_IV(neg_iv(n));
     } else if (status == -1 && ix == 1) { /* prev perfect power: negative n */
       do {
         n = next_perfect_power(n);
-        power = is_power(n,0);
+        power = powerof(n);
       } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
       if (n <= (UV)IV_MAX)
         XSRETURN_IV(neg_iv(n));

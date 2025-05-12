@@ -15,7 +15,7 @@
 /******************************************************************************/
 
 bool is_perfect_power(UV n) {
-  return (n == 1) || (powerof(n) > 1);
+  return (n == 1 || powerof(n) > 1);
 }
 
 UV next_perfect_power(UV n)

@@ -12,11 +12,11 @@ foreach my $e (5 .. 37) {
   for (3..1000000) {
     my $n = Math::GMPz->new($_) ** $e;
     last if $n > ~0;
-    die "$n\n" unless is_power($n);
+    die "\nfail $n\n" unless is_power($n);
     foreach my $o (-10..10) {
       my $m = $n+$o;
       next if $m==$n;
-      die "$m\n" if is_power($m) && int(sqrt($m))**2 != $m && $m!=2197;
+      die "\nfail $m ($n + $o)\n" if is_power($m) && int(sqrt($m))**2 != $m && $m!=2197;
     }
   }
 }

@@ -22,6 +22,8 @@
 int prime_power(UV n, UV* prime)
 {
   int power = 0;
+  uint32_t root;
+
   if (n < 2) return 0;
   /* Check for small divisors */
   if (!(n&1)) {
@@ -51,10 +53,8 @@ int prime_power(UV n, UV* prime)
   if (is_prob_prime(n))
     { if (prime) *prime = n; return 1; }
   /* Composite.  Test for perfect power with prime root. */
-  power = powerof(n);
-  if (power == 1) power = 0;
+  power = powerof_ret(n, &root);
   if (power) {
-    UV root = rootint(n, (UV)power);
     if (is_prob_prime(root))
       { if (prime) *prime = root; }
     else

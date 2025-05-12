@@ -304,6 +304,8 @@ Revision history for Perl module Math::Prime::Util
     - native integer input parsing is a little faster.  A big deal for fast
       functions and long lists.
 
+    - rootint, is_power, {next,prev}_perfect_power up to 2x faster.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

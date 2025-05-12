@@ -52,6 +52,7 @@ my %powers = (
  11 => [362797056],
  13 => [1594323],
  17 => [129140163],
+ 40 => [qw/1099511627776 12157665459056928801/],
 );
 if ($use64) {
   push @{$powers{0}}, 9908918038843197151;
@@ -71,9 +72,9 @@ plan tests => 0
             + 2 + 2*$extra
             + scalar(keys(%bpow))
             + scalar(keys(%bppow))
-            + 4
-            + 7 + scalar(keys %powers) + scalar(@negpowers)
-            + 6  # tests for 3,5,7 power
+            + 4  # is_power
+            + 2*scalar(keys %powers) + scalar(@negpowers)
+            + 13  # tests for 3,5,7 power
             + 3  # is_square
             + 7  # is_sum_of_squares
             + 0;
@@ -91,7 +92,7 @@ if ($extra) {
 
 while (my($n, $expect) = each (%bpow)) {
   my $r;  my $k = is_power($n,0,\$r);
-  is_deeply( $expect, [$r,$k], "ispower  =>  $n = $r^$k (@$expect)" );
+  is_deeply( $expect, [$r,$k], "ispower($n,0,r) = $r^$k.  Expect ".join("^",@$expect) );
 }
 
 while (my($n, $expect) = each (%bppow)) {
@@ -115,7 +116,14 @@ while (my($e, $vals) = each (%powers)) {
   foreach my $val (@$vals) {
     push @fail, $val unless is_power($val) == $e;
   }
-  ok( @fail == 0, "is_power returns $e for " . join(",",@$vals) );
+  ok( @fail == 0, (@fail > 0) ? "is_power(n) should return $e for [@fail]" : "is_power(n) returns $e for [@$vals]" );
+
+  my @fail2;
+  my $exp = ($e == 0) ? 0 : 1;
+  foreach my $val (@$vals) {
+    push @fail2, $val unless is_power($val,$e) == $exp;
+  }
+  ok( @fail2 == 0, (@fail2 > 0) ? "is_power(n,$e) should return $exp for [@fail2]" : "is_power(n,$e) returns $exp for [@$vals]" );
 }
 foreach my $e (0 .. $#negpowers) {
   is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );

@@ -112,14 +112,15 @@ static int _small_trial_factor(UV n, UV *factors, UV *newn, uint32_t *lastf)
 
 static int _power_factor(UV n, UV *factors)
 {
-  int nfactors, i, j, k = powerof(n);
-  if (k > 1) {
-    UV p = rootint(n, k);
-    nfactors = factor(p, factors);
+  int nfactors, i, j;
+  uint32_t k, root;
+  k = powerof_ret(n, &root);
+  if (k) {
+    nfactors = factor(root, factors);
     for (i = nfactors; i >= 0; i--)
       for (j = 0; j < k; j++)
         factors[k*i+j] = factors[i];
-    return k*nfactors;
+    return k * nfactors;
   }
   factors[0] = n;
   return 1;
@@ -1183,7 +1184,7 @@ int lehman_factor(UV n, UV *factors, bool do_trial) {
 
   if (!(n&1)) return found_factor(n, 2, factors);
 
-  B = Tune * (1+rootint(n,3));
+  B = Tune * (1+icbrt(n));
 
   if (do_trial) {
     uint32_t FirstCut = 0.1 * B;

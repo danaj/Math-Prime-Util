@@ -726,6 +726,7 @@ static UV _rootmod_composite2(UV a, UV k, UV n) {
 
 bool rootmodp(UV *s, UV a, UV k, UV p) {
   UV r;
+  uint32_t R;
   if (p == 0) return 0;
   if (a >= p) a %= p;
 
@@ -733,7 +734,7 @@ bool rootmodp(UV *s, UV a, UV k, UV p) {
 
   if      (p <= 2 || a <= 1)  r = a;
   else if (k <= 1)            r = (k == 0) ? 1 : a;
-  else if (is_power(a,k))     r = rootint(a,k);
+  else if (k < BITS_PER_WORD && is_power_ret(a,k,&R)) r = R;
 #if USE_ROOTMOD_SPLITK
   else                        r = _rootmod_prime_splitk(a,k,p,0);
 #else
@@ -744,6 +745,7 @@ bool rootmodp(UV *s, UV a, UV k, UV p) {
 
 bool rootmod(UV *s, UV a, UV k, UV n) {
   UV r;
+  uint32_t R;
   if (n == 0) return 0;
   if (a >= n) a %= n;
 
@@ -751,7 +753,7 @@ bool rootmod(UV *s, UV a, UV k, UV n) {
 
   if      (n <= 2 || a <= 1)  r = a;
   else if (k <= 1)            r = (k == 0) ? 1 : a;
-  else if (is_power(a,k))     r = rootint(a,k);
+  else if (k < BITS_PER_WORD && is_power_ret(a,k,&R)) r = R;
 #if USE_ROOTMOD_SPLITK
   else if (is_prime(n))       r = _rootmod_prime_splitk(a,k,n,0);
   else                        r = _rootmod_composite1(a,k,n);

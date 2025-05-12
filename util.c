@@ -10,9 +10,6 @@
 #define FUNC_ctz 1
 #define FUNC_log2floor 1
 #define FUNC_is_perfect_square
-#define FUNC_is_perfect_cube
-#define FUNC_is_perfect_fifth
-#define FUNC_is_perfect_seventh
 #define FUNC_next_prime_in_sieve 1
 #define FUNC_prev_prime_in_sieve 1
 #define FUNC_ipow 1
@@ -637,96 +634,6 @@ UV carmichael_lambda(UV n) {
 /*                             POWERS and ROOTS                               */
 /******************************************************************************/
 
-/* There are at least 4 ways to do this, plus hybrids.
- * 1) use a table.  Great for 32-bit, too big for 64-bit.
- * 2) Use pow() to check.  Relatively slow and FP is always dangerous.
- * 3) factor or trial factor.  Slow for 64-bit.
- * 4) Dietzfelbinger algorithm 2.3.5.  Quite slow.
- * This currently uses a hybrid of 1 and 2.
- */
-uint32_t powerof(UV n) {
-  UV t;
-  if ((n <= 3) || (n == UV_MAX)) return 1;
-  if ((n & (n-1)) == 0)          return ctz(n);  /* powers of 2    */
-  if (is_perfect_square(n))      return 2 * powerof(isqrt(n));
-  if (is_perfect_cube(n))        return 3 * powerof(icbrt(n));
-
-  /* Simple rejection filter for non-powers of 5-37.  Rejects 47.85%. */
-  t = n & 511; if ((t*77855451) & (t*4598053) & 862)  return 1;
-
-  if (is_perfect_fifth(n))       return 5 * powerof(rootint(n,5));
-  if (is_perfect_seventh(n))     return 7 * powerof(rootint(n,7));
-
-  if (n > 177146 && n <= UVCONST(1977326743)) {
-    switch (n) { /* Check for powers of 11, 13, 17, 19 within 32 bits */
-      case 177147: case 48828125: case 362797056: case 1977326743: return 11;
-      case 1594323: case 1220703125: return 13;
-      case 129140163: return 17;
-      case 1162261467: return 19;
-      default:  break;
-    }
-  }
-#if BITS_PER_WORD == 64
-  if (n >= UVCONST(8589934592)) {
-    /* The Bloom filters reject about 90% of inputs each, about 99% for two.
-     * Bach/Sorenson type sieves do about as well, but are much slower due
-     * to using a powmod. */
-    if ( (t = n %121, !((t*19706187) & (t*61524433) & 876897796)) &&
-         (t = n % 89, !((t*28913398) & (t*69888189) & 2705511937U)) ) {
-      /* (t = n % 67, !((t*117621317) & (t*48719734) & 537242019)) ) { */
-      UV root = rootint(n,11);
-      if (n == ipow(root,11)) return 11;
-    }
-    if ( (t = n %131, !((t*1545928325) & (t*1355660813) & 2771533888U)) &&
-         (t = n % 79, !((t*48902028) & (t*48589927) & 404082779)) ) {
-      /* (t = n % 53, !((t*79918293) & (t*236846524) & 694943819)) ) { */
-      UV root = rootint(n,13);
-      if (n == ipow(root,13)) return 13;
-    }
-    switch (n) {
-      case UVCONST(762939453125):
-      case UVCONST(16926659444736):
-      case UVCONST(232630513987207):
-      case UVCONST(100000000000000000):
-      case UVCONST(505447028499293771):
-      case UVCONST(2218611106740436992):
-      case UVCONST(8650415919381337933):  return 17;
-      case UVCONST(19073486328125):
-      case UVCONST(609359740010496):
-      case UVCONST(11398895185373143):
-      case UVCONST(10000000000000000000): return 19;
-      case UVCONST(94143178827):
-      case UVCONST(11920928955078125):
-      case UVCONST(789730223053602816):   return 23;
-      case UVCONST(68630377364883):       return 29;
-      case UVCONST(617673396283947):      return 31;
-      case UVCONST(450283905890997363):   return 37;
-      default:  break;
-    }
-  }
-#endif
-  return 1;
-}
-int is_power(UV n, UV a)
-{
-  int ret;
-  if (a > 0) {
-    uint32_t r;  /* The root */
-    if (a == 1 || n <= 1) return 1;
-    if ((a % 2) == 0)
-      return !is_perfect_square_ret(n,&r) ? 0 : (a == 2) ? 1 : is_power(r,a>>1);
-    if ((a % 3) == 0)
-      return !is_perfect_cube(n) ? 0 : (a == 3) ? 1 : is_power(icbrt(n),a/3);
-    if ((a % 5) == 0)
-      return !is_perfect_fifth(n) ? 0 : (a == 5) ? 1 :is_power(rootint(n,5),a/5);
-  }
-  ret = powerof(n);
-  if (a != 0) return !(ret % a);  /* Is the max power divisible by a? */
-  return (ret == 1) ? 0 : ret;
-}
-
-/******************************************************************************/
-
 static float _cbrtf(float x)
 {
   float t, r;
@@ -892,6 +799,113 @@ UV ipowsafe(UV n, UV k) {
     if (k)     { if (UV_MAX/n < n) return UV_MAX;  n *= n; }
   }
   return p;
+}
+
+
+/******************************************************************************/
+
+/* Mod 32 filters for allowable k-th root */
+static const uint32_t _rootmask32[41] = {
+  0x00000000,0x00000000,0xfdfcfdec,0x54555454,0xfffcfffc,           /* 0-4   */
+  0x55555554,0xfdfdfdfc,0x55555554,0xfffffffc,0x55555554,0xfdfdfdfc,/* 5-10  */
+  0x55555554,0xfffdfffc,0xd5555556,0xfdfdfdfc,0xf57d57d6,0xfffffffc,/* 11-16 */
+  0xffffd556,0xfdfdfdfe,0xd57ffffe,0xfffdfffc,0xffd7ff7e,0xfdfdfdfe,/* 17-22 */
+  0xffffd7fe,0xfffffffc,0xffffffd6,0xfdfffdfe,0xd7fffffe,0xfffdfffe,/* 23-28 */
+  0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc,0xfffffff6,0xfffffdfe,/* 29-34 */
+  0xf7fffffe,0xfffdfffe,0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc /* 35-40 */
+};
+
+bool is_power_ret(UV n, uint32_t k, uint32_t *root)
+{
+  uint32_t r, msbit;
+
+  if (k < 2)  croak("is_power_ret: k (%u) < 2 invalid",k);
+
+  /* Simple edge cases */
+  if (n < 2) {
+    if (root) *root = n;
+    return 1;
+  }
+  if (k > MPU_MAX_POW3) {
+    if (root) *root = 2;
+    return (k < BITS_PER_WORD && n == (UV)1 << k);
+  }
+
+  if (k == 2) return is_perfect_square_ret(n,root);
+
+  /* Filter out many numbers which cannot be k-th roots */
+  if ((1U << (n&31)) & _rootmask32[k]) return 0;
+
+  if (k == 3) {
+    r = n % 117; if ((r*833230740) & (r*120676722) & 813764715) return 0;
+    r = icbrt(n);
+    if (root) *root = r;
+    return (UV)r*r*r == n;
+  }
+
+  for (msbit = 8 /* k >= 4 */; k >= msbit; msbit <<= 1)  ;
+  msbit >>= 1;
+  r = _est_root(n, k, msbit);
+  if (root) *root = r;
+  return _ipow(r, k, msbit) == n;
+}
+
+#define PORETURN(c,k) \
+  do { if (root) *root=c;  return k; } while(0)
+
+static uint32_t _porecurse(uint32_t c, uint32_t k, uint32_t *root) {
+  uint32_t K = powerof_ret(c, root);
+  if (K) return K*k;
+  if (root) *root = c;
+  return k;
+}
+
+/* Returns maximal k for c^k = n for k > 1, n > 1.  0 otherwise. */
+uint32_t powerof_ret(UV n, uint32_t *root) {
+  uint32_t r, t;
+
+  if ((n <= 3) || (n == UV_MAX))   return 0;
+  if ((n & (n-1)) == 0)            PORETURN(2,ctz(n));
+  if (is_perfect_square_ret(n,&r)) return _porecurse(r, 2, root);
+  if (is_power_ret(n, 3, &r))      return _porecurse(r, 3, root);
+  if (is_power_ret(n, 5, &r))      return _porecurse(r, 5, root);
+  if (is_power_ret(n, 7, &r))      return _porecurse(r, 7, root);
+
+  if ( ! (((n%121)*0x8dd6295a) & 0x2088081) )
+    if (is_power_ret(n, 11, &r))   PORETURN(r,11);
+
+  t = n % 512;
+
+  if ( ! ((t*0xf5b25923) & (t*0x847f763d) & 0x4841083e) )
+    if (is_power_ret(n, 13, &r))   PORETURN(r,13);
+
+  /* Reject 92.8% of all remaining inputs as not powers of 17,19,... */
+  if ((t*0xd4edde63) & (t*0x06a3e85d) & 0x419943e)  return 0;
+
+  if (is_power_ret(n, 17, &r))     PORETURN(r,17);
+
+  if (n >= 1162261467) {
+    r = t = 0;
+    switch (n) {
+      case UVCONST(1162261467):           t=19; r=3; break;
+#if BITS_PER_WORD == 64
+      case UVCONST(19073486328125):       t=19; r=5; break;
+      case UVCONST(609359740010496):      t=19; r=6; break;
+      case UVCONST(11398895185373143):    t=19; r=7; break;
+      case UVCONST(10000000000000000000): t=19; r=10;break;
+      case UVCONST(94143178827):          t=23; r=3; break;
+      case UVCONST(11920928955078125):    t=23; r=5; break;
+      case UVCONST(789730223053602816):   t=23; r=6; break;
+      case UVCONST(68630377364883):       t=29; r=3; break;
+      case UVCONST(617673396283947):      t=31; r=3; break;
+      case UVCONST(450283905890997363):   t=37; r=3; break;
+#endif
+      default:  break;
+    }
+    if (r != 0) PORETURN(r,t);
+  }
+
+  return 0;
 }
 
 
@@ -1411,7 +1425,8 @@ UV is_quasi_carmichael(UV n) {
 }
 
 bool is_semiprime(UV n) {
-  UV sp, p, n3, factors[2];
+  UV sp, p, factors[2];
+  uint32_t n2, n3;
 
   if (n < 6) return (n == 4);
   if (!(n&1)) return is_prob_prime(n>>1);
@@ -1431,9 +1446,8 @@ bool is_semiprime(UV n) {
   if (p > n3) return 1; /* past this, n is a composite and larger than p^3 */
   /* 4-8% of random inputs left */
 
-  /* Fast power check */
-  sp = powerof(n);
-  if (sp >= 2)  return (sp == 2 && is_def_prime(isqrt(n)));
+  if (is_perfect_square_ret(n,&n2)) /* Fast square check */
+    return is_def_prime(n2);
 
   /* Find one factor, check primality of factor and co-factor */
   if (factor_one(n, factors, 0, 0) != 2) return 0;
@@ -1673,6 +1687,7 @@ UV znprimroot(UV n) {
   UV phi_div_fac[MPU_MAX_FACTORS+1];
   UV k, p, phi, a, psquared;
   int i, nfactors, isneven, ispow;
+  uint32_t root;
 
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
@@ -1680,11 +1695,10 @@ UV znprimroot(UV n) {
   isneven = !(n & 1);
   if (isneven)  n >>= 1;
 
-  k = powerof(n);
-  p = rootint(n, k);
+  ispow = powerof_ret(n,&root);
+  p = ispow ? root : n;
   if (p == 3 && isneven) return 5;
   if (!is_prob_prime(p)) return 0;
-  ispow = (k > 1);
 
   phi = p-1;  /* p an odd prime */
   psquared = ispow ? p*p : 0;
@@ -1758,12 +1772,9 @@ bool is_primitive_root(UV a, UV n, bool nprime) {
   phi = n-1;
 
   /* a^x can be a primitive root only if gcd(x,phi) = 1. */
-  /* On average, this takes more time than it saves:
-   * i = is_power(a,0);
-   * if (i > 1 && gcd_ui(i, phi) != 1) return 0;
-   */
+  /* Checking powerof(a) will typically take more time than it saves. */
   /* We already checked 'a' not a perfect square */
-  if (is_perfect_cube(a) && gcd_ui(3,phi) != 1) return 0;
+  if (is_power(a,3) && gcd_ui(3,phi) != 1) return 0;
 
 #if USE_MONTMATH
   if (n & 1) {

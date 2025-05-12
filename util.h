@@ -30,9 +30,13 @@ extern UV   max_nprimes(UV n);
 
 extern void print_primes(UV low, UV high, int fd);
 
-/* TODO: is_power should just return a bool */
-extern uint32_t powerof(UV n);
-extern int is_power(UV n, UV a);
+/* Returns maximal k for c^k = n for k > 1, n > 1.  0 otherwise. */
+extern uint32_t powerof_ret(UV n, uint32_t *root);
+#define powerof(n) powerof_ret(n,0)
+
+/* Return true if n = r^k for the given k, sets root if given */
+extern bool is_power_ret(UV n, uint32_t k, uint32_t *root);
+#define is_power(n,k) is_power_ret(n,k,0)
 
 extern uint32_t icbrt(UV n);
 extern UV rootint(UV n, uint32_t k);
@@ -364,7 +368,7 @@ static UV lcm_ui(UV x, UV y) {
 #ifdef FUNC_is_perfect_square
 static bool is_perfect_square_ret(UV n, uint32_t *root)
 {
-  UV r;
+  uint32_t r;
   /* Fast filters reject 95.0% of non-squares */
 #if BITS_PER_WORD == 64
   if ((UVCONST(1) << (n&63)) & UVCONST(0xfdfdfdedfdfcfdec)) return 0;
@@ -376,52 +380,9 @@ static bool is_perfect_square_ret(UV n, uint32_t *root)
 #endif
   r = isqrt(n);
   if (root != 0) *root = r;
-  return (r*r == n);
+  return ((UV)r*r == n);
 }
 #define is_perfect_square(n)  is_perfect_square_ret(n,0)
-#endif
-
-#ifdef FUNC_is_perfect_cube
-static bool is_perfect_cube(UV n)
-{
-  uint32_t m;
-  m = n % 117; if ((m*833230740) & (m*120676722) & 813764715) return 0;
-  m = n % 133; if ((m*76846229) & (m*305817297) & 306336544) return 0;
-  m = n % 43; if ((m*193635074) & (m*3653322805U) & 74401) return 0;
-  m = n % 37; if ((m*919307198) & (m*3908849845U) & 6665) return 0;
-  m = icbrt(n);
-  return (UV)m*m*m == n;
-}
-#endif
-
-#ifdef FUNC_is_perfect_fifth
-static bool is_perfect_fifth(UV n)
-{
-  UV m;
-  if ((n & 3) == 2) return 0;
-  m = n %  88; if ((m*85413603) & (m*76260301) & 26476550)  return 0;
-  m = n %  31; if ((m*80682551) & (m*73523539) & 45414528)  return 0;
-  m = n %  41; if ((m*92806493) & (m*130690042) & 35668129)  return 0;
-  /* m = n %  25; if ((m*109794298) & (m*105535723) & 16097553)  return 0; */
-  m = rootint(n, 5);
-  return m*m*m*m*m == n;
-}
-#endif
-
-#ifdef FUNC_is_perfect_seventh
-static bool is_perfect_seventh(UV n)
-{
-  UV m;
-  /* if ((n & 3) == 2) return 0; */
-  m = n & 511; if ((m*97259473) & (m*51311663) & 894)  return 0;
-  m = n %  49; if ((m*109645301) & (m*76482737) & 593520192)  return 0;
-  m = n %  71; if ((m*71818386) & (m*38821587) & 35299393)  return 0;
-  /* m = n %  43; if ((m*101368253) & (m*814158665) & 142131408)  return 0; */
-  /* m = n %  29; if ((m*81935611) & (m*84736134) & 37831965)  return 0; */
-  /* m = n % 116; if ((m*348163737) & (m*1539055705) & 2735997248)  return 0; */
-  m = rootint(n, 7);
-  return m*m*m*m*m*m*m == n;
-}
 #endif
 
 #endif
