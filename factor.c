@@ -112,9 +112,8 @@ static int _small_trial_factor(UV n, UV *factors, UV *newn, uint32_t *lastf)
 
 static int _power_factor(UV n, UV *factors)
 {
-  int nfactors, i, j;
-  uint32_t k, root;
-  k = powerof_ret(n, &root);
+  uint32_t root;
+  int nfactors, i, j, k = powerof_ret(n, &root);
   if (k) {
     nfactors = factor(root, factors);
     for (i = nfactors; i >= 0; i--)

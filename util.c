@@ -673,7 +673,7 @@ static UV _ipow(unsigned b, unsigned e, unsigned bit)
 }
 /* Estimate the kth root of n.
  *
- * Correct (+/- 0) if n is a perfect power, otherwise +/- 1.
+ * Returns exact root if n is a perfect power, otherwise either root or root+1.
  * Requires k >= 3 so a float can exactly represent the kth root.
  *
  * This version is heavily trimmed for internal use with rootint's prefilters.
@@ -1685,7 +1685,7 @@ UV znorder(UV a, UV n) {
 UV znprimroot(UV n) {
   UV fac[MPU_MAX_FACTORS+1];
   UV phi_div_fac[MPU_MAX_FACTORS+1];
-  UV k, p, phi, a, psquared;
+  UV p, phi, a, psquared;
   int i, nfactors, isneven, ispow;
   uint32_t root;
 
@@ -2400,7 +2400,7 @@ int happy_height(UV n, uint32_t base, uint32_t exponent) {
  * but handles the case where IV_MAX < lcm <= UV_MAX.
  * status = 1 means good result, 0 means try another method.
  */
-static bool _simple_chinese(UV *r, UV *mod, UV* a, UV* n, UV num) {
+static bool _simple_chinese(UV *r, UV *mod, const UV* a, const UV* n, UV num) {
   UV i, lcm = 1, res = 0;
   if (num == 0) { *r = 0; if (mod) *mod = 0; return 1; }  /* Dubious return */
 
@@ -2632,7 +2632,7 @@ bool from_digit_string(UV* rn, const char* s, int base)
   return 1;
 }
 
-bool from_digit_to_UV(UV* rn, UV* r, int len, int base)
+bool from_digit_to_UV(UV* rn, const UV* r, int len, int base)
 {
   UV d, n = 0;
   int i;
@@ -2648,7 +2648,7 @@ bool from_digit_to_UV(UV* rn, UV* r, int len, int base)
 }
 
 
-bool from_digit_to_str(char** rstr, UV* r, int len, int base)
+bool from_digit_to_str(char** rstr, const UV* r, int len, int base)
 {
   char *so, *s;
   int i;

@@ -80,6 +80,7 @@ extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
 extern UV pisano_period(UV n);
 
 /* 0 overflow, -1 no inverse, 1 ok */
+/* The a/n arrays will be sorted by descending n. */
 extern int chinese(UV *r, UV *lcm, UV* a, UV* n, UV num);/* Chinese Remainder */
 
 /* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
@@ -141,8 +142,8 @@ extern bool strnum_minmax(bool min, const char* a, STRLEN alen, const char* b, S
 extern int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 extern bool from_digit_string(UV* n, const char* s, int base);
-extern bool from_digit_to_UV(UV* rn, UV* r, int len, int base);
-extern bool from_digit_to_str(char** rstr, UV* r, int len, int base);
+extern bool from_digit_to_UV(UV* rn, const UV* r, int len, int base);
+extern bool from_digit_to_str(char** rstr, const UV* r, int len, int base);
 /* These return length */
 extern int  to_digit_array(int* bits, UV n, int base, int length);
 extern int  to_digit_string(char *s, UV n, int base, int length);
@@ -197,11 +198,13 @@ extern UV gcdz(UV x, UV y);
 
 /******************************************************************************/
 
+/* I think uint32_t is a better return type, but we follow GCC's prototype. */
+
 #if defined(FUNC_clz) || defined(FUNC_ctz) || defined(FUNC_log2floor)
 /* log2floor(n) gives the location of the first set bit (starting from left)
  * ctz(n)       gives the number of times n is divisible by 2
  * clz(n)       gives the number of zeros on the left                       */
-#if defined(__GNUC__) && (__GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#if defined(__GNUC__) && 100*__GNUC__ + __GNUC_MINOR >= 304
  #if BITS_PER_WORD == 64
   #define ctz(n)        ((n) ?    __builtin_ctzll(n) : 64)
   #define clz(n)        ((n) ?    __builtin_clzll(n) : 64)
@@ -245,12 +248,12 @@ extern UV gcdz(UV x, UV y);
      55,30,34,11,43,14,22, 4, 62,57,46,52,38,26,32,41, 50,36,17,19,29,10,13,21,
      56,45,25,31,35,16, 9,12, 44,24,15, 8,23, 7, 6, 5 };
  #ifdef FUNC_ctz
-   static unsigned int ctz(UV n) {
+   static int ctz(UV n) {
      return n ? _debruijn64[((n & -n)*UVCONST(0x07EDD5E59A4E28C2)) >> 58] : 64;
    }
  #endif
  #if defined(FUNC_clz) || defined(FUNC_log2floor)
-   static unsigned int log2floor(UV n) {
+   static int log2floor(UV n) {
      if (n == 0) return 0;
      n |= n >> 1;   n |= n >> 2;   n |= n >> 4;
      n |= n >> 8;   n |= n >> 16;  n |= n >> 32;
@@ -262,7 +265,7 @@ extern UV gcdz(UV x, UV y);
    static const unsigned char _trail_debruijn32[32] = {
       0, 1,28, 2,29,14,24, 3,30,22,20,15,25,17, 4, 8,
      31,27,13,23,21,19,16, 7,26,12,18, 6,11, 5,10, 9 };
-   static unsigned int ctz(UV n) {
+   static int ctz(UV n) {
      return n ? _trail_debruijn32[((n & -n) * UVCONST(0x077CB531)) >> 27] : 32;
    }
  #endif
@@ -270,7 +273,7 @@ extern UV gcdz(UV x, UV y);
    static const unsigned char _lead_debruijn32[32] = {
       0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
       8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31 };
-   static unsigned int log2floor(UV n) {
+   static int log2floor(UV n) {
      if (n == 0) return 0;
      n |= n >> 1;   n |= n >> 2;   n |= n >> 4;   n |= n >> 8;   n |= n >> 16;
      return _lead_debruijn32[(n * UVCONST(0x07C4ACDD)) >> 27];
@@ -288,10 +291,10 @@ extern UV gcdz(UV x, UV y);
  * When the asm is present (e.g. compile with -march=native on a platform that
  * has them, like Nahelem+), then it is almost as fast as manually written asm. */
 #if BITS_PER_WORD == 64
- #if defined(__POPCNT__) && defined(__GNUC__) && (__GNUC__> 4 || (__GNUC__== 4 && __GNUC_MINOR__> 1))
+ #if defined(__POPCNT__) && defined(__GNUC__) && 100*__GNUC__ + __GNUC_MINOR >= 402
    #define popcnt(b)  __builtin_popcountll(b)
  #else
-   static UV popcnt(UV b) {
+   static int popcnt(UV b) {
      b -= (b >> 1) & 0x5555555555555555;
      b = (b & 0x3333333333333333) + ((b >> 2) & 0x3333333333333333);
      b = (b + (b >> 4)) & 0x0f0f0f0f0f0f0f0f;
@@ -299,7 +302,7 @@ extern UV gcdz(UV x, UV y);
    }
  #endif
 #else
- static UV popcnt(UV b) {
+ static int popcnt(UV b) {
    b -= (b >> 1) & 0x55555555;
    b = (b & 0x33333333) + ((b >> 2) & 0x33333333);
    b = (b + (b >> 4)) & 0x0f0f0f0f;
@@ -344,7 +347,7 @@ static uint32_t isqrt(UV n) {
 
 #if defined(FUNC_gcd_ui)
 /* If we have a very fast ctz, then use the fast FLINT version of gcd */
-#if defined(__GNUC__) && (__GNUC__ >= 4 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#if defined(__GNUC__) && 100*__GNUC__ + __GNUC_MINOR >= 304
 #define gcd_ui(x,y) gcdz(x,y)
 #else
 static UV gcd_ui(UV x, UV y) {

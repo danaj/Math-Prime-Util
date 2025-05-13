@@ -35,8 +35,8 @@ static unsigned char _bm_bit[63] = {
   16,17,18,18,19,20,20,21,21,21,22,23,23,23,24,24,
   25,26,26,26,27,27,28,29,29,30,31,31,31,31,31   };
 
-#define BM_WORD(n)  (((n)>>1) / 63)
-#define BM_BITN(n)  _bm_bit[(((n)>>1) % 63)]
+#define BM_WORD(n)  ((n) / 2 / 63)
+#define BM_BITN(n)  _bm_bit[(n) / 2 % 63]
 #define BM_BITM(n)  (1U << BM_BITN(n))
 
 /* Modified from Stanford Bit Twiddling Hacks, via "Nominal Animal" */
