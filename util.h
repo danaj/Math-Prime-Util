@@ -332,14 +332,13 @@ static UV ipow(UV n, UV k) {
 #include <math.h>
 static uint32_t isqrt(UV n) {
   UV root = sqrt((double)n);
+  /* Below 2^52, sqrt() will give us exact answers.
+   * Additionally, it is monotonic and correct for perfect squares, which
+   * together means we never have to check for it being too low.
+   * But some inputs will round up (e.g. (2^26+1)^2-1), so we need to fix that.
+   */
 #if BITS_PER_WORD == 64
-  if (n >= UVCONST(4503599627370496)) {   /* Below 2^52, sqrt() is exact */
-    if (n >= UVCONST(18446744065119617025)) return UVCONST(4294967295);
-    if (root*root > n)  root--;
-    if ((root+1)*(root+1) <= n)  root++;
-  }
-#else
-  if (n >= UVCONST(4294836225)) return UVCONST(65535);
+  if ((IV)(n-root*root) < 0) root--;
 #endif
   return root;
 }
