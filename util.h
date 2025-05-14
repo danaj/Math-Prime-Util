@@ -374,11 +374,11 @@ static bool is_perfect_square_ret(UV n, uint32_t *root)
   /* Fast filters reject 95.0% of non-squares */
 #if BITS_PER_WORD == 64
   if ((UVCONST(1) << (n&63)) & UVCONST(0xfdfdfdedfdfcfdec)) return 0;
-  if ((UVCONST(1) << (n%45)) & UVCONST(0xfffffeeb7df6f9ec)) return 0;
+  /* if ((UVCONST(1) << (n%45)) & UVCONST(0xfffffeeb7df6f9ec)) return 0; */
 #else
-  uint32_t m;
+  /* uint32_t m; */
   if ((1U << (n&31)) & 0xfdfcfdec) return 0;
-  m = n % 105; if ((m*0xd24554cd) & (m*0x0929579a) & 0x38020141) return 0;
+  /* m = n % 105; if ((m*0xd24554cd) & (m*0x0929579a) & 0x38020141) return 0; */
 #endif
   r = isqrt(n);
   if (root != 0) *root = r;
