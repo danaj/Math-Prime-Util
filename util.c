@@ -856,29 +856,29 @@ bool is_power_ret(UV n, uint32_t k, uint32_t *root)
   goto poreturn; \
 } while (0)
 
+/* max power for 64-bit inputs */
+static const uint8_t _maxpow128[128] = {31,7,0,11,2,7,0,17,3,17,0,13,0,11,0,11,2,11,0,29,0,13,0,11,3,11,0,7,0,7,0,7,5,7,0,13,2,7,0,11,3,7,0,31,0,7,0,11,0,11,0,11,0,11,0,13,3,13,0,13,0,19,0,7,3,7,0,17,2,17,0,11,3,11,0,23,0,17,0,13,0,13,0,13,0,7,0,19,3,19,0,19,0,11,0,11,5,11,0,7,2,13,0,13,3,13,0,7,0,23,0,7,0,7,0,37,0,7,0,11,3,11,0,11,0,13,0,7};
+
 /* Returns maximal k for c^k = n for k > 1, n > 1.  0 otherwise. */
 uint32_t powerof_ret(UV n, uint32_t *root) {
   uint32_t r, t, k = 1;
 
   if ((n <= 3) || (n == UV_MAX))      return 0;
   if ((n & (n-1)) == 0)               PORET(2,ctz(n));
+
   while (is_perfect_square_ret(n,&r)) { n = r; k *= 2; }
   while (is_power_ret(n, 3, &r))      { n = r; k *= 3; }
   while (is_power_ret(n, 5, &r))      { n = r; k *= 5; }
 
   if (is_power_ret(n, 7, &r))         PORET(r,7);
 
-  if ( ! (((n%121)*0x8dd6295a) & 0x2088081) )
-    if (is_power_ret(n, 11, &r))      PORET(r,11);
+  if ( !(((n%121)*0x8dd6295a) & 0x2088081) &&
+       is_power_ret(n, 11, &r) )      PORET(r,11);
 
-  t = n % 512;
+  /* Reject 78% of inputs as not powers of 13,17,19,... */
+  if (_maxpow128[n % 128] < 13)       goto poreturn;
 
-  if ( ! ((t*0xf5b25923) & (t*0x847f763d) & 0x4841083e) )
-    if (is_power_ret(n, 13, &r))      PORET(r,13);
-
-  /* Reject 92.8% of all remaining inputs as not powers of 17,19,... */
-  if ((t*0xd4edde63) & (t*0x06a3e85d) & 0x419943e)  goto poreturn;
-
+  if (is_power_ret(n, 13, &r))        PORET(r,13);
   if (is_power_ret(n, 17, &r))        PORET(r,17);
 
   if (n >= 1162261467) {
