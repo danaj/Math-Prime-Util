@@ -850,39 +850,36 @@ bool is_power_ret(UV n, uint32_t k, uint32_t *root)
   return _ipow(r, k, msbit) == n;
 }
 
-#define PORETURN(c,k) \
-  do { if (root) *root=c;  return k; } while(0)
-
-static uint32_t _porecurse(uint32_t c, uint32_t k, uint32_t *root) {
-  uint32_t K = powerof_ret(c, root);
-  if (K) return K*k;
-  if (root) *root = c;
-  return k;
-}
+#define PORET(base,exp)  do { \
+  uint32_t n_ = base, k_ = exp; \
+  n = n_;  k *= k_; \
+  goto poreturn; \
+} while (0)
 
 /* Returns maximal k for c^k = n for k > 1, n > 1.  0 otherwise. */
 uint32_t powerof_ret(UV n, uint32_t *root) {
-  uint32_t r, t;
+  uint32_t r, t, k = 1;
 
-  if ((n <= 3) || (n == UV_MAX))   return 0;
-  if ((n & (n-1)) == 0)            PORETURN(2,ctz(n));
-  if (is_perfect_square_ret(n,&r)) return _porecurse(r, 2, root);
-  if (is_power_ret(n, 3, &r))      return _porecurse(r, 3, root);
-  if (is_power_ret(n, 5, &r))      return _porecurse(r, 5, root);
-  if (is_power_ret(n, 7, &r))      return _porecurse(r, 7, root);
+  if ((n <= 3) || (n == UV_MAX))      return 0;
+  if ((n & (n-1)) == 0)               PORET(2,ctz(n));
+  while (is_perfect_square_ret(n,&r)) { n = r; k *= 2; }
+  while (is_power_ret(n, 3, &r))      { n = r; k *= 3; }
+  while (is_power_ret(n, 5, &r))      { n = r; k *= 5; }
+
+  if (is_power_ret(n, 7, &r))         PORET(r,7);
 
   if ( ! (((n%121)*0x8dd6295a) & 0x2088081) )
-    if (is_power_ret(n, 11, &r))   PORETURN(r,11);
+    if (is_power_ret(n, 11, &r))      PORET(r,11);
 
   t = n % 512;
 
   if ( ! ((t*0xf5b25923) & (t*0x847f763d) & 0x4841083e) )
-    if (is_power_ret(n, 13, &r))   PORETURN(r,13);
+    if (is_power_ret(n, 13, &r))      PORET(r,13);
 
   /* Reject 92.8% of all remaining inputs as not powers of 17,19,... */
-  if ((t*0xd4edde63) & (t*0x06a3e85d) & 0x419943e)  return 0;
+  if ((t*0xd4edde63) & (t*0x06a3e85d) & 0x419943e)  goto poreturn;
 
-  if (is_power_ret(n, 17, &r))     PORETURN(r,17);
+  if (is_power_ret(n, 17, &r))        PORET(r,17);
 
   if (n >= 1162261467) {
     r = t = 0;
@@ -902,10 +899,13 @@ uint32_t powerof_ret(UV n, uint32_t *root) {
 #endif
       default:  break;
     }
-    if (r != 0) PORETURN(r,t);
+    if (t != 0) { n = r; k *= t; }
   }
 
-  return 0;
+ poreturn:
+  if (k <= 1) return 0;
+  if (root) *root = n;
+  return k;
 }
 
 
