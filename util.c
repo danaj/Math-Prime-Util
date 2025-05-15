@@ -851,8 +851,9 @@ bool is_power_ret(UV n, uint32_t k, uint32_t *root)
 }
 
 #define PORET(base,exp)  do { \
-  uint32_t n_ = base, k_ = exp; \
-  n = n_;  k *= k_; \
+  uint32_t n_ = base;  /* In case base uses k or exp uses n */ \
+  k *= exp; \
+  n = n_; \
   goto poreturn; \
 } while (0)
 
