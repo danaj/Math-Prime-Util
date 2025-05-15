@@ -328,22 +328,6 @@ static UV ipow(UV n, UV k) {
 #endif
 
 
-#if defined(FUNC_isqrt)
-#include <math.h>
-static uint32_t isqrt(UV n) {
-  UV root = sqrt((double)n);
-  /* Below 2^52, sqrt() will give us exact answers.
-   * Additionally, it is monotonic and correct for perfect squares, which
-   * together means we never have to check for it being too low.
-   * But some inputs will round up (e.g. (2^26+1)^2-1), so we need to fix that.
-   */
-#if BITS_PER_WORD == 64
-  if ((IV)(n-root*root) < 0) root--;
-#endif
-  return root;
-}
-#endif
-
 #if defined(FUNC_gcd_ui)
 /* If we have a very fast ctz, then use the fast FLINT version of gcd */
 #if defined(__GNUC__) && 100*__GNUC__ + __GNUC_MINOR >= 304
@@ -364,6 +348,18 @@ static UV gcd_ui(UV x, UV y) {
 static UV lcm_ui(UV x, UV y) {
   /* Can overflow if lcm(x,y) > 2^64 (e.g. two primes each > 2^32) */
   return x * (y / gcd_ui(x,y));
+}
+#endif
+
+
+#if defined(FUNC_isqrt)
+/* Correct for all 64-bit inputs and all FP rounding modes. */
+#include <math.h>
+static uint32_t isqrt(UV n) {
+  /* The small addition means we only need to check for fixing downwards. */
+  IV r = sqrt((double)n) + 1e-6f;
+  IV diff = n - (UV)r*r;
+  return r - (diff < 0);
 }
 #endif
 
