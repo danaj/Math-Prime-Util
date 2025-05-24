@@ -3,16 +3,6 @@
 
 #include "ptypes.h"
 
-extern void sort_uv_array(UV* L, unsigned long len);
-extern void sort_iv_array(IV* L, unsigned long len);
-
-extern void sort_dedup_uv_array(UV* L, bool data_is_signed, unsigned long *len);
-
-extern unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len);
-extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
-#define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
-#define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
-
 extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);
@@ -20,6 +10,11 @@ extern void _XS_set_callgmp(int v);
 /* Disable all manual seeding */
 extern bool  _XS_get_secure(void);
 extern void _XS_set_secure(void);
+
+extern unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len);
+extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
+#define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
+#define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
 
 extern bool is_prime(UV x);
 extern UV   next_prime(UV x);

@@ -9,6 +9,7 @@
 #define FUNC_log2floor 1
 #define FUNC_ipow 1
 #include "util.h"
+#include "sort.h"
 #include "cache.h"
 #include "sieve.h"
 #include "primality.h"

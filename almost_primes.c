@@ -11,6 +11,7 @@
 #define FUNC_isqrt 1
 #define FUNC_ctz 1
 #include "util.h"
+#include "sort.h"
 #include "cache.h"
 #include "sieve.h"
 #include "prime_counts.h"

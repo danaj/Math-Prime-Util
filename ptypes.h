@@ -226,7 +226,7 @@ typedef __int8 int8_t;
   #define LNV_IS_QUAD  0
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && __STDC_VERSION__ >= 199901L
   #define INLINE inline
 #elif defined(_MSC_VER)
   #define INLINE __inline

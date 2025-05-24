@@ -11,6 +11,7 @@
 #define FUNC_gcd_ui 1
 #define FUNC_ipow 1
 #include "util.h"
+#include "sort.h"
 #include "mulmod.h"
 #include "factor.h"
 #include "rootmod.h"

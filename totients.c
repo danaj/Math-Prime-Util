@@ -7,6 +7,7 @@
 #define FUNC_ctz 1
 #define FUNC_ipow 1
 #include "util.h"
+#include "sort.h"
 #include "totients.h"
 #include "sieve.h"
 #include "factor.h"

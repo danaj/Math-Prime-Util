@@ -22,6 +22,7 @@
 #include "sieve.h"
 #include "sieve_cluster.h"
 #include "util.h"
+#include "sort.h"
 #include "primality.h"
 #include "lucas_seq.h"
 #include "factor.h"
@@ -537,7 +538,7 @@ static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what)
 #define DEBUG_PRINT_ARRAY(name,av) \
   { Size_t j_; SV** arr_ = AvARRAY(av);  printf("%s: [",name);  for(j_=0; j_<av_count(av); j_++) printf("%lu ",SvUV(arr_[j_])); printf("]\n"); }
 
-static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want_sort, SV* sva, const char* fstr)
+static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr)
 {
   AV *av;
   Size_t len, i;
@@ -592,7 +593,7 @@ static int arrayref_to_int_array(pTHX_ unsigned long *retlen, UV** ret, int want
           break;
     }
     if (i < len)
-      sort_dedup_uv_array(*ret, itype == IARR_TYPE_NEG, retlen);
+      sort_dedup_uv_array(r, itype == IARR_TYPE_NEG, retlen);
   }
   return itype;
 }
@@ -731,7 +732,7 @@ static int is_subset_read_all(pTHX_ SV* svset, SV* svsub)
 {
   int atype, btype, bstatus, res;
   UV *ra, *rb;
-  unsigned long alen, blen, ia, ib;
+  size_t alen, blen, ia, ib;
 
   atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, svset, "setcontains arg 1");
   if (atype != IARR_TYPE_BAD) {
@@ -5066,6 +5067,11 @@ void vecsorti(IN SV* sva)
     SV **arr;
   PPCODE:
     type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, "vecsorti");
+    /* If we really wanted to optimize small values, the reading function
+     * could create a mask like:
+     *    mask |= (istatus == 1) ? n : (n ^ (n<<1));
+     * then we know if the input is 8-bit, 16-bit, 32-bit, etc.
+     */
     if (type == IARR_TYPE_ANY || type == IARR_TYPE_POS) {
       sort_uv_array(L, len);
     } else if (type == IARR_TYPE_NEG) {

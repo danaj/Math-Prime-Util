@@ -11,6 +11,7 @@
 #include "factor.h"
 #include "sieve.h"
 #include "util.h"
+#include "sort.h"
 #include "mulmod.h"
 #include "cache.h"
 #include "primality.h"

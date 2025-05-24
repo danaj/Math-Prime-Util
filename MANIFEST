@@ -92,6 +92,8 @@ sieve.h
 sieve.c
 sieve_cluster.h
 sieve_cluster.c
+sort.h
+sort.c
 threadlock.h
 totients.h
 totients.c
@@ -126,6 +128,7 @@ bench/bench-mp-psrp.pl
 bench/bench-mp-prime_count.pl
 bench/bench-set-tiny.pl
 bench/factor-gnufactor.pl
+bench/sort.pl
 examples/README
 examples/csrand.pl
 examples/csrand-gmp.pl

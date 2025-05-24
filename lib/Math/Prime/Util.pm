@@ -3467,8 +3467,8 @@ All values must be defined and integers.
 They may be any mix of native IV, native UV, strings, bigints.
 
 Perl's built-in numerical sort can sometimes give incorrect results for
-our usage.  Prior to version 5.26, large 64-bit integers were turned into
-NV (floating point) types.  With all versions, strings are turned into
+our usage.  Prior to version 5.26 (2017), large 64-bit integers were turned
+into NV (floating point) types.  With all versions, strings are turned into
 NV types even if they are the text of a 64-bit integer.
 
 In scalar context, C<vecsort> returns the number of items without sorting
@@ -3479,23 +3479,27 @@ Having the same results from
 C<$x = vecsort(5,6,7)> and <@v = vecsort(5,6,7); $x=@v;>
 is what we want.
 This contrasts with Perl's built-in C<sort> which has B<undefined> behaviour
-in scalar context (in all current implementations it returns undef).
+in scalar context (in all current versions of C<perl> it returns undef).
 In particular this forces all programs to use a workaround if they want to
 return a sorted array using Perl's C<sort>.
 
-Depending on the input size and order, it can be either faster or slower
-than Perl's built-in numerical sort: C<@a = sort { $a<=>$b } @a>.
+Using an array reference as input is slightly faster.
+
+This is almost always faster than Perl's built-in numerical sort:
+C<@a = sort { $a E<lt> = E<gt> $b } @a>.
+See the performance section for more information.
 
 =head2 vecsorti
 
-  my $aref = [reverse 0..100000];
-  vecsorti($aref);
+  my @arr = map { irand } 1..100000;
+  vecsorti \@arr;
 
 Given an array reference of integers,
 numerically (ascending) sorts the integers in-place.
 The array reference is also returned for convenience.
 
-This might be more efficient than L<vecsort> or Perl's C<sort>.
+This is more efficient than L<vecsort>.  Perl's C<sort> has this
+optimization built-in when doing straightforward sorting on non-references.
 
 =head2 vecequal
 
@@ -7354,6 +7358,44 @@ faster and lower memory.  In particular, we often spend more time just
 reading the set values than we do performing the set operation.
 The C<Set::IntSpan::Fast> and L<Set::Object> modules can avoid this.
 
+=head2 SORTING
+
+Perl's built-in sort is a cache-friendly stable merge sort.  This is
+reasonably appropriate for the wide variety of uses expected.  When sorting
+lists of integers, it could be improved.  Perl 5.8 brought an in-place
+optimization, so C<@a=sort{$a<=>$b}@a> is done without copying.  The
+numerical sort is recognized and short-cut so doesn't actually call the
+well-known comparison function.  However, Perl's old 32-bit legacy lived
+on until 5.26 as the inputs were turned into doubles, which can lead to
+subtle bugs with large integers.  Inputs that started as strings (e.g. input
+read from a file) will still get turned into doubles.
+
+Our vecsort tries to avoid these issues, making sure inputs are processed as
+only IV, UV, and/or bigints.  Integer strings are converted to one of those.
+All inputs are validated to be integers.
+
+Our sorting for native signed and unsigned integers is a combination of
+quicksort (insertion sort for small partitions, pseudo-median of 9 partioning,
+and heapsort fallback if we have poor partitioning), and radix sort.  It
+is quite fast.
+
+L<Sort::XS> has a variety of algorithms.
+However there is no option for unsigned (UV), only signed integers (IV).
+Sort::Key offers a variety of interfaces including unsigned and signed
+integers, as well as in-place versions.
+The following table compares sorting random 64-bit elements and is shown
+as speedup relative to Perl's sort (higher is faster).
+
+                              10    100   1000  10000 100000     1M
+  vecsort                   2.2x   2.3x   4.8x   5.1x   6.7x   9.7x
+  Sort::Key::Radix usort    1.4x   1.9x   3.0x   2.7x   4.3x   3.0x
+  Sort::XS::quick_sort      1.1x   1.5x   1.8x   2.0x   2.1x   2.7x
+  Sort::Key usort           1.2x   1.3x   1.3x   1.3x   1.3x   1.4x
+  sort                      1.0x   1.0x   1.0x   1.0x   1.0x   1.0x
+
+The implementation does not currently try to exploit patterns.  Perl's sort
+is much faster on sorted and reverse sorted data than it is on random data.
+
 
 =head1 AUTHORS
 
@@ -7365,8 +7407,8 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 Eratosthenes of Cyrene provided the elegant and simple algorithm for finding
 primes.
 
-Terje Mathisen, A.R. Quesada, and B. Van Pelt all had useful ideas which I
-used in my wheel sieve.
+Terje Mathisen, A.R. Quesada, B. Van Pelt, and Kim Walisch all had useful
+ideas I used in my wheel sieve.
 
 The SQUFOF implementation being used is a slight modification to the public
 domain racing version written by Ben Buhrow.  Enhancements with ideas from

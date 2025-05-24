@@ -28,34 +28,21 @@
 #include "inverse_interpolate.h"
 #include "rootmod.h"
 #include "lucas_seq.h"
+#include "sort.h"
 
-static int _numcmp(const void *a, const void *b) {
-  UV x = *(UV*)a, y = *(UV*)b;
-  return (x > y) - (x < y);
-}
-static int _snumcmp(const void *a, const void *b) {
-  IV x = *(IV*)a, y = *(IV*)b;
-  return (x > y) - (x < y);
-}
-void sort_uv_array(UV* L, unsigned long len)
-{
-  (void) qsort(L, len, sizeof(UV), _numcmp);
-}
-void sort_iv_array(IV* L, unsigned long len)
-{
-  (void) qsort(L, len, sizeof(IV), _snumcmp);
-}
-void sort_dedup_uv_array(UV* L, bool data_is_signed, unsigned long *len)
-{
-  unsigned long i, j;
-  if (*len > 1) {
-    (void) qsort(L, *len, sizeof(UV), data_is_signed ? _snumcmp : _numcmp);
-    for (i=0, j=1; j < *len; j++)
-      if (L[i] != L[j])
-        L[++i] = L[j];
-    *len = i+1;
-  }
-}
+static int _verbose = 0;
+void _XS_set_verbose(int v) { _verbose = v; }
+int _XS_get_verbose(void) { return _verbose; }
+
+static int _call_gmp = 0;
+void _XS_set_callgmp(int v) { _call_gmp = v; }
+int  _XS_get_callgmp(void) { return _call_gmp; }
+
+static bool _secure = 0;
+void _XS_set_secure(void) { _secure = 1; }
+bool  _XS_get_secure(void) { return _secure; }
+
+/******************************************************************************/
 
 /* Returns 0 if not found, index+1 if found (returns leftmost if dups) */
 unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len)
@@ -87,18 +74,7 @@ unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len)
   return (L[lo] == v)  ?  lo+1  :  0;
 }
 
-
-static int _verbose = 0;
-void _XS_set_verbose(int v) { _verbose = v; }
-int _XS_get_verbose(void) { return _verbose; }
-
-static int _call_gmp = 0;
-void _XS_set_callgmp(int v) { _call_gmp = v; }
-int  _XS_get_callgmp(void) { return _call_gmp; }
-
-static bool _secure = 0;
-void _XS_set_secure(void) { _secure = 1; }
-bool  _XS_get_secure(void) { return _secure; }
+/******************************************************************************/
 
 /* We'll use this little static sieve to quickly answer small values of
  *   is_prime, next_prime, prev_prime, prime_count

@@ -62,6 +62,7 @@ WriteMakefile1(
                     'rational.o '      .
                     'real.o '         .
                     'rootmod.o '      .
+                    'sort.o '         .
                     'totients.o '     .
                     'util.o '         .
                     'inverse_interpolate.o ' .
