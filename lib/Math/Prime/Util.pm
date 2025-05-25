@@ -7375,7 +7375,7 @@ only IV, UV, and/or bigints.  Integer strings are converted to one of those.
 All inputs are validated to be integers.
 
 Our sorting for native signed and unsigned integers is a combination of
-quicksort (insertion sort for small partitions, pseudo-median of 9 partioning,
+quicksort (insertion sort for small partitions, median of 9 partioning,
 and heapsort fallback if we have poor partitioning), and radix sort.  It
 is quite fast.
 

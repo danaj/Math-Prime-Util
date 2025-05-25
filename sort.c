@@ -48,7 +48,7 @@
  *    quicksort is choosing bad partitions.
  *
  * 6) quicksort.  Yes, yet another quicksort implementation.  Fast for small
- *    inputs, competitive for larger.  This uses pseudo-median of 9
+ *    inputs, competitive for larger.  This uses true median of 9
  *    partitioning, insertion sort for small partitions, and will switch to
  *    heapsort after enough bad partitions, so there is no O(n^2) disaster.
  *
@@ -253,34 +253,57 @@ sift_done:
 /*                              QUICK SORT                                    */
 /******************************************************************************/
 
-static size_t _mid3_uv_index(UV* L, size_t a, size_t b, size_t c) {
-  const UV s[3] = {a,b,c};  /* Scandum's branchless method */
-  int x = L[a] > L[b];
-  int y = L[a] > L[c];
-  int z = L[b] > L[c];
+static size_t _mid3_uv_val(UV* L, size_t a, size_t b, size_t c) {
+  const UV s[3] = {L[a],L[b],L[c]};  /* Scandum's branchless method */
+  int x = s[0] > s[1];
+  int y = s[0] > s[2];
+  int z = s[1] > s[2];
   return s[(x == y) + (y ^ z)];
 }
-static size_t _mid3_iv_index(IV* L, size_t a, size_t b, size_t c) {
-  const IV s[3] = {a,b,c};  /* Scandum's branchless method */
-  int x = L[a] > L[b];
-  int y = L[a] > L[c];
-  int z = L[b] > L[c];
+static size_t _mid3_iv_val(IV* L, size_t a, size_t b, size_t c) {
+  const IV s[3] = {L[a],L[b],L[c]};  /* Scandum's branchless method */
+  int x = s[0] > s[1];
+  int y = s[0] > s[2];
+  int z = s[1] > s[2];
   return s[(x == y) + (y ^ z)];
 }
 
+static void _mid2_of_4_uv(UV* L) {
+  UV swap;   /* 1) put first two and last two in order             */
+  size_t x;  /* 2) L[2] = max(L[0],L[2]);  L[1] = min(L[1],L[3]);  */
+            x = L[0] > L[1];  swap = L[!x];  L[0]=L[x];  L[1]=swap;
+  L += 2;   x = L[0] > L[1];  swap = L[!x];  L[0]=L[x];  L[1]=swap;
+  L -= 2;   x = (L[0] <= L[2]) * 2;  L[2] = L[x];
+  L += 1;   x = (L[0]  > L[2]) * 2;  L[0] = L[x];
+}
+static void _mid2_of_4_iv(IV* L) {
+  IV swap;   /* 1) put first two and last two in order             */
+  size_t x;  /* 2) L[2] = max(L[0],L[2]);  L[1] = min(L[1],L[3]);  */
+            x = L[0] > L[1];  swap = L[!x];  L[0]=L[x];  L[1]=swap;
+  L += 2;   x = L[0] > L[1];  swap = L[!x];  L[0]=L[x];  L[1]=swap;
+  L -= 2;   x = (L[0] <= L[2]) * 2;  L[2] = L[x];
+  L += 1;   x = (L[0]  > L[2]) * 2;  L[0] = L[x];
+}
+
+/* Using scandum's median of 9 gives better partitions than the median of
+ * three medians, and gives better actual run times for large inputs.
+ */
 static size_t _partition_uv(UV* L, size_t lo, size_t hi) {
   size_t i = lo-1, j = hi+1, len = hi-lo+1;
   UV pivot;
   if (len <= 7) {
     pivot = L[len/2];
   } else if (len <= 40) {
-    pivot = L[_mid3_uv_index(L, lo, lo+(hi-lo)/2, hi)];
-  } else {
-    size_t s = len/8;
-    size_t i1 = _mid3_uv_index(L, lo, lo+s, lo+2*s);
-    size_t i2 = _mid3_uv_index(L, lo+3*s, lo+(hi-lo)/2, hi-3*s);
-    size_t i3 = _mid3_uv_index(L, hi-2*s, hi-s, hi);
-    pivot = L[_mid3_uv_index(L, i1, i2, i3)];
+    pivot = _mid3_uv_val(L, lo, lo+(hi-lo)/2, hi);
+  } else { /* Fluxsort's median_of_nine */
+    UV swap[9], *X = L+lo;
+    size_t x, y, z = (len-1)/8;
+    for (x = 0; x < 9; x++) { swap[x] = *X; X += z; }
+    _mid2_of_4_uv(swap);     /* [X v v X v v v v v] */
+    _mid2_of_4_uv(swap+4);   /* [X v v X X v v X v] */
+    swap[0] = swap[5];  swap[3] = swap[8];
+    _mid2_of_4_uv(swap);     /* [X v v X X X v X X] */
+    pivot = _mid3_uv_val(swap, 6, 1, 2);
   }
   while (1) {
     do { i++; } while (L[i] < pivot);
@@ -295,13 +318,16 @@ static size_t _partition_iv(IV* L, size_t lo, size_t hi) {
   if (len <= 7) {
     pivot = L[len/2];
   } else if (len <= 40) {
-    pivot = L[_mid3_iv_index(L, lo, lo+(hi-lo)/2, hi)];
-  } else {
-    size_t s = len/8;
-    size_t i1 = _mid3_iv_index(L, lo, lo+s, lo+2*s);
-    size_t i2 = _mid3_iv_index(L, lo+3*s, lo+(hi-lo)/2, hi-3*s);
-    size_t i3 = _mid3_iv_index(L, hi-2*s, hi-s, hi);
-    pivot = L[_mid3_iv_index(L, i1, i2, i3)];
+    pivot = _mid3_iv_val(L, lo, lo+(hi-lo)/2, hi);
+  } else { /* Fluxsort's median_of_nine */
+    IV swap[9], *X = L+lo;
+    size_t x, y, z = (len-1)/8;
+    for (x = 0; x < 9; x++) { swap[x] = *X; X += z; }
+    _mid2_of_4_iv(swap);     /* [X v v X v v v v v] */
+    _mid2_of_4_iv(swap+4);   /* [X v v X X v v X v] */
+    swap[0] = swap[5];  swap[3] = swap[8];
+    _mid2_of_4_iv(swap);     /* [X v v X X X v X X] */
+    pivot = _mid3_iv_val(swap, 6, 1, 2);
   }
   while (1) {
     do { i++; } while (L[i] < pivot);
