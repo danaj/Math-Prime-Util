@@ -1277,9 +1277,7 @@ sub consecutive_integer_lcm {
 sub frobenius_number {
   my(@A) = @_;
   return undef if scalar(@A) == 0;
-  for my $i (0 .. $#A) {
-    validate_integer_positive($A[$i]);
-  }
+  validate_integer_positive($_) for @A;
   Mvecsorti(\@A);
   return -1 if $A[0] == 1;
   return undef if $A[0] <= 1 || scalar(@A) <= 1;
@@ -4853,7 +4851,8 @@ sub _tquotient {
   if (ref($a) || ref($b)) {
     $a = Math::BigInt->new("$a") unless ref($a);
     # Earlier versions of Math::BigInt did not use floor division for bdiv.
-    return $a->copy->btdiv($b) if $Math::BigInt::VERSION >= 1.999716;
+    my $bigintver = ($Math::BigInt::VERSION =~ tr/.0123456789//cd);
+    return $a->copy->btdiv($b) if $bigintver >= 1.999716;
     $b = Math::BigInt->new("$b") unless ref($b);
     my $A = $a->copy->babs;
     my $B = $b->copy->babs;
