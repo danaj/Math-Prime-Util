@@ -297,8 +297,8 @@ static size_t _partition_uv(UV* L, size_t lo, size_t hi) {
     pivot = _mid3_uv_val(L, lo, lo+(hi-lo)/2, hi);
   } else { /* Fluxsort's median_of_nine */
     UV swap[9], *X = L+lo;
-    size_t x, y, z = (len-1)/8;
-    for (x = 0; x < 9; x++) { swap[x] = *X; X += z; }
+    size_t x, step = (len-1)/8;
+    for (x = 0; x < 9; x++) { swap[x] = *X; X += step; }
     _mid2_of_4_uv(swap);     /* [X v v X v v v v v] */
     _mid2_of_4_uv(swap+4);   /* [X v v X X v v X v] */
     swap[0] = swap[5];  swap[3] = swap[8];
@@ -321,8 +321,8 @@ static size_t _partition_iv(IV* L, size_t lo, size_t hi) {
     pivot = _mid3_iv_val(L, lo, lo+(hi-lo)/2, hi);
   } else { /* Fluxsort's median_of_nine */
     IV swap[9], *X = L+lo;
-    size_t x, y, z = (len-1)/8;
-    for (x = 0; x < 9; x++) { swap[x] = *X; X += z; }
+    size_t x, step = (len-1)/8;
+    for (x = 0; x < 9; x++) { swap[x] = *X; X += step; }
     _mid2_of_4_iv(swap);     /* [X v v X v v v v v] */
     _mid2_of_4_iv(swap+4);   /* [X v v X X v v X v] */
     swap[0] = swap[5];  swap[3] = swap[8];
@@ -394,7 +394,6 @@ void sort_iv_array(IV* L, size_t len) { quadsort_iv(L, len, 0); }
 
 void sort_uv_array(UV* L, size_t len)
 {
-  UV *aux;
   if (len < 800) {
     quicksort_uv(L, len);
   } else {
@@ -408,7 +407,6 @@ void sort_uv_array(UV* L, size_t len)
 
 void sort_iv_array(IV* L, size_t len)
 {
-  IV *aux;
   if (len < 800) {
     quicksort_iv(L, len);
   } else {
