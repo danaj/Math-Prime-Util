@@ -3578,7 +3578,7 @@ static bool corn_all(UV *x, UV *y, UV d, UV p) {
 }
 
 bool cornacchia(UV *x, UV *y, UV d, UV p) {
-  UV u, negd = negmod(d, p), limu;
+  UV u, negd, limu;
   uint32_t root;
 
   if (p == 0) {
@@ -3591,6 +3591,8 @@ bool cornacchia(UV *x, UV *y, UV d, UV p) {
     *x = root;  *y = 0;
     return 1;
   }
+
+  negd = negmod(d, p);
 
   if (is_prime(p)) {
     if (kronecker_uu(negd,p) == -1) return 0;

@@ -4029,27 +4029,22 @@ void divrem(IN SV* sva, IN SV* svb)
   PPCODE:
     astatus = _validate_and_set(&D, aTHX_ sva, IFLAG_ANY);
     bstatus = _validate_and_set(&d, aTHX_ svb, IFLAG_ANY);
-    if (astatus == 1 && bstatus == 1 && (ix != 2 || (D % d) == 0)) {
-      if (d == 0) croak("divrem: divide by zero");
+    if (astatus != 0 && bstatus != 0 && d == 0)
+      croak("divrem: divide by zero");
+    if (astatus == 1 && bstatus == 1 && (ix != 2 || D % d == 0)) {
       XPUSHs(sv_2mortal(newSVuv( D / d )));
       XPUSHs(sv_2mortal(newSVuv( D % d )));
       XSRETURN(2);
     } else if (ix == 2 && astatus == 1 && bstatus == 1 && d <= (UV)IV_MAX) {
-      if (d == 0) croak("cdivrem: divide by zero");
-      if ( (D % d) == 0 ) {
-        XPUSHs(sv_2mortal(newSVuv( D / d )));
-        XPUSHs(sv_2mortal(newSVuv( D % d )));
-      } else {
-        XPUSHs(sv_2mortal(newSVuv( D/d + 1 )));
-        XPUSHs(sv_2mortal(newSViv( ((IV)D%d) - d )));
-      }
+      /* Exact division was handled above */
+      XPUSHs(sv_2mortal(newSVuv( D/d + 1 )));
+      XPUSHs(sv_2mortal(newSViv( ((IV)D%d) - d )));
       XSRETURN(2);
     } else if (astatus != 0 && bstatus != 0 &&
                _validate_and_set((UV*)&iD, aTHX_ sva, IFLAG_IV) != 0 &&
                _validate_and_set((UV*)&id, aTHX_ svb, IFLAG_IV) != 0) {
       /* Both values fit in an IV */
       IV q, r;
-      if (id == 0) croak("divrem: divide by zero");
       switch (ix) {
         case 0:  edivrem(&q, &r, iD, id); break;
         case 1:  fdivrem(&q, &r, iD, id); break;

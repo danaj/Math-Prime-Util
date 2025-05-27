@@ -1,7 +1,6 @@
 #!perl
 use warnings;
 use strict;
-use 5.040;
 use feature 'say';
 use Time::HiRes qw( gettimeofday tv_interval );
 
