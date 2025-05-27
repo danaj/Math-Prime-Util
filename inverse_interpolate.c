@@ -20,22 +20,22 @@ static const int _dbgprint = 0;
 #define LINEAR_INTERP(n, lo, hi, rlo, rhi) \
   (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
 
-#define CALLBACK(n)  ((funck) ? funck(n,k) : func(n))
+#define MPU_CALLBACK(n)  ((funck) ? funck(n,k) : func(n))
 
 #if 0   /* Debugging return, checking the conditions above. */
 #define RETURNI(x) \
   { \
     UV v = x; \
-    UV rv = CALLBACK(v); \
+    UV rv = MPU_CALLBACK(v); \
     /* printf("v  %lu    rv %lu   n %lu\n",v,rv,n); */\
     MPUassert( rv <= n, "BAD INTERP  v > n" ); \
     if (rv == n) { \
       if (v > threshold) { \
-        /* printf("threshold %lu v %lu    func(%lu) = %lu\n", threshold, v, v-1-threshold, CALLBACK(v-1-threshold)); */\
-        MPUassert( CALLBACK(v-1-threshold) < n, "BAD INTERP  v-1-thresh >= n" ); \
+        /* printf("threshold %lu v %lu    func(%lu) = %lu\n", threshold, v, v-1-threshold, MPU_CALLBACK(v-1-threshold)); */\
+        MPUassert( MPU_CALLBACK(v-1-threshold) < n, "BAD INTERP  v-1-thresh >= n" ); \
       } \
     } else { \
-      MPUassert( CALLBACK(v+1) > n, "BAD INTERP  v+1 <= n" ); \
+      MPUassert( MPU_CALLBACK(v+1) > n, "BAD INTERP  v+1 <= n" ); \
     } \
     return v; \
   }
@@ -52,19 +52,19 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   if (hi != 0) {
     /* Given both lo and hi, halve the range on start. */
     mid = lo + ((hi-lo)>>1);
-    rmid = CALLBACK(mid);
+    rmid = MPU_CALLBACK(mid);
     if(_dbgprint)printf("  01 lo %lu  mid %lu  hi %lu\n", lo, mid, hi);
     if (rmid >= n) {
       hi = mid;  rhi = rmid;
-      rlo = CALLBACK(lo);
+      rlo = MPU_CALLBACK(lo);
       if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
     } else {
       lo = mid;  rlo = rmid;
-      rhi = CALLBACK(hi);
+      rhi = MPU_CALLBACK(hi);
     }
   } else {
     /* They don't know what hi might be, so estimate something. */
-    rlo = CALLBACK(lo);
+    rlo = MPU_CALLBACK(lo);
     if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
     while (hi == 0) {
       double estf = (double)n/(double)rlo - 0.004;
@@ -73,7 +73,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
       mid =  ((double)UV_MAX/(double)lo <= estf)  ?  UV_MAX
           :  (UV) (estf * (double)lo + 1);
       if(_dbgprint)printf("  0s lo %lu  mid %lu  hi %lu\n", lo, mid, hi);
-      rmid = CALLBACK(mid);
+      rmid = MPU_CALLBACK(mid);
       if (rmid >= n) {  hi = mid;  rhi = rmid;  }
       else           {  lo = mid;  rlo = rmid;  }
       if (lo == UV_MAX)  break;  /* Overflow */
@@ -91,7 +91,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
 
   for (iloopc = 1;  (hi-lo) > 1 && rhi > n;  iloopc++) {
     MPUassert(lo < mid && mid < hi, "interpolation: assume 3 unique points");
-    rmid = CALLBACK(mid);
+    rmid = MPU_CALLBACK(mid);
     if (rmid >= n) { hi = mid;  rhi = rmid; }
     else           { lo = mid;  rlo = rmid; }
     if (rhi == n) break;
@@ -128,7 +128,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
 
   while ((hi-lo) > 8 && ((hi-lo) > threshold || rhi > n)) {
     UV x0 = lo,  x1 = lo + ((hi-lo)>>1);   /* x2 = hi */
-    UV rx1 = CALLBACK(x1);
+    UV rx1 = MPU_CALLBACK(x1);
     IV fx0 = rlo-n,  fx1 = rx1-n,  fx2=rhi-n+1;
 
     double pos = ((double)(x1-x0) * (double)fx1)
@@ -142,7 +142,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
       if (rx1 >= n) { hi = x1; rhi = rx1; }
       else          { lo = x1; rlo = rx1; }
     } else {
-      UV rx3 = CALLBACK(x3);
+      UV rx3 = MPU_CALLBACK(x3);
       if(_dbgprint)printf("  2S lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x3, hi, (rx3>n) ? rx3-n : n-rx3);
       /* Swap if needed to have:   [lo  x1  x3  hi]  */
       if (rx1 > rx3) { UV t=x1; x1=x3; x3=t;  t=rx1; fx1=rx3; rx3=t; }
@@ -158,7 +158,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   /* Binary search until within threshold */
   while ((hi-lo) > 1 && ((hi-lo) > threshold || rhi > n)) {
     mid = lo + ((hi-lo)>>1);
-    if (CALLBACK(mid) < n) lo = mid;   /* Keeps invariant f(lo) < n */
+    if (MPU_CALLBACK(mid) < n) lo = mid;   /* Keeps invariant f(lo) < n */
     else                   hi = mid;
   }
   if(_dbgprint)printf("final %lu - %lu threshold %lu\n", lo, hi, threshold);

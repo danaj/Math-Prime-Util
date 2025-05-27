@@ -12,6 +12,16 @@
 #define NEED_HvNAME_get
 #include "ppport.h"
 
+#if defined(WIN32)
+#  if PTRSIZE == 8
+   typedef UV mpu_ul; /* UV is 64-bit unsigned long long int */
+#  else
+   typedef size_t mpu_ul; /* size_t is 32-bit */
+#  endif
+#else
+typedef unsigned long int mpu_ul;
+#endif
+
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
@@ -625,7 +635,7 @@ static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bm
   return IARR_TYPE_NEG;
 }
 
-#define SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
+#define MPU_SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
 typedef struct {
   char lostatus, histatus, *midstatus;
   UV loval, hival, *midval;
@@ -634,7 +644,7 @@ typedef struct {
 static set_data_t init_set_lookup_cache(pTHX_ AV *av) {
   set_data_t d;
   Size_t len = av_count(av);
-  if (len > SC_SIZE) len = SC_SIZE;
+  if (len > MPU_SC_SIZE) len = MPU_SC_SIZE;
   d.lostatus = d.histatus = 0;
   Newz(0, d.midstatus, len, char);
   New(0, d.midval, len, UV);
@@ -652,7 +662,7 @@ static void free_set_lookup_cache(set_data_t *d) {
 
 #define SC_SET_MID_VALUE(statvar, var, arr, i, cache) \
   do { \
-    unsigned int imod_ = (i) % SC_SIZE; \
+    unsigned int imod_ = (i) % MPU_SC_SIZE; \
     if (cache != 0 && cache->midstatus[imod_] != 0 && cache->midindex[imod_] == i) { \
       statvar = cache->midstatus[imod_];  var = cache->midval[imod_]; \
     } else { \
@@ -4439,7 +4449,7 @@ void sumset(IN SV* sva, IN SV* svb = 0)
   PREINIT:
     int atype, btype, stype, sign;
     UV *ra, *rb;
-    unsigned long alen, blen,  i, j;
+    mpu_ul alen, blen,  i, j;
     iset_t s;
   PPCODE:
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "sumset arg 1");
@@ -4607,7 +4617,7 @@ void setunion(IN SV* sva, IN SV* svb)
   PREINIT:
     int atype, btype;
     UV *ra, *rb;
-    unsigned long alen, blen;
+    mpu_ul alen, blen;
   PPCODE:
     /* Get the integers and check if they are sorted unique integers first. */
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
@@ -4694,7 +4704,7 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
   PREINIT:
     int atype, btype, ret;
     UV *ra, *rb;
-    unsigned long alen, blen, inalen, inblen;
+    mpu_ul alen, blen, inalen, inblen;
   PPCODE:
     /* If one set is much smaller than the other, it would be faster using
      * is_in_set().  We'll keep things simple and slurp in both sets. */
@@ -4839,7 +4849,7 @@ void setinsert(IN SV* sva, IN SV* svb)
       }
     } else {
       UV *rb;
-      unsigned long i, blen, nbeg, nmid, nend, nmidcheck;
+      mpu_ul i, blen, nbeg, nmid, nend, nmidcheck;
       int btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setinsert arg 2");
       bstatus = IARR_TYPE_TO_STATUS(btype);
       if (bstatus != 0) {
@@ -4941,7 +4951,7 @@ void is_sidon_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int itype, is_sidon;
-    unsigned long len, i, j;
+    mpu_ul len, i, j;
     UV *data;
     iset_t s;
   PPCODE:
@@ -4971,7 +4981,7 @@ void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int itype, is_sumfree;
-    unsigned long len, i, j;
+    mpu_ul len, i, j;
     UV *data;
   PPCODE:
     itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set");
@@ -5009,7 +5019,7 @@ void toset(IN SV* sva)
   PREINIT:
     int atype;
     UV *ra;
-    unsigned long alen;
+    mpu_ul alen;
   PPCODE:
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "toset");
     if (atype == IARR_TYPE_BAD) {
@@ -5023,7 +5033,7 @@ void vecsort(...)
   PROTOTYPE: @
   PREINIT:
     int type;
-    unsigned long i, len;
+    mpu_ul i, len;
     UV *L;
   PPCODE:
     if (items == 0)
@@ -5067,7 +5077,7 @@ void vecsorti(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int type;
-    unsigned long i, len;
+    mpu_ul i, len;
     UV *L;
     SV **arr;
   PPCODE:
