@@ -7372,12 +7372,20 @@ read from a file) will still get turned into doubles.
 
 Our vecsort tries to avoid these issues, making sure inputs are processed as
 only IV, UV, and/or bigints.  Integer strings are converted to one of those.
-All inputs are validated to be integers.
+All inputs are validated to be integers.  There is no need for separate
+interfaces for signed and unsigned numbers as Perl's representation stores
+this information explicitly and per-variable rather than per-array.
+
+Input lists that contain bigints, or both negative numbers and positive
+numbers larger than the maximum IV (C<2^63-1> for 64-bit), cannot be stored
+in a native array of a single type, therefore will be sorted using Perl's
+sort rather than our C code.  This is B<substantially> slower, but produces
+the correct results.
 
 Our sorting for native signed and unsigned integers is a combination of
-quicksort (insertion sort for small partitions, median of 9 partioning,
-and heapsort fallback if we have poor partitioning), and radix sort.  It
-is quite fast.
+quicksort (insertion sort for small partitions, median of 9 partitioning,
+and heapsort fallback if we detect repeated poor partitioning),
+and radix sort.  It is quite fast and low overhead.
 
 L<Sort::XS> has a variety of algorithms.
 However there is no option for unsigned (UV), only signed integers (IV).

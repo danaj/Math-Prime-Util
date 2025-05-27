@@ -90,11 +90,11 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   #define strtold strtod
 #endif
 
-#if PERL_REVISION <= 5 && PERL_VERSION <= 6 && BITS_PER_WORD == 64
+#if PERL_VERSION_LT(5,7,0) && BITS_PER_WORD == 64
  /* Workaround perl 5.6 UVs and bigints */
  #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
  #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
-#elif PERL_REVISION <= 5 && PERL_VERSION < 14 && BITS_PER_WORD == 64
+#elif PERL_VERSION_LT(5,14,0) && BITS_PER_WORD == 64
  /* Workaround RT 49569 in Math::BigInt::FastCalc (pre 5.14.0) */
  /* TODO: Math::BigInt::Pari has the same problem with negs pre-5.18.0 */
  #define my_svuv(sv) ( (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv),NULL,10) )
@@ -104,7 +104,7 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
  #define my_sviv(sv) SvIV(sv)
 #endif
 
-#if PERL_REVISION >=5 && PERL_VERSION >= 9 && PERL_SUBVERSION >= 4
+#if PERL_VERSION_GE(5,9,4)
   #define SVf_MAGTEST  SVf_ROK
 #else
   #define SVf_MAGTEST  SVf_AMAGIC
@@ -114,12 +114,12 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   ((SvFLAGS(n) & (SVf_IOK | SVf_MAGTEST | SVs_GMG )) == SVf_IOK)
 
 /* multicall compatibility stuff */
-#if (PERL_REVISION <= 5 && PERL_VERSION < 7) || !defined(dMULTICALL)
+#if PERL_VERSION_LT(5,7,0) || !defined(dMULTICALL)
 # define USE_MULTICALL 0   /* Too much trouble to work around it */
 #else
 # define USE_MULTICALL 1
 #endif
-#if PERL_VERSION < 13 || (PERL_VERSION == 13 && PERL_SUBVERSION < 9)
+#if PERL_VERSION_LT(5,13,9)
 #  define FIX_MULTICALL_REFCOUNT \
       if (CvDEPTH(multicall_cv) > 1) SvREFCNT_inc(multicall_cv);
 #else
@@ -130,12 +130,12 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #  define CvISXSUB(cv) CvXSUB(cv)
 #endif
 
-/* Not right, but close */
-#if !defined cxinc && ( (PERL_VERSION == 8 && PERL_SUBVERSION >= 1) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 1) )
+/* Not right, but close.  We don't use it ourselves, but core macros do. */
+#if !defined cxinc && PERL_VERSION_GE(5,8,1) && PERL_VERSION_LT(5,11,0)
 # define cxinc() Perl_cxinc(aTHX)
 #endif
 
-#if PERL_VERSION < 17 || (PERL_VERSION == 17 && PERL_SUBVERSION < 7)
+#if PERL_VERSION_LT(5,17,7)
 #  define SvREFCNT_dec_NN(sv)    SvREFCNT_dec(sv)
 #endif
 
@@ -445,6 +445,10 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 #define RETURN_LIST_VALS(in_alen,arr,sign)   /* Return array values */ \
   { \
     unsigned long k_, alen_ = in_alen; \
+    if (GIMME_V == G_SCALAR) { \
+      Safefree(arr); \
+      XSRETURN_UV(alen_); \
+    } \
     EXTEND(SP,(long)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
       ST(k_) = sv_2mortal(NEWSVINT(sign,arr[k_])); \
@@ -530,6 +534,7 @@ static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what)
   if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV))
     croak("%s argument must be an array reference", what);
   av = (AV*) SvRV(sv);
+  /* TODO: It's quite possible these have no affect on calling AvARRAY */
   if (SvMAGICAL(av) || SvREADONLY(av) || !AvREAL(av))
     croak("%s argument is magical, readonly, or not real", what);
   return av;
@@ -1107,7 +1112,7 @@ bool _validate_integer(SV* svn)
     }
     status = _validate_and_set(&n, aTHX_ svn, mask);
     if (status != 0) {
-#if PERL_REVISION <= 5 && PERL_VERSION < 8 && BITS_PER_WORD == 64
+#if PERL_VERSION_LT(5,8,0) && BITS_PER_WORD == 64
       sv_setpviv(svn, n);
 #else
       if (status == 1)  sv_setuv(svn, n);
@@ -4508,6 +4513,12 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     blen = av_count(avb);
     if (blen == 0) XSRETURN_EMPTY;
 
+    /* TODO: Something in the block calls is killing the stack on older Perls.
+     * It is broken in 5.10.0 and earlier, and ok in 5.10.1 and later.  Force
+     * call into the PP routine. */
+    i = 0;
+    asv = bsv = 0;
+#if PERL_VERSION_GE(5,10,1)
     /* ====== Walk the array references storing the SV pointers ====== */
     New(0, asv, alen, SV*);
     for (i = 0; i < alen; i++) {
@@ -4528,7 +4539,10 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
         }
       }
     }
+#endif
     if (i < alen || j < blen) {
+      if (bsv != asv) Safefree(bsv);
+      if (asv != 0)   Safefree(asv);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "setbinop", items, 0);
       return;
     }
@@ -4659,10 +4673,6 @@ void setunion(IN SV* sva, IN SV* svb)
       }
       Safefree(ra);
       Safefree(rb);
-      if (GIMME_V == G_SCALAR) {
-        Safefree(r);
-        XSRETURN_UV(rlen);
-      }
       RETURN_LIST_VALS(rlen, r, pcmp);
     }
     /* if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) { .. isets .. } */
