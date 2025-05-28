@@ -86,7 +86,7 @@ is_deeply( [map { nth_perfect_power($_) } 1 .. scalar(@A001597)],
 is_deeply( [map { nth_perfect_power($_) } 67224..67229],
            [qw/4294574089 4294705156 4294836225 4294967296 4295098369 4295229444/],
            "nth perfect powers with results around 2^32" );
-is_deeply( [map { nth_perfect_power($_) } 4297615579..4297615582],
+is_deeply( [map { nth_perfect_power($_) } 4297615579,4297615580,4297615581,4297615582],
            [qw/18446744047939747849 18446744056529682436 18446744065119617025 18446744073709551616/],
            "nth perfect powers with results around 2^64" );
 
