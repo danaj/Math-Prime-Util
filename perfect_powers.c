@@ -17,6 +17,12 @@
 bool is_perfect_power(UV n) {
   return (n == 1 || powerof(n) > 1);
 }
+bool is_perfect_power_neg(UV n) {
+  uint32_t k = powerof(n);
+  /* An exponent other than 0,1,2,4,8,16,... is ok */
+  return (n == 1 || (k > 2 && (k & (k-1)) != 0));
+}
+
 
 UV next_perfect_power(UV n)
 {

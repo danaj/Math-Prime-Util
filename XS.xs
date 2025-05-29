@@ -2218,10 +2218,7 @@ void is_square(IN SV* svn)
     ret = 0;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (ix == 3 && status == -1) {  /* is_perfect_power special behavior */
-      n = neg_iv(n);
-      ret = powerof(n);
-      /* A power with exponent other than 0,1,2,4,8,... is ok */
-      ret = (n == 1 || (ret > 2 && (ret & (ret-1)) != 0));
+      ret = is_perfect_power_neg(neg_iv(n));
     }
     if (ix == 4 && status == -1) {  /* is_fundamental special behavior */
       n = neg_iv(n);
@@ -2679,29 +2676,39 @@ void next_prime_power(IN SV* svn)
     return;
 
 void next_perfect_power(IN SV* svn)
-  ALIAS:
-    prev_perfect_power = 1
   PREINIT:
     UV n, ret;
     int status, power;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == -1) n = neg_iv(n);
-    if        (status == 1 && ix == 0) {
+    if (status == 1) {
       ret = next_perfect_power(n);
       if (ret != 0) XSRETURN_UV(ret);
-    } else if (status == 1 && ix == 1) {
-      if (n <= 1) XSRETURN_IV(-1);
-      ret = prev_perfect_power(n);
-      if (ret != 0) XSRETURN_UV(ret);
-    } else if (status == -1 && ix == 0) { /* next perfect power: negative n */
+    } else if (status == -1) { /* next perfect power: negative n */
+      n = neg_iv(n);
       if (n == 1) XSRETURN_UV(1);
       do {
         n = prev_perfect_power(n);
         power = powerof(n);
       } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
       XSRETURN_IV(neg_iv(n));
-    } else if (status == -1 && ix == 1) { /* prev perfect power: negative n */
+    }
+    _vcallsub_with_gmp(0.53,"next_perfect_power");
+    objectify_result(aTHX_ svn, ST(0));
+    return;
+
+void prev_perfect_power(IN SV* svn)
+  PREINIT:
+    UV n, ret;
+    int status, power;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == 1) {
+      if (n <= 1) XSRETURN_IV(-1);
+      ret = prev_perfect_power(n);
+      if (ret != 0) XSRETURN_UV(ret);
+    } else if (status == -1) { /* prev perfect power: negative n */
+      n = neg_iv(n);
       do {
         n = next_perfect_power(n);
         power = powerof(n);
@@ -2709,11 +2716,7 @@ void next_perfect_power(IN SV* svn)
       if (n <= (UV)IV_MAX)
         XSRETURN_IV(neg_iv(n));
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.53,"next_perfect_power"); break;
-      case 1:
-      default: _vcallsub_with_gmp(0.53,"prev_perfect_power"); break;
-    }
+    _vcallsub_with_gmp(0.53,"prev_perfect_power");
     objectify_result(aTHX_ svn, ST(0));
     return;
 
