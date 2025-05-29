@@ -72,7 +72,7 @@ plan tests => 0
             + 2 + 2*$extra
             + scalar(keys(%bpow))
             + scalar(keys(%bppow))
-            + 4  # is_power
+            + 5  # is_power
             + 2*scalar(keys %powers) + scalar(@negpowers)
             + 13  # tests for 3,5,7 power
             + 3  # is_square
@@ -125,6 +125,10 @@ while (my($e, $vals) = each (%powers)) {
   }
   ok( @fail2 == 0, (@fail2 > 0) ? "is_power(n,$e) should return $exp for [@fail2]" : "is_power(n,$e) returns $exp for [@$vals]" );
 }
+
+is_deeply( [map { is_power($_,1) } -10..10],
+           [map { 1              } -10..10], "Every integer is a first power");
+
 foreach my $e (0 .. $#negpowers) {
   is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );
 }

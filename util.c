@@ -795,13 +795,13 @@ bool is_power_ret(UV n, uint32_t k, uint32_t *root)
 {
   uint32_t r, msbit;
 
-  if (k < 2)  croak("is_power_ret: k (%u) < 2 invalid",k);
-
   /* Simple edge cases */
-  if (n < 2) {
+  if (n < 2 || k == 1) {
     if (root) *root = n;
     return 1;
   }
+  if (k == 0)
+    return 0;
   if (k > MPU_MAX_POW3) {
     if (root) *root = 2;
     return (k < BITS_PER_WORD && n == (UV)1 << k);
