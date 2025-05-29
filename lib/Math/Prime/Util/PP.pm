@@ -1156,12 +1156,14 @@ sub lucky_count {
 }
 sub _simple_lucky_count_approx {
   my $n = shift;
+  $n = "$n" if ref($n) eq 'Math::BigInt';
   return 0 + ($n > 0) + ($n > 2) if $n < 7;
   return 0.9957 * $n/log($n) if $n <= 1000000;
   return (1.03670 - log($n)/299) * $n/log($n);
 }
 sub _simple_lucky_count_upper {
   my $n = shift;
+  $n = "$n" if ref($n) eq 'Math::BigInt';
   return 0 + ($n > 0) + ($n > 2) if $n < 7;
   return int(5 + 1.039 * $n/log($n)) if $n <= 7000;
   my $a = ($n < 10017000) ?   0.58003 - 3.00e-9 * ($n-7000)   : 0.55;
@@ -1169,8 +1171,8 @@ sub _simple_lucky_count_upper {
 }
 sub _simple_lucky_count_lower {
   my $n = shift;
-  my $est = ($n <= 10000)  ?  _simple_lucky_count_approx($n) * 0.9
-                           :  _simple_lucky_count_approx($n) * 0.99;
+  my $approx = _simple_lucky_count_approx($n);
+  my $est = $approx * (($n <= 10000) ? 0.9 : 0.99);
   int($est);
 }
 sub lucky_count_approx {
@@ -1211,6 +1213,7 @@ sub nth_lucky_approx {
   my $n = shift;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
+  $n = "$n" if ref($n) eq 'Math::BigInt';
   my($logn, $loglogn, $mult) = (log($n), log(log($n)), 1);
   if ($n <= 80000) {
     my $c = ($n <= 10000) ? 0.2502 : 0.2581;

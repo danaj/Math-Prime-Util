@@ -150,7 +150,7 @@ is(check_nth_bounds(123456, 1795453), 1, "nth_lucky(123456) bounds");
 is(check_nth_bounds(5286238, 99999979), 1, "nth_lucky(5286238) bounds");
 is(check_nth_bounds(46697909, 999999991), 1, "nth_lucky(46697909) bounds");
 is(check_nth_bounds(1<<31, 55291335127), 1, "nth_lucky(2^31) bounds");
-is(check_nth_bounds(1<<43, 307703784778627), 1, "nth_lucky(2^43) bounds");
+is(check_nth_bounds("8796093022208", "307703784778627"), 1, "nth_lucky(2^43) bounds");
 
 is_deeply( [map { check_nth_bounds($_, $ln1k->[$_-1]) } 1..100],
            [map { 1 } 1..100],
@@ -168,8 +168,9 @@ sub check_count_bounds {
   return "bad lower count for $n" if lucky_count_lower($n) > $count;
   return "bad upper count for $n" if lucky_count_upper($n) < $count;
   my $approx = lucky_count_approx($n);
-  return "approx count too low for $n"  if $approx < 0.9 * $count;
-  return "approx count too high for $n" if $approx > 1.1 * $count;
+  # Should convert the tolerances using toint
+  return "approx count too low for $n"  if "$approx" < 0.9 * "$count";
+  return "approx count too high for $n" if "$approx" > 1.1 * "$count";
   1;
 }
 
@@ -179,7 +180,7 @@ sub check_nth_bounds {
   return "bad nth lower for $n" if nth_lucky_lower($n) > $nth;
   return "bad nth upper for $n" if nth_lucky_upper($n) < $nth;
   my $approx = nth_lucky_approx($n);
-  return "approx nth too low for $n"  if $approx < 0.9 * $nth;
-  return "approx nth too high for $n" if $approx > 1.1 * $nth;
+  return "approx nth too low for $n"  if "$approx" < 0.9 * "$nth";
+  return "approx nth too high for $n" if "$approx" > 1.1 * "$nth";
   1;
 }
