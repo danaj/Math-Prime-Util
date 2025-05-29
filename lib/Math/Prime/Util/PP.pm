@@ -101,6 +101,7 @@ BEGIN {
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
 *Mdivisors = \&Math::Prime::Util::divisors;
+*Mdivisor_sum = \&Math::Prime::Util::divisor_sum;
 *Mis_prime = \&Math::Prime::Util::is_prime;
 *Mis_semiprime = \&Math::Prime::Util::is_semiprime;
 *Mis_prime_power = \&Math::Prime::Util::is_prime_power;
@@ -108,6 +109,8 @@ BEGIN {
 *Mis_square_free = \&Math::Prime::Util::is_square_free;
 *Mis_odd = \&Math::Prime::Util::is_odd;
 *Mis_even = \&Math::Prime::Util::is_even;
+*Mis_congruent = \&Math::Prime::Util::is_congruent;
+*Mis_divisible = \&Math::Prime::Util::is_divisible;
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
@@ -6422,8 +6425,11 @@ sub is_polygonal {
 
 sub is_sum_of_squares {
   my($n, $k) = @_;
+  validate_integer($n);
   $n = -$n if $n < 0;
-  $k = 2 unless defined $k;
+  if (defined $k) { validate_integer_nonneg($k); }
+  else            { $k = 2; }
+
   return ($n == 0) ? 1 : 0 if $k == 0;
   return 1 if $k > 3;
   return _is_perfect_square($n) if $k == 1;
@@ -6432,7 +6438,9 @@ sub is_sum_of_squares {
 
   if ($k == 3) {
     my $tz = Mvaluation($n,2);
-    return ( (($tz & 1) == 1) || ((($n >> $tz) % 8) != 7) ) ? 1 : 0;
+    return 1 if ($tz & 1) == 1;
+    return 1 unless Mis_congruent(Mrshiftint($n,$tz), 7, 8);
+    return 0;
   }
 
   # k = 2
@@ -6441,7 +6449,7 @@ sub is_sum_of_squares {
 
   foreach my $F (Mfactor_exp($n)) {
     my($f,$e) = @$F;
-    return 0 if ($f % 4) == 3 && ($e & 1) == 1;
+    return 0 if ($e & 1) == 1 && ($f % 4) == 3;
   }
   1;
 }
@@ -6581,11 +6589,11 @@ sub is_perfect_number {
 
   # N is odd.  See https://www.lirmm.fr/~ochem/opn/
   return 0 if length($n) <= 2200;
-  return 0 unless Math::Prime::Util::is_divisible($n, 105);
-  return 0 unless Math::Prime::Util::is_congruent($n,  1, 12)
-               || Math::Prime::Util::is_congruent($n,117,468)
-               || Math::Prime::Util::is_congruent($n, 81, 324);
-  Mcmpint($n,Msubint(Math::Prime::Util::divisor_sum($n),$n)) == 0;
+  return 0 unless Mis_divisible($n, 105);
+  return 0 unless Mis_congruent($n,  1, 12)
+               || Mis_congruent($n,117,468)
+               || Mis_congruent($n, 81, 324);
+  Mcmpint($n,Msubint(Mdivisor_sum($n),$n)) == 0;
 }
 
 sub valuation {
@@ -9758,7 +9766,7 @@ sub divisors {
 
   if (!wantarray) {
     # In scalar context, returns sigma_0(n).  Very fast.
-    return Math::Prime::Util::divisor_sum($n,0) if $k >= $n;
+    return Mdivisor_sum($n,0) if $k >= $n;
     my @div = divisors($n,$k);
     return scalar(@div);
   }
@@ -9874,7 +9882,7 @@ sub _taup {
     my $ds11 = $bp->copy->bpow(11)->binc();  # divisor_sum(p,11)
     my $s    = Math::BigInt->new("". Mvecsum(
                 map {
-                  Mvecprod(BTWO, Math::Prime::Util::divisor_sum($_,5), Math::Prime::Util::divisor_sum($p-$_,5))
+                  Mvecprod(BTWO, Mdivisor_sum($_,5), Mdivisor_sum($p-$_,5))
                 } 1..($p-1)>>1));
     $n = ( 65*$ds11 + 691*$ds5 - (691*252)*$s ) / 756;
   } else {
