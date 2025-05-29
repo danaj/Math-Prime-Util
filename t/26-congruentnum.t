@@ -44,6 +44,7 @@ SKIP: {
             "Non-congruent for Cheng and Guo 2019");
 
   my @das = (17*3*409*19,17*3*859*3697,19*409*3697*859,17*3*409*19*3697*859, 5*7*29*79,5*7*821*151,29*79*821*151,5*7*29*79*821*151);
+  @das = grep { $_ <= ~0 } @das;  # Only test native integers
   is_deeply([map { is_congruent_number($_) } @das],
             [map { 0 } @das],
             "Non-congruent examples from Das and Saikia 2020 section 5");
