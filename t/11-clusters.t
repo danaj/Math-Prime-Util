@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/sieve_prime_cluster is_prime primes twin_primes/;
+use Math::Prime::Util qw/sieve_prime_cluster is_prime primes twin_primes addint subint/;
 use Math::BigInt try => "GMP,Pari";
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
@@ -34,6 +34,8 @@ my @high_check = (
   [ "9999956467211", 'A022009', [2,6,8,12,18,20] ],
   [ "9996858589169", 'A022010', [2,8,12,14,18,20] ],
   [ "99996813484481", 'A022010', [2,6,8,12,18,20,26] ],
+);
+my @high_check2 = (
   [ "99997194198047", 'A022012', [2,6,12,14,20,24,26] ],
   [ "99996215495153", 'A022013', [6,8,14,18,20,24,26] ],
   [ "999897629673401", 'A022545', [2,6,8,12,18,20,26,30] ],
@@ -47,6 +49,7 @@ my @high_check = (
   [ "999955337060684083", 'A213646', [4,6,10,16,18,24,28,30,34,36] ],
   [ "999930334493085881", 'A213647', [2,6,8,12,18,20,26,30,32,36] ],
 );
+push @high_check, @high_check2 if $extra;
 
 #[2,6,8,18,20,30,32,36,38);   # Federighi
 #[2,6,8,12,18,20,26,30,32,36,42,48,50,56);   # A257304
@@ -104,10 +107,9 @@ for my $pat (@patterns) {
 }
 
 for my $test (@high_check) {
-  use bigint;  # For 32-bit testers
   my($n,$name,$cl) = @$test;
-  my $window = ($usexs && $usegmp) ? 1e6 : 1e3;
-  my @res = sieve_prime_cluster($n-$window, $n+$window, @$cl);
+  my $window = ($usexs && $usegmp) ? 1000000 : 1000;
+  my @res = sieve_prime_cluster(subint($n,$window), addint($n,$window), @$cl);
   is_deeply(\@res, [$n], "Window around $name high cluster finds the cluster");
 }
 
