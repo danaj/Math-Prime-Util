@@ -124,5 +124,7 @@ sub cmp_closeto {
   my $expect = shift;
   my $tolerance = shift;
   my $message = shift;
-  cmp_ok( abs($got - $expect), '<=', $tolerance, $message );
+  my $diff = $got > $expect ? $got-$expect : $expect-$got;
+  # $diff might be a bigint and might not compare correctly (!)
+  ok("$diff" <= $tolerance, "$message (got $got)");
 }

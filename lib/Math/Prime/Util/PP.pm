@@ -353,6 +353,34 @@ sub _binary_search {
   return $lo-1;
 }
 
+################################################################################
+
+# TODO: this is in progress.
+#   It's TBD what should be done on failures (undef? croak?)
+#   Handling of trivial floats is terrible.
+#   A single native int should be as fast as possible
+sub _toint {
+  my @v = @_;  # copy them all
+  my @out;
+  for my $v (@v) {
+    if (!defined $v) { push @out, 0; next; }
+    if (ref($v)) {
+      $v = $v->as_int() if ref($v) eq 'Math::BigFloat';
+    } elsif ($v =~ /^[+-]?\d+\z/) {
+      # Good as-is
+    } elsif ($v =~ /e/i || $v =~ /\./) {
+      $v = _upgrade_to_float($v)->as_int();
+    } else {
+      $v = int($v);
+    }
+    if ($v =~ /^nan\z/i) { push @out, undef; next; }
+
+    validate_integer($v);
+    push @out, $v;
+  }
+  @out;
+}
+
 my @_primes_small = (0,2);
 {
   my($n, $s, $sieveref) = (7-2, 3, _sieve_erat_string(5003));
@@ -4110,7 +4138,10 @@ sub nth_semiprime_approx {
   my $l1 = log($n);
   my $l2 = log($l1);
   my $est = 0.966 * $n * $l1 / $l2;
-  return  ($est < INTMAX)  ?  int(0.5+$est)  :  Math::BigInt->new($est+0.5);
+  # Mtoint($est+0.5);
+  $est += 0.5;
+  return int($est) if $est < INTMAX;
+  return _upgrade_to_float($est)->as_int;
 }
 
 sub _almost_prime_count_asymptotic {
@@ -4120,9 +4151,7 @@ sub _almost_prime_count_asymptotic {
 
   my $x;
   if (ref($n) || $n > ~0) {
-    require Math::BigFloat;
-    Math::BigFloat->import();
-    $x = Math::BigFloat->new($n);
+    $x = _upgrade_to_float($n);
   } else {
     $x = 0.0 + "$n";
   }

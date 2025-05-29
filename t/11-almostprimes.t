@@ -12,6 +12,7 @@ use Math::Prime::Util qw/almost_primes
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $use64 = ~0 > 4294967295;
 
 my @small_kaps = (
   [],
@@ -81,7 +82,7 @@ is( cmp_kap(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12"
 ###### Test approx
 is( approx_in_range(3,59643,234618), 234618, "approx 3-almost prime");
 SKIP: {
-  skip "The almost prime pure Perl has bad approximations for high k",1 unless $usexs;
+  skip "The almost prime pure Perl has bad approximations for high k",1 unless $usexs && $use64;
   is( approx_in_range(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
 }
 for my $aap (@aptests) {
