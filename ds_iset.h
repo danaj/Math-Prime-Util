@@ -14,17 +14,17 @@
 
 typedef struct {
   UV *arr;
-  UV mask;
-  unsigned long maxsize;
-  unsigned long size;
+  size_t mask;
+  size_t maxsize;
+  size_t size;
   bool contains_zero;
   unsigned char type;
 } iset_t;
 
-iset_t iset_create(unsigned long init_size);
+iset_t iset_create(size_t init_size);
 void  iset_destroy(iset_t *set);
 
-iset_t iset_create_from_array(UV* d, unsigned long dlen, int dsign);
+iset_t iset_create_from_array(UV* d, size_t dlen, int dsign);
 
 /* Returns 1 if unsigned, -1 if signed, 0 if messed up. */
 static int iset_sign(const iset_t set) {
@@ -34,7 +34,7 @@ static int iset_sign(const iset_t set) {
 static int iset_is_invalid(const iset_t set)
   { return set.type == ISET_TYPE_INVALID; }
 
-static unsigned long iset_size(const iset_t set) { return set.size; }
+static size_t iset_size(const iset_t set) { return set.size; }
 
 bool iset_contains(const iset_t set, UV val);   /* returns 0 or 1 */
 

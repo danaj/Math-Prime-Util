@@ -12,14 +12,12 @@
 #define NEED_HvNAME_get
 #include "ppport.h"
 
-#if defined(WIN32)
-#  if PTRSIZE == 8
-   typedef UV mpu_ul; /* UV is 64-bit unsigned long long int */
-#  else
-   typedef size_t mpu_ul; /* size_t is 32-bit */
-#  endif
-#else
-typedef unsigned long int mpu_ul;
+#if 0 /* For future consideration. */
+#if !defined(PERL_STACK_OFFSET_DEFINED)  /* Perl 5.40+ */
+   typedef I32 Stack_off_t;
+#  define Stack_off_t_MAX I32_MAX
+#  define PERL_STACK_OFFSET_DEFINED
+#endif
 #endif
 
 #define FUNC_gcd_ui 1
@@ -4449,7 +4447,7 @@ void sumset(IN SV* sva, IN SV* svb = 0)
   PREINIT:
     int atype, btype, stype, sign;
     UV *ra, *rb;
-    mpu_ul alen, blen,  i, j;
+    size_t alen, blen,  i, j;
     iset_t s;
   PPCODE:
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "sumset arg 1");
@@ -4557,7 +4555,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
     SAVESPTR(GvSV(agv));
     SAVESPTR(GvSV(bgv));
-    s = iset_create( 4UL *  ((unsigned long)alen + (unsigned long)blen + 2) );
+    s = iset_create( 4UL * ((size_t)alen + (size_t)blen + 2) );
 #ifdef dMULTICALL
     if (!CvISXSUB(cv)) {
       dMULTICALL;
@@ -4617,7 +4615,7 @@ void setunion(IN SV* sva, IN SV* svb)
   PREINIT:
     int atype, btype;
     UV *ra, *rb;
-    mpu_ul alen, blen;
+    size_t alen, blen;
   PPCODE:
     /* Get the integers and check if they are sorted unique integers first. */
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
@@ -4625,7 +4623,7 @@ void setunion(IN SV* sva, IN SV* svb)
 
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
       UV *r;
-      unsigned long rlen = 0, ia = 0, ib = 0;
+      size_t rlen = 0, ia = 0, ib = 0;
       int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
 
       if (ix == 0) {        /* union */
@@ -4704,7 +4702,7 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
   PREINIT:
     int atype, btype, ret;
     UV *ra, *rb;
-    mpu_ul alen, blen, inalen, inblen;
+    size_t alen, blen, inalen, inblen;
   PPCODE:
     /* If one set is much smaller than the other, it would be faster using
      * is_in_set().  We'll keep things simple and slurp in both sets. */
@@ -4726,7 +4724,7 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "set_is second");
 
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
-      unsigned long rlen = 0, ia = 0, ib = 0;
+      size_t rlen = 0, ia = 0, ib = 0;
       int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
 
       while (ia < alen && ib < blen) {
@@ -4849,7 +4847,7 @@ void setinsert(IN SV* sva, IN SV* svb)
       }
     } else {
       UV *rb;
-      mpu_ul i, blen, nbeg, nmid, nend, nmidcheck;
+      size_t i, blen, nbeg, nmid, nend, nmidcheck;
       int btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setinsert arg 2");
       bstatus = IARR_TYPE_TO_STATUS(btype);
       if (bstatus != 0) {
@@ -4884,9 +4882,9 @@ void setinsert(IN SV* sva, IN SV* svb)
           /* 3. In-place insert everything in the middle. */
           nmidcheck = blen - nbeg - nend;
           if (nmidcheck > 0) {
-            unsigned long *insert_idx;
+            size_t *insert_idx;
             SV **insert_sv;
-            New(0, insert_idx, nmidcheck, unsigned long);
+            New(0, insert_idx, nmidcheck, size_t);
             New(0, insert_sv,  nmidcheck, SV*);
             for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
               int index = index_in_set(aTHX_ ava, &cache, bstatus, rb[i]);
@@ -4910,11 +4908,11 @@ void setinsert(IN SV* sva, IN SV* svb)
               arr = AvARRAY(ava);
               /* SV* pointer manipulation to insert new values in place. */
               for (i = 0; i < nmid; i++) {
-                unsigned long j     = nmid-1-i;
-                unsigned long idx   = insert_idx[j];
-                unsigned long nmove = index_lastorig - idx + 1;
+                size_t j     = nmid-1-i;
+                size_t idx   = insert_idx[j];
+                size_t nmove = index_lastorig - idx + 1;
                 if (nmove > 0) {
-                  unsigned long moveto = index_moveto - nmove + 1;
+                  size_t moveto = index_moveto - nmove + 1;
                   memmove(arr+moveto, arr+idx, sizeof(SV*) * nmove);
                   index_lastorig -= nmove;
                   index_moveto -= nmove;
@@ -4951,7 +4949,7 @@ void is_sidon_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int itype, is_sidon;
-    mpu_ul len, i, j;
+    size_t len, i, j;
     UV *data;
     iset_t s;
   PPCODE:
@@ -4981,7 +4979,7 @@ void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int itype, is_sumfree;
-    mpu_ul len, i, j;
+    size_t len, i, j;
     UV *data;
   PPCODE:
     itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set");
@@ -5019,7 +5017,7 @@ void toset(IN SV* sva)
   PREINIT:
     int atype;
     UV *ra;
-    mpu_ul alen;
+    size_t alen;
   PPCODE:
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "toset");
     if (atype == IARR_TYPE_BAD) {
@@ -5033,7 +5031,7 @@ void vecsort(...)
   PROTOTYPE: @
   PREINIT:
     int type;
-    mpu_ul i, len;
+    size_t i, len;
     UV *L;
   PPCODE:
     if (items == 0)
@@ -5043,7 +5041,7 @@ void vecsort(...)
         croak("vecsort requires an integer list or a single array reference");
       type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), "vecsort");
     } else {
-      len = (unsigned long) items;
+      len = (size_t) items;
       New(0, L, len, UV);
       type = IARR_TYPE_ANY;
       for (i = 0; i < len; i++) {
@@ -5077,7 +5075,7 @@ void vecsorti(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
     int type;
-    mpu_ul i, len;
+    size_t i, len;
     UV *L;
     SV **arr;
   PPCODE:
@@ -6452,7 +6450,7 @@ void vecuniq(...)
     unsigned long sz;
   PPCODE:
     retvals = (GIMME_V != G_SCALAR);
-    s = iset_create(items);
+    s = iset_create((size_t)items);
     for (status = 1, j = 0; j < items; j++) {
       status = _validate_and_set(&n, aTHX_ ST(j), IFLAG_ANY);
       if (status == 0) break;
