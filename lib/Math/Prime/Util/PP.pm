@@ -2302,8 +2302,9 @@ sub nth_perfect_power_approx {
     $pp +=  2*$n**(16/14) +  2*$n**(17/15);
     $pp -= 0.48*$n**(19/17);
     $pp -= 1.5;
-    return int($pp) if $pp < ~0;
-    return Math::BigInt->new("$pp");
+    # Another place to use Mtoint($pp);
+    return int($pp) if $pp < INTMAX;
+    return _upgrade_to_float($pp)->as_int;
   }
 
   # Taking roots is very expensive with Math::BigFloat, so minimize.
