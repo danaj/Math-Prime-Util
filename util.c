@@ -842,7 +842,10 @@ uint32_t powerof_ret(UV n, uint32_t *root) {
 
   /* SPECIAL: For n = 0 and n = 1, return k=1 with root n. */
   /* This matches SAGE's .perfect_power(n) method (FLINT chooses k=2). */
-  if (n <= 1)                         PORET(n,1);
+  if (n <= 1) {
+    if (root) *root = n;
+    return 1;
+  }
 
   if ((n <= 3) || (n == UV_MAX))      return 0;
   if ((n & (n-1)) == 0)               PORET(2,ctz(n));

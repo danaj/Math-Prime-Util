@@ -2355,12 +2355,13 @@ is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
       } else {  /* k = 0 */
         if (status == -1)
           n = neg_iv(n);
-        ret = powerof_ret(n, &root);
-        if (status == -1 && ret % 2 == 0) {
+        /* Following Pari/GP:  ispower(0) = ispower(1) = ispower(-1) = 0 */
+        ret = (n <= 1) ? 0 : powerof_ret(n, &root);
+        if (status == -1 && ret > 0 && ret % 2 == 0) {
           uint32_t v = valuation(ret,2);
           ret >>= v;
-          root = ipow(root,1U << v);
           if (ret == 1) ret = 0;
+          if (ret) root = ipow(root,1U << v);
         }
       }
       if (ret && svroot != 0) {
