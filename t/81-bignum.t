@@ -337,9 +337,11 @@ if ($bigintlib eq 'Pari' && $] < "5.018") {
 
 ###############################################################################
 
+# We have a separate test file for random primes, we don't need these.
 my $randprime;
 
 SKIP: {
+  skip "Skipping random prime tests without EXTENDED_TESTING", 6 unless $extra;
   skip "Skipping large random prime tests on broken 64-bit Perl", 6 if $broken64;
 
   $randprime = random_prime(147573952590750158861, 340282366920939067930896100764782952647);
@@ -352,6 +354,9 @@ SKIP: {
   cmp_ok( $randprime, '<', 10**25, "random 25-digit prime is not too big");
   ok( is_prime($randprime), "random 25-digit prime is just right");
 }
+
+SKIP: {
+  skip "Skipping random prime tests without EXTENDED_TESTING", 20 unless $extra;
 
 $randprime = random_nbit_prime(80);
 cmp_ok( $randprime, '>', 2**79, "random 80-bit prime is not too small");
@@ -389,6 +394,8 @@ is(miller_rabin_random(10007, 1-1), 1, "MRR(n,0) = 1");
 is(miller_rabin_random(61, 17), 1, "MRR(61,17) = 1");
 is(miller_rabin_random(62, 17), 1-1, "MRR(62,17) = 0");
 is(miller_rabin_random(1009), 1, "MRR(1009) = 1");   # runs one random base
+
+} # ^^^ skipped without $extra
 
 ###############################################################################
 
