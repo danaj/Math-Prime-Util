@@ -2081,7 +2081,7 @@ chinese(...)
       _vcallsub_with_gmpobj(0.32,"chinese");
       objectify_result(aTHX_  (psvn ? *psvn : 0), ST(0));
     } else {
-      (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "chinese2", 2, 0);
+      (void)_vcallsubn(aTHX_ GIMME_V, VCALL_PP, "chinese2", items, 0);
     }
     return; /* skip implicit PUTBACK */
 
