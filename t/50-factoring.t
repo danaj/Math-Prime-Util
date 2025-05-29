@@ -205,7 +205,10 @@ SKIP: {
 
 # To hit some extra coverage
 is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203 * 2503" );
-is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );
+SKIP: {
+  skip "holf_factor for 64-bit input", 1 unless $use64 || !$usexs;
+  is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );
+}
 is_deeply( [Math::Prime::Util::pminus1_factor(166213)], [347,479], "p-1 factor 347 * 479" );
 SKIP: {
   skip "p-1 tests for C code", 3 unless $usexs;
@@ -215,7 +218,10 @@ SKIP: {
 }
 # GMP still has some issues with this
 #is_deeply( [Math::Prime::Util::cheb_factor("13581893559735945553",1500)], [3453481411,3932812123], "cheb factor 3453481411 * 3932812123" );
-is_deeply( [Math::Prime::Util::cheb_factor("2466600463243213733",1000)], [1552318819,1588978007], "cheb factor 1552318819 * 1588978007" );
+SKIP: {
+  skip "cheb_factor for 64-bit input", 1 unless $use64 || !$usexs;
+  is_deeply( [Math::Prime::Util::cheb_factor("2466600463243213733",1000)], [1552318819,1588978007], "cheb factor 1552318819 * 1588978007" );
+}
 
 
 
