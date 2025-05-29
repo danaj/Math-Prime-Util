@@ -39,7 +39,7 @@ testsumset([1,2],[3,4,"18446744073709551615"], "sumset ANY POS overflow");
 testsumset([1,2],[3,4,"18446744073709551605"], "sumset ANY POS ok");
 testsumset([1,2,"18446744073709551615"],[3,4], "sumset POS ANY overflow");
 testsumset([1,2,"18446744073709551605"],[3,4], "sumset POS ANY ok");
-testsumset([1,2,"9223372036854775808"],[3,4,9223372036854775808], "sumset POS POS overflow");
+testsumset([1,2,"9223372036854775808"],[3,4,"9223372036854775808"], "sumset POS POS overflow");
 
 testsumset([-1,"4611686018427387904"], [3,"9911686018427387905"], "sumset NEG POS overflow");
 testsumset([-100,-99], ["9223372036854775808","9223372036854775809"], "sumset NEG POS with sumset ANY");
