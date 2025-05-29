@@ -1235,7 +1235,7 @@ IV stirling1(UV n, UV m) {
 UV fubini(UV n) {
   UV k, sum;
   if (n == 0) return 1;
-  if (n >= ((BITS_PER_WORD == 64) ? 16 : 12))  return 0;
+  if (n >= ((BITS_PER_WORD == 64) ? 16 : 10))  return 0;
   for (sum = 1, k = 2; k <= n; k++)
     sum += factorial(k) * stirling2(n, k);
   return sum;
