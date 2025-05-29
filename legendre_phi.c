@@ -238,6 +238,7 @@ static phidata_t* phidata_create(const uint32_t* primes, uint32_t lastidx, UV x,
   uint32_t xlim = (UV) pow(x, 1.0/2.70);
   if (xlim < 256) xlim = 256;
 
+  (void)a;  /* Currently unused */
   New(0, d, 1, phidata_t);
   d->primes = primes;
   d->lastidx = lastidx;

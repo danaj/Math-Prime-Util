@@ -359,7 +359,7 @@ static UV _ts_prime(UV a, UV k, UV p, UV *z) {
 /* to be the same algorithm. */
 
 /* Algorithm 3.3, step 2 "Find generator" */
-static void _find_ts_generator(UV *py, UV *pm, UV a, UV k, UV p) {
+static void _find_ts_generator(UV *py, UV *pm, /* a not used */ UV k, UV p) {
   UV e, r, y, m, x, ke1;
   /* Assume:  k > 2,  1 < a < p,  p > 2,  k prime,  p prime */
   /* e = valuation_remainder(p-1,k,&r); */
@@ -388,7 +388,7 @@ static UV _ts_rootmod(UV a, UV k, UV p, UV y, UV m) {
   A = (a == 0)  ?  0  :  mulmod(powmod(x, k, p), modinverse(a, p), p);
 
   if (y == 0 && A != 1)
-    _find_ts_generator(&y, &m, a, k, p);
+    _find_ts_generator(&y, &m /* ,a */, k, p);
 
   while (A != 1) {
     for (l = 1, T = A;  T != 1;  l++) {
@@ -452,7 +452,7 @@ static UV _rootmod_prime_splitk(UV a, UV k, UV p, UV *zeta) {
         Y = _compute_generator(F, V, REM, p);
         *zeta = mulmod(*zeta, powmod(Y, ipow(F, V-E), p), p);
       }
-      _find_ts_generator(&y, &m,  a, F, p);
+      _find_ts_generator(&y, &m /* ,a */, F, p);
       while (E-- > 0)
         a = _ts_rootmod(a, F, p,  y, m);
     }
