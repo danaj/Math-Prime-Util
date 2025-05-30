@@ -15,47 +15,78 @@
 /******************************************************************************/
 
 bool is_perfect_power(UV n) {
-  return (n == 1 || powerof(n) > 1);
+  return (n <= 1 || powerof(n) > 1);
 }
 bool is_perfect_power_neg(UV n) {
   uint32_t k = powerof(n);
   /* An exponent other than 0,1,2,4,8,16,... is ok */
-  return (n == 1 || (k > 2 && (k & (k-1)) != 0));
+  return (n <= 1 || (k > 2 && (k & (k-1)) != 0));
+}
+bool is_perfect_power_iv(IV n) {
+  if (n < -1) {
+    uint32_t k = powerof(-n);
+    return (k > 2 && (k & (k-1)) != 0);
+  }
+  return (n <= 1 || powerof(n) > 1);
 }
 
+static UV _next_perfect_power(UV n, bool only_oddpowers) {
+  uint32_t k, kinit, kinc, log2n;
+  UV best;
 
-UV next_perfect_power(UV n)
-{
-  uint32_t k, log2n;
-  UV best = MPU_MAX_PERFECT_POW;
-
-  if (n <= 1) return (n) ? 4 : 1;
+  if (n == 0) return 1;
+  if (n == 1) return only_oddpowers ? 8 : 4;
   if (n >= MPU_MAX_PERFECT_POW) return 0; /* Overflow */
+  /* Should check for n >= max odd-power perfect power */
 
   log2n = log2floor(n);
-  for (k = 2; k <= 1+log2n; k++) {
+  kinit = only_oddpowers ? 3 : 2;
+  kinc  = only_oddpowers ? 2 : 1;
+
+  best = ipow( rootint(n,kinit)+1, kinit);
+  for (k = kinit+kinc; k <= 1+log2n; k += kinc) {
     UV c = ipow( rootint(n,k)+1, k);
     if (c < best && c > n) best = c;
   }
   return best;
 }
+static UV _prev_perfect_power(UV n, bool only_oddpowers) {
+  uint32_t k, kinit, kinc, log2n;
+  UV best;
 
-UV prev_perfect_power(UV n)
-{
-  uint32_t k, log2n;
-  UV best = 4;
-
-  if (n <= 4) return (n > 1);
-  if (n > MPU_MAX_PERFECT_POW) return MPU_MAX_PERFECT_POW;
+  if (n <= 4) return (n > 1) - (n == 0);  /* note possible -1 return */
+  if (n <= 8) return only_oddpowers ? 1 : 4;
 
   log2n = log2floor(n);
-  for (k = 2; k <= log2n; k++) {
-    UV c, r = rootint(n,k);
-    c = ipow(r,k);
+  kinit = only_oddpowers ? 3 : 2;
+  kinc  = only_oddpowers ? 2 : 1;
+
+  best = 8;
+  for (k = kinit; k <= log2n; k += kinc) {
+    UV r = rootint(n,k);
+    UV c = ipow(r,k);
     if (c >= n) c = ipow(r-1,k);
     if (c > best && c < n) best = c;
   }
   return best;
+}
+
+UV next_perfect_power(UV n)
+{
+  return _next_perfect_power(n, 0);
+}
+UV next_perfect_power_neg(UV n)
+{
+  return _prev_perfect_power(n, 1);
+}
+
+UV prev_perfect_power(UV n)
+{
+  return _prev_perfect_power(n, 0);
+}
+UV prev_perfect_power_neg(UV n)
+{
+  return _next_perfect_power(n, 1);
 }
 
 /* Should we have a generator / sieve?   This is a common exercise using PQs. */

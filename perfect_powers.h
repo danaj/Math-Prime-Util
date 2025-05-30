@@ -5,9 +5,12 @@
 
 extern bool is_perfect_power(UV n);
 extern bool is_perfect_power_neg(UV n);  /* answer for -n */
+extern bool is_perfect_power_iv(IV n);
 
-extern UV  next_perfect_power(UV x);
-extern UV  prev_perfect_power(UV x);
+extern UV  next_perfect_power(UV n);
+extern UV  prev_perfect_power(UV n);
+extern UV  next_perfect_power_neg(UV n); /* return -next for -n */
+extern UV  prev_perfect_power_neg(UV n); /* return -prev for -n */
 
 extern UV  perfect_power_count_range(UV lo, UV hi);
 

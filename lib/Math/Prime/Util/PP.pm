@@ -2160,7 +2160,7 @@ sub is_perfect_power {
     my $res = Mis_power(Mnegint($n));
     return ($n == -1 || ($res > 2 && (($res & ($res-1)) != 0)))  ?  1  :  0;
   }
-  return (0,1,0,0,1,0,0,0,1,1)[$n] if $n <= 9;
+  return (1,1,0,0,1,0,0,0,1,1)[$n] if $n <= 9;
   return (Mis_power($n) > 1) ? 1 : 0;
 }
 
@@ -2204,51 +2204,38 @@ sub perfect_power_count_upper {
   _perfect_power_count($n);
 }
 
-sub next_perfect_power {
-  my($n) = @_;
-  validate_integer($n);
+sub _next_perfect_power {
+  my($n, $only_oddpowers) = @_;
+  croak "_npp must have positive n" if $n < 0;
 
-  if ($n < 0) {
-    my $power;
-    return 1 if $n == -1;
-    $n = Mnegint($n);
-    do {
-      $n = prev_perfect_power($n);
-      $power = Mis_power($n);
-    } while ($n > 1 && ($power <= 2 || ($power & ($power-1)) == 0));
-    return Mnegint($n);
-  }
+  return 1 if $n == 0;
+  return ($only_oddpowers ? 8 : 4) if $n == 1;
 
-  return ($n == 0) ? 1 : 4 if $n <= 1;
-
-  my $best = Mpowint(Maddint(Msqrtint($n),1),2);
   my $log2n = Mlogint($n,2);
-  for (my $k = 3; $k <= 1+$log2n; $k++) {
+  my $kinit = $only_oddpowers ? 3 : 2;
+  my $kinc  = $only_oddpowers ? 2 : 1;
+
+  my $best = Mpowint(Maddint(Mrootint($n,$kinit),1),$kinit);
+  for (my $k = $kinit+$kinc; $k <= 1+$log2n; $k += $kinc) {
     my $r = Mrootint($n,$k);
     my $c = Mpowint(Maddint($r,1),$k);
     $best = $c if $c < $best && $c > $n;
   }
   $best;
 }
-sub prev_perfect_power {
-  my($n) = @_;
-  validate_integer($n);
+sub _prev_perfect_power {
+  my($n, $only_oddpowers) = @_;
+  croak "_ppp must have positive n" if $n < 0;
 
-  if ($n < 0) {
-    my $power;
-    $n = Mnegint($n);
-    do {
-      $n = next_perfect_power($n);
-      $power = Mis_power($n);
-    } while ($n > 1 && ($power <= 2 || ($power & ($power-1)) == 0));
-    return Mnegint($n);
-  }
+  return 0 + ($n>1) - ($n==0) if $n <= 4;
+  return $only_oddpowers ? 1 : 4 if $n <= 8;
 
-  return ($n > 1) ? 1 : -1  if $n <= 4;
-
-  my $best = 4;
   my $log2n = Mlogint($n,2);
-  for (my $k = 2; $k <= $log2n; $k++) {
+  my $kinit = $only_oddpowers ? 3 : 2;
+  my $kinc  = $only_oddpowers ? 2 : 1;
+
+  my $best = 8;
+  for (my $k = $kinit; $k <= $log2n; $k += $kinc) {
     my $r = Mrootint($n,$k);
     if ($r > 1) {
       my $c = Mpowint($r,$k);
@@ -2257,6 +2244,26 @@ sub prev_perfect_power {
     }
   }
   $best;
+}
+
+sub next_perfect_power {
+  my($n) = @_;
+  validate_integer($n);
+
+  return 0 + ($n>=0) - ($n<-1)  if $n < 1 && $n >= -4;
+
+  return Mnegint( _prev_perfect_power( Mnegint($n), 1 ) )  if $n < 0;
+  _next_perfect_power($n, 0);
+}
+
+sub prev_perfect_power {
+  my($n) = @_;
+  validate_integer($n);
+
+  return 0 + ($n>1) - ($n==0)  if $n <= 4 && $n >= 0;
+
+  return Mnegint( _next_perfect_power( Mnegint($n), 1 ) )  if $n < 0;
+  _prev_perfect_power($n, 0);
 }
 
 

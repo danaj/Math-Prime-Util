@@ -179,6 +179,7 @@ sub mpu_PPM_regex {
       Murandomb Murandomm Mvaluation
       Mprimes
       Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
+      Mdivisor_sum Mis_congruent Mis_divisible
       Mis_semiprime Mis_square_free
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
       Msetinsert Msetintersect Msetunion

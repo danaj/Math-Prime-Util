@@ -2217,13 +2217,6 @@ void is_square(IN SV* svn)
   PPCODE:
     ret = 0;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (ix == 3 && status == -1) {  /* is_perfect_power special behavior */
-      ret = is_perfect_power_neg(neg_iv(n));
-    }
-    if (ix == 4 && status == -1) {  /* is_fundamental special behavior */
-      n = neg_iv(n);
-      ret = is_fundamental(n,1);
-    }
     if (status == 1) {
       switch (ix) {
         case 0: ret = is_power(n,2); break;
@@ -2238,8 +2231,14 @@ void is_square(IN SV* svn)
         case 9:
         default:ret = is_totient(n); break;
       }
+    } else if (status == -1) {
+      switch (ix) {
+        case 3: ret = is_perfect_power_neg(neg_iv(n)); break;
+        case 4: ret = is_fundamental(neg_iv(n),1); break;
+        default:break;
+      }
     }
-    if (status != 0)  RETURN_NPARITY(ret);
+    if (status != 0) RETURN_NPARITY(ret);
     switch (ix) {
       case  0: _vcallsub_with_gmp(0.47,"is_square"); break;
       case  1: _vcallsub_with_gmp(0.47,"is_carmichael"); break;
@@ -2678,20 +2677,15 @@ void next_prime_power(IN SV* svn)
 
 void next_perfect_power(IN SV* svn)
   PREINIT:
-    UV n, ret;
-    int status, power;
+    UV n;
+    int status;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == 1) {
-      ret = next_perfect_power(n);
-      if (ret != 0) XSRETURN_UV(ret);
+      n = next_perfect_power(n);
+      if (n != 0) XSRETURN_UV(n);
     } else if (status == -1) { /* next perfect power: negative n */
-      n = neg_iv(n);
-      if (n == 1) XSRETURN_UV(1);
-      do {
-        n = prev_perfect_power(n);
-        power = powerof(n);
-      } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
+      n = next_perfect_power_neg(neg_iv(n));
       XSRETURN_IV(neg_iv(n));
     }
     _vcallsub_with_gmp(0.53,"next_perfect_power");
@@ -2700,21 +2694,17 @@ void next_perfect_power(IN SV* svn)
 
 void prev_perfect_power(IN SV* svn)
   PREINIT:
-    UV n, ret;
-    int status, power;
+    UV n;
+    int status;
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == 1) {
-      if (n <= 1) XSRETURN_IV(-1);
-      ret = prev_perfect_power(n);
-      if (ret != 0) XSRETURN_UV(ret);
+      if (n == 0) XSRETURN_IV(-1);
+      n = prev_perfect_power(n);
+      XSRETURN_UV(n);
     } else if (status == -1) { /* prev perfect power: negative n */
-      n = neg_iv(n);
-      do {
-        n = next_perfect_power(n);
-        power = powerof(n);
-      } while (n > 1 && (power <= 2 || (power & (power-1)) == 0));
-      if (n <= (UV)IV_MAX)
+      n = prev_perfect_power_neg(neg_iv(n));
+      if (n > 0 && n <= (UV)IV_MAX)
         XSRETURN_IV(neg_iv(n));
     }
     _vcallsub_with_gmp(0.53,"prev_perfect_power");
