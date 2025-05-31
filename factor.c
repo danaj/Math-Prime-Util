@@ -155,6 +155,17 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
                                 : pbrent_factor(n, factors, 500000, 1);
   if (nfactors < 2) croak("factor_one failed on %lu\n", n);
 #endif
+
+#if BITS_PER_WORD == 64
+    /* For small semiprimes the fastest solution is HOLF under 32, then
+     * Lehman (no trial) under 38.  On random inputs, HOLF is best somewhere
+     * between 28 and 32 bits.  Adding Lehman is always slower. */
+    if (n <= 0xFFFFFFFFU) {
+      nfactors = holf32(n, factors, 10000);  /* 2400 is enough */
+      if (nfactors > 1) return nfactors;
+    }
+#endif
+
   {
     /* Adjust the number of rounds based on the number size and speed */
     UV const nbits = BITS_PER_WORD - clz(n);
@@ -167,16 +178,6 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
 #else
     UV const br_rounds = (nbits >= 63) ? 120000 : (nbits >= 58) ? 500 : 0;
     UV const sq_rounds = 200000;
-#endif
-
-#if BITS_PER_WORD == 64
-    /* For small semiprimes the fastest solution is HOLF under 32, then
-     * Lehman (no trial) under 38.  However on random inputs, HOLF is
-     * best only under 28-30 bits, and adding Lehman is always slower. */
-    if (nbits <= 30) { /* This should always succeed */
-      nfactors = holf32(n, factors, 1000000);
-      if (nfactors > 1) return nfactors;
-    }
 #endif
     /* Almost all inputs are factored here */
     if (br_rounds > 0) {
@@ -202,11 +203,9 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
     nfactors = pminus1_factor(n, factors, 8000, 120000);
     if (nfactors > 1) return nfactors;
     /* Get the stragglers */
-    nfactors = cheb_factor(n, factors, 4000, 0);
-    if (nfactors > 1) return nfactors;
-    nfactors = prho_factor(n, factors, 120000);
-    if (nfactors > 1) return nfactors;
     nfactors = pbrent_factor(n, factors, 500000, 5);
+    if (nfactors > 1) return nfactors;
+    nfactors = prho_factor(n, factors, 180000);
     if (nfactors > 1) return nfactors;
     nfactors = cheb_factor(n, factors, 1000000, 0);
     if (nfactors > 1) return nfactors;
@@ -559,6 +558,8 @@ int holf_factor(UV n, UV *factors, UV rounds)
       if (ni >= (ni+npre)) break;
       ni += npre;
     }
+    if (rounds == (UV) -1)
+      return no_factor(n,factors);
   }
 
   for (i = 1; i <= rounds; i++) {
@@ -1251,7 +1252,8 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
 {
   UV sqrtB, inv, x, f, i;
 
-  if (B == 0) { B = log2floor(n);  B = B*B; }
+  if (B == 0) { B = log2floor(n);  B = 8*B*B; }
+  if (B > isqrt(n)) B = isqrt(n);
   sqrtB = isqrt(B);
   inv = modinverse(2,n);   /* multiplying by this will divide by two */
   x = (initx == 0) ? 72 : initx;
@@ -1272,6 +1274,7 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
     }
     f = gcd_ui(x-1, n);  if (f > 1)  break;
   } END_DO_FOR_EACH_PRIME
+
   if (f > 1 && f < n)
     return found_factor(n, f, factors);
   return no_factor(n,factors);

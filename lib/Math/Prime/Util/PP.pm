@@ -9456,7 +9456,8 @@ sub cheb_factor {
   }
 
   my $x = (defined $initx && $initx > 0)  ?  $initx  :  72;  # Arbitrary
-  my $B = (defined $B1 && $B1 > 0)  ?  $B1  : Mpowint(Mlogint($n,2),2);
+  my $B = (defined $B1 && $B1 > 0) ? $B1 : Mmulint(Mpowint(Mlogint($n,2),2),8);
+  $B = Msqrtint($n) if $B > Msqrtint($n);
   my $sqrtB = Msqrtint($B);
   my $inv = Minvmod(2,$n);
   my $f = 1;
