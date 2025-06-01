@@ -2491,7 +2491,7 @@ char* pidigits(int digits)
   d = i = 0;
   while ((b = c -= 14) > 0 && i < (uint32_t)digits) {
     d = e = d % f;
-    if (b > 107000) {  /* Use 64-bit intermediate while necessary. */
+    if (b > 107001) {  /* Use 64-bit intermediate while necessary. */
       for (d64 = d; --b > 107000; ) {
         g = (b << 1) - 1;
         d64 = d64 * b  +  f * (U64T)a[b];
@@ -2511,14 +2511,14 @@ char* pidigits(int digits)
     d4 = e + d/f;
     if (d4 > 9999) {
       d4 -= 10000;
-      out[i-1]++;
-      for (b=i-1; out[b] == '0'+1; b--) { out[b]='0'; out[b-1]++; }
+      for (b = i; out[--b] == '9';)  out[b] = '0';
+      out[b]++;
     }
     d3 = d4/10;  d2 = d3/10;  d1 = d2/10;
-    out[i++] = '0' + d1;
-    out[i++] = '0' + d2-d1*10;
-    out[i++] = '0' + d3-d2*10;
-    out[i++] = '0' + d4-d3*10;
+    out[i++] = '0' + (char)d1;
+    out[i++] = '0' + (char)(d2-d1*10);
+    out[i++] = '0' + (char)(d3-d2*10);
+    out[i++] = '0' + (char)(d4-d3*10);
   }
   Safefree(a);
   if (out[digits-1] >= '5') out[digits-2]++;  /* Round */
@@ -2649,7 +2649,7 @@ bool from_digit_to_str(char** rstr, const UV* r, int len, int base)
   }
   for (i = 0; i < len; i++) {
     UV d = r[i];
-    s[i] = (d < 10) ? '0'+d : 'a'+d-10;
+    s[i] = (d < 10) ? '0'+(char)d : 'a'+(char)(d-10);
   }
   s[len] = '\0';
   *rstr = so;
@@ -2685,7 +2685,7 @@ int to_digit_string(char* s, UV n, int base, int length)
 
   for (i = 0; i < len; i++) {
     int dig = digits[len-i-1];
-    s[i] = (dig < 10) ? '0'+dig : 'a'+dig-10;
+    s[i] = (dig < 10) ? '0'+(char)dig : 'a'+(char)(dig-10);
   }
   s[len] = '\0';
   return len;
@@ -2705,7 +2705,7 @@ int to_string_128(char str[40], IV hi, UV lo)
     uint128_t dd, sum = (((uint128_t) hi) << 64) + lo;
     do {
       dd = sum / 10;
-      str[slen++] = '0' + (sum - dd*10);
+      str[slen++] = '0' + (char)(sum - dd*10);
       sum = dd;
     } while (sum);
   }

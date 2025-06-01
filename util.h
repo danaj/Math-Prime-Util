@@ -330,7 +330,7 @@ static UV ipow(UV n, UV k) {
 #else
 static UV gcd_ui(UV x, UV y) {
   UV t;
-  if (y < x) { t = x; x = y; y = t; }
+  if (y > x) { t = x; x = y; y = t; }
   while (y > 0) {
     t = y;  y = x % y;  x = t;  /* y1 <- x0 % y0 ; x1 <- y0 */
   }

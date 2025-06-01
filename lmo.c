@@ -224,7 +224,7 @@ static uint16* ft_create(uint32 max)
     if (factor_table[i] != 65535)  /* Already marked. */
       continue;
     if (p < 65535)                 /* p is a small prime, so set the number. */
-      factor_table[i] = p;
+      factor_table[i] = (uint16) p;
     if (p >= max_prime)            /* No multiples will be in the table */
       continue;
 
@@ -233,7 +233,7 @@ static uint16* ft_create(uint32 max)
     for (factor = 3; factor < max_factor; factor += 2) {
       uint32 index = (p*factor)/2;
       if (factor_table[index] == 65535)  /* p is smallest factor */
-        factor_table[index] = p;
+        factor_table[index] = p;  /* TODO p > 65535? */
       else if (factor_table[index] > 0)  /* Change number of factors */
         factor_table[index] ^= 0x01;
     }
@@ -346,7 +346,7 @@ static void remove_primes(uint32 index, uint32 last_index, sieve_t* s, const uin
             sieve_case_zero(7, 1, b, p, size, mult, sieve, word_count);
           goto reloop;
         }
-        s->multiplier[index] = mult;
+        s->multiplier[index] = (uint8) mult;
       }
       s->first_bit_index[index] = b - size;
     }

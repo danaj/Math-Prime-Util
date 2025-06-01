@@ -119,7 +119,6 @@ void prime_count_cache_destroy(void* cobj) {
 
 void* prime_count_cache_create(UV n) {
   pc_cache_t *cache;
-  uint32_t i, idx, cnt;
 
   if (n < 5)  n = 5;
 #if BITS_PER_WORD == 64
@@ -134,17 +133,16 @@ void* prime_count_cache_create(UV n) {
 
   /* Fill in small counts */
   {
-    uint16_t *counts;
-    uint32_t count_last_n   = (n <= LIM_SMALL) ? n : LIM_SMALL;
-    uint32_t count_last_idx = (count_last_n-1) >> 1;
+    uint32_t const count_last_n   = (n <= LIM_SMALL) ? n : LIM_SMALL;
+    uint32_t const count_last_idx = (count_last_n-1) >> 1;
+    uint32_t idx = 1;
+    uint16_t cnt = 1, *counts;
     New(0, counts, count_last_idx+1, uint16_t);
     counts[0] = 1;
-    idx = cnt = 1;
     START_DO_FOR_EACH_PRIME(3, count_last_n) {
       while (idx < ((p-1)>>1))  counts[idx++] = cnt;
       counts[idx++] = ++cnt;
     } END_DO_FOR_EACH_PRIME
-    MPUassert(cnt <= 65535, "small count overflow");
     while (idx <= count_last_idx)  counts[idx++] = cnt;
 
     cache->count = counts;
@@ -154,7 +152,7 @@ void* prime_count_cache_create(UV n) {
   /* Fill in bitmask and base counts */
   if (n > cache->last_count_n) {
     UV       *mask;
-    uint32_t *count;
+    uint32_t *count, i;
     uint32_t words = (n / (2*BITS_PER_WORD)) + 1;  /* 0-127=1, 128-255=2 */
     Newz(0, count, words, uint32_t);
     Newz(0,  mask, words, UV);
@@ -201,19 +199,18 @@ void* prime_count_cache_create_with_primes(const uint32_t *primes, uint32_t last
 
   /* Fill in small counts */
   {
-    uint16_t *counts;
-    uint32_t count_last_n   = (n <= LIM_SMALL) ? n : LIM_SMALL;
-    uint32_t count_last_idx = (count_last_n-1) >> 1;
+    uint32_t const count_last_n   = (n <= LIM_SMALL) ? n : LIM_SMALL;
+    uint32_t const count_last_idx = (count_last_n-1) >> 1;
+    uint32_t idx = 1;
+    uint16_t cnt = 1, *counts;
     New(0, counts, count_last_idx+1, uint16_t);
     counts[0] = 1;
-    idx = cnt = 1;
     for (i = 2;  i <= lastidx;  i++) {
       uint32_t p = primes[i];
       if (p > count_last_n) break;
       while (idx < ((p-1)>>1))  counts[idx++] = cnt;
       counts[idx++] = ++cnt;
     }
-    MPUassert(cnt <= 65535, "small count overflow");
     while (idx <= count_last_idx)  counts[idx++] = cnt;
 
     cache->count = counts;
