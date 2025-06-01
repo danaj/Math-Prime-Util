@@ -13,7 +13,7 @@
 #include "real.h"
 
 static INLINE UV T(UV n) {
-  return (n*(n+1)) >> 1;
+  return (n+1)/2 * (n|1);
 }
 static UV fprod(UV n, UV r) {
   UV P, fac[MPU_MAX_FACTORS+1];

@@ -269,7 +269,7 @@ UV sumpowerful(UV n, UV k)
   if (k < 21 && n > maxpow[k]) return 0;
 #endif
 
-  if (k == 1)  return (n & 1)  ?  n*((n+1)>>1)  :  (n>>1)*(n+1);
+  if (k == 1)  return (n+1)/2 * (n|1);
 
   lim = rootint(n, k+1);
   isf = range_issquarefree(0, lim);
