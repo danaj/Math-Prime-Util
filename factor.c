@@ -1443,7 +1443,7 @@ unsigned char* range_nfactor_sieve(UV lo, UV hi, bool with_multiplicity) {
     N[i-lo] = 1;
     if (!(i&1) && i >= 2) {
       UV k = i >> 1;
-      int nz = 1;
+      unsigned char nz = 1;
       while (!(k&1)) { nz++; k >>= 1; }
       nf[i-lo] = (with_multiplicity) ? nz : 1;
       N[i-lo] = UVCONST(1) << nz;

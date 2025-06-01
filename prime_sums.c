@@ -91,9 +91,9 @@ bool sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
   New(0, V, r2+1, UV);
   New(0, S, r2+1, uint128_t);
   for (k = 0; k <= r2; k++) {
-    uint128_t v = (k <= r)  ?  k  :  n/(r2-k+1);
+    UV v = (k <= r)  ?  k  :  n/(r2-k+1);
     V[k] = v;
-    S[k] = (v*(v+1))/2 - 1;
+    S[k] = ((uint128_t)v+1)/2 * (v|1) - 1;   /* (v*(v+1))/2-1 */
   }
 
   for (p = 2; p <= r; p++) {

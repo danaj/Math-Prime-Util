@@ -295,7 +295,7 @@ signed char* range_moebius(UV lo, UV hi)
   /* For small ranges, do it by hand */
   if (hi < 100 || count <= 10 || (hi > (1UL<<25) && count < icbrt(hi)/4)) {
     for (i = 0; i < count; i++)
-      mu[i] = moebius(lo+i);
+      mu[i] = (signed char)moebius(lo+i);
     return mu;
   }
 
@@ -312,7 +312,7 @@ signed char* range_moebius(UV lo, UV hi)
       mu[i-lo] = 0x80;
   } END_DO_FOR_EACH_PRIME
 
-  logp = log2floor(lo);
+  logp = (unsigned char)log2floor(lo);
   nextlogi = (UVCONST(2) << logp) - lo;
   for (i = 0; i < count; i++) {
     unsigned char a = mu[i];
@@ -456,7 +456,7 @@ static short* _prep_rmertens(UV n, UV* pmaxmu, UV* phsize) {
   /* At large sizes, start clamping memory use. */
   if (maxmu > 100000000UL) {
     /* Exponential decay, reduce by factor of 1 to 8 */
-    float rfactor = 1.0 + 7.0 * (1.0 - exp(-(float)maxmu/8000000000.0));
+    double rfactor = 1.0 + 7.0 * (1.0 - exp(-(double)maxmu/8000000000.0));
     maxmu /= rfactor;
     hsize = next_prime(hsize * 16);  /* Increase the result cache size */
   }

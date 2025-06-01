@@ -845,7 +845,7 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
       memset(nf, 0, range);
       for (i = lo; i <= hi; i++) {
         if (!(i&1) && i >= 2) {
-          unsigned char nz = ctz(i);
+          const unsigned char nz = (unsigned char)ctz(i);
           nf[i-lo] = nz;
           N[i-lo] = UVCONST(1) << nz;
         } else

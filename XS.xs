@@ -169,8 +169,8 @@ typedef struct {
   HV* MPUPP;
   SV* const_int[CINTS+1];   /* -1, 0, 1, ..., 99 */
   void* randcxt;            /* per-thread csprng context */
-  uint16_t forcount;
-  char     forexit;
+  uint16_t forcount;        /* Track nesting level of for loops */
+  char     forexit;         /* Boolean whether we should exit early */
 } my_cxt_t;
 
 START_MY_CXT
@@ -654,6 +654,7 @@ static void free_set_lookup_cache(set_data_t *d) {
   Safefree(d->midval);
   Safefree(d->midindex);
 }
+#define _TRIVAL(x) (((x) > 0) - ((x) < 0))  /* neg => -1, pos => 1, 0 => 0 */
 #define _SC_GET_VALUE(statvar, var, arr, i) \
   statvar = _validate_and_set(&var, aTHX_ arr[i], IFLAG_ANY); \
   if (statvar == 0) return -1;
@@ -665,7 +666,7 @@ static void free_set_lookup_cache(set_data_t *d) {
       statvar = cache->midstatus[imod_];  var = cache->midval[imod_]; \
     } else { \
       _SC_GET_VALUE(statvar, var, arr, i) \
-      if (cache) { cache->midstatus[imod_] = statvar;  cache->midval[imod_] = var; cache->midindex[imod_] = i; } \
+      if (cache) { cache->midstatus[imod_] = _TRIVAL(statvar);  cache->midval[imod_] = var; cache->midindex[imod_] = i; } \
     } \
   } while (0)
 
@@ -675,13 +676,13 @@ static int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, int loindex, int hi
     *lostatus = cache->lostatus;  *loval = cache->loval;
   } else {
     _SC_GET_VALUE(*lostatus, *loval, avarr, loindex);
-    if (cache) { cache->lostatus = *lostatus;  cache->loval = *loval; }
+    if (cache) { cache->lostatus = _TRIVAL(*lostatus);  cache->loval = *loval; }
   }
   if (cache != 0 && cache->histatus != 0) {
     *histatus = cache->histatus;  *hival = cache->hival;
   } else {
     _SC_GET_VALUE(*histatus, *hival, avarr, hiindex);
-    if (cache) { cache->histatus = *histatus;  cache->hival = *hival; }
+    if (cache) { cache->histatus = _TRIVAL(*histatus);  cache->hival = *hival; }
   }
   return 1;
 }
@@ -1165,7 +1166,7 @@ prime_precalc(IN UV n)
       case 1:  _XS_set_verbose(n);  break;
       case 2:  _XS_set_callgmp(n);  break;
       case 3:
-      default: { dMY_CXT; MY_CXT.forcount--; MY_CXT.forexit = n; } break;
+      default: { dMY_CXT; MY_CXT.forcount--; MY_CXT.forexit = n>0; } break;
     }
     return; /* skip implicit PUTBACK */
 
