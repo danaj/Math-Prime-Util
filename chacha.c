@@ -1,6 +1,9 @@
 /*
  * The ChaCha(20) CSPRNG interface.
  * New simple core, 10 Apr 2017, Dana Jacobsen
+ * Follows RFC 7539, including test vectors.
+ *
+ * TODO: update to RFC 8439 (June 2018), especially the 32/96 counter/nonce.
  */
 
 /* Some benchmarks, repeatedly calling random_bytes(32768).  Time is
@@ -93,9 +96,8 @@ static INLINE uint32_t rotl32(uint32_t x, const unsigned int n) {
   c += d;  b = rotl32(b ^ c,  7); \
 
 /* Produces buffer from state, does not change state */
-static void chacha_core(unsigned char* buf, const chacha_context_t *ctx) {
+static void chacha_core(unsigned char buf[64], const uint32_t s[16]) {
   uint32_t i, x[16];
-  const uint32_t *s = ctx->state;
 
   memcpy(x, s, 16*sizeof(uint32_t));
 
@@ -122,7 +124,7 @@ static void chacha_core(unsigned char* buf, const chacha_context_t *ctx) {
 }
 
 static INLINE void increment_chacha_counter(chacha_context_t *ctx) {
-  /* Arguably we should continue this into their nonce */
+  /* Use the original 64-bit counter. */
   if (++ctx->state[12] == 0)
     ctx->state[13]++;
 }
@@ -130,27 +132,26 @@ static INLINE void increment_chacha_counter(chacha_context_t *ctx) {
 static uint32_t chacha_keystream(unsigned char* buf, uint32_t n, chacha_context_t *ctx) {
   uint32_t r = n;
   while (r >= CORESZ) {
-    chacha_core(buf, ctx);
+    chacha_core(buf, ctx->state);
     increment_chacha_counter(ctx);
     buf += CORESZ;
     r -= CORESZ;
   }
   if (r > 0) {
     unsigned char sbuf[CORESZ];
-    chacha_core(sbuf, ctx);
+    chacha_core(sbuf, ctx->state);
     increment_chacha_counter(ctx);
     memcpy(buf, sbuf, r);
   }
   return n;
 }
 
-/* The method for refilling our buffer.
- * This includes reseeding policy.
+/* The method for refilling our buffer.  This includes reseeding policy.
  */
 static uint32_t  _refill_buffer(chacha_context_t *ctx) {
 #if RESEED_ON_REFILL
   ctx->have = chacha_keystream(ctx->buf, BUFSZ, ctx);
-  init_context(ctx, ctx->buf, 0);
+  init_context(ctx, ctx->buf, FALSE);
   memset(ctx->buf, 0, KEYSZ);
   ctx->have = BUFSZ - KEYSZ;
 #else
@@ -164,12 +165,12 @@ static uint32_t  _refill_buffer(chacha_context_t *ctx) {
 /*   Test vectors                                                            */
 /*****************************************************************************/
 #if RUN_INTERNAL_TESTS
-static int _test_qr(void) {
+static bool _test_qr(void) {
   uint32_t i;
-  uint32_t tv1i[4] = {0x11111111, 0x01020304, 0x9b8d6f43, 0x01234567};
-  uint32_t tv1o[4] = {0xea2a92f4, 0xcb1cf8ce, 0x4581472e, 0x5881c4bb};
-  uint32_t tv2i[4] = {0x516461b1, 0x2a5f714c, 0x53372767, 0x3d631689};
-  uint32_t tv2o[4] = {0xbdb886dc, 0xcfacafd2, 0xe46bea80, 0xccc07c79};
+  uint32_t       tv1i[4] = {0x11111111, 0x01020304, 0x9b8d6f43, 0x01234567};
+  const uint32_t tv1o[4] = {0xea2a92f4, 0xcb1cf8ce, 0x4581472e, 0x5881c4bb};
+  uint32_t       tv2i[4] = {0x516461b1, 0x2a5f714c, 0x53372767, 0x3d631689};
+  const uint32_t tv2o[4] = {0xbdb886dc, 0xcfacafd2, 0xe46bea80, 0xccc07c79};
   if (CHACHA_ROUNDS != 20) return 0;
   QUARTERROUND(tv1i[0],tv1i[1],tv1i[2],tv1i[3]);
   QUARTERROUND(tv2i[0],tv2i[1],tv2i[2],tv2i[3]);
@@ -177,9 +178,9 @@ static int _test_qr(void) {
     if (tv1i[i] != tv1o[i]) croak("QR test 2.1.1 fail %u\n",i);
     if (tv2i[i] != tv2o[i]) croak("QR test 2.2.1 fail %u\n",i);
   }
-  return 1;
+  return TRUE;
 }
-static int _test_core(void) {
+static bool _test_core(void) {
   uint32_t test, i;
   unsigned char keys[6][40] = { {0},{0},{0},{0},{0} };
   char ebuf[6][129] = {
@@ -204,11 +205,11 @@ static int _test_core(void) {
     char* expout = ebuf[test];
     char got[129];
     chacha_context_t ctx;
-    init_context(&ctx, key, 1);
+    init_context(&ctx, key, TRUE);
     if (test == 5) { ctx.state[12]=1; ctx.state[13]=0x09000000; }
-    chacha_core(ctx.buf, &ctx);
+    chacha_core(ctx.buf, ctx.state);
     if (test == 0) {
-      for (i = 5; i < 16; i++)
+      for (i = 4; i < 16; i++)
         if (ctx.state[i] != 0)
           croak("core modified state");
     }
@@ -218,12 +219,12 @@ static int _test_core(void) {
     if (memcmp(got, expout, 128))
       croak("fail core test vector %u:\n  exp %s\n  got %s\n",test,expout,got);
   }
-  return 1;
+  return TRUE;
 }
-static int _test_keystream(void) {
+static bool _test_keystream(void) {
   uint32_t test, i;
   unsigned char keys[2][40] = { {0},{0} };
-  char ebuf[2][1024+1] = {
+  static const char ebuf[2][1024+1] = {
    "f798a189f195e66982105ffb640bb7757f579da31602fc93ec01ac56f85ac3c134a4547b733b46413042c9440049176905d3be59ea1c53f15916155c2be8241a38008b9a26bc35941e2444177c8ade6689de95264986d95889fb60e84629c9bd9a5acb1cc118be563eb9b3a4a472f82e09a7e778492b562ef7130e88dfe031c79db9d4f7c7a899151b9a475032b63fc385245fe054e3dd5a97a5f576fe064025d3ce042c566ab2c507b138db853e3d6959660996546cc9c4a6eafdc777c040d70eaf46f76dad3979e5c5360c3317166a1c894c94a371876a94df7628fe4eaaf2ccb27d5aaae0ad7ad0f9d4b6ad3b54098746d4524d38407a6deb3ab78fab78c9",
    "af051e40bba0354981329a806a140eafd258a22a6dcb4bb9f6569cb3efe2deaf837bd87ca20b5ba12081a306af0eb35c41a239d20dfc74c81771560d9c9c1e4b224f51f3401bd9e12fde276fb8631ded8c131f823d2c06e27e4fcaec9ef3cf788a3b0aa372600a92b57974cded2b9334794cba40c63e34cdea212c4cf07d41b769a6749f3f630f4122cafe28ec4dc47e26d4346d70b98c73f3e9c53ac40c5945398b6eda1a832c89c167eacd901d7e2bf363",
   };
@@ -232,18 +233,18 @@ static int _test_keystream(void) {
   for (i = 0; i < 32; i++) keys[1][ 0+i] = i;
   keys[1][35] = 0x4a;
 
-  if (CHACHA_ROUNDS != 20) return 0;
+  if (CHACHA_ROUNDS != 20) return FALSE;
 
   for (test = 0; test < 2; test++) {
     unsigned char* key = keys[test];
-    char* expout = ebuf[test];
+    const char* expout = ebuf[test];
     unsigned char kbuf[512];
     char got[1024+1];
     uint32_t gen, len = strlen(expout) / 2;
     chacha_context_t ctx;
 
     if (len > 512) croak("Test vector too large");
-    init_context(&ctx, key, 1);
+    init_context(&ctx, key, TRUE);
     gen = chacha_keystream(kbuf, len, &ctx);
     if (gen < len) croak("short keystream");
     /* Check state block counter */
@@ -253,16 +254,16 @@ static int _test_keystream(void) {
     if (memcmp(got, expout, 2*len))
       croak("fail keystream test vector %u:\n  exp %s\n  got %s\n",test,expout,got);
   }
-  return 1;
+  return TRUE;
 }
 
 bool chacha_selftest(void) {
   if (_test_qr() && _test_core() && _test_keystream())
-    return 1;
-  return 0;
+    return TRUE;
+  return FALSE;
 }
 #else
-int chacha_selftest(void) { return 1; }
+int chacha_selftest(void) { return TRUE; }
 #endif
 
 /*****************************************************************************/
@@ -272,7 +273,7 @@ int chacha_selftest(void) { return 1; }
 void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, bool good)
 {
   if (bytes < 40) croak("Not enough seed bytes given to ChaCha\n");
-  init_context(cs, data, 1);
+  init_context(cs, data, TRUE);
   cs->goodseed = good;
 }
 void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data)
@@ -304,7 +305,7 @@ UV chacha_irand64(chacha_context_t *cs)
 {
   uint32_t a = chacha_irand32(cs);
   uint32_t b = chacha_irand32(cs);
-  return (((UV)a) << 32) | b;
+  return (UV)a << 32 | b;
 }
 #else
 UV chacha_irand64(chacha_context_t *cs) { return chacha_irand32(cs); }
