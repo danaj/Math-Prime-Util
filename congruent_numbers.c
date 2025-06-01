@@ -16,6 +16,9 @@
 #include "rootmod.h"
 
 #define SWAP4(x,y) { UV t; t=x; x=y; y=t;  t=x##8; x##8=y##8; y##8=t; }
+#define KPQ kronecker_uu(p,q)
+#define KPR kronecker_uu(p,r)
+#define KQR kronecker_uu(q,r)
 
 /* is_congruent_number(n).  OEIS A003273. */
 bool is_congruent_number(UV n) {
@@ -90,11 +93,11 @@ bool is_congruent_number(UV n) {
 #if 0  /* Monsky, all special cases of ACK */
     if (p8 == 3 && q8 == 7) return 1;
     if (p8 == 3 && q8 == 5) return 1;
-    if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 1;
-    if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
+    if (p8 == 1 && q8 == 5 && KPQ == -1) return 1;
+    if (p8 == 1 && q8 == 7 && KPQ == -1) return 1;
 #endif
-    if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 0;
-    if (p8 == 5 && q8 == 7 && kronecker_uu(p,q) == -1) return 0;
+    if (p8 == 1 && q8 == 3 && KPQ == -1) return 0;
+    if (p8 == 5 && q8 == 7 && KPQ == -1) return 0;
 
   } else if (!(n&1) && nfactors == 3) {  /* n = 2pq */
 
@@ -105,17 +108,18 @@ bool is_congruent_number(UV n) {
 #if 0  /* Monsky, all special cases of ACK */
     if (p8 == 3 && q8 == 5) return 1;
     if (p8 == 5 && q8 == 7) return 1;
-    if (p8 == 1 && q8 == 7 && kronecker_uu(p,q) == -1) return 1;
-    if (p8 == 1 && q8 == 3 && kronecker_uu(p,q) == -1) return 1;
+    if (p8 == 1 && q8 == 7 && KPQ == -1) return 1;
+    if (p8 == 1 && q8 == 3 && KPQ == -1) return 1;
 #endif
-    if (p8 == 1 && q8 == 5 && kronecker_uu(p,q) == -1) return 0;
-    if (p8 == 3 && q8 == 7 && kronecker_uu(p,q) == -1) return 0;
+    if (p8 == 1 && q8 == 5 && KPQ == -1) return 0;
+    if (p8 == 3 && q8 == 7 && KPQ == -1) return 0;
 
   } else if ( (n&1) && nfactors == 3) {  /* n = pqr */
     UV p=fac[0], q=fac[1], r=fac[2], p8=fac[0]%8, q8=fac[1]%8, r8=fac[2]%8;
+
     if (p8 == 3 && q8 == 1) SWAP4(p,q);
     if (q8 == 1 && r8 == 3) SWAP4(q,r);
-    if (p8 == 1 && q8 == 3 && r8 == 1 && kronecker_uu(p,q) == -1 && kronecker_uu(q,r) == -1) return 0;
+    if (p8 == 1 && q8 == 3 && r8 == 1 && KPQ == -1 && KQR == -1) return 0;
 
     if (q8 < p8) SWAP4(p,q);
     if (r8 < q8) SWAP4(q,r);
@@ -123,16 +127,16 @@ bool is_congruent_number(UV n) {
     /* Serf 1991 */
     if (p8 == 3 && q8 == 3 && r8 == 5) return 1;
     if (p8 == 3 && q8 == 3 && r8 == 7) return 1;
-    if (p8 == 7 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) == kronecker_uu(q,r)) return 1;
-    if (p8 == 1 && q8 == 3 && r8 == 3 && kronecker_uu(p,q) == -kronecker_uu(p,r)) return 0;
-    if (p8 == 3 && q8 == 5 && r8 == 7 && kronecker_uu(q,r) == -1) return 0;
-    if (p8 == 3 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) && kronecker_uu(p,q) == kronecker_uu(q,r)) return 0;
+    if (p8 == 7 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 1;
+    if (p8 == 1 && q8 == 3 && r8 == 3 && KPQ == -KPR) return 0;
+    if (p8 == 3 && q8 == 5 && r8 == 7 && KQR == -1) return 0;
+    if (p8 == 3 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 0;
 
   } else if (!(n&1) && nfactors == 4) {  /* n = 2pqr */
     UV p=fac[1], q=fac[2], r=fac[3], p8=fac[1]%8, q8=fac[2]%8, r8=fac[3]%8;
     if (p8 == 5 && q8 == 1) SWAP4(p,q);
     if (q8 == 1 && r8 == 5) SWAP4(q,r);
-    if (p8 == 1 && q8 == 5 && r8 == 1 && kronecker_uu(p,q) == -1 && kronecker_uu(q,r) == -1) return 0;
+    if (p8 == 1 && q8 == 5 && r8 == 1 && KPQ == -1 && KQR == -1) return 0;
 
     if (q8 < p8) SWAP4(p,q);
     if (r8 < q8) SWAP4(q,r);
@@ -141,12 +145,12 @@ bool is_congruent_number(UV n) {
     if (p8 == 3 && q8 == 3 && r8 == 7) return 1;
     if (p8 == 3 && q8 == 5 && r8 == 5) return 1;
     if (p8 == 5 && q8 == 5 && r8 == 7) return 1;
-    if (p8 == 7 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) && kronecker_uu(p,q) == kronecker_uu(q,r)) return 1;
+    if (p8 == 7 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 1;
     /* Lagrange 1974 */
-    if (p8 == 1 && q8 == 3 && r8 == 3 && kronecker_uu(p,q) == -kronecker_uu(p,r)) return 0;
-    if (p8 == 1 && q8 == 5 && r8 == 5 && kronecker_uu(p,q) == -kronecker_uu(p,r)) return 0;
-    if (p8 == 3 && q8 == 5 && r8 == 7 && kronecker_uu(p,r) == -kronecker_uu(q,r)) return 0;
-    if (p8 == 5 && q8 == 7 && r8 == 7 && kronecker_uu(p,q) == -kronecker_uu(p,r) && kronecker_uu(p,q) == kronecker_uu(q,r)) return 0;
+    if (p8 == 1 && q8 == 3 && r8 == 3 && KPQ == -KPR) return 0;
+    if (p8 == 1 && q8 == 5 && r8 == 5 && KPQ == -KPR) return 0;
+    if (p8 == 3 && q8 == 5 && r8 == 7 && KPR == -KQR) return 0;
+    if (p8 == 5 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 0;
 
   }
 
@@ -204,8 +208,7 @@ bool is_congruent_number(UV n) {
 
     /* Cheng / Guo 2018 "The non-congruent numbers via Monsky’s formula" */
     if (1) {
-      int quad = 1;
-      int mod8[MPU_MAX_FACTORS+1];
+      int quad, mod8[MPU_MAX_FACTORS+1];
       int g[8] = {0};  /* The number in each mod */
       UV P[MPU_MAX_FACTORS+1], Q[MPU_MAX_FACTORS+1], R[MPU_MAX_FACTORS+1], S[MPU_MAX_FACTORS+1];
       int eps = (n&1) ? 1 : 2;
@@ -217,83 +220,76 @@ bool is_congruent_number(UV n) {
         if (m == 5) R[ g[m]++ ] = oddfac[i];
         if (m == 7) S[ g[m]++ ] = oddfac[i];
       }
+      quad = 1;
       for (i = 2; quad && i <= g[1]; i++)
         for (j = 1; j < i; j++)
-          if (kronecker_uu(P[j-1],P[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(P[j-1],P[i-1]) == -1;
       for (i = 2; quad && i <= g[3]; i++)
         for (j = 1; j < i; j++)
-          if (kronecker_uu(Q[j-1],Q[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(Q[j-1],Q[i-1]) == -1;
       for (i = 2; quad && i <= g[5]; i++)
         for (j = 1; j < i; j++)
-          if (kronecker_uu(R[j-1],R[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(R[j-1],R[i-1]) == -1;
       for (i = 2; quad && i <= g[7]; i++)
         for (j = 1; j < i; j++)
-          if (kronecker_uu(S[j-1],S[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(S[j-1],S[i-1]) == -1;
       for (i = 1; quad && i <= g[3]; i++)
         for (j = 1; j <= g[1]; j++)
-          if (kronecker_uu(P[j-1],Q[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(P[j-1],Q[i-1]) == -1;
       for (i = 1; quad && i <= g[5]; i++)
         for (j = 1; j <= g[1]; j++)
-          if (kronecker_uu(P[j-1],R[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(P[j-1],R[i-1]) == -1;
       for (i = 1; quad && i <= g[7]; i++)
         for (j = 1; j <= g[1]; j++)
-          if (kronecker_uu(P[j-1],S[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(P[j-1],S[i-1]) == -1;
       for (i = 1; quad && i <= g[5]; i++)
         for (j = 1; j <= g[3]; j++)
-          if (kronecker_uu(Q[j-1],R[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(Q[j-1],R[i-1]) == -1;
       for (i = 1; quad && i <= g[7]; i++)
         for (j = 1; j <= g[3]; j++)
-          if (kronecker_uu(Q[j-1],S[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(Q[j-1],S[i-1]) == -1;
       for (i = 1; quad && i <= g[7]; i++)
         for (j = 1; j <= g[5]; j++)
-          if (kronecker_uu(R[j-1],S[i-1]) != -1)
-            quad = 0;
+          quad &= kronecker_uu(R[j-1],S[i-1]) == -1;
       if (quad) {
-        int cheng = 0;
 #if 1  /* Theorem 1.1 */
-        if (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 2 && (g[3] % 2) == 0) cheng = 1;
-        if (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 1) cheng = 1;
-        if (g[1] == 0 && g[3] == 0 && g[7] == 0 && eps == 2 && (g[5] % 2) == 0) cheng = 1;
+        if ( (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 2 && g[3] % 2 == 0)
+          || (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 1)
+          || (g[1] == 0 && g[3] == 0 && g[7] == 0 && eps == 2 && g[5] % 2 == 0))
+          return 0;
 #endif
 #if 1  /* Theorem 1.2 */
-        if (g[1] == 0 && g[7] == 0 && eps == 1 && (g[3] % 2) == 1 && g[5] >= 1 && (g[5] % 2) == 0) cheng = 1;
-        if (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] >= 1 && (g[3] % 2) == 0 && (g[5] % 2) == 0) cheng = 1;
-        if (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] == 1 && (g[3] % 2) == 0) cheng = 1;
-        if (g[1] == 0 && g[5] == 0 && eps == 2 && g[7] == 1 && (g[3] % 2) == 1) cheng = 1;
-        if (g[1] == 0 && g[3] == 0 && eps == 1 && g[5] == 1 && g[7] == 1) cheng = 1;
-        if (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] > 1 && (g[1] % 2) == 0 && (g[3] % 2) == 1) cheng = 1;
-        if (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] == 1 && (g[3] % 2) == 1) cheng = 1;
-        if (g[3] == 0 && g[7] == 0 && eps == 2 && g[1] == 1 && (g[5] % 2) == 1) cheng = 1;
-        if (g[3] == 0 && g[7] == 0 && eps == 2 && g[5] == 1 && g[1] > 1 && (g[1] % 2) == 0) cheng = 1;
+        if ( (g[1] == 0 && g[7] == 0 && eps == 1 && (g[3] % 2) == 1 && g[5] >= 1 && g[5] % 2 == 0)
+          || (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] >= 1 && g[3] % 2 == 0 && g[5] % 2 == 0)
+          || (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] == 1 && g[3] % 2 == 0)
+          || (g[1] == 0 && g[5] == 0 && eps == 2 && g[7] == 1 && g[3] % 2 == 1)
+          || (g[1] == 0 && g[3] == 0 && eps == 1 && g[5] == 1 && g[7] == 1)
+          || (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] > 1 && g[1] % 2 == 0 && g[3] % 2 == 1)
+          || (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] == 1 && g[3] % 2 == 1)
+          || (g[3] == 0 && g[7] == 0 && eps == 2 && g[1] == 1 && g[5] % 2 == 1)
+          || (g[3] == 0 && g[7] == 0 && eps == 2 && g[5] == 1 && g[1] > 1 && g[1] % 2 == 0) )
+          return 0;
 #endif
 #if 1  /* Theorem 1.3 */
-        if (g[1] == 0 && eps == 1 && g[5] == 1 && g[7] == 1 && g[3] >= 1) cheng = 1;
-        if (g[1] == 0 && eps == 1 && g[5] >= 2 && g[7] == 1 && (g[3] % 2) == 1 && (g[5] % 2) == 1) cheng = 1;
-        if (g[1] == 0 && eps == 2 && g[5] >= 1 && g[7] == 1 && (g[3] % 2) == 1 && (g[5] % 2) == 0) cheng = 1;
-        if (g[3] == 0 && eps == 1 && g[7] == 1 && (g[1] % 2) == 1 && (g[5] % 2) == 1) cheng = 1;
+        if ( (g[1] == 0 && eps == 1 && g[5] == 1 && g[7] == 1 && g[3] >= 1)
+          || (g[1] == 0 && eps == 1 && g[5] >= 2 && g[7] == 1 && g[3] % 2 == 1 && g[5] % 2 == 1)
+          || (g[1] == 0 && eps == 2 && g[5] >= 1 && g[7] == 1 && g[3] % 2 == 1 && g[5] % 2 == 0)
+          || (g[3] == 0 && eps == 1 && g[7] == 1 && g[1] % 2 == 1 && g[5] % 2 == 1)
         /* No examples 1.3.4 */
-        if (g[3] == 0 && eps == 2 && g[5] == 1 && g[7] == 1 && (g[1] % 2) == 1) cheng = 1;
+          || (g[3] == 0 && eps == 2 && g[5] == 1 && g[7] == 1 && g[1] % 2 == 1)
         /* No examples 1.3.5 */
-        if (g[5] == 0 && eps == 1 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && (g[1] % 2) == 0 && (g[3] % 2) == 0) cheng = 1;
-        if (g[5] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && (g[1] % 2) == 1 && (g[3] % 2) == 1) cheng = 1;
-        if (g[7] == 0 && eps == 1 && g[1] >= 1 && g[5] >= 1 && (g[1] % 2) == 0 && (g[5] % 2) == 0 && (g[3] % 2) == 1) cheng = 1;
-        if (g[7] == 0 && eps == 2 && g[1] == 1 && g[3] >= 1 && (g[3] % 2) == 0 && (g[5] % 2) == 1) cheng = 1;
-        if (g[7] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[5] == 1 && (g[1] % 2) == 0 && (g[3] % 2) == 0) cheng = 1;
+          || (g[5] == 0 && eps == 1 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 0 && g[3] % 2 == 0)
+          || (g[5] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 1 && g[3] % 2 == 1)
+          || (g[7] == 0 && eps == 1 && g[1] >= 1 && g[5] >= 1 && g[1] % 2 == 0 && g[5] % 2 == 0 && g[3] % 2 == 1)
+          || (g[7] == 0 && eps == 2 && g[1] == 1 && g[3] >= 1 && g[3] % 2 == 0 && g[5] % 2 == 1)
+          || (g[7] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[5] == 1 && g[1] % 2 == 0 && g[3] % 2 == 0) )
+          return 0;
 #endif
 #if 1  /* Theorem 1.4 */
-        if (eps == 1 && g[1] >= 1 && g[7] == 1 && (g[1] % 2) == 0 && (g[3] % 2) == 1 && (g[5] % 2) == 1) cheng = 1;
-        if (eps == 1 && g[3] >= 1 && g[7] == 1 && (g[1] % 2) == 1 && (g[5] % 2) == 1 && (g[3] % 2) == 0) cheng = 1;
+        if ( (eps == 1 && g[1] >= 1 && g[7] == 1 && g[1] % 2 == 0 && g[3] % 2 == 1 && g[5] % 2 == 1)
+          || (eps == 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 1 && g[5] % 2 == 1 && g[3] % 2 == 0) )
+          return 0;
 #endif
-        if (cheng) return 0;
       }
     }
   }
