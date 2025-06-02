@@ -56,11 +56,18 @@ bool is_congruent_number(UV n) {
    * Cheng 2019   https://www.sciencedirect.com/science/article/pii/S0022314X18302774
    */
 
+  /* All of these tests seem complicated and tedious.  The goal is to avoid
+   * the Tunnell counting loop at the end, if at all possible.  While that
+   * loop is fast and simple compared to the method of descent, it is still
+   * very, very time consuming for any reasonable size input.  So we make
+   * an effort to identify known families.
+   */
+
   if (nfactors == 1) {                   /* n = p */
 
     UV r, p = n;
     if (m8 == 3)  return 0;
-    if (m8 == 5 || m8 == 7)  return 1;  /* not seen here, handled earlier */
+    if (m8 == 5 || m8 == 7)  return 1;  /* we already returned 1 earlier */
 
     /* https://arxiv.org/pdf/2105.01450.pdf, Prop 2.1.2 */
     if (sqrtmodp(&r, 2, p) && kronecker_uu(1+r, p) == -1)
@@ -82,7 +89,7 @@ bool is_congruent_number(UV n) {
   } else if (!(n&1) && nfactors == 2) {  /* n = 2p */
 
     UV p = n >> 1, p8 = p % 8;
-    if (p8 == 3 || p8 == 7)     return 1;  /* we don't see these here */
+    if (p8 == 3 || p8 == 7)     return 1;  /* we already returned 1 earlier */
     if (p8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
 
   } else if ( (n&1) && nfactors == 2) {  /* n = pq */
@@ -90,7 +97,7 @@ bool is_congruent_number(UV n) {
     UV p = fac[0], q = fac[1],  p8 = p % 8, q8 = q % 8;
     if (p8 > q8) SWAP4(p,q);
     if (p8 == 3 && q8 == 3) return 0;
-#if 0  /* Monsky, all special cases of ACK */
+#if 0  /* Monsky, all produce n mod 8 = 5 or 7: we already returned 1 */
     if (p8 == 3 && q8 == 7) return 1;
     if (p8 == 3 && q8 == 5) return 1;
     if (p8 == 1 && q8 == 5 && KPQ == -1) return 1;
@@ -105,7 +112,7 @@ bool is_congruent_number(UV n) {
     if (p8 > q8) SWAP4(p,q);
     if (p8 == 5 && q8 == 5) return 0;
     if (p8 == 3 && q8 == 3) return 0; /* Lagrange 1974 */
-#if 0  /* Monsky, all special cases of ACK */
+#if 0  /* Monsky, all produce n mod 8 = 6: we already returned 1 */
     if (p8 == 3 && q8 == 5) return 1;
     if (p8 == 5 && q8 == 7) return 1;
     if (p8 == 1 && q8 == 7 && KPQ == -1) return 1;
@@ -124,10 +131,12 @@ bool is_congruent_number(UV n) {
     if (q8 < p8) SWAP4(p,q);
     if (r8 < q8) SWAP4(q,r);
     if (q8 < p8) SWAP4(p,q);
-    /* Serf 1991 */
+#if 0 /* Serf 1991, all produce n mod 8 = 5 or 7: we already returned 1 */
     if (p8 == 3 && q8 == 3 && r8 == 5) return 1;
     if (p8 == 3 && q8 == 3 && r8 == 7) return 1;
     if (p8 == 7 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 1;
+#endif
+    /* Lagrange 1974 */
     if (p8 == 1 && q8 == 3 && r8 == 3 && KPQ == -KPR) return 0;
     if (p8 == 3 && q8 == 5 && r8 == 7 && KQR == -1) return 0;
     if (p8 == 3 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 0;
@@ -141,11 +150,12 @@ bool is_congruent_number(UV n) {
     if (q8 < p8) SWAP4(p,q);
     if (r8 < q8) SWAP4(q,r);
     if (q8 < p8) SWAP4(p,q);
-    /* Serf 1991 */
+#if 0 /* Serf 1991, all produce n mod 8 = 6: we already returned 1 */
     if (p8 == 3 && q8 == 3 && r8 == 7) return 1;
     if (p8 == 3 && q8 == 5 && r8 == 5) return 1;
     if (p8 == 5 && q8 == 5 && r8 == 7) return 1;
     if (p8 == 7 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 1;
+#endif
     /* Lagrange 1974 */
     if (p8 == 1 && q8 == 3 && r8 == 3 && KPQ == -KPR) return 0;
     if (p8 == 1 && q8 == 5 && r8 == 5 && KPQ == -KPR) return 0;
@@ -155,8 +165,8 @@ bool is_congruent_number(UV n) {
   }
 
   {
-    int noddfactors = (n&1)  ?  nfactors  :  nfactors-1;
-    UV* oddfac      = (n&1)  ?  fac       :  fac+1;
+    const int noddfactors  = (n&1)  ?  nfactors  :  nfactors-1;
+    const UV* oddfac       = (n&1)  ?  fac       :  fac+1;
     int k, l, allmod3 = 1;
 
     for (i = 1;  allmod3 && i <= noddfactors;  i++)
@@ -167,8 +177,7 @@ bool is_congruent_number(UV n) {
       int iskra = 1;
       for (i = 2; iskra && i <= noddfactors; i++)
         for (j = 1; iskra && j < i; j++)
-          if (kronecker_uu(oddfac[j-1],oddfac[i-1]) != -1)
-            iskra = 0;
+          iskra &= kronecker_uu(oddfac[j-1],oddfac[i-1]) == -1;
       if (iskra) return 0;
     }
 
@@ -179,11 +188,10 @@ bool is_congruent_number(UV n) {
         int reinholz = 1;
         for (i = 1; reinholz && i < nfactors; i++)
           for (j = 0; reinholz && j < i; j++)
-            if (j == 0 && i == m-1) {
-              if (kronecker_uu(fac[j],fac[i]) !=  1)  reinholz = 0;
-            } else {
-              if (kronecker_uu(fac[j],fac[i]) != -1)  reinholz = 0;
-            }
+            if (j == 0 && i == m-1)
+              reinholz &= kronecker_uu(fac[j],fac[i]) ==  1;
+            else
+              reinholz &= kronecker_uu(fac[j],fac[i]) == -1;
         if (reinholz) return 0;
       }
     }
@@ -196,11 +204,10 @@ bool is_congruent_number(UV n) {
           if (!((k - l) & 1)) continue;
           for (i = 2; cheng && i <= noddfactors; i++)
             for (j = 1; cheng && j < i; j++)
-              if (i == k && j == l) {
-                if (kronecker_uu(oddfac[j-1],oddfac[i-1]) != -1)  cheng = 0;
-              } else {
-                if (kronecker_uu(oddfac[j-1],oddfac[i-1]) !=  1)  cheng = 0;
-              }
+              if (i == k && j == l)
+                cheng &= kronecker_uu(oddfac[j-1],oddfac[i-1]) == -1;
+              else
+                cheng &= kronecker_uu(oddfac[j-1],oddfac[i-1]) ==  1;
           if (cheng) return 0;
         }
       }
@@ -208,13 +215,12 @@ bool is_congruent_number(UV n) {
 
     /* Cheng / Guo 2018 "The non-congruent numbers via Monsky’s formula" */
     if (1) {
-      int quad, mod8[MPU_MAX_FACTORS+1];
+      int quad;
       int g[8] = {0};  /* The number in each mod */
       UV P[MPU_MAX_FACTORS+1], Q[MPU_MAX_FACTORS+1], R[MPU_MAX_FACTORS+1], S[MPU_MAX_FACTORS+1];
-      int eps = (n&1) ? 1 : 2;
+      const int eps = (n&1) ? 1 : 2;
       for (i = 0; i < noddfactors; i++)  {
         UV m = oddfac[i] % 8;
-        mod8[i] = m;
         if (m == 1) P[ g[m]++ ] = oddfac[i];
         if (m == 3) Q[ g[m]++ ] = oddfac[i];
         if (m == 5) R[ g[m]++ ] = oddfac[i];
@@ -295,59 +301,41 @@ bool is_congruent_number(UV n) {
   }
 
   /* Das / Saikia 2020, extending Lagrange 1974 and Serf 1989 */
-  if ((n&1) && (nfactors == 4 || nfactors == 6 || nfactors == 8)) {
-    int mod8[10], npairs, epairs, das;
-    UV pf[5],qf[5], totmod[8] = {0};
+  if ((n&1) && nfactors % 2 == 0 && nfactors >= 4 && nfactors <= 20) {
+    int cntmod[8] = {0};
     for (i = 0; i < nfactors; i++)  {
-      UV m = fac[i] % 8;
-      mod8[i] = m;
-      totmod[m]++;
+      int m = fac[i] % 8;
+      cntmod[m]++;
     }
-    if (totmod[1] == totmod[3] && totmod[5] == totmod[7]) {
-      epairs = nfactors >> 1;
-      for (npairs = 0; npairs <epairs; npairs++) {
-        for (i = 0; i < nfactors; i++)
-          if (mod8[i] == 1)
-            break;
-        if (i < nfactors) {
-          for (j = 0; j < nfactors; j++)
-            if (mod8[j] == 3)
-              break;
-          if (j >= nfactors) break;
-          mod8[i] = mod8[j] = 0;
-          pf[npairs] = fac[i];
-          qf[npairs] = fac[j];
-          continue;
-        }
-        for (i = 0; i < nfactors; i++)
-          if (mod8[i] == 5)
-            break;
-        if (i < nfactors) {
-          for (j = 0; j < nfactors; j++)
-            if (mod8[j] == 7)
-              break;
-          if (j >= nfactors) break;
-          mod8[i] = mod8[j] = 0;
-          pf[npairs] = fac[i];
-          qf[npairs] = fac[j];
-          continue;
-        }
-        break;
+    if (cntmod[1] == cntmod[3] && cntmod[5] == cntmod[7]) {
+      /* We can separate all factors into (1,3) and (5,7) pairs. */
+      UV pf[10], qf[10];
+      int das, pindexbymod[8], qindexbymod[8];
+      const int npairs = nfactors >> 1;
+
+      pindexbymod[1] = qindexbymod[3] = 0;
+      pindexbymod[5] = qindexbymod[7] = cntmod[1];
+      for (i = 0; i < nfactors; i++) {
+        int m = fac[i] % 8;
+        if (m == 1 || m == 5) pf[pindexbymod[m]++] = fac[i];
+        else                  qf[qindexbymod[m]++] = fac[i];
       }
-      if (npairs == epairs) {
-        das = 1;
-        for (i = 0; i < npairs; i++) {
-          for (j = 0; j < npairs; j++) {
-            if (i  > j && kronecker_uu(qf[j],qf[i]) != -1) das = 0;
-            if (i != j && kronecker_uu(pf[i],pf[j]) !=  1) das = 0;
-            if (i != j && kronecker_uu(pf[i],qf[j]) !=  1) das = 0;
-            if (i == j && kronecker_uu(pf[i],qf[j]) != -1) das = 0;
-          }
+
+      /* See if these conditions hold for all pairs */
+      das = 1;
+      for (i = 0; i < npairs; i++)
+        das &= kronecker_uu(pf[i],qf[i]) == -1;
+      for (i = 0; das && i < npairs; i++) {
+        for (j = 0; j < npairs; j++) {
+          if (i  > j && kronecker_uu(qf[j],qf[i]) != -1) das = 0;
+          if (i != j && kronecker_uu(pf[i],pf[j]) !=  1) das = 0;
+          if (i != j && kronecker_uu(pf[i],qf[j]) !=  1) das = 0;
         }
-        if (das) return 0;
       }
+      if (das) return 0;
     }
   }
+
 
   /* Tunnell's method, counting integer solutions to ternary quadratics. */
   /* Assumes the weak BSD conjecture. */
