@@ -2,8 +2,9 @@
  * The ChaCha(20) CSPRNG interface.
  * New simple core, 10 Apr 2017, Dana Jacobsen
  * Follows RFC 7539, including test vectors.
+ * Uses 64-bit counter, 64-bit nonce.
  *
- * TODO: update to RFC 8439 (June 2018), especially the 32/96 counter/nonce.
+ * TODO: update to RFC 8439 (June 2018).
  */
 
 /* Some benchmarks, repeatedly calling random_bytes(32768).  Time is

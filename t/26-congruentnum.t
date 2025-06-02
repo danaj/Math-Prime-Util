@@ -14,7 +14,7 @@ my @cn1e6 = (1,5,6,7,9);
 
 plan tests => 0
             + 2
-            + 6
+            + 7
             ;
 
 # This covers all simple special cases in the code
@@ -23,7 +23,7 @@ is_deeply([grep { is_congruent_number($_) } 1..200], \@cn200, "congruent numbers
 is_deeply([grep { is_congruent_number(1000000+$_) } 1..10], \@cn1e6, "congruent numbers 10^6 + (1..10)");
 
 SKIP: {
-  skip "PP doesn't have all the NC families",6 unless $usexs;
+  skip "PP doesn't have all the NC families",7 unless $usexs;
   is_deeply([map { is_congruent_number($_) } (1419,7611,840873)],
             [1,1,0],
             "Selected values");
@@ -48,6 +48,15 @@ SKIP: {
   is_deeply([map { is_congruent_number($_) } @das],
             [map { 0 } @das],
             "Non-congruent examples from Das and Saikia 2020 section 5");
+
+  # 30849, 52865, 63609, .... 4 factors
+  # 432502235                 6 factors
+  # no 8/10/12 factor results below 5e11
+  # 311199575628433           8 factors  (probably not the smallest)
+  my @das2 = (qw/30849 52865 63609 432502235/);
+  is_deeply([map { is_congruent_number($_) } @das2],
+            [map { 0 } @das2],
+            "Non-congruent for Das and Saikia 2020");
 
   my @cheng2018 = (qw/595 714 795 1290 29715 36330 83130 106530 110922 218139 466570 505155 1529745 2679170 5322345 5676555 12063594 24649707/);
   is_deeply([map { is_congruent_number($_) } @cheng2018],

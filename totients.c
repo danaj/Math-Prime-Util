@@ -195,11 +195,11 @@ static UV _sumt(UV n, const UV *cdata, UV csize, sumt_hash_t thash) {
     hn = (hn+1 < thash.hsize) ? hn+1 : 0;
   }
 
-  sum = (n+1)/2 * (n|1);    /* (n*(n+1))/2 */
   s = isqrt(n);
   lim = n/(s+1);
 
-  sum -= (n - n/2) * _CACHED_SUMT(1);
+  sum = (n+1)/2 * (n|1);    /* (n*(n+1))/2 */
+  sum -= (n - n/2);
   for (k = 2; k <= lim; k++) {
     sum -= _CACHED_SUMT(n/k);
     sum -= ((n/k) - (n/(k+1))) * _CACHED_SUMT(k);
@@ -271,9 +271,10 @@ static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash
     hn = (hn+hinc < thash.hsize) ? hn+hinc : hn+hinc-thash.hsize;
   }
 
-  sum = ((uint128_t)n+1)/2 * (n|1);    /* (n*(n+1))/2 */
   s = isqrt(n);
   lim = n/(s+1);
+
+  sum = ((uint128_t)n+1)/2 * (n|1);    /* (n*(n+1))/2 */
   sum -= (n - n/2);
   for (k = 2; k <= lim; k++) {
     sum -= _CACHED_SUMT128(n/k);

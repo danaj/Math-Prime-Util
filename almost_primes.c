@@ -222,7 +222,7 @@ UV almost_prime_count(uint32_t k, UV n)
 }
 
 UV almost_prime_count_range(uint32_t k, UV lo, UV hi) {
-  if (k == 0) return (lo <= 1 || hi >= 1);
+  if (k == 0) return (lo <= 1 && hi >= 1);
   if (k == 1) return prime_count_range(lo, hi);
   if (k == 2) return semiprime_count_range(lo, hi);
   /* See semiprime_count.  Possibly clever solutions for small ranges. */
