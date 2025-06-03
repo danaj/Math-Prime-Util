@@ -3557,7 +3557,7 @@ static bool corn_one(UV *x, UV *y, UV u, UV d, UV p) {
 /* Given an initial root, solve.  Algorithm 2.3.12 of C&P */
 static bool corn_one(UV *x, UV *y, UV u, UV d, UV p) {
   UV a = p;
-  UV b = (2*u < p) ? p-u : u;
+  UV b = (u >= p-u) ? u : p-u;   /* Select larger root */
   uint32_t c = isqrt(p);
   while (b > c) {  UV t = a % b; a = b; b = t;  }
   u = p - b*b;

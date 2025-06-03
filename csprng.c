@@ -198,8 +198,12 @@ bool is_csprng_well_seeded(void *ctx)
 
 /* There are many ways to get floats from integers.  A few good, many bad.
  *
- * Vigna recommends (x64 >> 11) * (1.0 / (1ULL<<53)).
- * http://xoroshiro.di.unimi.it
+ * Vigna in https://prng.di.unimi.it recommends this C99:
+ *    #include <stdint.h>
+ *    (x64 >> 11) * 0x1.0p-53
+ * Or the older:
+ *    (x64 >> 11) * (1.0 / (1ULL<<53)).
+ *
  * Also see alternatives discussed:
  * http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/VERSIONS/C-LANG/speed-up-real.html
  *
