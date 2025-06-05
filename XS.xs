@@ -4407,6 +4407,18 @@ void mertens(IN SV* svn)
     objectify_result(aTHX_ svn, ST(0));
     return;
 
+int _is_congruent_number_filter(IN UV n)
+  CODE:
+    RETVAL = is_congruent_number_filter(n);
+  OUTPUT:
+    RETVAL
+
+bool _is_congruent_number_tunnell(IN UV n)
+  CODE:
+    RETVAL = is_congruent_number_tunnell(n);
+  OUTPUT:
+    RETVAL
+
 void chebyshev_theta(IN SV* svn)
   ALIAS:
     chebyshev_psi = 1

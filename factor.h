@@ -3,7 +3,13 @@
 
 #include "ptypes.h"
 
+#if BITS_PER_WORD == 64
 #define MPU_MAX_FACTORS 64
+#define MPU_MAX_DFACTORS 15
+#else
+#define MPU_MAX_FACTORS 32
+#define MPU_MAX_DFACTORS 9
+#endif
 
 /* These all return the number of factors set in factors[].
  * Nothing found:     returns 1 and factors[0] = n

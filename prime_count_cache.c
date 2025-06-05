@@ -188,7 +188,7 @@ void* prime_count_cache_create_with_primes(const uint32_t *primes, uint32_t last
   return prime_count_cache_create(primes[lastidx]);
 #else  /* Faster, but so much code duplication.... */
   pc_cache_t *cache;
-  uint32_t i, idx, cnt, n;
+  uint32_t i, n;
 
   MPUassert(primes != 0, "prime_count_cache_create called with null pointer");
   if (lastidx <= 1) return prime_count_cache_create(5);

@@ -14,60 +14,161 @@
 #include "util.h"
 #include "factor.h"
 #include "rootmod.h"
+/* This is for randomly permuting the factors.  It will go away */
+#include "csprng.h"
+
+/******************************************************************************/
+
+/* TODO: This all goes into factor.h / factor.c.
+ * When moving, remove moebius and keep track of what things are useful,
+ * then decide whether or not to include any additional info. */
+typedef struct {
+  UV       n;
+  UV       f[MPU_MAX_DFACTORS];
+  uint8_t  k[MPU_MAX_DFACTORS];
+  uint16_t nfactors;
+  char     moebius;  /* Fast square-free check */
+} factored_t;
+
+static factored_t factorint(UV n)
+{
+  factored_t nf;
+  UV fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  int i, nfactors = factor_exp(n, fac, exp);
+
+  nf.n = n;
+  MPUassert(nfactors <= MPU_MAX_DFACTORS, "too many factors from factor_exp");
+  nf.nfactors = (uint16_t)nfactors;
+  nf.moebius = n==0 ? 0 : (nfactors % 2) ? -1 : 1;
+  for (i = 0; i < nfactors; i++) {
+    MPUassert(exp[i] < BITS_PER_WORD, "exponent too high from factor_exp");
+    nf.f[i] = fac[i];
+    nf.k[i] = (uint8_t) exp[i];
+    if (exp[i] > 1) nf.moebius = 0;
+  }
+  return nf;
+}
+/* TODO: validate_factored(nf) makes sure everything is right */
+
+/******************************************************************************/
+
+static void remove_square_part(factored_t *nf)   /* Turn n*c^2 into n */
+{
+  if (nf->moebius == 0 && nf->n > 3) {
+    UV N = 1;
+    uint16_t i, j;
+    for (i = 0, j = 0; i < nf->nfactors; i++) {
+      if (nf->k[i] & 1) {
+        N *= nf->f[i];
+        nf->f[j++] = nf->f[i];
+      }
+    }
+    MPUassert(nf->n != N, "moebius is 0 but N=n in remove_square_part");
+    nf->n = N;
+    nf->nfactors = j;
+    nf->moebius = (j % 2) ? -1 : 1;
+  }
+}
+
+/******************************************************************************/
+
+static factored_t permute_odd_factors(factored_t nf, UV seed)
+{
+  void* rng = prng_new((seed>>16)>>16, seed & 0xFFFFFFFF, 0, 0);
+  uint16_t i, j;
+
+  /* for (i=0;i<nf.nfactors i++) printf(" %lu",nf.f[i]);  printf(" -> "); */
+  for (i = 1-(nf.n&1); i < nf.nfactors-1; i++) {
+    j = (uint16_t) prng_next(rng) % (nf.nfactors-i);
+    { UV t      = nf.f[i];  nf.f[i] = nf.f[i+j];  nf.f[i+j] = t; }
+    { uint8_t t = nf.k[i];  nf.k[i] = nf.k[i+j];  nf.k[i+j] = t; }
+  }
+  /* for (i=0;i<nf.nfactors i++) printf(" %lu",nf.f[i]);  printf("\n"); */
+  Safefree(rng);
+  return nf;
+}
+
+/******************************************************************************/
+
+
+/* Tunnell's method, counting integer solutions to ternary quadratics.
+ * Assumes the weak BSD conjecture.
+ * Weak BSD holds for n <   42553.   (Nemenzo 1998)
+ * Weak BSD holds for n <   71474.   (Wado 2005)
+ * Weak BSD holds for n <  300000.   (Matsuno 2005]
+ * Weak BSD holds for n < 1000000.   (Matsuno 2006 + Elkies 2002)
+ */
+static bool _is_congruent_number_tunnell(UV n)
+{
+  UV x, y, z, limz, limy, limx, n8z, zsols, sols[2] = {0,0};
+
+  /* The input MUST be square-free or the result will not be correct. */
+
+  if (n&1) {
+    for (z = 0, limz = isqrt(n/8);  z <= limz;  z++) {
+      zsols = 0;
+      n8z = n - 8*z*z;
+      for (y = 0, limy = isqrt(n8z/2);  y <= limy;  y++) {
+        x = n8z - 2*y*y;   /* n odd => n8z odd => x odd */
+        if (is_perfect_square(x))
+          zsols += 1 << (1+(y>0)+(z>0));
+      }
+      sols[z&1] += zsols;
+    }
+  } else {
+    for (z = 0, limz = isqrt((n/2)/8);  z <= limz;  z++) {
+      zsols = 0;
+      n8z = n/2 - 8*z*z;
+      for (x = 1, limx = isqrt(n8z);  x <= limx;  x += 2) {
+        y = n8z - x*x;
+        if (y == 0 || is_perfect_square(y))
+          zsols += 1 << (1+(y>0)+(z>0));
+      }
+      sols[z&1] += zsols;
+    }
+  }
+  return (sols[0] == sols[1]);
+}
+
+/******************************************************************************/
 
 #define SWAP4(x,y) { UV t; t=x; x=y; y=t;  t=x##8; x##8=y##8; y##8=t; }
 #define KPQ kronecker_uu(p,q)
 #define KPR kronecker_uu(p,r)
 #define KQR kronecker_uu(q,r)
+/* Only used for a few cases: */
+#define KQP kronecker_uu(q,p)
+#define KRP kronecker_uu(r,p)
+#define KRQ kronecker_uu(r,q)
+#define LAGRANGE_COND1 (KPQ==KPR || KQR==KQP || KRP==KRQ)
+#define LAGRANGE_COND2 ((KPQ==1 && KPR==1) || (KQR==1 && KQP==1) || (KRP==1 && KRQ==1))
+#define LAGRANGE_COND3 ((KPQ==-1 && KPR==-1) || (KQR==-1 && KQP==-1) || (KRP==-1 && KRQ==-1))
 
-/* is_congruent_number(n).  OEIS A003273. */
-bool is_congruent_number(UV n) {
-  UV N, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-  UV m8 = n % 8;
-  int i, j, nfactors;
+/* Returns -1 if not known, 0 or 1 indicate definite results. */
+int _is_congruent_number_filter1(factored_t nf) {
+  const UV *fac      = nf.f;
+  const UV n         = nf.n;
+  const int nfactors = nf.nfactors;
 
-  if (n < 13)   return (n >= 5 && n <= 7);
-  /* ACK conjecture, n in CN if n = {5,6,7} mod 8.  (BSD implies ACK) */
-  if (m8 == 5 || m8 == 6 || m8 == 7)  return 1;
+  MPUassert(n >= 13, "n too small in icn_filter");
+  MPUassert(nf.moebius != 0, "non-squarefree n given to icn_filter");
 
-  nfactors = factor_exp(n, fac, exp);
-  for (i = 0, j = 0, N = 1; i < nfactors; i++) {
-    if (exp[i] & 1) {
-      fac[j++] = fac[i];
-      N *= fac[i];
-    }
-  }
-  if (n != N) {    /* n wasn't square free, replace with N. */
-    nfactors = j;
-    n = N;
-    m8 = n % 8;
-    if (n < 13)   return (n >= 5 && n <= 7);
-    if (m8 == 5 || m8 == 6 || m8 == 7)  return 1;
-  }
-  /* n is now square free and we can ignore exp[] */
-
-  /*
-   * Evink 2021   https://arxiv.org/pdf/2105.01450.pdf
-   * Feng 1996    http://matwbn.icm.edu.pl/ksiazki/aa/aa75/aa7513.pdf
-   * Monsky 1990  https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204
-   * Reinholz 2013 https://central.bac-lac.gc.ca/.item?id=TC-BVAU-44941&op=pdf
-   * Das 2020     https://math.colgate.edu/~integers/u55/u55.pdf
-   * Cheng 2018   http://maths.nju.edu.cn/~guoxj/articles/IJNT2019.pdf
-   * Cheng 2019   https://www.sciencedirect.com/science/article/pii/S0022314X18302774
+  /* The ACK conjecture (Alter, Curtz, and Kubota 1972):
+   *     n = {5,6,7} mod 8   =>  n is a congruent number
+   * also follows from the weak BSD conjecture.
    */
+  if (n % 8 == 5 || n % 8 == 6 || n % 8 == 7)  return 1;
 
-  /* All of these tests seem complicated and tedious.  The goal is to avoid
-   * the Tunnell counting loop at the end, if at all possible.  While that
-   * loop is fast and simple compared to the method of descent, it is still
-   * very, very time consuming for any reasonable size input.  So we make
-   * an effort to identify known families.
+  /* Evink 2021    https://arxiv.org/pdf/2105.01450.pdf
+   * Feng 1996     http://matwbn.icm.edu.pl/ksiazki/aa/aa75/aa7513.pdf
+   * Monsky 1990   https://gdz.sub.uni-goettingen.de/id/PPN266833020_0204
+   * Lagrange 1974 https://www.numdam.org/item/SDPP_1974-1975__16_1_A11_0.pdf
    */
 
   if (nfactors == 1) {                   /* n = p */
 
-    UV r, p = n;
-    if (m8 == 3)  return 0;
-    if (m8 == 5 || m8 == 7)  return 1;  /* we already returned 1 earlier */
+    UV r, p = n, p8 = p % 8;
+    if (p8 == 3) return 0;  /* Genocchi 1855 */
 
     /* https://arxiv.org/pdf/2105.01450.pdf, Prop 2.1.2 */
     if (sqrtmodp(&r, 2, p) && kronecker_uu(1+r, p) == -1)
@@ -90,19 +191,21 @@ bool is_congruent_number(UV n) {
 
     UV p = n >> 1, p8 = p % 8;
     if (p8 == 3 || p8 == 7)     return 1;  /* we already returned 1 earlier */
-    if (p8 == 5 || (p%16) == 9) return 0;  /* Bastien 1915 */
+    if (p8 == 5)                return 0;  /* Genocchi 1855 */
+    if (p % 16 == 9)            return 0;  /* Bastien 1915 */
 
   } else if ( (n&1) && nfactors == 2) {  /* n = pq */
 
     UV p = fac[0], q = fac[1],  p8 = p % 8, q8 = q % 8;
     if (p8 > q8) SWAP4(p,q);
-    if (p8 == 3 && q8 == 3) return 0;
+    if (p8 == 3 && q8 == 3) return 0;  /* Genocchi 1855 */
 #if 0  /* Monsky, all produce n mod 8 = 5 or 7: we already returned 1 */
     if (p8 == 3 && q8 == 7) return 1;
     if (p8 == 3 && q8 == 5) return 1;
     if (p8 == 1 && q8 == 5 && KPQ == -1) return 1;
     if (p8 == 1 && q8 == 7 && KPQ == -1) return 1;
 #endif
+    /* Lagrange 1974 */
     if (p8 == 1 && q8 == 3 && KPQ == -1) return 0;
     if (p8 == 5 && q8 == 7 && KPQ == -1) return 0;
 
@@ -110,24 +213,23 @@ bool is_congruent_number(UV n) {
 
     UV p = fac[1], q = fac[2],  p8 = p % 8, q8 = q % 8;
     if (p8 > q8) SWAP4(p,q);
-    if (p8 == 5 && q8 == 5) return 0;
-    if (p8 == 3 && q8 == 3) return 0; /* Lagrange 1974 */
+    if (p8 == 5 && q8 == 5) return 0; /* Genocchi 1855 */
 #if 0  /* Monsky, all produce n mod 8 = 6: we already returned 1 */
     if (p8 == 3 && q8 == 5) return 1;
     if (p8 == 5 && q8 == 7) return 1;
     if (p8 == 1 && q8 == 7 && KPQ == -1) return 1;
     if (p8 == 1 && q8 == 3 && KPQ == -1) return 1;
 #endif
+    /* Lagrange 1974 */
+    if (p8 == 3 && q8 == 3) return 0;
     if (p8 == 1 && q8 == 5 && KPQ == -1) return 0;
     if (p8 == 3 && q8 == 7 && KPQ == -1) return 0;
+    if (p8 == 7 && q8 == 7 && KPQ == 1 && q % 16 == 7) return 0;
+    if (p8 == 1 && q8 == 1 && KPQ == -1 && (p*q) % 16 == 9) return 0;
 
   } else if ( (n&1) && nfactors == 3) {  /* n = pqr */
+
     UV p=fac[0], q=fac[1], r=fac[2], p8=fac[0]%8, q8=fac[1]%8, r8=fac[2]%8;
-
-    if (p8 == 3 && q8 == 1) SWAP4(p,q);
-    if (q8 == 1 && r8 == 3) SWAP4(q,r);
-    if (p8 == 1 && q8 == 3 && r8 == 1 && KPQ == -1 && KQR == -1) return 0;
-
     if (q8 < p8) SWAP4(p,q);
     if (r8 < q8) SWAP4(q,r);
     if (q8 < p8) SWAP4(p,q);
@@ -140,13 +242,19 @@ bool is_congruent_number(UV n) {
     if (p8 == 1 && q8 == 3 && r8 == 3 && KPQ == -KPR) return 0;
     if (p8 == 3 && q8 == 5 && r8 == 7 && KQR == -1) return 0;
     if (p8 == 3 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 0;
+    if (p8 == 1 && q8 == 1 && r8 == 3 && LAGRANGE_COND3) return 0;
+    if (p8 == 1 && q8 == 5 && r8 == 7 && LAGRANGE_COND3) return 0;
+    if (p8 == 3 && q8 == 5 && r8 == 5 && LAGRANGE_COND3) return 0;
+    if (p8 == 3 && q8 == 3 && r8 == 3 && LAGRANGE_COND1) return 0;
+    if (p8 == 1 && q8 == 1 && r8 == 1 && LAGRANGE_COND3) {
+      UV c,d;
+      if (cornacchia(&c, &d, 8, n) && d&1)
+        return 0;
+    }
 
   } else if (!(n&1) && nfactors == 4) {  /* n = 2pqr */
-    UV p=fac[1], q=fac[2], r=fac[3], p8=fac[1]%8, q8=fac[2]%8, r8=fac[3]%8;
-    if (p8 == 5 && q8 == 1) SWAP4(p,q);
-    if (q8 == 1 && r8 == 5) SWAP4(q,r);
-    if (p8 == 1 && q8 == 5 && r8 == 1 && KPQ == -1 && KQR == -1) return 0;
 
+    UV p=fac[1], q=fac[2], r=fac[3], p8=fac[1]%8, q8=fac[2]%8, r8=fac[3]%8;
     if (q8 < p8) SWAP4(p,q);
     if (r8 < q8) SWAP4(q,r);
     if (q8 < p8) SWAP4(p,q);
@@ -159,10 +267,65 @@ bool is_congruent_number(UV n) {
     /* Lagrange 1974 */
     if (p8 == 1 && q8 == 3 && r8 == 3 && KPQ == -KPR) return 0;
     if (p8 == 1 && q8 == 5 && r8 == 5 && KPQ == -KPR) return 0;
-    if (p8 == 3 && q8 == 5 && r8 == 7 && KPR == -KQR) return 0;
-    if (p8 == 5 && q8 == 7 && r8 == 7 && KPQ == -KPR && KPQ == KQR) return 0;
+    if (p8 == 3 && q8 == 5 && r8 == 7 && KRP == KRQ) return 0;
+    if (p8 == 1 && q8 == 1 && r8 == 1 && LAGRANGE_COND3 && (p*q*r) % 16 == 9) return 0;
+    if (p8 == 5 && q8 == 7 && r8 == 7 && KQP == KQR && KQP == -KRP) return 0;
+    if (p8 == 1 && q8 == 1 && r8 == 5 && LAGRANGE_COND3) return 0;
+    /* 1 3 7 is not checked.
+     * 13706 = 2*7*11*89 = 2*89*7*11, so p = 1, q = -1, r = 3 mod 8.
+     *       cond3 (q|r)= (q|p) = -1.
+     * but 13706 is a congruent number.  So this seems to be incorrect.
+     */
+    if (p8 == 3 && q8 == 3 && r8 == 5 && LAGRANGE_COND1) return 0;
+    if (p8 == 5 && q8 == 5 && r8 == 5 && LAGRANGE_COND2) return 0;
 
+  } else if ( (n&1) && nfactors == 4) {  /* n = pqrs */
+
+    UV p=fac[0], q=fac[1], r=fac[2], s=fac[3];
+    UV p8=fac[0]%8, q8=fac[1]%8, r8=fac[2]%8, s8=fac[3]%8;
+    if (r8 < p8) SWAP4(p,r);
+    if (s8 < q8) SWAP4(q,s);
+    if (q8 < p8) SWAP4(p,q);
+    if (s8 < r8) SWAP4(r,s);
+    if (r8 < q8) SWAP4(q,r);
+    /* Serf 1991 */
+    if (p8 == 5 && q8 == 5 && r8 == 7 && s8 == 7 &&
+        ( (KPR ==  1 && KQR == -1 && kronecker_uu(p,s) == -1) ||
+          (KPR == -1 && kronecker_uu(p,s) ==  1 && kronecker_uu(q,s) == -1) ||
+          (KPR == -1 && kronecker_uu(p,s) == -1 && KQR == -kronecker_uu(q,s))))
+      return 0;
   }
+
+  return -1;
+}
+
+/******************************************************************************/
+
+/* Returns -1 if not known, 0 or 1 indicate definite results. */
+int _is_congruent_number_filter2(factored_t nf) {
+  UV *fac            = nf.f;
+  const UV n         = nf.n;
+  const int nfactors = nf.nfactors;
+  int i, j;
+
+  /* All of these tests seem complicated and tedious.  The goal is to avoid
+   * the Tunnell counting loop at the end if at all possible.  While that
+   * loop is fast and simple compared to the method of descent, it is still
+   * very, very time consuming for any reasonable size input.  So we make
+   * an effort to identify known families.
+   *
+   * These filters all require looking at multiple orderings of the factors.
+   * The conditions are true if *any* ordering meets the conditions.
+   *
+   * TODO: currently none of these look at different orderings.  So they will
+   *       answer "I don't know" instead of flagging some numbers as non-cong.
+   */
+
+  /* Reinholz 2013 https://central.bac-lac.gc.ca/.item?id=TC-BVAU-44941&op=pdf
+   * Cheng 2018   http://maths.nju.edu.cn/~guoxj/articles/IJNT2019.pdf
+   * Cheng 2019   https://www.sciencedirect.com/science/article/pii/S0022314X18302774
+   * Das 2020     https://math.colgate.edu/~integers/u55/u55.pdf
+   */
 
   {
     const int noddfactors  = (n&1)  ?  nfactors  :  nfactors-1;
@@ -300,6 +463,8 @@ bool is_congruent_number(UV n) {
     }
   }
 
+  /**************************************************************************/
+
   /* Das / Saikia 2020, extending Lagrange 1974 and Serf 1989 */
   if ((n&1) && nfactors % 2 == 0 && nfactors >= 4 && nfactors <= 20) {
     int cntmod[8] = {0};
@@ -336,35 +501,55 @@ bool is_congruent_number(UV n) {
     }
   }
 
+  return -1;
+}
 
-  /* Tunnell's method, counting integer solutions to ternary quadratics. */
-  /* Assumes the weak BSD conjecture. */
-  {
-    UV x, y, z, limz, limy, limx, n8z, zsols, sols[2] = {0,0};
+/******************************************************************************/
+/* Allow testing the filters and the counting functions separately */
 
-    if (n&1) {
-      for (z = 0, limz = isqrt(n/8);  z <= limz;  z++) {
-        zsols = 0;
-        n8z = n - 8*z*z;
-        for (y = 0, limy = isqrt(n8z/2);  y <= limy;  y++) {
-          x = n8z - 2*y*y;   /* n odd => n8z odd => x odd */
-          if (is_perfect_square(x))
-            zsols += 1 << (1+(y>0)+(z>0));
-        }
-        sols[z&1] += zsols;
-      }
-    } else {
-      for (z = 0, limz = isqrt((n/2)/8);  z <= limz;  z++) {
-        zsols = 0;
-        n8z = n/2 - 8*z*z;
-        for (x = 1, limx = isqrt(n8z);  x <= limx;  x += 2) {
-          y = n8z - x*x;
-          if (y == 0 || is_perfect_square(y))
-            zsols += 1 << (1+(y>0)+(z>0));
-        }
-        sols[z&1] += zsols;
-      }
+int is_congruent_number_filter(UV n) {
+  int res;
+  factored_t nf = factorint(n);
+  remove_square_part(&nf);
+  if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
+
+  res = _is_congruent_number_filter1(nf);
+  if (res != -1) return res;
+  res = _is_congruent_number_filter2(nf);
+  return res;
+}
+bool is_congruent_number_tunnell(UV n) {
+  factored_t nf = factorint(n);
+  remove_square_part(&nf);
+  if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
+
+  return _is_congruent_number_tunnell(nf.n);
+}
+
+/******************************************************************************/
+
+/* is_congruent_number(n).  OEIS A003273. */
+bool is_congruent_number(UV n)
+{
+  int res;
+  factored_t nf = factorint(n);
+  remove_square_part(&nf);
+  if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
+
+  res = _is_congruent_number_filter1(nf);
+  if (res != -1) return res;
+  res = _is_congruent_number_filter2(nf);
+  if (res != -1) return res;
+
+  /* Hacky fun time, randomly permute factors a few times */
+  if (0) {
+    int i;
+    for (i = 1; res == -1 && i <= 10; i++) {
+      nf = permute_odd_factors(nf, i);
+      res = _is_congruent_number_filter2(nf);
     }
-    return (sols[0] == sols[1]);
+    if (res != -1) return res;
   }
+
+  return _is_congruent_number_tunnell(nf.n);
 }
