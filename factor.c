@@ -52,9 +52,61 @@ static const unsigned short primes_small[] =
    1949,1951,1973,1979,1987,1993,1997,1999,2003,2011};
 #define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
 
+/* For doing trial division loops over the small primes.
+ * Returns either 1 or the new unfactored n.
+ * Puts any factors in place and increments *nfactors.
+ * Assumes n has no factors smaller than primes_small[sp].
+ * Will check primes_small[sp] .. primes_small[endsp] inclusive.
+ * endsp will be clamped to NPRIMES_SMALL-1.
+ */
+static uint32_t _trial32(uint32_t n, UV *factors, int *nfactors, uint32_t sp, uint32_t endsp) {
+  uint32_t f;
+  if (sp < 1) sp = 1;
+  if (endsp > NPRIMES_SMALL-1) endsp = NPRIMES_SMALL-1;
+  if (sp > endsp || n == 1) return n;
+
+  do {
+    f = primes_small[sp];
+    if (f*f > n) break;
+    while (n % f == 0) {
+      factors[(*nfactors)++] = f;
+      n /= f;
+    }
+  } while (++sp <= endsp);
+
+  if (f*f > n && n != 1) {
+    factors[(*nfactors)++] = n;
+    n = 1;
+  }
+  return n;
+}
+static UV _trialuv(UV n, UV *factors, int *nfactors, uint32_t sp, uint32_t endsp) {
+  uint32_t f;
+  if (sp < 1) sp = 1;
+  if (endsp > NPRIMES_SMALL-1) endsp = NPRIMES_SMALL-1;
+  if (sp > endsp || n == 1) return n;
+
+  do {
+    f = primes_small[sp];
+    if (f*f > n) break;
+    while (n % f == 0) {
+      factors[(*nfactors)++] = f;
+      n /= f;
+    }
+  } while (++sp <= endsp);
+
+  if (f*f > n && n != 1) {
+    factors[(*nfactors)++] = n;
+    n = 1;
+  }
+  return n;
+}
+
 static int _small_trial_factor(UV n, UV *factors, UV *newn, uint32_t *lastf)
 {
   int nfactors = 0;
+  uint32_t const endsp = 82;
+  uint32_t sp = 4;
   uint32_t f = 7;
 
   if (n > 1) {
@@ -63,45 +115,18 @@ static int _small_trial_factor(UV n, UV *factors, UV *newn, uint32_t *lastf)
     while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
   }
 
-  if (f*f <= n) {
-    uint32_t const lastsp = 83;
-    uint32_t sp = 4;
-    /* Trial division from 7 to 421.  Use 32-bit if possible. */
-    if (n <= 4294967295U) {
-      uint32_t un = n;
-      while (sp < lastsp) {
-        while ( (un%f) == 0 ) {
-          factors[nfactors++] = f;
-          un /= f;
-        }
-        f = primes_small[++sp];
-        if (f*f > un) break;
-      }
-      n = un;
-    } else {
-      while (sp < lastsp) {
-        while ( (n%f) == 0 ) {
-          factors[nfactors++] = f;
-          n /= f;
-        }
-        f = primes_small[++sp];
-        if (f*f > n) break;
-      }
-    }
-    /* If n is small and still composite, finish it here */
-    if (n < 2011*2011 && f*f <= n) {  /* Trial division from 431 to 2003 */
-      uint32_t un = n;
-      while (sp < NPRIMES_SMALL) {
-        while ( (un%f) == 0 ) {
-          factors[nfactors++] = f;
-          un /= f;
-        }
-        f = primes_small[++sp];
-        if (f*f > un) break;
-      }
-      n = un;
-    }
+  /* Trial primes 7 to 421 */
+  n = (n <= 4294967295U) ? _trial32(n, factors, &nfactors, sp, endsp)
+                         : _trialuv(n, factors, &nfactors, sp, endsp);
+  sp = endsp+1; /* 83 */
+  f = primes_small[sp];  /* 431 */
+
+  if (n < 2017*2017 && f*f <= n) {  /* Trial division from 431 to 2011 */
+    uint32_t const lastsp = NPRIMES_SMALL-1;
+    n = _trial32(n, factors, &nfactors, sp, lastsp);
+    f = 2017;
   }
+
   if (f*f > n && n != 1) {
     factors[nfactors++] = n;
     n = 1;
@@ -225,8 +250,16 @@ int factor(UV n, UV *factors)
   int nsmallfactors, npowerfactors, nfactors, i, j, ntofac = 0;
   uint32_t f;
 
+#if 1
   nfactors = _small_trial_factor(n, factors, &n, &f);
   if (n == 1) return nfactors;
+#else
+  UV N = n;
+  for (i = 0; i < 100; i++)
+    nfactors = _small_trial_factor(n, factors, &N, &f);
+  nfactors = _small_trial_factor(n, factors, &n, &f);
+  return nfactors;  // TODO DELETE ME
+#endif
 
 #if BITS_PER_WORD == 64
   /* For small values less than f^3, use simple factor to split semiprime */
