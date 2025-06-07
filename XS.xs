@@ -3098,37 +3098,34 @@ factor(IN SV* svn)
   ALIAS:
     factor_exp = 1
   PREINIT:
-    U32 gimme_v;
-    int status, i, nfactors;
     UV n;
+    uint32_t i;
+    U32 gimme_v;
+    int status;
   PPCODE:
     gimme_v = GIMME_V;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
     if (status == 1) {
-      UV factors[MPU_MAX_FACTORS+1];
-      UV exponents[MPU_MAX_FACTORS+1];
-      if (gimme_v == G_SCALAR) {
-        UV res = (ix == 0)  ?  factor(n, factors)  :  factor_exp(n, factors, 0);
-        XSRETURN_UV(res);
-      } else if (gimme_v == G_ARRAY) {
-        if (ix == 0) {
-          nfactors = factor(n, factors);
-          EXTEND(SP, nfactors);
-          for (i = 0; i < nfactors; i++)
-            PUSHs(sv_2mortal(newSVuv( factors[i] )));
-        } else {
-          nfactors = factor_exp(n, factors, exponents);
-          /* if (n == 1)  XSRETURN_EMPTY; */
-          EXTEND(SP, nfactors);
-          for (i = 0; i < nfactors; i++)
-            PUSH_2ELEM_AREF( factors[i], exponents[i] );
-        }
+      if (ix == 0) {
+        UV factors[MPU_MAX_FACTORS];
+        uint32_t nfactors = factor(n, factors);
+        if (gimme_v == G_SCALAR)
+          XSRETURN_UV(nfactors);
+        EXTEND(SP, nfactors);
+        for (i = 0; i < nfactors; i++)
+          PUSHs(sv_2mortal(newSVuv( factors[i] )));
+      } else {
+        factored_t nf = factorint(n);
+        if (gimme_v == G_SCALAR)
+          XSRETURN_UV(nf.nfactors);
+        EXTEND(SP, nf.nfactors);
+        for (i = 0; i < nf.nfactors; i++)
+          PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-      if (ix == 0)
-        _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor", 1, 0);
-      else
-        _vcallsubn(aTHX_ gimme_v, VCALL_ROOT, "_generic_factor_exp", 1, 0);
+      _vcallsubn(aTHX_ gimme_v, VCALL_ROOT,
+                 (ix == 0) ? "_generic_factor" : "_generic_factor_exp",
+                 1, 0);
       return; /* skip implicit PUTBACK */
     }
 

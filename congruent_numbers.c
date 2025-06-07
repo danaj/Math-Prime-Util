@@ -19,55 +19,28 @@
 
 /******************************************************************************/
 
-/* TODO: This all goes into factor.h / factor.c.
- * When moving, remove moebius and keep track of what things are useful,
- * then decide whether or not to include any additional info. */
-typedef struct {
-  UV       n;
-  UV       f[MPU_MAX_DFACTORS];
-  uint8_t  k[MPU_MAX_DFACTORS];
-  uint16_t nfactors;
-  char     moebius;  /* Fast square-free check */
-} factored_t;
-
-static factored_t factorint(UV n)
-{
-  factored_t nf;
-  UV fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-  int i, nfactors = factor_exp(n, fac, exp);
-
-  nf.n = n;
-  MPUassert(nfactors <= MPU_MAX_DFACTORS, "too many factors from factor_exp");
-  nf.nfactors = (uint16_t)nfactors;
-  nf.moebius = n==0 ? 0 : (nfactors % 2) ? -1 : 1;
-  for (i = 0; i < nfactors; i++) {
-    MPUassert(exp[i] < BITS_PER_WORD, "exponent too high from factor_exp");
-    nf.f[i] = fac[i];
-    nf.k[i] = (uint8_t) exp[i];
-    if (exp[i] > 1) nf.moebius = 0;
-  }
-  return nf;
-}
-/* TODO: validate_factored(nf) makes sure everything is right */
-
 /******************************************************************************/
 
 static void remove_square_part(factored_t *nf)   /* Turn n*c^2 into n */
 {
-  if (nf->moebius == 0 && nf->n > 3) {
-    UV N = 1;
+  if (nf->n > 3) {
     uint16_t i, j;
-    for (i = 0, j = 0; i < nf->nfactors; i++) {
-      if (nf->k[i] & 1) {
-        N *= nf->f[i];
-        nf->f[j++] = nf->f[i];
-      }
+    for (i = 0; i < nf->nfactors; i++)
+      if (nf->e[i] > 1)
+        break;
+    if (i < nf->nfactors) {
+      UV N = 1;
+      for (i = 0, j = 0; i < nf->nfactors; i++)
+        if (nf->e[i] & 1) {
+          N *= nf->f[i];
+          nf->e[j] = 1;
+          nf->f[j++] = nf->f[i];
+        }
+      nf->n = N;
+      nf->nfactors = j;
     }
-    MPUassert(nf->n != N, "moebius is 0 but N=n in remove_square_part");
-    nf->n = N;
-    nf->nfactors = j;
-    nf->moebius = (j % 2) ? -1 : 1;
   }
+  /* factoredp_validate(nf); */
 }
 
 /******************************************************************************/
@@ -81,7 +54,7 @@ static factored_t permute_odd_factors(factored_t nf, UV seed)
   for (i = 1-(nf.n&1); i < nf.nfactors-1; i++) {
     j = (uint16_t) prng_next(rng) % (nf.nfactors-i);
     { UV t      = nf.f[i];  nf.f[i] = nf.f[i+j];  nf.f[i+j] = t; }
-    { uint8_t t = nf.k[i];  nf.k[i] = nf.k[i+j];  nf.k[i+j] = t; }
+    { uint8_t t = nf.e[i];  nf.e[i] = nf.e[i+j];  nf.e[i+j] = t; }
   }
   /* for (i=0;i<nf.nfactors i++) printf(" %lu",nf.f[i]);  printf("\n"); */
   Safefree(rng);
@@ -145,13 +118,12 @@ static bool _is_congruent_number_tunnell(UV n)
 #define LAGRANGE_COND3 ((KPQ==-1 && KPR==-1) || (KQR==-1 && KQP==-1) || (KRP==-1 && KRQ==-1))
 
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
-int _is_congruent_number_filter1(factored_t nf) {
+int _is_congruent_number_filter1(const factored_t nf) {
   const UV *fac      = nf.f;
   const UV n         = nf.n;
   const int nfactors = nf.nfactors;
 
   MPUassert(n >= 13, "n too small in icn_filter");
-  MPUassert(nf.moebius != 0, "non-squarefree n given to icn_filter");
 
   /* The ACK conjecture (Alter, Curtz, and Kubota 1972):
    *     n = {5,6,7} mod 8   =>  n is a congruent number
@@ -302,8 +274,8 @@ int _is_congruent_number_filter1(factored_t nf) {
 /******************************************************************************/
 
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
-int _is_congruent_number_filter2(factored_t nf) {
-  UV *fac            = nf.f;
+int _is_congruent_number_filter2(const factored_t nf) {
+  const UV *fac      = nf.f;
   const UV n         = nf.n;
   const int nfactors = nf.nfactors;
   int i, j;
@@ -378,9 +350,9 @@ int _is_congruent_number_filter2(factored_t nf) {
 
     /* Cheng / Guo 2018 "The non-congruent numbers via Monsky’s formula" */
     if (1) {
-      int quad;
+      bool quad;
       int g[8] = {0};  /* The number in each mod */
-      UV P[MPU_MAX_FACTORS+1], Q[MPU_MAX_FACTORS+1], R[MPU_MAX_FACTORS+1], S[MPU_MAX_FACTORS+1];
+      UV P[MPU_MAX_DFACTORS], Q[MPU_MAX_DFACTORS], R[MPU_MAX_DFACTORS], S[MPU_MAX_DFACTORS];
       const int eps = (n&1) ? 1 : 2;
       for (i = 0; i < noddfactors; i++)  {
         UV m = oddfac[i] % 8;
@@ -475,8 +447,9 @@ int _is_congruent_number_filter2(factored_t nf) {
     if (cntmod[1] == cntmod[3] && cntmod[5] == cntmod[7]) {
       /* We can separate all factors into (1,3) and (5,7) pairs. */
       UV pf[10], qf[10];
-      int das, pindexbymod[8], qindexbymod[8];
+      int pindexbymod[8], qindexbymod[8];
       const int npairs = nfactors >> 1;
+      bool das;
 
       pindexbymod[1] = qindexbymod[3] = 0;
       pindexbymod[5] = qindexbymod[7] = cntmod[1];
@@ -487,14 +460,14 @@ int _is_congruent_number_filter2(factored_t nf) {
       }
 
       /* See if these conditions hold for all pairs */
-      das = 1;
+      das = TRUE;
       for (i = 0; i < npairs; i++)
         das &= kronecker_uu(pf[i],qf[i]) == -1;
       for (i = 0; das && i < npairs; i++) {
         for (j = 0; j < npairs; j++) {
-          if (i  > j && kronecker_uu(qf[j],qf[i]) != -1) das = 0;
-          if (i != j && kronecker_uu(pf[i],pf[j]) !=  1) das = 0;
-          if (i != j && kronecker_uu(pf[i],qf[j]) !=  1) das = 0;
+          if (i  > j && kronecker_uu(qf[j],qf[i]) != -1) das = FALSE;
+          if (i != j && kronecker_uu(pf[i],pf[j]) !=  1) das = FALSE;
+          if (i != j && kronecker_uu(pf[i],qf[j]) !=  1) das = FALSE;
         }
       }
       if (das) return 0;

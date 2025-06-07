@@ -18,9 +18,34 @@
  */
 
 extern int factor(UV n, UV *factors);
-extern int factor_exp(UV n, UV *factors, UV* exponents);
 extern int factor_one(UV n, UV *factors, bool primality, bool trial);
-extern UV  divisor_sum(UV n, UV k);
+
+typedef struct {
+  UV       n;
+  UV       f[MPU_MAX_DFACTORS];
+  uint8_t  e[MPU_MAX_DFACTORS];
+  uint16_t nfactors;
+} factored_t;
+extern void factorintp(factored_t *nf, UV n);
+
+extern void     factoredp_validate(const factored_t *nf);
+extern uint32_t factoredp_total_factors(const factored_t *nf);
+extern bool     factoredp_is_square_free(const factored_t *nf);
+extern char     factoredp_moebius(const factored_t *nf);
+extern uint32_t factoredp_linear_factors(UV fac[], const factored_t *nf);
+
+static INLINE factored_t factorint(UV n)
+ { factored_t nf; factorintp(&nf, n); return nf; }
+static INLINE void     factored_validate(const factored_t nf)
+ { return factoredp_validate(&nf); }
+static INLINE uint32_t factored_total_factors(const factored_t nf)
+ { return factoredp_total_factors(&nf); }
+static INLINE bool     factored_is_square_free(const factored_t nf)
+ { return factoredp_is_square_free(&nf); }
+static INLINE char     factored_moebius(const factored_t nf)
+ { return factoredp_moebius(&nf); }
+static INLINE uint32_t factored_linear_factors(UV fac[], const factored_t nf)
+ { return factoredp_linear_factors(fac, &nf); }
 
 extern int trial_factor(UV n, UV *factors, UV first, UV last);
 extern int fermat_factor(UV n, UV *factors, UV rounds);
@@ -34,6 +59,8 @@ extern int lehman_factor(UV n, UV *factors, bool dotrial);
 extern int cheb_factor(UV n, UV *factors, UV B, UV initx);
 
 extern UV* divisor_list(UV n, UV *num_divisors, UV maxd);
+
+extern UV  divisor_sum(UV n, UV k);
 
 extern int prime_omega(UV n);     /* number of distinct prime factors */
 extern int prime_bigomega(UV n);  /* number of prime factors w/ multiplicity */

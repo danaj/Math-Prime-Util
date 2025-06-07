@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 
+#define FUNC_ipow   1
 #define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
@@ -250,16 +251,8 @@ int factor(UV n, UV *factors)
   int nsmallfactors, npowerfactors, nfactors, i, j, ntofac = 0;
   uint32_t f;
 
-#if 1
   nfactors = _small_trial_factor(n, factors, &n, &f);
   if (n == 1) return nfactors;
-#else
-  UV N = n;
-  for (i = 0; i < 100; i++)
-    nfactors = _small_trial_factor(n, factors, &N, &f);
-  nfactors = _small_trial_factor(n, factors, &n, &f);
-  return nfactors;  // TODO DELETE ME
-#endif
 
 #if BITS_PER_WORD == 64
   /* For small values less than f^3, use simple factor to split semiprime */
@@ -301,31 +294,95 @@ int factor(UV n, UV *factors)
   return nfactors;
 }
 
-
-int factor_exp(UV n, UV *factors, UV* exponents)
+void factorintp(factored_t *nf, UV n)
 {
-  int i = 1, j = 1, nfactors;
+  UV fac[MPU_MAX_FACTORS], *f = nf->f;
+  uint8_t *e = nf->e;
+  uint32_t nfactors, i, j;
 
-  if (n == 1) return 0;
-  nfactors = factor(n, factors);
+  nf->n = n;
+  if (n < 4) {
+    f[0] = n;
+    e[0] = 1;
+    nf->nfactors = 1 - (n==1);
+    return;
+  }
+  nfactors = factor(n, fac);
+  f[0] = fac[0];
+  e[0] = 1;
+  for (i = 1, j = 0; i < nfactors; i++) {
+    if (fac[i] == fac[i-1])
+      e[j]++;
+    else
+      f[++j] = fac[i], e[j] = 1;
+  }
+  nf->nfactors = (uint16_t)j+1;
+}
 
-  if (exponents == 0) {
-    for (; i < nfactors; i++)
-      if (factors[i] != factors[i-1])
-        factors[j++] = factors[i];
+void factoredp_validate(const factored_t *nf)
+{
+  if (nf->n == 0) {
+    MPUassert(nf->nfactors == 1, "factored_t n=0  =>  nfactors = 0");
+    MPUassert(nf->f[0] == 0 && nf->e[0] == 1, "factored_t n=0  =>  vecprod = n");
+  } else if (nf->n == 1) {
+    MPUassert(nf->nfactors == 0, "factored_t n=1  =>  nfactors = 0");
   } else {
-    exponents[0] = 1;
-    for (; i < nfactors; i++) {
-      if (factors[i] != factors[i-1]) {
-        exponents[j] = 1;
-        factors[j++] = factors[i];
+    UV lf = 0, N = 1, t;
+    uint32_t i;
+    MPUassert(nf->nfactors <= MPU_MAX_DFACTORS, "factored_t n has too many factors");
+    for (i = 0; i < nf->nfactors; i++) {
+      MPUassert(is_prime(nf->f[i]), "factored_t n has non-prime factor");
+      MPUassert(lf < nf->f[i], "factored_t factors not in order");
+      lf = nf->f[i];
+      MPUassert(nf->e[i] < BITS_PER_WORD, "factored_t exponent k too high");
+      MPUassert(nf->e[i] > 0, "factored_t exponent k too low");
+      if (nf->e[i] == 1) {
+        N *= nf->f[i];
       } else {
-        exponents[j-1]++;
+        t = ipowsafe(nf->f[i], nf->e[i]);
+        MPUassert(t != UV_MAX, "factored_t f^e overflows")
+        N *= t;
       }
     }
+    MPUassert(N == nf->n, "factored_t n is not equal to f^e * f^e ...");
   }
-  return j;
 }
+uint32_t factoredp_total_factors(const factored_t *nf) {
+  uint32_t i, nfacs = 0;
+  for (i = 0; i < nf->nfactors; i++)
+    nfacs += nf->e[i];
+  return nfacs;
+}
+bool factoredp_is_square_free(const factored_t *nf) {
+  uint32_t i;
+  for (i = 0; i < nf->nfactors; i++)
+    if (nf->e[i] > 1)
+      break;
+  return i >= nf->nfactors;
+}
+char factoredp_moebius(const factored_t *nf) {
+#if 0
+  return !factoredp_is_square_free(nf) ? 0 : nf->nfactors % 2 ? -1 : 1;
+#else
+  uint32_t i;
+  for (i = 0; i < nf->nfactors; i++)
+    if (nf->e[i] > 1)
+      return 0;
+  return nf->nfactors % 2 ? -1 : 1;
+#endif
+}
+uint32_t factoredp_linear_factors(UV fac[], const factored_t *nf) {
+  uint32_t i, nfac = 0;
+  for (i = 0; i < nf->nfactors; i++) {
+    UV f = nf->f[i], e = nf->e[i];
+    while (e--)
+      fac[nfac++] = f;
+  }
+  return nfac;
+}
+
+/******************************************************************************/
+
 
 int prime_bigomega(UV n)
 {
@@ -334,16 +391,8 @@ int prime_bigomega(UV n)
 }
 int prime_omega(UV n)
 {
-  UV factors[MPU_MAX_FACTORS+1];
-  int i, j, nfactors;
-
   if (n <= 1) return (n==0);
-  nfactors = factor(n, factors);
-
-  for (i = 1, j = 1; i < nfactors; i++)
-    if (factors[i] != factors[i-1])
-      j++;
-  return j;
+  return factorint(n).nfactors;
 }
 
 
@@ -399,16 +448,18 @@ int trial_factor(UV n, UV *factors, UV f, UV last)
 }
 
 
-static UV _divisors_from_factors(UV nfactors, UV* fp, UV* fe, UV* res, UV k) {
-  UV s, t, count = 1;
+static UV _divisors_from_factors(UV* res, factored_t nf, UV k) {
+  UV count;
+  uint32_t i;
 
-  res[0] = 1;
-  for (s = 0; s < nfactors; s++) {
-    UV i, j, scount = count, p = fp[s], e = fe[s], mult = 1;
+  res[0] = count = 1;
+  for (i = 0; i < nf.nfactors; i++) {
+    UV s, scount = count, p = nf.f[i], mult = 1;
+    uint32_t j, e = nf.e[i];
     for (j = 0; j < e; j++) {
       mult *= p;
-      for (i = 0; i < scount; i++) {
-        t = res[i] * mult;
+      for (s = 0; s < scount; s++) {
+        UV t = res[s] * mult;
         if (t <= k)
           res[count++] = t;
       }
@@ -419,10 +470,9 @@ static UV _divisors_from_factors(UV nfactors, UV* fp, UV* fe, UV* res, UV k) {
 
 UV* divisor_list(UV n, UV *num_divisors, UV maxd)
 {
-  UV factors[MPU_MAX_FACTORS+1];
-  UV exponents[MPU_MAX_FACTORS+1];
-  UV* divs;
-  int i, nfactors, ndivisors;
+  factored_t nf;
+  UV ndivisors, *divs;
+  uint32_t i;
 
   if (n == 0 || maxd == 0) {
     *num_divisors = 0;
@@ -437,13 +487,13 @@ UV* divisor_list(UV n, UV *num_divisors, UV maxd)
   if (maxd > n) maxd = n;
 
   /* Factor and convert to factor/exponent pair */
-  nfactors = factor_exp(n, factors, exponents);
+  nf = factorint(n);
   /* Calculate number of divisors, allocate space, fill with divisors */
-  ndivisors = exponents[0] + 1;
-  for (i = 1; i < nfactors; i++)
-    ndivisors *= (exponents[i] + 1);
+  ndivisors = nf.e[0] + 1;
+  for (i = 1; i < nf.nfactors; i++)
+    ndivisors *= (nf.e[i] + 1);
   New(0, divs, ndivisors, UV);
-  ndivisors = _divisors_from_factors(nfactors, factors, exponents, divs, maxd);
+  ndivisors = _divisors_from_factors(divs, nf, maxd);
   /* Sort divisors (numeric ascending) */
   sort_uv_array(divs, ndivisors);
   /* Return number of divisors and list */
@@ -467,42 +517,40 @@ static const UV sigma_overflow[11] =
 #endif
 UV divisor_sum(UV n, UV k)
 {
-  UV factors[MPU_MAX_FACTORS+1];
-  int nfac, i, j;
-  UV product = 1;
+  factored_t nf;
+  UV product;
+  uint32_t i, j;
 
   if (k > 11 || (k > 0 && n >= sigma_overflow[k-1])) return 0;
   /*   divisors(0) = []   divisors(1) = [1]  */
   if (n <= 1)  return n;
-  nfac = factor(n,factors);
+  nf = factorint(n);
+  product = 1;
   if (k == 0) {
-    for (i = 0; i < nfac; i++) {
-      UV e = 1,  f = factors[i];
-      while (i+1 < nfac && f == factors[i+1]) { e++; i++; }
-      product *= (e+1);
-    }
+    for (i = 0; i < nf.nfactors; i++)
+      product *= (nf.e[i]+1);
   } else if (k == 1) {
-    for (i = 0; i < nfac; i++) {
-      UV f = factors[i];
+    for (i = 0; i < nf.nfactors; i++) {
+      UV       f = nf.f[i];
+      uint16_t e = nf.e[i];
       UV pke = f, fmult = 1 + f;
-      while (i+1 < nfac && f == factors[i+1]) {
+      while (e-- > 1) {
         pke *= f;
         fmult += pke;
-        i++;
       }
       product *= fmult;
     }
   } else {
-    for (i = 0; i < nfac; i++) {
-      UV f = factors[i];
+    for (i = 0; i < nf.nfactors; i++) {
+      UV       f = nf.f[i];
+      uint16_t e = nf.e[i];
       UV fmult, pke, pk = f;
-      for (j = 1; j < (int)k; j++)  pk *= f;
+      for (j = 1; j < k; j++)  pk *= f;
       fmult = 1 + pk;
       pke = pk;
-      while (i+1 < nfac && f == factors[i+1]) {
+      while (e-- > 1) {
         pke *= pk;
         fmult += pke;
-        i++;
       }
       product *= fmult;
     }
@@ -519,14 +567,13 @@ UV divisor_sum(UV n, UV k)
 
 static int found_factor(UV n, UV f, UV* factors)
 {
-  UV f2 = n/f;
-  int i = f > f2;
-  if (f == 1 || f2 == 1) {
+  UV g = n/f;
+  if (f == 1 || f == n) {
     factors[0] = n;
     return 1;
   }
-  factors[i] = f;
-  factors[1-i] = f2;
+  factors[f >= g] = f;
+  factors[f <  g] = g;
   MPUassert( factors[0] * factors[1] == n , "incorrect factoring");
   return 2;
 }
@@ -1881,25 +1928,23 @@ UV znlog_solve(UV a, UV g, UV p, UV n) {
 
 /* Silver-Pohlig-Hellman */
 static UV znlog_ph(UV a, UV g, UV p, UV p1) {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int i, nfactors;
-  UV x, j;
+  factored_t pf;
+  UV x, sol[MPU_MAX_DFACTORS], mod[MPU_MAX_DFACTORS];
+  uint32_t i;
 
   if (p1 == 0) return 0;   /* TODO: Should we plow on with p1=p-1? */
-  nfactors = factor_exp(p1, fac, exp);
-  if (nfactors == 1)
+  pf = factorint(p1);
+  if (pf.nfactors == 1)
     return znlog_solve(a, g, p, p1);
-  for (i = 0; i < nfactors; i++) {
-    UV pi, delta, gamma;
-    pi = fac[i];   for (j = 1; j < exp[i]; j++)  pi *= fac[i];
-    delta = powmod(a,p1/pi,p);
-    gamma = powmod(g,p1/pi,p);
+  for (i = 0; i < pf.nfactors; i++) {
+    UV pi = ipow(pf.f[i],pf.e[i]);
+    UV delta = powmod(a,p1/pi,p);
+    UV gamma = powmod(g,p1/pi,p);
     /* printf(" solving znlog(%"UVuf",%"UVuf",%"UVuf")\n", delta, gamma, p); */
-    fac[i] = znlog_solve( delta, gamma, p, znorder(gamma,p) );
-    exp[i] = pi;
+    sol[i] = znlog_solve( delta, gamma, p, znorder(gamma,p) );
+    mod[i] = pi;
   }
-  if (chinese(&x, 0, fac, exp, nfactors) == 1 && powmod(g, x, p) == a)
+  if (chinese(&x, 0, sol, mod, pf.nfactors) == 1 && powmod(g, x, p) == a)
     return x;
   return 0;
 }

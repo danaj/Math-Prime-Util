@@ -16,21 +16,20 @@ static INLINE UV T(UV n) {
   return (n+1)/2 * (n|1);
 }
 static UV fprod(UV n, UV r) {
-  UV P, fac[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  factored_t nf;
+  UV P;
+  uint32_t i;
 
-  P = 1;
-  nfactors = factor_exp(n, fac, 0);
-  for (i = 0; i < nfactors; i++)
-    P *= 1 - ipow(fac[i], r);
+  nf = factorint(n);
+  for (P = 1, i = 0; i < nf.nfactors; i++)
+    P *= 1 - ipow(nf.f[i], r);
   return P;
 }
 
 bool is_powerfree(UV n, uint32_t k)
 {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  factored_t nf;
+  uint32_t i;
 
   if (k < 2 || n <= 1)           return (n==1);
 
@@ -47,9 +46,9 @@ bool is_powerfree(UV n, uint32_t k)
   }
 
   /* A factor iterator would be good to use here */
-  nfactors = factor_exp(n, fac, exp);
-  for (i = 0; i < nfactors; i++) {
-    if (exp[i] >= k)
+  nf = factorint(n);
+  for (i = 0; i < nf.nfactors; i++) {
+    if (nf.e[i] >= k)
       return 0;
   }
 
@@ -155,10 +154,9 @@ UV powerfree_sum(UV n, uint32_t k)
 
 UV powerfree_part(UV n, uint32_t k)
 {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
+  factored_t nf;
   UV t, P;
-  int i, nfactors;
+  uint32_t i;
 
   if (k < 2 || n <= 1)
     return (n==1);
@@ -171,10 +169,10 @@ UV powerfree_part(UV n, uint32_t k)
   P = n >> t;
   if ((t % k))  P <<= (t % k);
 
-  nfactors = factor_exp(P, fac, exp);
-  for (i = 0; i < nfactors; i++)
-    if (exp[i] >= k)
-      P /= ipow(fac[i], exp[i] - (exp[i] % k));
+  nf = factorint(P);
+  for (i = 0; i < nf.nfactors; i++)
+    if (nf.e[i] >= k)
+      P /= ipow(nf.f[i], nf.e[i] - (nf.e[i] % k));
 
   return P;
 }
@@ -272,11 +270,12 @@ UV nth_powerfree(UV n, uint32_t k)
 
 UV squarefree_kernel(UV n)
 {
-  UV P, fac[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  factored_t nf;
+  UV P;
+  uint32_t i;
 
-  nfactors = factor_exp(n, fac, 0);
-  for (P = 1, i = 0; i < nfactors; i++)
-    P *= fac[i];
+  nf = factorint(n);
+  for (P = 1, i = 0; i < nf.nfactors; i++)
+    P *= nf.f[i];
   return P;
 }

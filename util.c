@@ -580,9 +580,8 @@ signed char* range_liouville(UV lo, UV hi)
 }
 
 UV carmichael_lambda(UV n) {
-  unsigned char _totient[8] = {0,1,1,2,2,4,2,6};
-  UV fac[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  const unsigned char _totient[8] = {0,1,1,2,2,4,2,6};
+  uint32_t i;
   UV lambda = 1;
 
   if (n < 8) return _totient[n];
@@ -593,14 +592,27 @@ UV carmichael_lambda(UV n) {
     n >>= i;
     lambda <<= (i>2) ? i-2 : i-1;
   }
-  nfactors = factor(n, fac);
-  for (i = 0; i < nfactors; i++) {
-    UV p = fac[i], pk = p-1;
-    while (i+1 < nfactors && p == fac[i+1]) {
-      i++;
-      pk *= p;
+  {
+#if 1 /* This is very slightly faster */
+    UV fac[MPU_MAX_FACTORS+1];
+    uint32_t nfactors = factor(n, fac);
+    for (i = 0; i < nfactors; i++) {
+      UV p = fac[i], pk = p-1;
+      while (i+1 < nfactors && p == fac[i+1]) {
+        i++;
+        pk *= p;
+      }
+      lambda = lcm_ui(lambda, pk);
     }
-    lambda = lcm_ui(lambda, pk);
+#else
+    factored_t nf = factorint(n);
+    for (i = 0; i < nf.nfactors; i++) {
+      UV p = nf.f[i], pk = p-1, e = nf.e[i];
+      while (e-- > 1)
+        pk *= p;
+      lambda = lcm_ui(lambda, pk);
+    }
+#endif
   }
   return lambda;
 }
@@ -1309,9 +1321,8 @@ bool is_cyclic(UV n) {
 }
 
 bool is_carmichael(UV n) {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  factored_t nf;
+  uint32_t i;
 
   /* Small or even is not a Carmichael number */
   if (n < 561 || !(n&1)) return 0;
@@ -1339,20 +1350,21 @@ bool is_carmichael(UV n) {
     if (!is_pseudoprime(n,2)) return 0;
   }
 
-  nfactors = factor_exp(n, fac, exp);
-  if (nfactors < 3)
+  nf = factorint(n);
+  if (nf.nfactors < 3)
     return 0;
-  for (i = 0; i < nfactors; i++) {
-    if (exp[i] > 1  ||  ((n-1) % (fac[i]-1)) != 0)
+  for (i = 0; i < nf.nfactors; i++) {
+    if (nf.e[i] > 1  ||  ((n-1) % (nf.f[i]-1)) != 0)
       return 0;
   }
   return 1;
 }
 
-static bool is_quasi_base(int nfactors, UV *fac, UV p, UV b) {
-  int i;
-  for (i = 0; i < nfactors; i++) {
-    UV d = fac[i] - b;
+static bool is_quasi_base(factored_t nf, UV b) {
+  UV p = nf.n-b;
+  uint32_t i;
+  for (i = 0; i < nf.nfactors; i++) {
+    UV d = nf.f[i] - b;
     if (d == 0 || (p % d) != 0)
       return 0;
   }
@@ -1361,9 +1373,10 @@ static bool is_quasi_base(int nfactors, UV *fac, UV p, UV b) {
 
 /* Returns number of bases that pass */
 UV is_quasi_carmichael(UV n) {
-  UV nbases, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  factored_t nf;
+  UV nbases;
   UV spf, lpf, ndivisors, *divs;
-  int i, nfactors;
+  uint32_t i;
 
   if (n < 35) return 0;
 
@@ -1371,36 +1384,35 @@ UV is_quasi_carmichael(UV n) {
   if (!(n% 4) || !(n% 9) || !(n%25) || !(n%49) || !(n%121) || !(n%169))
     return 0;
 
-  nfactors = factor_exp(n, fac, exp);
+  nf = factorint(n);
   /* Must be composite */
-  if (nfactors < 2)
+  if (nf.nfactors < 2)
     return 0;
   /* Must be square free */
-  for (i = 0; i < nfactors; i++)
-    if (exp[i] > 1)
-      return 0;
+  if (!factored_is_square_free(nf))
+    return 0;
 
   nbases = 0;
-  spf = fac[0];
-  lpf = fac[nfactors-1];
+  spf = nf.f[0];
+  lpf = nf.f[nf.nfactors-1];
 
   /* Algorithm from Hiroaki Yamanouchi, 2015 */
-  if (nfactors == 2) {
+  if (nf.nfactors == 2) {
     divs = divisor_list(n / spf - 1, &ndivisors, UV_MAX);
-    for (i = 0; i < (int)ndivisors; i++) {
+    for (i = 0; i < ndivisors; i++) {
       UV d = divs[i];
       UV k = spf - d;
       if (d >= spf) break;
-      if (is_quasi_base(nfactors, fac, n-k, k))
+      if (is_quasi_base(nf, k))
         nbases++;
     }
   } else {
     divs = divisor_list(lpf * (n / lpf - 1), &ndivisors, UV_MAX);
-    for (i = 0; i < (int)ndivisors; i++) {
+    for (i = 0; i < ndivisors; i++) {
       UV d = divs[i];
       UV k = lpf - d;
       if (lpf > d && k >= spf) continue;
-      if (k != 0 && is_quasi_base(nfactors, fac, n-k, k))
+      if (k != 0 && is_quasi_base(nf, k))
         nbases++;
     }
   }
@@ -1507,15 +1519,7 @@ int moebius(UV n) {
   MOB_TESTP(17); MOB_TESTP(19); MOB_TESTP(23);
   MOB_TESTP(29); MOB_TESTP(31); MOB_TESTP(37);
 
-  {
-    UV factors[MPU_MAX_FACTORS+1];
-    int i, nfactors;
-    nfactors = factor(n, factors);
-    for (i = 1; i < nfactors; i++)
-      if (factors[i] == factors[i-1])
-        return 0;
-    return (nfactors % 2) ? -1 : 1;
-  }
+  return factored_moebius(factorint(n));
 }
 
 #define ISF_TESTP(p) \
@@ -1531,16 +1535,7 @@ bool is_square_free(UV n) {
   ISF_TESTP(17); ISF_TESTP(19); ISF_TESTP(23);
   ISF_TESTP(29); ISF_TESTP(31); ISF_TESTP(37);
 
-  /* return (moebius(n) != 0); */
-  {
-    UV factors[MPU_MAX_FACTORS+1];
-    int i, nfactors;
-    nfactors = factor(n, factors);
-    for (i = 1; i < nfactors; i++)
-      if (factors[i] == factors[i-1])
-        return 0;
-    return 1;
-  }
+  return factored_is_square_free(factorint(n));
 }
 
 bool is_perfect_number(UV n) {
@@ -1580,18 +1575,18 @@ UV qnr(UV n) {
       if (!sqrtmod(0, a, n))
         return a;
 #endif
-    UV fac[MPU_MAX_FACTORS+1];
-    int i, nfactors;
+    factored_t nf;
+    uint32_t i;
     if (!(n&1)) { /* Check and remove all multiples of 2 */
       int e = ctz(n);
       n >>= e;
       if (e >= 2 || n == 1) return 2;
     }
     if (!(n % 3) || !(n % 5) || !(n % 11) || !(n % 13) || !(n % 19)) return 2;
-    nfactors = factor_exp(n, fac, 0);
+    nf = factorint(n);
     for (a = 2; a < n; a = next_prime(a)) {
-      for (i = 0; i < nfactors; i++)
-        if (a < fac[i] && kronecker_uu(a,fac[i]) == -1)
+      for (i = 0; i < nf.nfactors; i++)
+        if (a < nf.f[i] && kronecker_uu(a,nf.f[i]) == -1)
           return a;
     }
   }
@@ -1608,17 +1603,17 @@ bool is_qr(UV a, UV n) {
   if (is_prob_prime(n)) {
     res = (kronecker_uu(a,n) == 1);
   } else {
-    UV fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-    int i, nfactors;
+    factored_t nf;
+    uint32_t i;
 
-    nfactors = factor_exp(n, fac, exp);
-    for (i = 0, res = 1;  res && i < nfactors;  i++) {
-      if (exp[i] == 1 && (fac[i] == 2 || gcd_ui(a,fac[i]) != 1))
+    nf = factorint(n);
+    for (i = 0, res = 1;  res && i < nf.nfactors;  i++) {
+      if (nf.e[i] == 1 && (nf.f[i] == 2 || gcd_ui(a,nf.f[i]) != 1))
         res = 1;
-      else if (exp[i] == 1 || (fac[i] != 2 && gcd_ui(a,fac[i]) == 1))
-        res = (kronecker_uu(a,fac[i]) == 1);
+      else if (nf.e[i] == 1 || (nf.f[i] != 2 && gcd_ui(a,nf.f[i]) == 1))
+        res = (kronecker_uu(a,nf.f[i]) == 1);
       else {
-        res = sqrtmod(0, a, ipow(fac[i],exp[i]));
+        res = sqrtmod(0, a, ipow(nf.f[i],nf.e[i]));
       }
     }
   }
@@ -1626,10 +1621,9 @@ bool is_qr(UV a, UV n) {
 }
 
 UV znorder(UV a, UV n) {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  factored_t phif;
   UV k, phi;
+  uint32_t i;
 
   if (n <= 1) return n;   /* znorder(x,0) = 0, znorder(x,1) = 1          */
   if (a <= 1) return a;   /* znorder(0,x) = 0, znorder(1,x) = 1  (x > 1) */
@@ -1637,14 +1631,14 @@ UV znorder(UV a, UV n) {
 
   /* Cohen 1.4.3 using Carmichael Lambda */
   phi = carmichael_lambda(n);
-  nfactors = factor_exp(phi, fac, exp);
+  phif = factorint(phi);
   k = phi;
 #if USE_MONTMATH
   if (n & 1) {
     const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
     UV ma = mont_geta(a, n);
-    for (i = 0; i < nfactors; i++) {
-      UV b, a1, ek, pi = fac[i], ei = exp[i];
+    for (i = 0; i < phif.nfactors; i++) {
+      UV b, a1, ek, pi = phif.f[i], ei = phif.e[i];
       b = ipow(pi,ei);
       k /= b;
       a1 = mont_powmod(ma, k, n);
@@ -1654,8 +1648,8 @@ UV znorder(UV a, UV n) {
     }
   } else
 #endif
-  for (i = 0; i < nfactors; i++) {
-    UV b, a1, ek, pi = fac[i], ei = exp[i];
+  for (i = 0; i < phif.nfactors; i++) {
+    UV b, a1, ek, pi = phif.f[i], ei = phif.e[i];
     b = ipow(pi,ei);
     k /= b;
     a1 = powmod(a, k, n);
@@ -1667,11 +1661,11 @@ UV znorder(UV a, UV n) {
 }
 
 UV znprimroot(UV n) {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV phi_div_fac[MPU_MAX_FACTORS+1];
+  factored_t phif;
+  UV phi_div_fac[MPU_MAX_DFACTORS];
   UV p, phi, a, psquared;
-  int i, nfactors, isneven, ispow;
-  uint32_t root;
+  uint32_t i, root;
+  bool isneven, ispow;
 
   if (n <= 4) return (n == 0) ? 0 : n-1;
   if (n % 4 == 0)  return 0;
@@ -1679,7 +1673,7 @@ UV znprimroot(UV n) {
   isneven = !(n & 1);
   if (isneven)  n >>= 1;
 
-  ispow = powerof_ret(n,&root);
+  ispow = powerof_ret(n,&root) > 1;
   p = ispow ? root : n;
   if (p == 3 && isneven) return 5;
   if (!is_prob_prime(p)) return 0;
@@ -1687,9 +1681,9 @@ UV znprimroot(UV n) {
   phi = p-1;  /* p an odd prime */
   psquared = ispow ? p*p : 0;
 
-  nfactors = factor_exp(phi, fac, 0);
-  for (i = 1; i < nfactors; i++)
-    phi_div_fac[i] = phi / fac[i];
+  phif = factorint(phi);
+  for (i = 1; i < phif.nfactors; i++)
+    phi_div_fac[i] = phi / phif.f[i];
 
 #if USE_MONTMATH
  {
@@ -1700,10 +1694,10 @@ UV znprimroot(UV n) {
     if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
     if (kronecker_uu(a, p) != -1) continue;
     r = mont_geta(a, p);
-    for (i = 1; i < nfactors; i++)
+    for (i = 1; i < phif.nfactors; i++)
       if (mont_powmod(r, phi_div_fac[i], p) == mont1)
         break;
-    if (i == nfactors)
+    if (i == phif.nfactors)
       if (!ispow || powmod(a, phi, psquared) != 1)
         return a;
   }
@@ -1713,10 +1707,10 @@ UV znprimroot(UV n) {
     if (isneven && !(a&1)) continue;
     if (a == 4 || a == 8 || a == 9) continue;  /* Skip some perfect powers */
     if (kronecker_uu(a, p) != -1) continue;
-    for (i = 1; i < nfactors; i++)
+    for (i = 1; i < phif.nfactors; i++)
       if (powmod(a, phi_div_fac[i], p) == 1)
         break;
-    if (i == nfactors)
+    if (i == phif.nfactors)
       if (!ispow || powmod(a, phi, psquared) != 1)
         return a;
   }
@@ -1725,8 +1719,9 @@ UV znprimroot(UV n) {
 }
 
 bool is_primitive_root(UV a, UV n, bool nprime) {
-  UV p, phi, fac[MPU_MAX_FACTORS+1];
-  int i, nfacs;
+  factored_t phif;
+  UV p, phi;
+  uint32_t i;
 
   /* Trivial but very slow:  return totient(n) == znorder(a,n) */
 
@@ -1768,9 +1763,9 @@ bool is_primitive_root(UV a, UV n, bool nprime) {
     if ((phi % 2) == 0 && mont_powmod(a, phi/2, n) == mont1) return 0;
     if ((phi % 3) == 0 && mont_powmod(a, phi/3, n) == mont1) return 0;
     if ((phi % 5) == 0 && mont_powmod(a, phi/5, n) == mont1) return 0;
-    nfacs = factor_exp(phi, fac, 0);
-    for (i = 0; i < nfacs; i++)
-      if (fac[i] > 5 && mont_powmod(a, phi/fac[i], n) == mont1)
+    phif = factorint(phi);
+    for (i = 0; i < phif.nfactors; i++)
+      if (fac[i] > 5 && mont_powmod(a, phi/phif.f[i], n) == mont1)
         return 0;
   } else
 #endif
@@ -1780,9 +1775,9 @@ bool is_primitive_root(UV a, UV n, bool nprime) {
     if ((phi % 3) == 0 && powmod(a, phi/3, n) == 1) return 0;
     if ((phi % 5) == 0 && powmod(a, phi/5, n) == 1) return 0;
     /* Complete factor and check each one not found above. */
-    nfacs = factor_exp(phi, fac, 0);
-    for (i = 0; i < nfacs; i++)
-      if (fac[i] > 5 && powmod(a, phi/fac[i], n) == 1)
+    phif = factorint(phi);
+    for (i = 0; i < phif.nfactors; i++)
+      if (phif.f[i] > 5 && powmod(a, phi/phif.f[i], n) == 1)
         return 0;
   }
   return 1;
@@ -2009,7 +2004,8 @@ static UV _facmod_mont(UV n, UV m) {
 #endif
 
 UV factorialmod(UV n, UV m) {  /*  n! mod m */
-  UV i, d = n, res = 1;
+  UV d = n, res = 1;
+  uint32_t i;
   bool m_prime;
 
   if (n >= m || m == 1) return 0;
@@ -2028,12 +2024,12 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
     return (d == 0) ? m-1 : 1;   /* Wilson's Theorem: n = m-1 and n = m-2 */
 
   if (d > 100 && !m_prime) {   /* Check for composite m that leads to 0 */
-    UV maxpk = 0, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-    int j, nfacs = factor_exp(m, fac, exp);
-    for (j = 0; j < nfacs; j++) {
-      fac[j] = fac[j] * exp[j];   /* Possibly too high if exp[j] > fac[j] */
-      if (fac[j] > maxpk)
-        maxpk = fac[j];
+    factored_t mf = factorint(m);
+    UV maxpk = 0;
+    for (i = 0; i < mf.nfactors; i++) {
+      UV t = mf.f[i] * mf.e[i];   /* Possibly too high if exp[j] > fac[j] */
+      if (t > maxpk)
+        maxpk = t;
     }
     /* Maxpk is >= S(m), the Kempner number A002034 */
     if (n >= maxpk)
@@ -2249,23 +2245,23 @@ bool binomialmod(UV *res, UV n, UV k, UV m) {
     return 1;
   }
   {
-    UV bin[MPU_MAX_FACTORS+1];
-    UV fac[MPU_MAX_FACTORS+1];
-    UV exp[MPU_MAX_FACTORS+1];
-    int i, cret, nfactors = factor_exp(m, fac, exp);
-    for (i = 0; i < nfactors; i++) {
-      if (exp[i] == 1) {
-        bin[i] = _binomial_lucas_mod_prime(n, k, fac[i]);
+    UV bin[MPU_MAX_DFACTORS], mod[MPU_MAX_DFACTORS];
+    uint32_t i;
+    factored_t mf = factorint(m);
+
+    for (i = 0; i < mf.nfactors; i++) {
+      if (mf.e[i] == 1) {
+        bin[i] = _binomial_lucas_mod_prime(n, k, mf.f[i]);
+        mod[i] = mf.f[i];
       } else {
         /* bin[i] = _binomial_mod_prime_power(n, k, fac[i], exp[i]); */
         /* Use generalized Lucas */
-        bin[i] = _binomial_lucas_mod_prime_power(n, k, fac[i], exp[i]);
-        fac[i] = ipow(fac[i], exp[i]);
+        bin[i] = _binomial_lucas_mod_prime_power(n, k, mf.f[i], mf.e[i]);
+        mod[i] = ipow(mf.f[i], mf.e[i]);
       }
     }
     /* chinese with p^e as modulos, so should never get -1 back */
-    cret = chinese(res, 0, bin, fac, nfactors);
-    return (cret == 1);
+    return chinese(res, 0, bin, mod, mf.nfactors) == 1;
   }
 }
 
@@ -2288,15 +2284,15 @@ static UV _pisano_prime_power(UV p, UV e)
       t = b; b = addmod(a,b,p); a = t;
     }
   } else {                     /* Look through divisors of p-(5|p) */
-    int i, nfactors;
-    UV j, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+    factored_t kf;
+    uint32_t i, j;
 
     k = p - kronecker_uu(5,p);
-    nfactors = factor_exp(k, fac, exp);
-    for (i = 0; i < nfactors; i++) {
-      for (j = 0; j < exp[i]; j++) {
-        if (lucasumod(1, p-1, k/fac[i], p) != 0) break;
-        k /= fac[i];
+    kf = factorint(k);
+    for (i = 0; i < kf.nfactors; i++) {
+      for (j = 0; j < kf.e[i]; j++) {
+        if (lucasumod(1, p-1, k/kf.f[i], p) != 0) break;
+        k /= kf.f[i];
       }
     }
   }
@@ -2304,14 +2300,15 @@ static UV _pisano_prime_power(UV p, UV e)
 }
 UV pisano_period(UV n)
 {
-  UV r, lim, k, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  factored_t nf;
+  UV r, lim, k;
+  uint32_t i;
 
   if (n <= 1) return (n == 1);
 
-  nfactors = factor_exp(n, fac, exp);
-  for (i = 0, k = 1; i < nfactors; i++) {
-    k = lcmsafe(k, _pisano_prime_power(fac[i], exp[i]));
+  nf = factorint(n);
+  for (i = 0, k = 1; i < nf.nfactors; i++) {
+    k = lcmsafe(k, _pisano_prime_power(nf.f[i], nf.e[i]));
     if (k == 0) return 0;
   }
 
@@ -2856,7 +2853,6 @@ static int _catalan_vtest(UV n, UV p) {
 }
 bool is_catalan_pseudoprime(UV n) {
   UV m, a;
-  int i;
 
   if (n < 2 || ((n % 2) == 0 && n != 2)) return 0;
   if (is_prob_prime(n)) return 1;
@@ -2872,19 +2868,19 @@ bool is_catalan_pseudoprime(UV n) {
    * exist three below 1e10:  5907, 1194649, and 12327121.
    */
   {
-    UV factors[MPU_MAX_FACTORS+1];
-    int nfactors = factor_exp(n, factors, 0);
+    uint32_t i;
+    factored_t nf = factorint(n);
 #if BITS_PER_WORD == 32
-    if (nfactors == 2) return 0;  /* Page 9, all 32-bit semiprimes */
+    if (nf.nfactors == 2) return 0;  /* Page 9, all 32-bit semiprimes */
 #else
-    if (nfactors == 2) {   /* Conditions from Aebi and Cairns (2008) */
-      if (n < UVCONST(10000000000)) return 0;     /* Page 9 */
-      if (2*factors[0]+1 >= factors[1]) return 0; /* Corollary 2 and 3 */
+    if (nf.nfactors == 2) {   /* Conditions from Aebi and Cairns (2008) */
+      if (n < UVCONST(10000000000)) return 0;  /* Page 9 */
+      if (2*nf.f[0]+1 >= nf.f[1])   return 0;  /* Corollary 2 and 3 */
     }
 #endif
     /* Test every factor */
-    for (i = 0; i < nfactors; i++) {
-      if (_catalan_vtest(a << 1, factors[i]))
+    for (i = 0; i < nf.nfactors; i++) {
+      if (_catalan_vtest(a << 1, nf.f[i]))
         return 0;
     }
   }
@@ -3299,8 +3295,7 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
 
 bool is_smooth(UV n, UV k) {
   UV fac[MPU_MAX_FACTORS+1];
-  uint32_t i, p, pn;
-  int nfac;
+  uint32_t i, p, pn, nfac;
 
   /* True if no prime factors of n are larger than k. */
   if (n <= 1) return 1;   /* (0,k) = 1, (1,k) = 1 */
@@ -3334,9 +3329,10 @@ bool is_smooth(UV n, UV k) {
   pn = 5003;
   if (k < pn || n < pn*pn) return (n <= k);  /* k > 290k, n > 25M */
 
-  /* Complete factoring including primality test */
-  nfac = factor_exp(n, fac, 0);
-  return (fac[nfac-1] <= k);
+  { /* Complete factoring including primality test */
+    factored_t nf = factorint(n);
+    return nf.f[nf.nfactors-1] <= k;
+  }
 }
 bool is_rough(UV n, UV k) {
   UV fac[MPU_MAX_FACTORS+1];
@@ -3368,22 +3364,21 @@ bool is_rough(UV n, UV k) {
   nfac = trial_factor(n, fac, 7, 200);
   if (nfac > 1 && fac[nfac-2] <= k) return 0;
   n = fac[nfac-1];
+  if (n < k) return 0;
 
   if ( (n >> 30) >= 64) {  /* Arbitrarily chose 2^36 for more tests */
     if (is_prime(n)) return 1;
     nfac = pminus1_factor(n, fac, 500, 500);
     if (nfac > 1) {  /* 2 factors, but they could be composites */
-      UV f1 = fac[0], f2 = fac[1];
-      nfac = factor_exp(f1, fac, 0);
-      if (fac[0] < k) return 0;
-      nfac = factor_exp(f2, fac, 0);
-      if (fac[0] < k) return 0;
+      if (fac[0] < k || fac[1] < k) return 0;
+      if (factorint(fac[0]).f[0] < k) return 0;
+      if (factorint(fac[1]).f[0] < k) return 0;
       return 1;
     }
   }
 
-  nfac = factor_exp(n, fac, 0);
-  return (fac[0] >= k);
+  /* Complete factoring including primality test */
+  return factorint(n).f[0] >= k;
 }
 
 
@@ -3397,10 +3392,9 @@ static UV _divsum1(UV prod, UV f, uint32_t e) {
 }
 
 bool is_practical(UV n) {
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
+  factored_t nf;
   UV prod;
-  int i, nfactors;
+  uint32_t i;
 
   if (n == 0 || (n & 1)) return (n == 1);
   if ((n & (n-1)) == 0) return 1;  /* All powers of 2 are practical */
@@ -3410,13 +3404,13 @@ bool is_practical(UV n) {
 
   /* In theory for better performance we should test with small primes
    * before fully factoring.  On average it doesn't seem to help. */
-  nfactors = factor_exp(n, fac, exp);
-  MPUassert(fac[0] == 2, "is_practical first factor must be 2");
-  prod = _divsum1(1, 2, exp[0]);
-  for (i = 1; i < nfactors; i++) {
-    if (fac[i] > (1 + prod))
+  nf = factorint(n);
+  MPUassert(nf.f[0] == 2, "is_practical first factor must be 2");
+  prod = _divsum1(1, 2, nf.e[0]);
+  for (i = 1; i < nf.nfactors; i++) {
+    if (nf.f[i] > (1 + prod))
       return 0;
-    prod = _divsum1(prod, fac[i], exp[i]);
+    prod = _divsum1(prod, nf.f[i], nf.e[i]);
   }
   return 1;
 }
@@ -3499,7 +3493,9 @@ int is_delicate_prime(UV n, uint32_t b) {
 
 
 bool is_sum_of_two_squares(UV n) {
-  UV i, nfacs, fac[MPU_MAX_FACTORS+1], exp[MPU_MAX_FACTORS+1];
+  factored_t nf;
+  uint32_t i;
+
   if (n < 3) return 1;
 
   while (!(n&1)) n >>= 1;  /* Remove all factors of two */
@@ -3516,9 +3512,9 @@ bool is_sum_of_two_squares(UV n) {
   for (i = 0;  !(n % 23);  n /= 23) { i++; }    if ((i & 1) == 1)   return 0;
   for (i = 0;  !(n % 31);  n /= 31) { i++; }    if ((i & 1) == 1)   return 0;
 
-  nfacs = factor_exp(n, fac, exp);
-  for (i = 0; i < nfacs; i++)
-    if ( (fac[i] % 4) == 3 && (exp[i] & 1) == 1 )
+  nf = factorint(n);
+  for (i = 0; i < nf.nfactors; i++)
+    if ( (nf.f[i] % 4) == 3 && (nf.e[i] & 1) == 1 )
       return 0;
 
   return 1;

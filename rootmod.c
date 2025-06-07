@@ -223,11 +223,9 @@ static UV _sqrtmod_prime_power(UV a, UV p, UV e) {
 }
 
 static UV _sqrtmod_composite(UV a, UV n) {
-  UV r, s, t, i, fe, N, inv;
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  uint32_t root;
-  int nfactors;
+  factored_t nf;
+  UV r, s, t, fe, N, inv;
+  uint32_t i, root;
 
   if (n == 0) return UV_MAX;
   /* TODO: if (is_perfect_square(a))  return (isqrt(a) % n); */
@@ -235,13 +233,13 @@ static UV _sqrtmod_composite(UV a, UV n) {
   if (n <= 2 || a <= 1)                return a;
   if (is_perfect_square_ret(a,&root))  return root;
 
-  nfactors = factor_exp(n, fac, exp);
-  N = ipow(fac[0], exp[0]);
-  r = _sqrtmod_prime_power(a, fac[0], exp[0]);
+  nf = factorint(n);
+  N = ipow(nf.f[0], nf.e[0]);
+  r = _sqrtmod_prime_power(a, nf.f[0], nf.e[0]);
   if (r == UV_MAX) return UV_MAX;
-  for (i = 1; i < (UV) nfactors; i++) {
-    fe = ipow(fac[i], exp[i]);
-    s = _sqrtmod_prime_power(a, fac[i], exp[i]);
+  for (i = 1; i < nf.nfactors; i++) {
+    fe = ipow(nf.f[i], nf.e[i]);
+    s = _sqrtmod_prime_power(a, nf.f[i], nf.e[i]);
     if (s == UV_MAX) return UV_MAX;
     inv = modinverse(N, fe);
     t = mulmod(inv, submod(s % fe,r % fe,fe), fe);
@@ -441,11 +439,10 @@ static UV _rootmod_prime_splitk(UV a, UV k, UV p, UV *zeta) {
   g = gcd_ui(k, p-1);
 
   if (g != 1) {
-    UV fac[MPU_MAX_FACTORS+1];
-    UV exp[MPU_MAX_FACTORS+1];
-    int i, nfactors = factor_exp(g, fac, exp);
-    for (i = 0; a != 0 && i < nfactors; i++) {
-      UV y, m, F = fac[i], E = exp[i];
+    uint32_t i;
+    factored_t nf = factorint(g);
+    for (i = 0; a != 0 && i < nf.nfactors; i++) {
+      UV y, m, F = nf.f[i], E = nf.e[i];
       if (zeta) {
         UV REM, V, Y;
         V = valuation_remainder(p-1, F, &REM);
@@ -536,10 +533,10 @@ static bool _hensel_lift(UV *re, UV r, UV a, UV k, UV pe) {
 }
 
 static UV _rootmod_composite1(UV a, UV k, UV n) {
+  factored_t nf;
+  UV fac[MPU_MAX_DFACTORS], exp[MPU_MAX_DFACTORS];
   UV f, g, e, r;
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int i, nfactors;
+  uint32_t i;
 
   /* Assume:  k >= 2,  1 < a < n,  n > 2, n composite */
 
@@ -554,16 +551,16 @@ static UV _rootmod_composite1(UV a, UV k, UV n) {
   }
 #endif
 
-  nfactors = factor_exp(n, fac, exp);
-  for (i = 0; i < nfactors; i++) {
-    f = fac[i];
+  nf = factorint(n);
+  for (i = 0; i < nf.nfactors; i++) {
+    f = fac[i] = nf.f[i];
     /* Find a root mod f.  If none exists, there is no root for n. */
     r = _rootmod_prime_splitk(a%f, k, f, 0);
     if (powmod(r, k, f) != (a%f)) return 0;
     /* If we have a prime power, use Hensel lifting to solve for p^e */
-    if (exp[i] > 1) {
+    if (nf.e[i] > 1) {
       UV fe = f;
-      for (e = 2; e <= exp[i]; e++) {
+      for (e = 2; e <= nf.e[i]; e++) {
         fe *= f;
         /* We aren't guaranteed a solution, though we usually get one. */
         if (!_hensel_lift(&r, r, a, k, fe)) {
@@ -587,7 +584,7 @@ static UV _rootmod_composite1(UV a, UV k, UV n) {
     }
     exp[i] = r;
   }
-  if (chinese(&g, 0, exp, fac, nfactors) != 1) return 0;
+  if (chinese(&g, 0, exp, fac, nf.nfactors) != 1) return 0;
   return g;
 }
 #endif
@@ -665,17 +662,18 @@ static UV _rootmod_prime_power(UV a, UV k, UV p, UV e) {
   return r;
 }
 
-static UV _rootmod_kprime(UV a, UV k, UV n, int nfactors, UV *fac, UV *exp) {
-  UV i, N, fe, r, s, t, inv;
+static UV _rootmod_kprime(UV a, UV k, factored_t nf) {
+  UV N, fe, r, s, t, inv;
+  uint32_t i;
 
   /* Assume: k is prime */
 
-  N = ipow(fac[0], exp[0]);
-  r = _rootmod_prime_power(a, k, fac[0], exp[0]);
+  N = ipow(nf.f[0], nf.e[0]);
+  r = _rootmod_prime_power(a, k, nf.f[0], nf.e[0]);
   if (r == UV_MAX) return UV_MAX;
-  for (i = 1; i < (UV) nfactors; i++) {
-    fe = ipow(fac[i], exp[i]);
-    s = _rootmod_prime_power(a, k, fac[i], exp[i]);
+  for (i = 1; i < nf.nfactors; i++) {
+    fe = ipow(nf.f[i], nf.e[i]);
+    s = _rootmod_prime_power(a, k, nf.f[i], nf.e[i]);
     if (s == UV_MAX) return UV_MAX;
     inv = modinverse(N, fe);
     t = mulmod(inv, submod(s % fe,r % fe,fe), fe);
@@ -683,15 +681,12 @@ static UV _rootmod_kprime(UV a, UV k, UV n, int nfactors, UV *fac, UV *exp) {
     N *= fe;
   }
   return r;
-
 }
 
 static UV _rootmod_composite2(UV a, UV k, UV n) {
-  UV i, r;
-  UV kfac[MPU_MAX_FACTORS+1];
-  UV nfac[MPU_MAX_FACTORS+1];
-  UV nexp[MPU_MAX_FACTORS+1];
-  int nfactors, kfactors;
+  factored_t nf;
+  UV r, kfac[MPU_MAX_FACTORS];
+  uint32_t i, kfactors;
 
   if (n == 0) return 0;
   if (a >= n) a %= n;
@@ -700,14 +695,14 @@ static UV _rootmod_composite2(UV a, UV k, UV n) {
   if (k <= 1)           return (k == 0) ? 1 : a;
 
   /* Factor n */
-  nfactors = factor_exp(n, nfac, nexp);
+  nf = factorint(n);
 
   if (is_prime(k))
-    return _rootmod_kprime(a, k, n, nfactors, nfac, nexp);
+    return _rootmod_kprime(a, k, nf);
 
   kfactors = factor(k, kfac);
   r = a;
-  for (i = 0; i < (UV)kfactors; i++) {   /* for each prime k */
+  for (i = 0; i < kfactors; i++) {   /* for each prime k */
     r = _rootmod_kprime(r, kfac[i], n, nfactors, nfac, nexp);
     if (r == UV_MAX) { /* Bad path.  We have to use a fallback method. */
 #if USE_ROOTMOD_SPLITK
@@ -877,29 +872,36 @@ static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
   return roots;
 }
 
-static UV* _allsqrtmodfact(UV *nroots, UV a, UV n, int nf, UV *fac, UV *exp) {
-  UV *roots, *roots1, *roots2, nr, nr1, nr2, p, k, pk, n2;
+static UV* _allsqrtmodfact(UV *nroots, UV a, factored_t nf) {
+  factored_t rf;
+  UV *roots, *roots1, *roots2, nr, nr1, nr2, p, k, pk;
+  uint32_t i;
 
-  MPUassert(nf > 0, "empty factor list in _allsqrtmodfact");
-
-  p = fac[0], k = exp[0];
+  p = nf.f[0], k = nf.e[0];
   *nroots = 0;
 
-  /* nr1,roots1 are roots of p^k -- the first prime power */
+  /* nr1,roots1 are roots of p^k for the first prime power */
   roots1 = _allsqrtmodpk(&nr1, a, p, k);
   if (roots1 == 0) return 0;
-  if (nf == 1) {
+  if (nf.nfactors == 1) {
     *nroots = nr1;
     return roots1;
   }
+
+  /* rf = nf with the first factor removed */
   pk = ipow(p, k);
-  n2 = n / pk;
+  rf.n = nf.n/pk;
+  rf.nfactors = nf.nfactors-1;
+  for (i = 0; i < rf.nfactors; i++) {
+    rf.f[i] = nf.f[i+1];
+    rf.e[i] = nf.e[i+1];
+  }
 
   /* nr2,roots2 are roots of all the rest, found recursively */
-  roots2 = _allsqrtmodfact(&nr2, a, n2, nf-1, fac+1, exp+1);
+  roots2 = _allsqrtmodfact(&nr2, a, rf);
   if (roots2 == 0) return 0;
 
-  roots = _rootmod_cprod(&nr,  nr1, roots1, pk,  nr2, roots2, n2);
+  roots = _rootmod_cprod(&nr,  nr1, roots1, pk,  nr2, roots2, rf.n);
 
   *nroots = nr;
   return roots;
@@ -907,9 +909,6 @@ static UV* _allsqrtmodfact(UV *nroots, UV a, UV n, int nf, UV *fac, UV *exp) {
 
 UV* allsqrtmod(UV* nroots, UV a, UV n) {
   UV *roots, numr = 0;
-  UV fac[MPU_MAX_FACTORS+1];
-  UV exp[MPU_MAX_FACTORS+1];
-  int nfactors;
 
   if (n == 0) return 0;
   if (a >= n) a %= n;
@@ -918,8 +917,7 @@ UV* allsqrtmod(UV* nroots, UV a, UV n) {
 
   if (n <= 2)  return _one_root(nroots, a);
 
-  nfactors = factor_exp(n, fac, exp);
-  roots = _allsqrtmodfact(&numr, a, n, nfactors, fac, exp);
+  roots = _allsqrtmodfact(&numr, a, factorint(n));
   if (numr > 0) sort_uv_array(roots, numr);
   *nroots = numr;
   return roots;
@@ -1072,35 +1070,35 @@ static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
   return roots;
 }
 
-static UV* _allrootmod_kprime(UV* nroots, UV a, UV k, UV n, int nfactors, UV *fac, UV *exp) {
-  UV i, fe, N, *roots = 0, *roots2, numr = 0, nr2;
+static UV* _allrootmod_kprime(UV* nroots, UV a, UV k, factored_t nf) {
+  UV fe, N, *roots = 0, *roots2, numr = 0, nr2;
+  uint32_t i;
 
-  if (k == 2) return _allsqrtmodfact(nroots, a, n, nfactors, fac, exp);
+  if (k == 2) return _allsqrtmodfact(nroots, a, nf);
 
   *nroots = 0;
-  N = ipow(fac[0], exp[0]);
-  roots = _allrootmod_prime_power(&numr, a, k, fac[0], exp[0]);
+  N = ipow(nf.f[0], nf.e[0]);
+  roots = _allrootmod_prime_power(&numr, a, k, nf.f[0], nf.e[0]);
   if (numr == 0) { Safefree(roots); return 0; }
-  for (i = 1; i < (UV) nfactors; i++) {
-    fe = ipow(fac[i], exp[i]);
-    roots2 = _allrootmod_prime_power(&nr2, a, k, fac[i], exp[i]);
+  for (i = 1; i < nf.nfactors; i++) {
+    fe = ipow(nf.f[i], nf.e[i]);
+    roots2 = _allrootmod_prime_power(&nr2, a, k, nf.f[i], nf.e[i]);
     if (nr2 == 0) { Safefree(roots); Safefree(roots2); return 0; }
     /* Cartesian product using CRT.  roots and roots2 are freed. */
     roots = _rootmod_cprod(&numr,  numr, roots, N,  nr2, roots2, fe);
     N *= fe;
   }
-  MPUassert(N == n, "allrootmod: Incorrect factoring");
+  MPUassert(N == nf.n, "allrootmod: Incorrect factoring");
 
   *nroots = numr;
   return roots;
 }
 
 UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
-  UV i, numr = 0, *roots = 0;
+  factored_t nf;
+  UV numr = 0, *roots = 0;
   UV kfac[MPU_MAX_FACTORS+1];
-  UV nfac[MPU_MAX_FACTORS+1];
-  UV nexp[MPU_MAX_FACTORS+1];
-  int nfactors, kfactors;
+  uint32_t i, kfactors;
 
   /* return _trial_allrootmod(nroots, a, k, n); */
 
@@ -1121,23 +1119,23 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
   }
 
   /* Factor n */
-  nfactors = factor_exp(n, nfac, nexp);
+  nf = factorint(n);
 
   if (is_prime(k)) {
 
-    roots = _allrootmod_kprime(&numr, a, k, n, nfactors, nfac, nexp);
+    roots = _allrootmod_kprime(&numr, a, k, nf);
 
   } else { /* Split k into primes */
 
     kfactors = factor(k, kfac);
-    roots = _allrootmod_kprime(&numr, a, kfac[0], n, nfactors, nfac, nexp);
+    roots = _allrootmod_kprime(&numr, a, kfac[0], nf);
 
-    for (i = 1; numr > 0 && i < (UV)kfactors; i++) {   /* for each prime k */
+    for (i = 1; numr > 0 && i < kfactors; i++) {   /* for each prime k */
       UV j, t, allocr = numr, primek = kfac[i];
       UV *roots2 = 0, nr2 = 0,  *roots3 = 0, nr3 = 0;
       New(0, roots3, allocr, UV);
       for (j = 0; j < numr; j++) {         /* get a list from each root */
-        roots2 = _allrootmod_kprime(&nr2, roots[j], primek, n, nfactors, nfac, nexp);
+        roots2 = _allrootmod_kprime(&nr2, roots[j], primek, nf);
         if (nr2 == 0) continue;
         /* Append to roots3 */
         if (nr3 + nr2 > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");

@@ -13,6 +13,7 @@
 #include "cache.h"
 #include "constants.h"
 #include "inverse_interpolate.h"
+#include "factor.h"
 
 bool is_powerful(UV n, UV k) {
   UV pk;
@@ -51,12 +52,10 @@ bool is_powerful(UV n, UV k) {
 
 #if 0   /* Full factoring.  Very simple and reasonably efficient. */
   {
-    UV fac[MPU_MAX_FACTORS+1];
-    UV exp[MPU_MAX_FACTORS+1];
-    int i, nfactors;
-    nfactors = factor_exp(n, fac, exp);
-    for (i = 0; i < nfactors; i++)
-      if (exp[i] < k)
+    factored_t nf = factorint(n);
+    uint32_t i;
+    for (i = 0; i < nf.nfactors; i++)
+      if (nf.k[i] < k)
         return 0;
     return 1;
   }

@@ -28,9 +28,26 @@ static UV _totient_fac(uint32_t nfacs, UV* facs) {
 
 
 UV totient(UV n) {
+#if 1
   UV factors[MPU_MAX_FACTORS+1];
   uint32_t nfactors = factor(n, factors);
   return _totient_fac(nfactors, factors);
+#else
+  factored_t nf;
+  UV totient;
+  uint32_t i;
+
+  if (n <= 0) return n;
+  nf = factorint(n);
+  for (i = 0, totient = 1; i < nf.nfactors; i++) {
+    UV f       = nf.f[i];
+    unsigned e = nf.e[i];
+    totient *= f-1;
+    while (e-- > 1)
+      totient *= f;
+  }
+  return totient;
+#endif
 }
 
 
@@ -355,9 +372,10 @@ static const UV jordan_overflow[5] =
   {UVCONST(     65537),    1627,   257,   85,   41};
 #endif
 UV jordan_totient(UV k, UV n) {
-  UV factors[MPU_MAX_FACTORS+1];
-  int nfac, i;
+  factored_t nf;
+  uint32_t i;
   UV totient;
+
   if (k == 0 || n <= 1) return (n == 1);
   if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return 0;
 
@@ -365,15 +383,15 @@ UV jordan_totient(UV k, UV n) {
   /* Similar to Euler totient, shortcut even inputs */
   while ((n & 0x3) == 0) { n >>= 1; totient *= (1<<k); }
   if ((n & 0x1) == 0) { n >>= 1; totient *= ((1<<k)-1); }
-  nfac = factor(n,factors);
-  for (i = 0; i < nfac; i++) {
-    UV p = factors[i];
+
+  nf = factorint(n);
+  for (i = 0; i < nf.nfactors; i++) {
+    UV p = nf.f[i];
+    UV e = nf.e[i];
     UV pk = ipow(p,k);
     totient *= (pk-1);
-    while (i+1 < nfac && p == factors[i+1]) {
-      i++;
+    while (e-- > 1)
       totient *= pk;
-    }
   }
   return totient;
 }
