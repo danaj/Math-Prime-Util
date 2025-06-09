@@ -21,7 +21,7 @@ extern UV   next_prime(UV x);
 extern UV   prev_prime(UV x);
 
 /* Simple estimate for upper limit:  max_nprimes(n) >= prime_count(n) */
-extern UV   max_nprimes(UV n);
+extern UV   max_nprimes(UV n) ISCONSTFUNC;
 
 extern void print_primes(UV low, UV high, int fd);
 
@@ -33,18 +33,18 @@ extern uint32_t powerof_ret(UV n, uint32_t *root);
 extern bool is_power_ret(UV n, uint32_t k, uint32_t *root);
 #define is_power(n,k) is_power_ret(n,k,0)
 
-extern uint32_t icbrt(UV n);
-extern UV rootint(UV n, uint32_t k);
-extern UV ipowsafe(UV n, UV k);  /* returns UV_MAX if overflows */
-extern UV lcmsafe(UV x, UV u);  /* returns 0 if overflows */
-extern UV valuation(UV n, UV k);
+extern uint32_t icbrt(UV n) ISCONSTFUNC;
+extern UV rootint(UV n, uint32_t k) ISCONSTFUNC;
+extern UV ipowsafe(UV n, UV k) ISCONSTFUNC;  /* returns UV_MAX if overflows */
+extern UV lcmsafe(UV x, UV u) ISCONSTFUNC;   /* returns 0 if overflows */
+extern UV valuation(UV n, UV k) ISCONSTFUNC;
 extern UV valuation_remainder(UV n, UV k, UV *r);
-extern UV logint(UV n, UV b);
+extern UV logint(UV n, UV b) ISCONSTFUNC;
 extern UV mpu_popcount_string(const char* ptr, uint32_t len);
 
 extern unsigned char* range_issquarefree(UV lo, UV hi);
 
-extern UV powersum(UV n, UV k);
+extern UV powersum(UV n, UV k) ISCONSTFUNC;
 
 extern signed char* range_moebius(UV low, UV high);
 extern signed char* range_liouville(UV low, UV high);
@@ -53,24 +53,24 @@ extern int liouville(UV n);
 extern IV  mertens(UV n);
 extern IV  sumliouville(UV n);
 
-extern int kronecker_uu(UV a, UV b);
-extern int kronecker_su(IV a, UV b);
-extern int kronecker_ss(IV a, IV b);
+extern int kronecker_uu(UV a, UV b) ISCONSTFUNC;
+extern int kronecker_su(IV a, UV b) ISCONSTFUNC;
+extern int kronecker_ss(IV a, IV b) ISCONSTFUNC;
 
-extern UV pn_primorial(UV n);
-extern UV primorial(UV n);
-extern UV factorial(UV n);
-extern UV subfactorial(UV n);
-extern UV fubini(UV n);
-extern UV binomial(UV n, UV k);
-extern UV falling_factorial(UV n, UV m);
-extern UV rising_factorial(UV n, UV m);
-extern IV falling_factorial_s(IV n, UV m);
-extern IV rising_factorial_s(IV n, UV m);
+extern UV pn_primorial(UV n) ISCONSTFUNC;
+extern UV primorial(UV n) ISCONSTFUNC;
+extern UV factorial(UV n) ISCONSTFUNC;
+extern UV subfactorial(UV n) ISCONSTFUNC;
+extern UV fubini(UV n) ISCONSTFUNC;
+extern UV binomial(UV n, UV k) ISCONSTFUNC;
+extern UV falling_factorial(UV n, UV m) ISCONSTFUNC;
+extern UV rising_factorial(UV n, UV m) ISCONSTFUNC;
+extern IV falling_factorial_s(IV n, UV m) ISCONSTFUNC;
+extern IV rising_factorial_s(IV n, UV m) ISCONSTFUNC;
 extern IV gcdext(IV a, IV b, IV* u, IV* v, IV* s, IV* t); /* Ext Euclidean */
-extern UV modinverse(UV a, UV p);              /* Returns 1/a mod p */
-extern UV divmod(UV a, UV b, UV n);            /* Returns a/b mod n */
-extern UV gcddivmod(UV a, UV b, UV n);         /* divmod(a/gcd,b/gcd,n) */
+extern UV modinverse(UV a, UV p) ISCONSTFUNC;  /* Returns 1/a mod p */
+extern UV divmod(UV a, UV b, UV n) ISCONSTFUNC;/* Returns a/b mod n */
+extern UV gcddivmod(UV a, UV b, UV n) ISCONSTFUNC; /* divmod(a/gcd,b/gcd,n) */
 
 extern UV pisano_period(UV n);
 
@@ -81,12 +81,12 @@ extern int chinese(UV *r, UV *lcm, UV* a, UV* n, UV num);/* Chinese Remainder */
 /* Do the inverse for a negative modular power / root. a^-k => (1/a)^k mod n */
 extern bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n);
 
-/* Division and remainder.  Returns remainder. */
-extern IV tdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem trunc */
-extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem floor */
-extern IV cdivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem ceiling */
-extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* signed div/rem Euclidian */
-extern UV ivmod(IV a, UV n);                   /* Returns a mod n (trunc) */
+/* Signed division and remainder.  Returns remainder.*/
+extern IV tdivrem(IV *q, IV *r, IV D, IV d);   /* divrem trunc */
+extern IV fdivrem(IV *q, IV *r, IV D, IV d);   /* divrem floor */
+extern IV cdivrem(IV *q, IV *r, IV D, IV d);   /* divrem ceiling */
+extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* divrem Euclidian */
+extern UV ivmod(IV a, UV n) ISCONSTFUNC;       /* Returns a mod n (trunc) */
 
 extern UV   carmichael_lambda(UV n);
 extern int  moebius(UV n);
@@ -106,12 +106,12 @@ extern bool is_almost_prime(UV k, UV n);
 extern bool is_cyclic(UV n);
 extern bool is_carmichael(UV n);
 extern UV   is_quasi_carmichael(UV n);  /* Returns number of bases */
-extern UV   pillai_v(UV n);             /* v: v! % n == n-1 && n % v != 1 */
+extern UV   pillai_v(UV n) ISCONSTFUNC; /* v: v! % n == n-1 && n % v != 1 */
 extern UV   qnr(UV n);
 extern bool is_qr(UV a, UV n);         /* kronecker that works for composites */
 extern bool is_practical(UV n);
 extern int  is_delicate_prime(UV n, uint32_t b);
-extern int  happy_height(UV n, uint32_t base, uint32_t exponent);
+extern int  happy_height(UV n, uint32_t base, uint32_t exponent) ISCONSTFUNC;
 
 extern bool is_smooth(UV n, UV k);
 extern bool is_rough(UV n, UV k);
@@ -123,9 +123,9 @@ extern bool cornacchia(UV *x, UV *y, UV d, UV p);
 extern UV debruijn_psi(UV x, UV y);
 extern UV buchstab_phi(UV x, UV y);
 
-extern UV stirling3(UV n, UV m);
-extern IV stirling2(UV n, UV m);
-extern IV stirling1(UV n, UV m);
+extern UV stirling3(UV n, UV m) ISCONSTFUNC;
+extern IV stirling2(UV n, UV m) ISCONSTFUNC;
+extern IV stirling1(UV n, UV m) ISCONSTFUNC;
 
 extern IV hclassno(UV n);
 extern IV ramanujan_tau(UV n);
@@ -164,7 +164,7 @@ extern void randperm(void* ctx, UV n, UV k, UV *S);
 
 extern UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors);
 
-extern UV gcdz(UV x, UV y);
+extern UV gcdz(UV x, UV y) ISCONSTFUNC;
 
 
 /* Inputs are assumed to be UNSIGNED */

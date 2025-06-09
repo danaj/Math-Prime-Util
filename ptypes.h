@@ -234,6 +234,12 @@ typedef __int8 int8_t;
   #define INLINE
 #endif
 
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__INTEL_COMPILER)
+  #define ISCONSTFUNC __attribute__((const))
+#else
+  #define ISCONSTFUNC
+#endif
+
 #if __BIG_ENDIAN__ || (defined(BYTEORDER) && (BYTEORDER == 0x4321 || BYTEORDER == 0x87654321))
 #  if (__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ >= 5 || (__clang__ &&  __clang_major__ >= 4)
 #    if BITS_PER_WORD == 64
