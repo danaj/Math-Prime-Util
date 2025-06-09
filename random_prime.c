@@ -83,7 +83,7 @@ bool is_mr_random(void* ctx, UV n, UV k) {
   /* TODO: do 16 at a time */
   while (k--) {
     UV base = 2 + urandomm64(ctx, n-2);
-    if (!miller_rabin(n, &base, 1))
+    if (!is_strong_pseudoprime(n, base))
       return 0;
   }
   return 1;

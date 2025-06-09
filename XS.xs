@@ -24,7 +24,6 @@
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
 #define FUNC_popcnt 1
-#define FUNC_is_strong_pseudoprime 1
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"

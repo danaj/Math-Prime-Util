@@ -6,7 +6,6 @@
 /* Primality related functions */
 
 #include "ptypes.h"
-#define FUNC_is_strong_pseudoprime 1
 #include "primality.h"
 #include "lucas_seq.h"
 #include "mulmod.h"
@@ -140,68 +139,69 @@ bool is_euler_plumb_pseudoprime(UV const n)
   return 0;
 }
 
-/* Miller-Rabin probabilistic primality test
+bool is_strong_pseudoprime(UV const n, UV a)
+{
+  UV d = n-1;
+  int r, s = 0;
+  if (n < 3) return (n == 2);
+  if (!(n&1)) return 0;
+  if (a < 2) croak("Base %"UVuf" is invalid", a);
+  if (a >= n)  a %= n;
+  if (a <= 1 || a == n-1) return 1;
+
+  while (!(d&1)) {  s++;  d >>= 1;  }
+
+  /* n is a strong pseudoprime to base a if either:
+   *    a^d = 1 mod n
+   *    a^(d2^r) = -1 mod n for some r: 0 <= r <= s-1
+   */
+  {
+#if USE_MONTMATH
+    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
+    const uint64_t ma = mont_geta(a,n);
+    uint64_t mx;
+
+    if (!ma) return 1;
+    mx = mont_powmod(ma, d, n);
+    if (mx != mont1 && mx != n-mont1) {
+      for (r = 1; r < s; r++) {
+        mx = mont_sqrmod(mx, n);
+        if (mx == n-mont1) break;
+        if (mx == mont1  ) return 0;
+      }
+      if (r >= s) return 0;
+    }
+#else
+    UV x = powmod(a, d, n);
+    if (x != 1 && x != n-1) {
+      for (r = 1; r < s; r++) {  /* r=0 was just done, test r = 1 to s-1 */
+        x = sqrmod(x, n);
+        if ( x == n-1 )  break;
+        if ( x == 1   )  return 0;
+      }
+      if (r >= s)  return 0;
+    }
+#endif
+  }
+  return 1;
+}
+
+/* Miller-Rabin probabilistic primality test for multiple bases at a time.
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
  */
 bool miller_rabin(UV const n, const UV *bases, int nbases)
 {
-#if USE_MONTMATH
-  MPUassert(n > 2, "MR called with n <= 2");
-  if ((n & 1) == 0) return 0;
-  {
-    const uint64_t npi = mont_inverse(n),  mont1 = mont_get1(n);
-    uint64_t a, ma, md, u = n-1;
-    int i, j, t = 0;
+  int i;
+  /* For best performance, especially with montmath, we would do as much
+   * as possible up front, then do the per-base loop.  This code used to
+   * do that, but we never actually used it with more than one base. */
 
-    while (!(u&1)) {  t++;  u >>= 1;  }
-    for (j = 0; j < nbases; j++) {
-      a = bases[j];
-      if (a < 2)  croak("Base %"UVuf" is invalid", (UV)a);
-      if (a >= n)  a %= n;
-      if (a <= 1 || a == n-1) continue;   /* Return 1 if a = 0 mod n */
-      ma = mont_geta(a,n);
-      if (!ma) continue;
-      md = mont_powmod(ma, u, n);
-      if (md != mont1 && md != n-mont1) {
-        for (i=1; i<t; i++) {
-          md = mont_sqrmod(md, n);
-          if (md == mont1) return 0;
-          if (md == n-mont1) break;
-        }
-        if (i == t)
-          return 0;
-      }
-    }
-  }
-#else
-  UV d = n-1;
-  int b, r, s = 0;
+  for (i = 0; i < nbases; i++)
+    if (!is_strong_pseudoprime(n, bases[i]))
+      break;
 
-  MPUassert(n > 2, "MR called with n <= 2");
-  if ((n & 1) == 0) return 0;
-
-  while (!(d&1)) {  s++;  d >>= 1;  }
-  for (b = 0; b < nbases; b++) {
-    UV x, a = bases[b];
-    if (a < 2)  croak("Base %"UVuf" is invalid", a);
-    if (a >= n)  a %= n;
-    if (a <= 1 || a == n-1) continue;   /* Return 1 if a = 0 mod n */
-    /* n is a strong pseudoprime to base a if either:
-     *    a^d = 1 mod n
-     *    a^(d2^r) = -1 mod n for some r: 0 <= r <= s-1
-     */
-    x = powmod(a, d, n);
-    if ( (x == 1) || (x == n-1) )  continue;
-    for (r = 1; r < s; r++) {  /* r=0 was just done, test r = 1 to s-1 */
-      x = sqrmod(x, n);
-      if ( x == n-1 )  break;
-      if ( x == 1   )  return 0;
-    }
-    if (r >= s)  return 0;
-  }
-#endif
-  return 1;
+  return i >= nbases;
 }
 
 bool BPSW(UV const n)
@@ -591,7 +591,7 @@ typedef struct {
 #define NPERRINDIV 19
 /* 1112 mask bytes */
 static const uint32_t _perrinmask[] = {22,523,514,65890,8519810,130,4259842,0,526338,2147483904U,1644233728,1,8194,1073774592,1024,134221824,128,512,181250,2048,0,1,134217736,1049600,524545,2147500288U,0,524290,536870912,32768,33554432,2048,0,2,2,256,65536,64,536875010,32768,256,64,0,32,1073741824,0,1048576,1048832,371200000,0,0,536887552,32,2147487744U,2097152,32768,1024,0,1024,536870912,128,512,0,0,512,0,2147483650U,45312,128,0,8388640,0,8388608,8388608,0,2048,4096,92800000,262144,0,65536,4,0,4,4,4194304,8388608,1075838976,536870956,0,134217728,8192,0,8192,8192,0,2,0,268435458,134223392,1073741824,268435968,2097152,67108864,0,8192,1073741840,0,0,128,0,0,512,1450000,8,131136,536870928,0,4,2097152,4096,64,0,32768,0,0,131072,371200000,2048,33570816,4096,32,1024,536870912,1048576,16384,0,8388608,0,0,0,2,512,0,128,0,134217728,2,32,0,0,0,0,8192,0,1073742080,536870912,0,4096,16777216,526336,32,0,65536,33554448,708,67108864,2048,0,0,536870912,0,536870912,33554432,33554432,2147483648U,512,64,0,1074003968,512,0,524288,0,0,0,67108864,524288,1048576,0,131076,0,33554432,131072,0,2,8390656,16384,16777216,134217744,0,131104,0,2,32768,0,0,0,1450000,32768,0,0,0,0,0,16,0,1024,16400,1048576,32,1024,0,260,536870912,269484032,0,16384,0,524290,0,0,512,65536,0,0,0,134217732,0,67108880,536887296,0,0,32,0,65568,0,524288,2147483648U,0,4096,4096,134217984,268500992,0,33554432,131072,0,0,0,16777216,0,0,0,0,0,524288,0,0,67108864,0,0,2,0,2,32,1024,0};
-static _perrin _perrindata[NPERRINDIV] = {
+static const _perrin _perrindata[NPERRINDIV] = {
   {2, 7, 0},
   {3, 13, 1},
   {4, 14, 2},
