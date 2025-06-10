@@ -4981,25 +4981,21 @@ void is_sidon_set(IN SV* sva)
 void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
-    int itype, is_sumfree;
-    size_t len, i, j;
     UV *data;
+    size_t len, i, j;
+    int itype;
+    bool is_sumfree;
   PPCODE:
     itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set");
-    /* Check for UV overflow on sum */
-    if (itype == IARR_TYPE_POS)  itype = IARR_TYPE_BAD;
+    if (itype != IARR_TYPE_BAD && len <= 1) { /* Degenerate cases: len 0 or 1 */
+      is_sumfree = len == 0 || data[0] != 0;
+      Safefree(data);
+      RETURN_NPARITY(is_sumfree);
+    }
     /* Check for IV overflow on sum */
     if (itype == IARR_TYPE_NEG) {
-      for (i = 0; i < len; i++)
-        if ((IV)data[i] > (IV_MAX/2) || (IV)data[i] < (IV_MIN/2))
-          break;
-      if (i < len)  itype = IARR_TYPE_BAD;
-    }
-    /* Call PP code if bigints or summation overflow */
-    if (itype == IARR_TYPE_BAD) {
-      Safefree(data);
-      CALLPPSUB("is_sumfree_set");
-      return;
+      IV min = data[0], max = data[len-1];  /* Array is sorted */
+      if (min < IV_MIN/2 || max > IV_MAX/2)  itype = IARR_TYPE_BAD;
     }
     is_sumfree = 1;
     if (itype == IARR_TYPE_ANY) {
@@ -5007,14 +5003,25 @@ void is_sumfree_set(IN SV* sva)
         for (j = i; j < len; j++)
           if (is_in_sorted_uv_array(data[i]+data[j], data, len))
             { is_sumfree = 0; break; }
-    } else {
+    } else if (itype == IARR_TYPE_NEG) {
       for (i = 0; i < len && is_sumfree; i++)
         for (j = i; j < len; j++)
           if (is_in_sorted_iv_array((IV)data[i]+(IV)data[j], (IV*)data, len))
             { is_sumfree = 0; break; }
     }
     Safefree(data);
-    RETURN_NPARITY(is_sumfree);
+
+    if (itype == IARR_TYPE_ANY || itype == IARR_TYPE_NEG)
+      RETURN_NPARITY(is_sumfree);
+
+    /* We're here because one of:
+     *   1) itype is TYPE_BAD because there were bigints.
+     *   2) itype is TYPE_BAD because summed IVs would overflow.
+     *   3) itype is TYPE_POS.
+     *      At least one element is >= 2^63, so we would overflow on sum.
+     */
+    CALLPPSUB("is_sumfree_set");
+    return;
 
 void toset(IN SV* sva)
   PREINIT:
