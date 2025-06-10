@@ -2695,8 +2695,12 @@ int to_string_128(char str[40], IV hi, UV lo)
 
   if (hi < 0) {
     isneg = 1;
-    hi = -(hi+1);
-    lo = UV_MAX - lo + 1;
+    if (lo == 0) {
+      hi = -hi;
+    } else {
+      hi = -(hi+1);
+      lo = UV_MAX - lo + 1;
+    }
   }
 #if BITS_PER_WORD == 64 && HAVE_UINT128
   {

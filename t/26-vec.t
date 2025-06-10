@@ -65,6 +65,14 @@ my @vecsums = (
   [ 0, "-9223372036854775808","9223372036854775808" ],
   [ "18446744073709551615", "18446744073709551615","-18446744073709551615","18446744073709551615" ],
   [ "55340232221128654848", "18446744073709551616","18446744073709551616","18446744073709551616" ],
+  [ "-18446744073709551615", "-9223372036854775807","-9223372036854775807",-1 ],
+  [ "-18446744073709551616", "-9223372036854775807","-9223372036854775807",-2 ],
+  [ "-18446744073709551617", "-9223372036854775807","-9223372036854775807",-3 ],
+  [ "-18446744073709551616", "-9223372036854775808","-9223372036854775808" ],
+  [ "-9223372036854775807", "-9223372036854775807",0 ],
+  [ "-9223372036854775808", "-9223372036854775807",-1 ],
+  [ "-9223372036854775809", "-9223372036854775807",-2 ],
+  [ "-9223372036854775808", 0,"-9223372036854775808",0 ],
 );
 if ($use64) {
   push @vecsums, [ "18446744073709620400", 18446744073709540400, (1000) x 80 ];
@@ -98,75 +106,80 @@ my @vecsorts = (
     "integers over 2^63 broken before 5.26.0" ],
 );
 
-plan tests => 0
-            + scalar(@vecmins)
-            + scalar(@vecmaxs)
-            + scalar(@vecsums)
-            + 1 + scalar(@vecprods)
-            + 4    # vecreduce
-            + 2    # vecextract
-            + 14   # vecequal
-            + 3*4  # vec{any,all,notall,none}
-            + 5    # vecfirst
-            + 5    # vecfirstidx
-            + 7    # vecuniq
-            + 2 + scalar(@vecsorts)
+plan tests => 1    # vecmin
+            + 1    # vecmax
+            + 1    # vecsum
+            + 1    # vecprod
+            + 1    # vecreduce
+            + 1    # vecextract
+            + 1    # vecequal
+            + 1    # vec{any,all,notall,none}
+            + 1    # vecfirst
+            + 1    # vecfirstidx
+            + 1    # vecuniq
+            + 1    # vecsort
             + 0;
 
 ###### vecmin
-foreach my $r (@vecmins) {
-  if (@$r == 0) {
-    is(vecmin(), undef, "vecmin() = undef");
-  } else {
-    my($exp, @vals) = @$r;
-    is( vecmin(@vals), $exp, "vecmin(@vals) = $exp" );
+subtest 'vecmin', sub {
+  foreach my $r (@vecmins) {
+    if (@$r == 0) {
+      is(vecmin(), undef, "vecmin() = undef");
+    } else {
+      my($exp, @vals) = @$r;
+      is( vecmin(@vals), $exp, "vecmin(@vals) = $exp" );
+    }
   }
-}
+};
 ###### vecmax
-foreach my $r (@vecmaxs) {
-  if (@$r == 0) {
-    is(vecmax(), undef, "vecmax() = undef");
-  } else {
-    my($exp, @vals) = @$r;
-    is( vecmax(@vals), $exp, "vecmax(@vals) = $exp" );
+subtest 'vecmax', sub {
+  foreach my $r (@vecmaxs) {
+    if (@$r == 0) {
+      is(vecmax(), undef, "vecmax() = undef");
+    } else {
+      my($exp, @vals) = @$r;
+      is( vecmax(@vals), $exp, "vecmax(@vals) = $exp" );
+    }
   }
-}
+};
 
 ###### vecsum
-foreach my $r (@vecsums) {
-  my($exp, @vals) = @$r;
-  is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
-}
+subtest 'vecsum', sub {
+  foreach my $r (@vecsums) {
+    my($exp, @vals) = @$r;
+    is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
+  }
+};
 ###### vecprod
-foreach my $r (@vecprods) {
-  my($exp, @vals) = @$r;
-  is( vecprod(@vals), $exp, "vecprod(@vals) = $exp" );
-}
-{
+subtest 'vecprod', sub {
+  foreach my $r (@vecprods) {
+    my($exp, @vals) = @$r;
+    is( vecprod(@vals), $exp, "vecprod(@vals) = $exp" );
+  }
   my(@prod,@fact);
   for my $f (0 .. 50) {
     push @fact, factorial($f);
     push @prod, vecprod(1 .. $f);
   }
   is_deeply(\@prod, \@fact, "vecprod matches factorial for 0 .. 50");
-}
+};
 
 ##### vecreduce
-{
+subtest 'vecreduce', sub {
   my $fail = 0;
   is(vecreduce(sub{ $a + $b },()), undef, "vecreduce with empty list is undef");
   is(vecreduce(sub{ $fail = 1; 0; },(15)), 15+$fail, "vecreduce with (a) is a and does not call the sub");
   is(vecreduce(sub{ $a ^ $b },(4,2)), 6, "vecreduce [xor] (4,2) => 6");
   is(vecreduce(sub{ $a * $b**2 },(1, 17, 18, 19)), 17**2 * 18**2 * 19**2, "vecreduce product of squares");
-}
+};
 ###### vecextract
-{
+subtest 'vecextract', sub {
   is_deeply([vecextract(['a'..'z'],12345758)], [qw/b c d e h i n o s t u v x/], "vecextract bits");
   is(join("", vecextract(['a'..'z'],[22,14,17,10,18])), "works", "vecextract list");
-}
+};
 
 ###### vecequal
-{
+subtest 'vecequal', sub {
   is(vecequal([],[]), 1, "vecequal([],[]) = 1");
   is(vecequal([undef],[undef]), 1, "vecequal([undef],[undef]) = 1");
   is(vecequal([0],[0]), 1, "vecequal([0],[0]) = 1");
@@ -183,27 +196,29 @@ foreach my $r (@vecprods) {
 
   is(vecequal(\@vecsums, \@vecsums), 1, "vecequal = 1 for vecsums");
   is(vecequal(\@vecsums, \@vecprods), 0, "vecequal = 0 for vecsums");
-}
+};
 
 ###### vec{any,all,notall,none}
-ok(  (vecany { $_ == 1 } 1, 2, 3), 'any true' );
-ok( !(vecany { $_ == 1 } 2, 3, 4), 'any false' );
-ok( !(vecany { 1 }), 'any empty list' );
+subtest 'vecany vecall vecnotall vecnone', sub {
+  ok(  (vecany { $_ == 1 } 1, 2, 3), 'any true' );
+  ok( !(vecany { $_ == 1 } 2, 3, 4), 'any false' );
+  ok( !(vecany { 1 }), 'any empty list' );
 
-ok(  (vecall { $_ == 1 } 1, 1, 1), 'all true' );
-ok( !(vecall { $_ == 1 } 1, 2, 3), 'all false' );
-ok(  (vecall { 1 }), 'all empty list' );
+  ok(  (vecall { $_ == 1 } 1, 1, 1), 'all true' );
+  ok( !(vecall { $_ == 1 } 1, 2, 3), 'all false' );
+  ok(  (vecall { 1 }), 'all empty list' );
 
-ok(  (vecnotall { $_ == 1 } 1, 2, 3), 'notall true' );
-ok( !(vecnotall { $_ == 1 } 1, 1, 1), 'notall false' );
-ok( !(vecnotall { 1 }), 'notall empty list' );
+  ok(  (vecnotall { $_ == 1 } 1, 2, 3), 'notall true' );
+  ok( !(vecnotall { $_ == 1 } 1, 1, 1), 'notall false' );
+  ok( !(vecnotall { 1 }), 'notall empty list' );
 
-ok(  (vecnone { $_ == 1 } 2, 3, 4), 'none true' );
-ok( !(vecnone { $_ == 1 } 1, 2, 3), 'none false' );
-ok(  (vecnone { 1 }), 'none empty list' );
+  ok(  (vecnone { $_ == 1 } 2, 3, 4), 'none true' );
+  ok( !(vecnone { $_ == 1 } 1, 2, 3), 'none false' );
+  ok(  (vecnone { 1 }), 'none empty list' );
+};
 
 ###### vecfirst
-{
+subtest 'vecfirst', sub {
   my $v;
   $v = vecfirst { 8 == ($_ - 1) } 9,4,5,6; is($v, 9, "first success");
   $v = vecfirst { 0 } 1,2,3,4; is($v, undef, "first failure");
@@ -211,18 +226,18 @@ ok(  (vecnone { 1 }), 'none empty list' );
   $v = vecfirst { $_->[1] le "e" and "e" le $_->[2] } [qw(a b c)], [qw(d e f)], [qw(g h i)];
   is_deeply($v, [qw(d e f)], 'first with reference args');
   $v = vecfirst {while(1) {return ($_>6)} } 2,4,6,12; is($v,12,"first returns in loop");
-}
-{
+};
+subtest 'vecfirstidx', sub {
   my $v;
   $v = vecfirstidx { 8 == ($_ - 1) } 9,4,5,6; is($v, 0, "first idx success");
   $v = vecfirstidx { 0 } 1,2,3,4; is($v, -1, "first idx failure");
   $v = vecfirstidx { 0 }; is($v, -1, "first idx empty list");
   $v = vecfirstidx { $_->[1] le "e" and "e" le $_->[2] } [qw(a b c)], [qw(d e f)], [qw(g h i)];  is($v, 1, "first idx with reference args");
   $v = vecfirstidx {while(1) {return ($_>6)} } 2,4,6,12; is($v,3,"first idx returns in loop");
-}
+};
 
 ###### vecuniq
-{
+subtest 'vecuniq', sub {
   my @t = map { (1 .. 10) } 0 .. 1;
   my @u = vecuniq @t;
   is_deeply(\@u, [1 .. 10], "vecuniq simple 1..10");
@@ -237,35 +252,35 @@ ok(  (vecnone { 1 }), 'none empty list' );
   is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
   is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
   is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
-}
+};
 
 ###### vecsort
-foreach my $r (@vecsorts) {
-  my($in, $out, $str) = @$r;
-  my @got1 = vecsort(@$in);
-  my @got2 = vecsort($in);
-  vecsorti($in);
-  is_deeply( [ \@got1, \@got2, $in ],
-             [ $out, $out, $out ],
-             "vecsort list, ref, in-place [$str]" );
-}
-{
-   my @s = ("5",2,1,3,4);
+subtest 'vecsort', sub {
+  foreach my $r (@vecsorts) {
+    my($in, $out, $str) = @$r;
+    my @got1 = vecsort(@$in);
+    my @got2 = vecsort($in);
+    vecsorti($in);
+    is_deeply( [ \@got1, \@got2, $in ],
+               [ $out, $out, $out ],
+               "vecsort list, ref, in-place [$str]" );
+  }
 
-   my $in0_beg = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
-   my @t = vecsort(\@s);
-   my $in0_end = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
+  my @s = ("5",2,1,3,4);
 
-   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsort sorts without modifying input");
+  my $in0_beg = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
+  my @t = vecsort(\@s);
+  my $in0_end = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
 
-   # Both of these should be "string".  XS doesn't copy for validation.
-   if ($extra) {
-     diag "vecsort input:   $in0_beg => $in0_end" if $in0_beg ne $in0_end;
-   }
-}
-{
+  is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsort sorts without modifying input");
+
+  # Both of these should be "string".  XS doesn't copy for validation.
+  if ($extra) {
+    diag "vecsort input:   $in0_beg => $in0_end" if $in0_beg ne $in0_end;
+  }
+
   my @actx = return_sort(12,13,14,11);
   my $sctx = return_sort(12,13,14,11);
   is($sctx, scalar(@actx), "returning vecsort(\@L) gives the number of items");
-}
+};
 sub return_sort { return vecsort(@_); }

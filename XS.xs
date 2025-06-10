@@ -1843,13 +1843,8 @@ gcd(...)
       for (ret = i = 0; i < items; i++) {
         status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
         if (status == 0) break;
-        if (status == 1) {
-          hi += (n > (UV_MAX - lo));
-        } else {
-          /* TODO: This shouldn't be needed with validate_and_set */
-          if (UV_MAX-n == (UV)IV_MAX) { status = 0; break; }  /* IV Overflow */
-          hi -= ((UV_MAX-n) >= lo);
-        }
+        if (status == 1) hi += (n > (UV_MAX - lo));
+        else             hi -= ((UV_MAX-n) >= lo);
         lo += n;
       }
       if (status != 0 && hi != 0) {
