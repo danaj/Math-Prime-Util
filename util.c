@@ -2465,14 +2465,14 @@ bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
 
 /* Spigot from Arndt, Haenel, Winter, and Flammenkamp. */
 /* Modified for larger digits and rounding by Dana Jacobsen */
-char* pidigits(int digits)
+char* pidigits(uint32_t digits)
 {
   char* out;
   uint32_t *a, b, c, d, e, g, i, d4, d3, d2, d1;
   uint32_t const f = 10000;
   U64T d64;  /* 64-bit intermediate for 2*2*10000*b > 2^32 (~30k digits) */
 
-  if (digits <= 0) return 0;
+  if (digits == 0) return 0;
   if (digits >= 1 && digits <= DBL_DIG && digits <= 18) {
     Newz(0, out, 19, char);
     (void)sprintf(out, "%.*lf", (digits-1), 3.141592653589793238);
@@ -2480,13 +2480,15 @@ char* pidigits(int digits)
   }
   digits++;   /* For rounding */
   c = 14*(digits/4 + 2);
-  New(0, out, digits+5+1, char);
-  *out++ = '3';  /* We'll turn "31415..." into "3.1415..." */
+  /* 1 for decimal point, 3 for possible extra in loop. */
+  New(0, out, digits+1+3, char);
+  *out++ = '3';  /* We'll turn "31415..." below into ".1415..." */
   New(0, a, c, uint32_t);
   for (b = 0; b < c; b++)  a[b] = 2000;
 
   d = i = 0;
-  while ((b = c -= 14) > 0 && i < (uint32_t)digits) {
+  while (i < digits) {
+    b = c -= 14;
     d = e = d % f;
     if (b > 107001) {  /* Use 64-bit intermediate while necessary. */
       for (d64 = d; --b > 107000; ) {
@@ -2521,9 +2523,8 @@ char* pidigits(int digits)
   if (out[digits-1] >= '5') out[digits-2]++;  /* Round */
   for (i = digits-2; out[i] == '9'+1; i--)    /* Keep rounding */
     { out[i] = '0';  out[i-1]++; }
-  digits--;  /* Undo the extra digit we used for rounding */
-  out[digits] = '\0';
-  *out-- = '.';
+  out[digits-1] = '\0';  /* trailing null overwrites rounding digit */
+  *out-- = '.';          /* "331415..." => "3.1415..." */
   return out;
 }
 

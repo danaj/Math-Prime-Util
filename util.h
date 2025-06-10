@@ -130,7 +130,7 @@ extern IV stirling1(UV n, UV m) ISCONSTFUNC;
 extern IV hclassno(UV n);
 extern IV ramanujan_tau(UV n);
 
-extern char* pidigits(int digits);
+extern char* pidigits(uint32_t digits);
 
 /* min defines if min or max.  Return of 0 means select a, 1 means select b. */
 extern bool strnum_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN blen);
