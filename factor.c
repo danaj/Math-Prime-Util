@@ -360,7 +360,7 @@ bool factoredp_is_square_free(const factored_t *nf) {
       break;
   return i >= nf->nfactors;
 }
-char factoredp_moebius(const factored_t *nf) {
+signed char factoredp_moebius(const factored_t *nf) {
 #if 0
   return !factoredp_is_square_free(nf) ? 0 : nf->nfactors % 2 ? -1 : 1;
 #else

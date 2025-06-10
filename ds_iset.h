@@ -28,7 +28,7 @@ iset_t iset_create_from_array(UV* d, size_t dlen, int dsign);
 
 /* Returns 1 if unsigned, -1 if signed, 0 if messed up. */
 static int iset_sign(const iset_t set) {
-  static const char _iset_typeret[4] = {1,1,-1,0};
+  static const signed char _iset_typeret[4] = {1,1,-1,0};
   return _iset_typeret[set.type];
 }
 static int iset_is_invalid(const iset_t set)

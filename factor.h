@@ -28,23 +28,23 @@ typedef struct {
 } factored_t;
 extern void factorintp(factored_t *nf, UV n);
 
-extern void     factoredp_validate(const factored_t *nf);
-extern uint32_t factoredp_total_factors(const factored_t *nf);
-extern bool     factoredp_is_square_free(const factored_t *nf);
-extern char     factoredp_moebius(const factored_t *nf);
-extern uint32_t factoredp_linear_factors(UV fac[], const factored_t *nf);
+extern void        factoredp_validate(const factored_t *nf);
+extern uint32_t    factoredp_total_factors(const factored_t *nf);
+extern bool        factoredp_is_square_free(const factored_t *nf);
+extern signed char factoredp_moebius(const factored_t *nf);
+extern uint32_t    factoredp_linear_factors(UV fac[], const factored_t *nf);
 
-static INLINE factored_t factorint(UV n)
+static INLINE factored_t  factorint(UV n)
  { factored_t nf; factorintp(&nf, n); return nf; }
-static INLINE void     factored_validate(const factored_t nf)
+static INLINE void        factored_validate(const factored_t nf)
  { return factoredp_validate(&nf); }
-static INLINE uint32_t factored_total_factors(const factored_t nf)
+static INLINE uint32_t    factored_total_factors(const factored_t nf)
  { return factoredp_total_factors(&nf); }
-static INLINE bool     factored_is_square_free(const factored_t nf)
+static INLINE bool        factored_is_square_free(const factored_t nf)
  { return factoredp_is_square_free(&nf); }
-static INLINE char     factored_moebius(const factored_t nf)
+static INLINE signed char factored_moebius(const factored_t nf)
  { return factoredp_moebius(&nf); }
-static INLINE uint32_t factored_linear_factors(UV fac[], const factored_t nf)
+static INLINE uint32_t    factored_linear_factors(UV fac[], const factored_t nf)
  { return factoredp_linear_factors(fac, &nf); }
 
 extern int trial_factor(UV n, UV *factors, UV first, UV last);

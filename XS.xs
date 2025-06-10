@@ -634,7 +634,7 @@ static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bm
 
 #define MPU_SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
 typedef struct {
-  char lostatus, histatus, *midstatus;
+  signed char lostatus, histatus, *midstatus;
   UV loval, hival, *midval;
   int *midindex;
 } set_data_t;
@@ -643,7 +643,7 @@ static set_data_t init_set_lookup_cache(pTHX_ AV *av) {
   Size_t len = av_count(av);
   if (len > MPU_SC_SIZE) len = MPU_SC_SIZE;
   d.lostatus = d.histatus = 0;
-  Newz(0, d.midstatus, len, char);
+  Newz(0, d.midstatus, len, signed char);
   New(0, d.midval, len, UV);
   New(0, d.midindex, len, int);
   return d;
