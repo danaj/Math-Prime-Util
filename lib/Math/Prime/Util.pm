@@ -5046,6 +5046,10 @@ This corresponds to Mathematica's C<Pochhammer[x,n]> function.
 
 =head2 powersum
 
+  say powersum(100,1);  #     5050 = vecsum(1..100)
+  say powersum(100,2);  #   338350 = vecsum(map{powint($_,2)} 1..100)
+  say powersum(100,3);  # 25502500 = vecsum(map{powint($_,3)} 1..100)
+
 Given two non-negative integers C<n> and C<k>, returns the sum of C<k>-th
 powers of the first C<n> positive integers.
 
@@ -5054,7 +5058,8 @@ With C<k=3> this is (L<OEIS A000537|http://oeis.org/A000537>).
 With C<k=4> this is (L<OEIS A000538|http://oeis.org/A000538>).
 OEIS sequences can be found through C<k=8>.
 
-This corresponds to the C<faulhaber_sum(n,k)> function in L<Math::AnyNum>.
+This corresponds to the C<faulhaber_sum(n,k)> function in L<Math::AnyNum>
+and Pari's C<dirpowerssum(n,k)> function using integer arguments.
 
 
 =head2 hclassno

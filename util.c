@@ -991,9 +991,11 @@ unsigned char* range_issquarefree(UV lo, UV hi) {
 
 
 #if BITS_PER_WORD == 32
-static const uint32_t _maxpowersumn[32] = {0,92681,2343,361,116,53,30,20,14,11,8,7,6,5,4,4,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2};
+static const uint32_t _max_ps_n[32] = {0,92681,2343,361,116,53,30,20,14,11,8,7,6,5,4,4,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2};
+static const uint32_t _max_ps_calc[9] = {0,0,1624,0,67,44,19,17,9};
 #else
-static const UV _maxpowersumn[64] = {0,6074000999,3810777,92681,9839,2190,745,331,175,105,69,49,36,28,22,18,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
+static const UV _max_ps_n[64] = {0,6074000999,3810777,92681,9839,2190,745,331,175,105,69,49,36,28,22,18,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
+static const uint32_t _max_ps_calc[9] = {0,0,2642245,0,5724,1824,482,288,115};
 #endif
 
 UV powersum(UV n, UV k)
@@ -1001,7 +1003,7 @@ UV powersum(UV n, UV k)
   UV a, a2, i, sum;
 
   if (n <= 1 || k == 0) return n;
-  if (k >= BITS_PER_WORD || n > _maxpowersumn[k]) return 0;
+  if (k >= BITS_PER_WORD || n > _max_ps_n[k]) return 0;
   if (n == 2) return 1 + (UVCONST(1) << k);
 
   a = (n+1)/2 * (n|1);    /* (n*(n+1))/2 */
@@ -1009,16 +1011,14 @@ UV powersum(UV n, UV k)
   if (k == 1) return a;
   if (k == 3) return a2;
 
-#if BITS_PER_WORD == 64
-  if (k == 2 && n <=2642245) return a * (2*n+1) / 3;
-  if (k == 4 && n <=   5724) return a * (2*n+1) * (3*n*(n+1)-1) / 15;
-  if (k == 5 && n <=   1824) return a2 * (4*a - 1) / 3;
-  if (k == 6 && n <=    482) return a * (2*n+1) * (n*((n*(n*(3*n+6)))-3)+1) /21;
-  if (k == 7 && n <=    288) return a2 * (6*a2 - 4*a + 1) / 3;
-  if (k == 8 && n <=    115) return a * (2*n+1) * (n*(n*(n*(n*(n*(5*n+15)+5)-15)-1)+9)-3) / 45;
-#else
-  /* TODO:  find the 32-bit limits */
-#endif
+  if (k <= 8 && n <= _max_ps_calc[k]) {  /* Use simple formula if possible */
+    if (k == 2) return a * (2*n+1) / 3;
+    if (k == 4) return a * (2*n+1) * (3*n*(n+1)-1) / 15;
+    if (k == 5) return a2 * (4*a - 1) / 3;
+    if (k == 6) return a * (2*n+1) * (n*((n*(n*(3*n+6)))-3)+1) / 21;
+    if (k == 7) return a2 * (6*a2 - 4*a + 1) / 3;
+    if (k == 8) return a * (2*n+1) * (n*(n*(n*(n*(n*(5*n+15)+5)-15)-1)+9)-3)/45;
+  }
 
   if (k <= 8 && k < n) {
     UV r, fac = 1;
