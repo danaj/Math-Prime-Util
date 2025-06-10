@@ -3076,16 +3076,17 @@ Some of those extend to non-integers.
 
 =head2 cmpint
 
-Given integers C<a> and C<b>, returns a positive value if C<a> is greater
-and C<b>, zero if they are equal, and a negative value if C<a> is less than
-C<b>.
+Given integers C<a> and C<b>, returns -1, 0, or 1 if C<a> is respectively
+less than, equal to, or greater than C<b>.
 
 The main value of this is to ensure Perl never silently converts the values
 to floating point, which can give wrong results, and also avoid having to
 manually convert everything to bigints.
 
 This corresponds to Pari/GP's C<cmp> function, GMP's C<mpz_cmp> function,
-Math::BigInt's C<bcmp> method, and Perl's E<lt>=E<gt> operator.
+Math::BigInt's C<bcmp> method, and Perl's E<lt>=E<gt> operator.  All but
+the GMP function guarantee results of C<{-1,0,1}>, while GMP uses a
+C comparator-like C<{negative,zero,positive}> tri-state return.
 
 =head2 addint
 
