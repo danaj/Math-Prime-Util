@@ -187,6 +187,9 @@ static int _is_congruent_number_filter1(const factored_t nf) {
    */
   if (n % 8 == 5 || n % 8 == 6 || n % 8 == 7)  return 1;
 
+  /* No filter here handles more than 4 odd factors */
+  if (nf.nfactors-iseven > 4)  return -1;
+
   { /* Sort odd factors into fac array by mod 8 */
     uint32_t i;
     for (i=0; i<nf.nfactors; i++) if (nf.f[i] % 8 == 1) fac[nfac++] = nf.f[i];
