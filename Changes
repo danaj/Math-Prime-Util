@@ -18,6 +18,8 @@ Revision history for Perl module Math::Prime::Util
     - consecutive_integer_lcm(0) was returning 0.  Now returns 1, matching
       the original GMP API as well as the OEIS series.
 
+    - some error messages with invalid arguments have changed.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n

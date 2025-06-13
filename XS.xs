@@ -341,9 +341,28 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define _vcallsub_with_gmp(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_GMP|VCALL_PP, func, items,(int)(100*(ver)))
 #define _vcallsub_with_pp(func) (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP, func, items,0)
 #define _vcallsub_with_pp_void(func) (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_PP, func, items,0)
-#define CALLPPSUB(func) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP,func,items,0)
 /* #define _vcallsub_with_gmpobj(ver,func) (void)_vcallsubn(aTHX_ G_SCALAR, (PERL_REVISION >= 5 && PERL_VERSION > 8) ? VCALL_GMP|VCALL_PP : VCALL_PP, func, items,(int)(100*(ver))) */
 #define _vcallsub_with_gmpobj(ver,func) _vcallsub_with_gmp(ver,func)
+
+
+#define SUBNAME GvNAME(CvGV(cv))
+#define CALLTHISPPSUB() (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP,SUBNAME,items,0)
+
+#define CALLPPSUB(func) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP,func,items,0)
+#define CALLGMPSUB(func,ver) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP|VCALL_GMP,func,items,ver)
+
+
+#define SETSUBREF(cv, block) \
+  do { \
+    cv = sv_2cv(block, &stash, &gv, 0); \
+    if (cv == Nullcv) croak("%s: Not a subroutine reference", SUBNAME); \
+  } while (0)
+#define CHECK_ARRAYREF(sv) \
+  do { \
+    if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV)) \
+      croak("%s: expected array reference", SUBNAME); \
+  } while (0)
+
 
 #if 0
 static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minversion)
@@ -539,11 +558,11 @@ static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what)
 {
   AV* av;
   if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV))
-    croak("%s argument must be an array reference", what);
+    croak("%s: expected array reference", what);
   av = (AV*) SvRV(sv);
   /* TODO: It's quite possible these have no affect on calling AvARRAY */
   if (SvMAGICAL(av) || SvREADONLY(av) || !AvREAL(av))
-    croak("%s argument is magical, readonly, or not real", what);
+    croak("%s: argument is magical, readonly, or not real", what);
   return av;
 }
 
@@ -1252,26 +1271,7 @@ void prime_count_upper(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case  0: _vcallsub_with_pp("prime_count_upper");   break;
-      case  1: _vcallsub_with_pp("prime_count_lower");   break;
-      case  2: _vcallsub_with_pp("prime_count_approx");   break;
-      case  3: _vcallsub_with_pp("prime_power_count_upper");   break;
-      case  4: _vcallsub_with_pp("prime_power_count_lower");   break;
-      case  5: _vcallsub_with_pp("prime_power_count_approx");   break;
-      case  6: _vcallsub_with_pp("perfect_power_count_upper");   break;
-      case  7: _vcallsub_with_pp("perfect_power_count_lower");   break;
-      case  8: _vcallsub_with_pp("perfect_power_count_approx");   break;
-      case  9: _vcallsub_with_pp("ramanujan_prime_count_upper");  break;
-      case 10: _vcallsub_with_pp("ramanujan_prime_count_lower");  break;
-      case 11: _vcallsub_with_pp("ramanujan_prime_count_approx");  break;
-      case 12: _vcallsub_with_pp("twin_prime_count_approx"); break;
-      case 13: _vcallsub_with_pp("semiprime_count_approx"); break;
-      case 14: _vcallsub_with_pp("lucky_count_upper"); break;
-      case 15: _vcallsub_with_pp("lucky_count_lower"); break;
-      case 16:
-      default: _vcallsub_with_pp("lucky_count_approx"); break;
-    }
+    CALLTHISPPSUB();
     objectify_result(aTHX_ svn, ST(0));
     return; /* skip implicit PUTBACK */
 
@@ -1511,13 +1511,7 @@ void prime_powers(IN SV* svlo, IN SV* svhi = 0)
         Safefree(L);
       }
     } else {
-      switch (ix) {
-        case  0: _vcallsub_with_pp("prime_powers"); break;
-        case  1: _vcallsub_with_pp("twin_primes"); break;
-        case  2: _vcallsub_with_pp("semi_primes"); break;
-        case  3: _vcallsub_with_pp("ramanujan_primes"); break;
-        default: break;
-      }
+      CALLTHISPPSUB();
     }
     return;
 
@@ -1731,7 +1725,7 @@ is_perrin_pseudoprime(IN SV* svn, IN UV k = 0)
     int status, ret;
     UV n;
   PPCODE:
-    if (k < 0) croak("second argument must not be negative");
+    if (k < 0) croak("is_perrin_pseudoprime: expected non-negative k");
     /*  ix = 0    k = 0 - 3       n below 2 returns 0 for all k
      *  ix = 1    k = 0 - 256     n below 2 returns 0 for all k
      *  ix = 2    k = 0 - 2^32    n below 2 returns 0 for all k
@@ -1775,7 +1769,7 @@ miller_rabin_random(IN SV* svn, IN IV bases = 1, IN char* seed = 0)
     UV n;
     dMY_CXT;
   PPCODE:
-    if (bases < 0) croak("miller_rabin_random: number of bases must be positive");
+    if (bases < 0) croak("miller_rabin_random: expected positive number of bases");
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == -1) RETURN_NPARITY(0);
     if (seed == 0 && status == 1)
@@ -1925,8 +1919,7 @@ vecextract(IN SV* x, IN SV* svm)
     AV* av;
     UV mask, i = 0;
   PPCODE:
-    if ((!SvROK(x)) || (SvTYPE(SvRV(x)) != SVt_PVAV))
-      croak("vecextract first argument must be an array reference");
+    CHECK_ARRAYREF(x);
     av = (AV*) SvRV(x);
     if (SvROK(svm) && SvTYPE(SvRV(svm)) == SVt_PVAV) {
       AV* avm = (AV*) SvRV(svm);
@@ -1959,7 +1952,7 @@ vecequal(IN SV* a, IN SV* b)
   PPCODE:
     res = _compare_array_refs(aTHX_ a, b);
     if (res == -1)
-      croak("vecequal element not scalar or array reference");
+      croak("vecequal: expected scalar or array reference");
     RETURN_NPARITY(res);
     return;
 
@@ -2037,9 +2030,9 @@ chinese(...)
     ret = 0;
     for (i = 0; i < items; i++) {
       AV* av;
-      if (!SvROK(ST(i)) || SvTYPE(SvRV(ST(i))) != SVt_PVAV || av_count((AV*)SvRV(ST(i))) != 2)
-        croak("chinese arguments are two-element array references");
+      CHECK_ARRAYREF(ST(i));
       av = (AV*) SvRV(ST(i));
+      if (av_count(av) != 2) croak("%s: expected 2-element array reference",SUBNAME);
       psva = av_fetch(av, 0, 0);
       psvn = av_fetch(av, 1, 0);
       if (psva == 0 || psvn == 0) { status = 0; break; }
@@ -2447,13 +2440,7 @@ void nth_prime(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_prime");          break;
-      case 1:  _vcallsub_with_pp("nth_prime_upper");    break;
-      case 2:  _vcallsub_with_pp("nth_prime_lower");    break;
-      case 3:
-      default: _vcallsub_with_pp("nth_prime_approx");   break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_prime_power(IN SV* svn)
@@ -2476,13 +2463,7 @@ void nth_prime_power(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_prime_power");          break;
-      case 1:  _vcallsub_with_pp("nth_prime_power_upper");    break;
-      case 2:  _vcallsub_with_pp("nth_prime_power_lower");    break;
-      case 3:
-      default: _vcallsub_with_pp("nth_prime_power_approx");   break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_perfect_power(IN SV* svn)
@@ -2535,13 +2516,7 @@ void nth_ramanujan_prime(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_ramanujan_prime");          break;
-      case 1:  _vcallsub_with_pp("nth_ramanujan_prime_upper");    break;
-      case 2:  _vcallsub_with_pp("nth_ramanujan_prime_lower");    break;
-      case 3:
-      default: _vcallsub_with_pp("nth_ramanujan_prime_approx");   break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_twin_prime(IN SV* svn)
@@ -2560,11 +2535,7 @@ void nth_twin_prime(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_twin_prime");          break;
-      case 1:
-      default: _vcallsub_with_pp("nth_twin_prime_approx");   break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_semiprime(IN SV* svn)
@@ -2583,11 +2554,7 @@ void nth_semiprime(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_semiprime");          break;
-      case 1:
-      default: _vcallsub_with_pp("nth_semiprime_approx");   break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_lucky(IN SV* svn)
@@ -2610,13 +2577,7 @@ void nth_lucky(IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_lucky");          break;
-      case 1:  _vcallsub_with_pp("nth_lucky_upper");    break;
-      case 2:  _vcallsub_with_pp("nth_lucky_lower");    break;
-      case 3:
-      default: _vcallsub_with_pp("nth_lucky_approx");   break;
-    }
+    CALLTHISPPSUB();
     return;
 
 
@@ -2662,11 +2623,7 @@ void next_prime_power(IN SV* svn)
       if (ret == 0) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("next_prime_power");  break;
-      case 1:
-      default: _vcallsub_with_pp("prev_prime_power");  break;
-    }
+    CALLTHISPPSUB();
     /* objectify_result(aTHX_ svn, ST(0)); */
     return;
 
@@ -2747,7 +2704,7 @@ void urandomb(IN UV bits)
       default: minarg =   0; break;
     }
     if (minarg > 0 && bits < minarg)
-      croak("Parameter '%d' must be >= %d", (int)bits, (int)minarg);
+      croak("%s: input '%d' must be >= %d", SUBNAME, (int)bits, (int)minarg);
     cs = MY_CXT.randcxt;
     if (bits <= BITS_PER_WORD) {
       switch (ix) {
@@ -2855,7 +2812,7 @@ void contfrac(IN SV* svnum, IN SV* svden)
         PUSHs(sv_2mortal(newSVuv( cf[i] )));
       Safefree(cf);
     } else {
-      CALLPPSUB("contfrac");
+      CALLTHISPPSUB();
       return;
     }
 
@@ -2878,11 +2835,7 @@ void next_calkin_wilf(IN SV* svnum, IN SV* svden)
         XSRETURN(2);
       }
     }
-    switch (ix) {
-      case 0: CALLPPSUB("next_calkin_wilf");  break;
-      case 1: CALLPPSUB("next_stern_brocot"); break;
-      default: break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void calkin_wilf_n(IN SV* svnum, IN SV* svden)
@@ -2899,11 +2852,7 @@ void calkin_wilf_n(IN SV* svnum, IN SV* svden)
       }
       if (n)  XSRETURN_UV(n);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("calkin_wilf_n");  break;
-      case 1:  _vcallsub_with_pp("stern_brocot_n"); break;
-      default: break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_calkin_wilf(IN SV* svn)
@@ -2925,11 +2874,7 @@ void nth_calkin_wilf(IN SV* svn)
         XSRETURN(2);
       }
     }
-    switch (ix) {
-      case 0: CALLPPSUB("nth_calkin_wilf");    break;
-      case 1: CALLPPSUB("nth_stern_brocot"); break;
-      default: break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void nth_stern_diatomic(IN SV* svn)
@@ -2992,9 +2937,9 @@ void next_farey(IN SV* svn, IN SV* svfrac)
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO) &&
         n <= UVCONST(4294967295)) {
-      if (!SvROK(svfrac) || SvTYPE(SvRV(svfrac)) != SVt_PVAV || av_count((AV*)SvRV(svfrac)) != 2)
-        croak("next_farey second argument must be a 2-element array reference");
+      CHECK_ARRAYREF(svfrac);
       av = (AV*) SvRV(svfrac);
+      if (av_count(av) != 2) croak("%s: expected 2-element array reference", SUBNAME);
       psvp = av_fetch(av, 0, 0);
       psvq = av_fetch(av, 1, 0);
       status = 1;
@@ -3020,7 +2965,7 @@ void next_farey(IN SV* svn, IN SV* svfrac)
         }
       }
     }
-    CALLPPSUB( (ix == 0) ? "next_farey" : "farey_rank");
+    CALLTHISPPSUB();
     return;
 
 
@@ -3311,14 +3256,7 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
       }
       XSRETURN_UV(ret);
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("almost_prime_count");  break;
-      case 1:  _vcallsub_with_pp("almost_prime_count_approx");  break;
-      case 2:  _vcallsub_with_pp("almost_prime_count_lower");  break;
-      case 3:  _vcallsub_with_pp("almost_prime_count_upper");  break;
-      case 4:
-      default: _vcallsub_with_pp("omega_prime_count");  break;
-    }
+    CALLTHISPPSUB();
     objectify_result(aTHX_ svn, ST(0));
     return;
 
@@ -3346,13 +3284,7 @@ void nth_almost_prime(IN SV* svk, IN SV* svn)
         XSRETURN_UV(ret);
       }
     }
-    switch (ix) {
-      case 0:  _vcallsub_with_pp("nth_almost_prime");  break;
-      case 1:  _vcallsub_with_pp("nth_almost_prime_approx");  break;
-      case 2:  _vcallsub_with_pp("nth_almost_prime_lower");  break;
-      case 3:
-      default: _vcallsub_with_pp("nth_almost_prime_upper");  break;
-    }
+    CALLTHISPPSUB();
     objectify_result(aTHX_ svn, ST(0));
     return;
 
@@ -3811,9 +3743,8 @@ void addint(IN SV* sva, IN SV* svb)
       smask = ((astatus == -1) << 1) + (bstatus == -1);
       /* smask=0: +a +b  smask=1: +a -b  smask=2: -a +b  smask=3: -a -b */
 
-      if (ix == 3 && b == 0) croak("divint: divide by zero");
-      if (ix == 4 && b == 0) croak("modint: divide by zero");
-      if (ix == 5 && b == 0) croak("cdivint: divide by zero");
+      if (b == 0 && (ix==3 || ix==4 || ix==5))
+        croak("%s: divide by zero", SUBNAME);
 
       if (smask != 0) { /* Manipulate so all arguments are positive */
         if (smask & 2) a = neg_iv(a);
@@ -3959,7 +3890,7 @@ void signint(IN SV* svn)
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == 0) {  /* Look at the string input */
       s = SvPV(svn, len);
-      if (len == 0 || s == 0) croak("%s: invalid parameter", (ix==0) ? "signint" : (ix==1) ? "is_odd" : "is_even");
+      if (len == 0 || s == 0) croak("%s: invalid non-empty input", SUBNAME);
       sign = (s[0] == '-')  ?  -1  : (s[0] == '0')  ?  0  :  1;
       isodd = (s[len-1] == '1' || s[len-1] == '3' || s[len-1] == '5' || s[len-1] == '7' || s[len-1] == '9');
     } else {
@@ -3998,7 +3929,7 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
     if (ix == 0 && k <= 1)  croak("logint: base must be > 1");
     if (ix == 1 && k <= 0)  croak("rootint: k must be > 0");
     if (svret != 0 && !SvROK(svret))
-      croak("%s: third argument not a scalar reference",(ix==0)?"logint":"rootint");
+      croak("%s: third argument not a scalar reference",SUBNAME);
     if (_validate_and_set(&n, aTHX_ svn, ix == 0 ? IFLAG_POS | IFLAG_NONZERO : IFLAG_POS)) {
       root = (ix == 0) ? logint(n, k) : rootint(n, k);
       if (svret) sv_setuv(SvRV(svret), ix == 0 ? ipow(k,root) : ipow(root,k));
@@ -4024,7 +3955,7 @@ void divrem(IN SV* sva, IN SV* svb)
     astatus = _validate_and_set(&D, aTHX_ sva, IFLAG_ANY);
     bstatus = _validate_and_set(&d, aTHX_ svb, IFLAG_ANY);
     if (astatus != 0 && bstatus != 0 && d == 0)
-      croak("divrem: divide by zero");
+      croak("%s: divide by zero", SUBNAME);
     if (astatus == 1 && bstatus == 1 && (ix != 2 || D % d == 0)) {
       XPUSHs(sv_2mortal(newSVuv( D / d )));
       XPUSHs(sv_2mortal(newSVuv( D % d )));
@@ -4051,12 +3982,13 @@ void divrem(IN SV* sva, IN SV* svb)
       XSRETURN(2);
     }
     switch (ix) {
-      case 0:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "divrem", items, 52); break;
-      case 1:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "fdivrem", items, 53); break;
-      case 2:  _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "cdivrem", items, 53); break;
-      case 3:
-      default: _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, "tdivrem", items, 52); break;
+      case 0:  CALLGMPSUB("divrem",  52);  break;
+      case 1:  CALLGMPSUB("fdivrem", 53);  break;
+      case 2:  CALLGMPSUB("cdivrem", 53);  break;
+      case 3:  CALLGMPSUB("tdivrem", 52);  break;
+      default: break;
     }
+    objectify_result(aTHX_ ST(0), ST(0));
     return; /* skip implicit PUTBACK */
 
 void lshiftint(IN SV* svn, IN unsigned long k = 1)
@@ -4087,10 +4019,10 @@ void lshiftint(IN SV* svn, IN unsigned long k = 1)
       /* Fall through -- left shift needs more bits */
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmpobj(0.53,"lshiftint");  break;
-      case 1:  _vcallsub_with_gmpobj(0.53,"rshiftint");  break;
-      case 2:
-      default: _vcallsub_with_gmpobj(0.53,"rashiftint"); break;
+      case 0:  CALLGMPSUB("lshiftint",  53);  break;
+      case 1:  CALLGMPSUB("rshiftint",  53);  break;
+      case 2:  CALLGMPSUB("rashiftint", 53);  break;
+      default: break;
     }
     objectify_result(aTHX_ ST(0), ST(0));
     return;
@@ -4107,7 +4039,7 @@ gcdext(IN SV* sva, IN SV* svb)
       XPUSHs(sv_2mortal(newSViv( v )));
       XPUSHs(sv_2mortal(newSViv( d )));
     } else {
-      _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "gcdext", items, 0);
+      CALLPPSUB("gcdext");
       return; /* skip implicit PUTBACK */
     }
 
@@ -4115,7 +4047,7 @@ void
 stirling(IN UV n, IN UV m, IN UV type = 1)
   PPCODE:
     if (type != 1 && type != 2 && type != 3)
-      croak("stirling type must be 1, 2, or 3");
+      croak("stirling: type must be 1, 2, or 3");
     if (n == m)
       XSRETURN_UV(1);
     else if (n == 0 || m == 0 || m > n)
@@ -4130,7 +4062,7 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       IV s = stirling1(n, m);
       if (s != 0) XSRETURN_IV(s);
     }
-    _vcallsub_with_gmpobj(0.26,"stirling");
+    CALLGMPSUB("stirling", 26);
     objectify_result(aTHX_ ST(0), ST(0));
     return;
 
@@ -4219,9 +4151,9 @@ void sqrtint(IN SV* svn)
       XSRETURN_UV(r);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.40,"sqrtint"); break;
-      case 1:  _vcallsub_with_gmp(0.22,"carmichael_lambda"); break;
-      case 2:  _vcallsub_with_gmp(0.19,"exp_mangoldt"); break;
+      case 0:  CALLGMPSUB("sqrtint", 40); break;
+      case 1:  CALLGMPSUB("carmichael_lambda", 22); break;
+      case 2:  CALLGMPSUB("exp_mangoldt", 19); break;
       default: break;
     }
     objectify_result(aTHX_ svn, ST(0));
@@ -4247,8 +4179,8 @@ void prime_omega(IN SV* svn)
       RETURN_NPARITY(ret);
     }
     switch (ix) {
-      case 0:  _vcallsub_with_gmp(0.53,"prime_omega"); break;
-      case 1:  _vcallsub_with_gmp(0.53,"prime_bigomega"); break;
+      case 0:  CALLGMPSUB("prime_omega", 53); break;
+      case 1:  CALLGMPSUB("prime_bigomega", 53); break;
       case 2:  if (_XS_get_callgmp() >= 47) { /* Very fast */
                  _vcallsub_with_gmp(0.47,"hammingweight");
                } else {                       /* Better than PP */
@@ -4256,7 +4188,7 @@ void prime_omega(IN SV* svn)
                  XSRETURN_UV(mpu_popcount_string(ptr, len));
                }
                break;
-      case 3: _vcallsub_with_gmp(0.53,"is_square_free"); break;
+      case 3:  CALLGMPSUB("is_square_free", 53); break;
       default: break;
     }
     /* No objectify */
@@ -4420,7 +4352,7 @@ void chebyshev_theta(IN SV* svn)
       NV r = (ix==0)  ?  chebyshev_theta(n)  :  chebyshev_psi(n);
       XSRETURN_NV(r);
     }
-    _vcallsub_with_pp( (ix==0) ? "chebyshev_theta" : "chebyshev_psi" );
+    CALLTHISPPSUB();
     /* Result is FP, don't objectify */
     return;
 
@@ -4493,13 +4425,12 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     int status;
     UV ret;
     HV *stash;
-    CV *cv = sv_2cv(block, &stash, &gv, 0);
+    CV *subcv;
 
-    if (cv == Nullcv) croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     /* ====== Get and store the input array references ====== */
-    if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
-      croak("setbinop: first array arg must be an array reference");
+    CHECK_ARRAYREF(sva);
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
     if (alen == 0) XSRETURN_EMPTY;
@@ -4507,8 +4438,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     if (svb == 0) {
       avb = ava;
     } else {
-      if ((!SvROK(svb)) || (SvTYPE(SvRV(svb)) != SVt_PVAV))
-        croak("setbinop: second array arg must be an array reference");
+      CHECK_ARRAYREF(svb);
       avb = (AV*) SvRV(svb);
     }
     blen = av_count(avb);
@@ -4555,10 +4485,10 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     SAVESPTR(GvSV(bgv));
     s = iset_create( 4UL * ((size_t)alen + (size_t)blen + 2) );
 #ifdef dMULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_SCALAR;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       for (i = 0; i < alen; i++) {
         GvSV(agv) = asv[i];
         for (j = 0; j < blen; j++) {
@@ -4582,7 +4512,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
           dSP;
           GvSV(bgv) = bsv[j];
           PUSHMARK(SP);
-          call_sv((SV*)cv, G_SCALAR);
+          call_sv((SV*)subcv, G_SCALAR);
           status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
           if (status != 0)  iset_add(&s, ret, status);
           if (status == 0 || iset_is_invalid(s)) break;
@@ -4679,13 +4609,7 @@ void setunion(IN SV* sva, IN SV* svb)
     /* if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) { .. isets .. } */
     Safefree(ra);
     Safefree(rb);
-    switch (ix) {
-      case 0: CALLPPSUB("setunion");     break;
-      case 1: CALLPPSUB("setintersect"); break;
-      case 2: CALLPPSUB("setminus");     break;
-      case 3:
-      default:CALLPPSUB("setdelta");     break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void set_is_disjoint(IN SV* sva, IN SV* svb)
@@ -4751,16 +4675,7 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     }
     Safefree(ra);
     Safefree(rb);
-    switch (ix) {
-      case 0: CALLPPSUB("set_is_disjoint");       break;
-      case 1: CALLPPSUB("set_is_equal");          break;
-      case 2: CALLPPSUB("set_is_subset");         break;
-      case 3: CALLPPSUB("set_is_proper_subset");  break;
-      case 4: CALLPPSUB("set_is_superset");       break;
-      case 5: CALLPPSUB("set_is_proper_superset");break;
-      case 6:
-      default:CALLPPSUB("set_is_proper_intersection"); break;
-    }
+    CALLTHISPPSUB();
     return;
 
 void setcontains(IN SV* sva, IN SV* svb)
@@ -4771,9 +4686,7 @@ void setcontains(IN SV* sva, IN SV* svb)
     int bstatus, subset;
     Size_t alen, blen, i;
   PPCODE:
-    /* First arg must be an array reference (set) */
-    if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
-      croak("setcontains first argument must be an array reference");
+    CHECK_ARRAYREF(sva);   /* First argument is a set as array ref */
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
     /* Case of the second argument being a single integer. */
@@ -4867,7 +4780,7 @@ void setinsert(IN SV* sva, IN SV* svb)
         /* Get hi and lo values of set. */
         if (_sc_set_lohi(aTHX_ AvARRAY(ava), &cache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
           if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0)
-            croak("Bad input set: set not sorted numerically ascending.");
+            croak("%s: expected numerically ascending sorted input", SUBNAME);
           /* Both lo/hi are not bigint, so there are no bigints in the set. */
           nbeg = nend = nmid = 0;
           /* 1. Find out how many elements go in front. */
@@ -4887,7 +4800,7 @@ void setinsert(IN SV* sva, IN SV* svb)
             for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
               int index = index_in_set(aTHX_ ava, &cache, bstatus, rb[i]);
               if (index < 0)
-                croak("Bad input set: bigint value in interior, not sorted.");
+                croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
               if (index > 0) {
                 insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
                 insert_idx[nmid] = index-1;                /* Where to insert */
@@ -5043,7 +4956,7 @@ void vecsort(...)
       XSRETURN_EMPTY;
     if (SvROK(ST(0)) && SvTYPE(SvRV(ST(0))) == SVt_PVAV) {
       if (items != 1)
-        croak("vecsort requires an integer list or a single array reference");
+        croak("vecsort: expected integer list or single array reference");
       type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), "vecsort");
     } else {
       len = (size_t) items;
@@ -5135,8 +5048,7 @@ permtonum(IN SV* svp)
     UV val, num;
     Size_t plen, i;
   PPCODE:
-    if ((!SvROK(svp)) || (SvTYPE(SvRV(svp)) != SVt_PVAV))
-      croak("permtonum argument must be an array reference");
+    CHECK_ARRAYREF(svp);
     av = (AV*) SvRV(svp);
     plen = av_count(av);
     if (plen <= 20) {
@@ -5258,7 +5170,7 @@ void todigits(SV* svn, int base=10, int length=-1)
     UV n;
     char *str;
   PPCODE:
-    if (base < 2) croak("invalid base: %d", base);
+    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
     status = 0;
     if (ix == 0 || ix == 1) {
       status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
@@ -5351,9 +5263,9 @@ void fromzeckendorf(IN char* str)
   PPCODE:
     status = validate_zeckendorf(str);
     if (status == 0) {
-      croak("fromzeckendorf takes a binary string as input");
+      croak("fromzeckendorf: expected binary string");
     } else if (status == -1) {
-      croak("fromzeckendorf binary input not in canonical Zeckendorf form");
+      croak("fromzeckendorf: expected binary string in canonical Zeckendorf form");
     } else if (status == 1) {
       XSRETURN_UV(from_zeckendorf(str));
     } else {
@@ -5404,15 +5316,13 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     SV* svarg;
-    CV *cv;
+    CV *subcv;
     unsigned char* segment;
     UV beg, end, seg_base, seg_low, seg_high;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
@@ -5427,10 +5337,10 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GvSV(PL_defgv) = svarg;
     /* Handle early part */
 #if USE_MULTICALL
-    if (!CvISXSUB(cv) && beg <= end) {
+    if (!CvISXSUB(subcv) && beg <= end) {
       dMULTICALL;
       I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       if (beg < 6) {
         beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
         for ( ; beg < 6 && beg <= end; beg += 1+(beg>2) ) {
@@ -5479,7 +5389,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
         for ( ; beg < 6 && beg <= end; beg += 1+(beg>2) ) {
           sv_setuv(svarg, beg);
-          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -5489,7 +5399,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
             CHECK_FORCOUNT;
             sv_setuv(svarg, p);
-            PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+            PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           END_DO_FOR_EACH_SIEVE_PRIME
           CHECK_FORCOUNT;
         }
@@ -5512,13 +5422,11 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv;
+    CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
@@ -5534,13 +5442,13 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
-    if (!CvISXSUB(cv) && end >= beg) {
+    if (!CvISXSUB(subcv) && end >= beg) {
       unsigned char* segment;
       UV seg_base, seg_low, seg_high, c, cbeg, cend, cinc, prevprime, nextprime;
       void* ctx;
       dMULTICALL;
       I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       if (beg >= MPU_MAX_PRIME ||
 #if BITS_PER_WORD == 64
           (beg >= UVCONST(     100000000000000) && end-beg <    120000) ||
@@ -5610,7 +5518,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       while (beg++ < end) {
         if (FORCOMPTEST(ix,beg) && !is_prob_prime(beg)) {
           sv_setuv(svarg, beg);
-          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -5626,13 +5534,11 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv;
+    CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
@@ -5649,11 +5555,11 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
-    if (!CvISXSUB(cv) && end >= beg) {
+    if (!CvISXSUB(subcv) && end >= beg) {
       UV c, seg_beg, seg_end, *S, count;
       dMULTICALL;
       I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       if (beg >= MPU_MAX_SEMI_PRIME ||
 #if BITS_PER_WORD == 64
           (beg >= UVCONST(10000000000000000000) && end-beg <  1400000) ||
@@ -5699,7 +5605,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       while (beg++ < end) {
         if (is_semiprime(beg)) {
           sv_setuv(svarg, beg);
-          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -5715,13 +5621,11 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv;
+    CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
@@ -5753,11 +5657,11 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
-    if (!CvISXSUB(cv) && end >= beg) {
+    if (!CvISXSUB(subcv) && end >= beg) {
       UV seg_beg, seg_end, *S, count, k3 = ipow(3,k);
       dMULTICALL;
       I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       while (beg <= end) {
         /* TODO: Tuning this better would be nice */
         UV ssize = 65536 * 256;
@@ -5787,7 +5691,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
       for (c = beg; c <= end && c >= beg; c++) {
         if (is_almost_prime(k,c)) {
           sv_setuv(svarg, c << shiftres);
-          PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
         }
       }
@@ -5804,13 +5708,11 @@ fordivisors (SV* block, IN SV* svn)
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv;
+    CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_generic_fordivisors", 2, 0);
@@ -5824,10 +5726,10 @@ fordivisors (SV* block, IN SV* svn)
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
 #if USE_MULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
         { ENTER; MULTICALL; LEAVE; }
@@ -5841,7 +5743,7 @@ fordivisors (SV* block, IN SV* svn)
     {
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
-        PUSHMARK(SP); PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+        PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
         CHECK_FORCOUNT;
       }
     }
@@ -5859,19 +5761,17 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     int primeq;
     GV *gv;
     HV *stash;
-    CV *cv;
+    CV *subcv;
     SV** svals;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      _vcallsub_with_pp_void("forpart");
+      CALLTHISPPSUB();
       return;
     }
-    if (n > (UV_MAX-2)) croak("forpart argument overflow");
+    if (n > (UV_MAX-2)) croak("%s: argument overflow", SUBNAME);
 
     New(0, svals, n+1, SV*);
     for (i = 0; i <= n; i++) {
@@ -5884,7 +5784,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       HV* rhash;
       SV** svp;
       if (!SvROK(svh) || SvTYPE(SvRV(svh)) != SVt_PVHV)
-        croak("forpart second argument must be a hash reference");
+        croak("%s: expected hash reference", SUBNAME);
       rhash = (HV*) SvRV(svh);
       if ((svp = hv_fetchs(rhash, "n", 0)) != NULL)
         { nmin = my_svuv(*svp);  nmax = nmin; }
@@ -5911,7 +5811,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     if (n==0 && nmin <= 1) {
       { PUSHMARK(SP);
         /* Nothing */
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+        PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       }
     }
     if (n >= nmin && nmin <= nmax && amin <= amax && nmax > 0 && amax > 0)
@@ -5967,7 +5867,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
 
         PUSHMARK(SP); EXTEND(SP, (IV)k);
         for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+        PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
         CHECK_FORCOUNT;
       }
       Safefree(a);
@@ -5987,17 +5887,15 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     UV i, n, k, begk, endk;
     GV *gv;
     HV *stash;
-    CV *cv;
+    CV *subcv;
     SV** svals;
     UV*  cm;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
     if (ix > 0 && svk != 0)
-      croak("Too many arguments for forperm");
+      croak("%s: too many arguments", SUBNAME);
 
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS) ||
         (svk && !_validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
@@ -6025,12 +5923,12 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
 
     START_FORCOUNT;
 #if USE_MULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       for (k = begk; k <= endk; k++) {
         _comb_init(cm, k, ix == 2);
         while (1) {
@@ -6058,7 +5956,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
           if (ix < 2 || k != 1) {
             PUSHMARK(SP); EXTEND(SP, ((IV)k));
             for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
-            PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+            PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           }
           CHECK_FORCOUNT;
           if (_comb_iterate(cm, k, n, ix)) break;
@@ -6082,20 +5980,18 @@ forsetproduct (SV* block, ...)
     SV **arout;
     GV *gv;
     HV *stash;
-    CV *cv;
+    CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv) croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     narrays = items-1;
     if (narrays < 1) return;
 
     for (i = 1; i <= narrays; i++) {
       SvGETMAGIC(ST(i));
-      if ((!SvROK(ST(i))) || (SvTYPE(SvRV(ST(i))) != SVt_PVAV))
-        croak("forsetproduct arguments must be array references");
+      CHECK_ARRAYREF(ST(i));
       if (av_count((AV *)SvRV(ST(i))) == 0)
         return;
     }
@@ -6112,12 +6008,12 @@ forsetproduct (SV* block, ...)
 
     START_FORCOUNT;
 #if USE_MULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       do {
         av_extend(av, narrays-1);
         av_fill(av, narrays-1);
@@ -6139,7 +6035,7 @@ forsetproduct (SV* block, ...)
     do {
       PUSHMARK(SP); EXTEND(SP, narrays);
       for (i = 0; i < narrays; i++) { PUSHs(arout[i]); }
-      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+      PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       CHECK_FORCOUNT;
       for (i = narrays-1; i >= 0; i--) {
         if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
@@ -6165,14 +6061,12 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv;
+    CV *subcv;
     SV* svals[64];
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
@@ -6197,17 +6091,17 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= 1) {
       PUSHMARK(SP);
       sv_setuv(svarg, 1);
-      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+      PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
     }
     fctx = factor_range_init(beg, end, ix);
 #if USE_MULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       for (n = 0; n < end-beg+1; n++) {
         CHECK_FORCOUNT;
         nfactors = factor_range_next(&fctx);
@@ -6245,7 +6139,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
           SvREADONLY_on(sv);
           PUSHs(sv);
         }
-        PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+        PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       }
     }
     factor_range_destroy(&fctx);
@@ -6262,13 +6156,11 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
     GV *gv;
     HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
-    CV *cv;
+    CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
   PPCODE:
-    cv = sv_2cv(block, &stash, &gv, 0);
-    if (cv == Nullcv)
-      croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
@@ -6286,7 +6178,7 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg <= 1) {
       PUSHMARK(SP);
       sv_setuv(svarg, 1);
-      PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+      PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
     }
     while (beg <= end) {
@@ -6295,12 +6187,12 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
         seghi = seglo + 65536*256 - 1;
       isf = range_issquarefree(seglo, seghi);
 #if USE_MULTICALL
-      if (!CvISXSUB(cv)) {
+      if (!CvISXSUB(subcv)) {
         dMULTICALL;
         I32 gimme = G_VOID;
         AV *av = save_ary(PL_defgv);
         AvREAL_off(av);
-        PUSH_MULTICALL(cv);
+        PUSH_MULTICALL(subcv);
         for (i = 0; i < seghi-seglo+1; i++) {
           CHECK_FORCOUNT;
           if (isf[i]) {
@@ -6317,7 +6209,7 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
         CHECK_FORCOUNT;
         if (isf[i]) {
           sv_setuv(svarg, seglo+i);
-          PUTBACK; call_sv((SV*)cv, G_VOID|G_DISCARD); SPAGAIN;
+          PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
         }
       }
       Safefree(isf);
@@ -6338,9 +6230,9 @@ CODE:
     GV *agv,*bgv,*gv;
     HV *stash;
     SV **args = &PL_stack_base[ax];
-    CV *cv = sv_2cv(block, &stash, &gv, 0);
+    CV *subcv;
 
-    if (cv == Nullcv) croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
     if (items <= 1) XSRETURN_UNDEF;
 
     agv = gv_fetchpv("a", GV_ADD, SVt_PV);
@@ -6350,10 +6242,10 @@ CODE:
     GvSV(agv) = ret;
     SvSetMagicSV(ret, args[1]);
 #ifdef dMULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_SCALAR;
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       for (i = 2; i < items; i++) {
         GvSV(bgv) = args[i];
         { ENTER; MULTICALL; LEAVE; }
@@ -6369,7 +6261,7 @@ CODE:
         dSP;
         GvSV(bgv) = args[i];
         PUSHMARK(SP);
-        call_sv((SV*)cv, G_SCALAR);
+        call_sv((SV*)subcv, G_SCALAR);
         SvSetMagicSV(ret, *PL_stack_sp);
       }
     }
@@ -6394,17 +6286,17 @@ PPCODE:
     GV *gv;
     HV *stash;
     SV **args = &PL_stack_base[ax];
-    CV *cv    = sv_2cv(block, &stash, &gv, 0);
+    CV *subcv;
 
-    if (cv == Nullcv) croak("Not a subroutine reference");
+    SETSUBREF(subcv, block);
 
     SAVESPTR(GvSV(PL_defgv));
 #ifdef dMULTICALL
-    if (!CvISXSUB(cv)) {
+    if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_SCALAR;
 
-      PUSH_MULTICALL(cv);
+      PUSH_MULTICALL(subcv);
       for (index = 1; index < items; index++) {
         GvSV(PL_defgv) = args[index];
         { ENTER; MULTICALL; LEAVE; }
@@ -6421,7 +6313,7 @@ PPCODE:
         dSP;
         GvSV(PL_defgv) = args[index];
         PUSHMARK(SP);
-        call_sv((SV*)cv, G_SCALAR);
+        call_sv((SV*)subcv, G_SCALAR);
         if (SvTRUEx(*PL_stack_sp) ^ invert)
           break;
       }
