@@ -1765,7 +1765,7 @@ bool is_primitive_root(UV a, UV n, bool nprime) {
     if ((phi % 5) == 0 && mont_powmod(a, phi/5, n) == mont1) return 0;
     phif = factorint(phi);
     for (i = 0; i < phif.nfactors; i++)
-      if (fac[i] > 5 && mont_powmod(a, phi/phif.f[i], n) == mont1)
+      if (phif.f[i] > 5 && mont_powmod(a, phi/phif.f[i], n) == mont1)
         return 0;
   } else
 #endif

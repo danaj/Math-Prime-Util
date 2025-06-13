@@ -3,10 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/
-    prime_count
-    ExponentialIntegral LogarithmicIntegral RiemannR RiemannZeta LambertW
-/;
+use Math::Prime::Util qw/ExponentialIntegral LogarithmicIntegral
+                         RiemannR RiemannZeta LambertW/;
 
 my $infinity = 20**20**20;
 

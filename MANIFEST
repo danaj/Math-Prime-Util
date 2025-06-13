@@ -189,7 +189,6 @@ t/14-nthprime.t
 t/15-probprime.t
 t/16-randomprime.t
 t/17-pseudoprime.t
-t/18-functions.t
 t/19-chebyshev.t
 t/19-chinese.t
 t/19-divint.t
@@ -271,6 +270,7 @@ t/50-factoring.t
 t/51-randfactor.t
 t/51-znlog.t
 t/52-primearray.t
+t/53-realfunctions.t
 t/70-rt-bignum.t
 t/80-pp.t
 t/81-bignum.t

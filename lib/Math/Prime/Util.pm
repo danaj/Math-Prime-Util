@@ -3084,9 +3084,9 @@ to floating point, which can give wrong results, and also avoid having to
 manually convert everything to bigints.
 
 This corresponds to Pari/GP's C<cmp> function, GMP's C<mpz_cmp> function,
-Math::BigInt's C<bcmp> method, and Perl's E<lt>=E<gt> operator.  All but
-the GMP function guarantee results of C<{-1,0,1}>, while GMP uses a
-C comparator-like C<{negative,zero,positive}> tri-state return.
+Math::BigInt's C<bcmp> method, and Perl's E<lt>=E<gt> operator.
+Previous to version 6.2, GMP could return negative or positive values other
+than -1 and 1.
 
 =head2 addint
 
