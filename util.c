@@ -74,6 +74,28 @@ unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len)
   return (L[lo] == v)  ?  lo+1  :  0;
 }
 
+/* Do two sorted UV arrays have a non-zero intersection? */
+bool do_arrays_intersect_uv(const UV* A, size_t alen, const UV* B, size_t blen)
+{
+  size_t ia = 0, ib = 0;
+  while (ia < alen && ib < blen) {
+    if      (A[ia] == B[ib]) return 1;
+    else if (A[ia]  < B[ib]) ia++;
+    else                     ib++;
+  }
+  return 0;
+}
+bool do_arrays_intersect_iv(const IV* A, size_t alen, const IV* B, size_t blen)
+{
+  size_t ia = 0, ib = 0;
+  while (ia < alen && ib < blen) {
+    if      (A[ia] == B[ib]) return 1;
+    else if (A[ia]  < B[ib]) ia++;
+    else                     ib++;
+  }
+  return 0;
+}
+
 /******************************************************************************/
 
 /* We'll use this little static sieve to quickly answer small values of

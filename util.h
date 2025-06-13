@@ -16,6 +16,9 @@ extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
 #define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
 #define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
 
+extern bool do_arrays_intersect_uv(const UV* A, size_t alen, const UV* B, size_t blen);
+extern bool do_arrays_intersect_iv(const IV* A, size_t alen, const IV* B, size_t blen);
+
 extern bool is_prime(UV x);
 extern UV   next_prime(UV x);
 extern UV   prev_prime(UV x);
