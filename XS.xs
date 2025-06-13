@@ -4072,7 +4072,7 @@ void lshiftint(IN SV* svn, IN unsigned long k = 1)
       ST(0) = svn;
       XSRETURN(1);
     }
-    if (status != 0 && ix > 0 && k >= BITS_PER_WORD)  /* Big right shift */
+    if (status != 0 && ix == 1 && k >= BITS_PER_WORD)  /* Big right shift */
       XSRETURN_UV(0);
     if (status == 1 && k < BITS_PER_WORD) {
       if (ix > 0)                       XSRETURN_UV(n >> k);  /* Right shift */
