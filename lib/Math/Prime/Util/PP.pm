@@ -4817,14 +4817,23 @@ sub powint {
   return 1 if $b == 0;
   return $a if $b == 1;
 
-  return $a ** $b if ref($a) || ref($b);
+  my $res;
+  if (!ref($a) && $a > INTMIN && $a < INTMAX) {
+    if ($b == 2) {
+      $res = $a*$a;
+      return $res if $res > INTMIN && $res < INTMAX;
+    } elsif ($b == 3) {
+      $res = $a*$a*$a;
+      return $res if $res > INTMIN && $res < INTMAX;
+    } else {
+      $res = $a ** $b;
+      my $ires = int($res);
+      return $ires if abs($ires) < (1<<53) && $ires > INTMIN && $ires < INTMAX;
+    }
+  }
 
-  # Try normal integer exponentiation (floating point)
-  my $ires = "" . int($a ** $b);
-  return $ires if abs($ires) < (1 << 53);
-
-  my $res = Math::BigInt->new($a)->bpow($b);
-  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  $res = Math::BigInt->new("$a")->bpow("$b") unless ref($res);
+  $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
   $res;
 }
 
@@ -4833,45 +4842,56 @@ sub mulint {
   return 0 if $a == 0 || $b == 0;
   return reftyped($_[0], Math::Prime::Util::GMP::mulint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"mulint"};
-  my $prod = $a*$b;
-  return $prod if ref($a) || ref($b);
-  return $prod if $a > 0 && $b > 0 && int(INTMAX/$a) > $b;
-  # return Mvecprod($a,$b);
-  my $res = Math::BigInt->new("$a")->bmul("$b");
-  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+
+  my $res = $a*$b;
+
+  if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
+    # If it wasn't already a reference, do it via bigint
+    $res = Math::BigInt->new("$a")->bmul("$b") unless ref($res);
+    $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+  }
   $res;
 }
 sub addint {
   my($a, $b) = @_;
   return reftyped($_[0], Math::Prime::Util::GMP::addint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"addint"};
-  my $sum = $a+$b;
-  return $sum if ref($a) || ref($b);
-  return $sum if $a >= 0 && $b >= 0 && int(INTMAX-$a) >= $b;
+
   # return Mvecsum(@_);
-  my $res = Math::BigInt->new("$a")->badd("$b");
-  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  my $res = $a+$b;
+
+  if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
+    # If it wasn't already a reference, do it via bigint
+    $res = Math::BigInt->new("$a")->badd("$b") unless ref($res);
+    $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+  }
   $res;
 }
 sub subint {
   my($a, $b) = @_;
   return reftyped($_[0], Math::Prime::Util::GMP::subint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"subint"};
-  my $sum = $a-$b;
-  return $sum if ref($a) || ref($b);
-  my $res = Math::BigInt->new("$a")->bsub("$b");
-  $res = _bigint_to_int($res) if $res->bacmp(BMAX) <= 0 && $res->bcmp(-(BMAX>>1)) > 0;
+  my $res = $a-$b;
+  if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
+    # If it wasn't already a reference, do it via bigint
+    $res = Math::BigInt->new("$a")->bsub("$b") unless ref($res);
+    $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+  }
   $res;
 }
 sub add1int {
   my($n) = @_;
-  validate_integer($n);
-  return (!ref($n) && $n >= INTMAX)  ?  Math::BigInt->new("$n")->binc  :  $n+1;
+  return $n+1 if $n > INTMIN && $n < INTMAX;
+  my $r = Math::BigInt->new("$n")->binc;
+  $r = _bigint_to_int($r) if $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $r;
 }
 sub sub1int {
   my($n) = @_;
-  validate_integer($n);
-  return (!ref($n) && $n <= INTMIN)  ?  Math::BigInt->new("$n")->bdec  :  $n-1;
+  return $n-1 if $n > INTMIN && $n < INTMAX;
+  my $r = Math::BigInt->new("$n")->bdec;
+  $r = _bigint_to_int($r) if $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $r;
 }
 
 # For division / modulo, see:

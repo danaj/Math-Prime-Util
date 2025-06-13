@@ -345,21 +345,24 @@ sub _to_gmp {
 sub _reftyped {
   return unless defined $_[1];
   my $ref0 = ref($_[0]);
-  if ($ref0) {
-    return  ($ref0 eq ref($_[1])) ?  $_[1]  :  $ref0->new("$_[1]");
-  }
   if (OLD_PERL_VERSION) {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
     return "$_[1]" if "$_[1]" <= INTMAX && "$_[1]" >= INTMIN;
   } elsif ($_[1] >= 0) {
-    # TODO: This wasn't working right in 5.20.0-RC1, verify correct
-    return $_[1] if $_[1] <= ~0;
+    return $_[1] if $_[1] < ~0;
   } else {
-    return $_[1] if ''.int($_[1]) >= -(~0>>1);
+    return $_[1] if $_[1] > -(~0>>1);
   }
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-    unless defined $Math::BigInt::VERSION;
-  return Math::BigInt->new("$_[1]");
+  my $bign;
+  if ($ref0) {
+    $bign = $ref0->new("$_[1]");
+  } else {
+    do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+      unless defined $Math::BigInt::VERSION;
+    $bign = Math::BigInt->new("$_[1]");
+  }
+  return $bign if $bign > INTMAX || $bign < INTMIN;
+  0+"$_[1]";
 }
 
 

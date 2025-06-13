@@ -3,13 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ sqrtint rootint logint /;
-
-#my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-#my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-#my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
-#my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
-#$use64 = 0 if $use64 && 18446744073709550592 == ~0;
+use Math::Prime::Util qw/rootint/;
 
 my @roots = (
   [25,  3, 15625],
@@ -34,6 +28,7 @@ my @roots = (
   [ 3, 29, "68630377364883"],
   [ 2, 40, "1099511627776"],
   [ 3, 40, "12157665459056928801"],
+  [213, 15, "84274086103068221283760416414557757"],
 );
 
 my @rootints = (
@@ -47,27 +42,21 @@ my @rootints = (
   ["4444763232114353115", 5, 5364],
   ["4444763232114353124", 5, 5364],
   ["4444763232114353125", 5, 5365],
+  ["266667176579895999", 3, 643659],
   ["11821500311773607999", 3, 2278019],
   ["11821500311773608000", 3, 2278020],
   ["11821500311773608001", 3, 2278020],
+  ["18446703239944862784", 3, 2642244],
+  ["18446724184312856125", 3, 2642245],
+  ["18446745128696702936", 3, 2642246],
+  ["18446744073709551615", 17, 13],
+  ["18446744039349813264", 39, 3],
 );
 
-plan tests => 0 + 6      # sqrtint
-                + 2 + 7  # rootint
-                + 6;     # logint
+plan tests => 2 + 3 + 2 + 2;
 
-###### sqrtint
-is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtint 0 .. 100" );
-is( sqrtint(1524155677489), 1234567, "sqrtint(1234567^2) = 1234567" );
-is( sqrtint(1524158146623), 1234567, "sqrtint(1234568^2-1) = 1234567" );
-is( sqrtint(1524155677488), 1234566, "sqrtint(1234567^2-1) = 1234566" );
-is( sqrtint("4503599761588224"), 67108864, "sqrtint((2^26+1)*(2^26+1)-1) = 2^26" );
-is( sqrtint("425822367781739534"), 652550662, "sqrtint(425822367781739534) = 652550662" );
-
-###### rootint
-
-ok(!eval { rootint(377,0);  }, "rootint(n,0) gives error");
-ok(!eval { rootint(-377,2); }, "rootint(-n,k) gives error");
+ok(!defined eval { rootint(377,0);  }, "rootint(n,0) gives error");
+ok(!defined eval { rootint(-377,2); }, "rootint(-n,k) gives error");
 
 is(rootint(928342398,1), 928342398, "rootint(928342398,1) returns 928342398");
 is(rootint(88875,3), 44, "rootint(88875,3) returns 44");
@@ -95,14 +84,3 @@ is(rootint("266667176579895999",3), 643659, "integer third root of 2666671765798
 
 is( rootint("43091031920942300256108314560009772304748698124094750326895058640841523270081624169128280918534127523222564290447104831706207227117677890695945149868732770531628297914633063561406978145215542597509491443634033203125",23), 2147483645, "integer 23rd root of a large 23rd power" );
 is( rootint("43091031920942300256108314560009772304748698124094750326895058640841523270081624169128280918534127523222564290447104831706207227117677890695945149868732770531628297914633063561406978145215542597509491443634033203124",23), 2147483644, "integer 23rd root of almost a large 23rd power" );
-
-###### logint
-is_deeply( [map { logint($_,2) } 1..200], [map { int(log($_)/log(2)+1e-10) } 1..200], "logint base 2: 0 .. 200" );
-is_deeply( [map { logint($_,3) } 1..200], [map { int(log($_)/log(3)+1e-10) } 1..200], "logint base 3: 0 .. 200" );
-is_deeply( [map { logint($_,5) } 1..200], [map { int(log($_)/log(5)+1e-10) } 1..200], "logint base 5: 0 .. 200" );
-{
-  my $be;
-  is( logint(19284098234,16,\$be), 8, "logint(19284098234,16) = 8" );
-  is( $be, 16**8, "power is 16^8" );
-}
-is( logint(58,~0), 0, "logint(58,~0) = 0" );

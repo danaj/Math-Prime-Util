@@ -189,9 +189,19 @@ t/14-nthprime.t
 t/15-probprime.t
 t/16-randomprime.t
 t/17-pseudoprime.t
+t/18-10-unary_int.t
+t/18-15-cmpint.t
+t/18-20-addint.t
+t/18-22-mulint.t
+t/18-24-powint.t
+t/18-25-shiftint.t
+t/18-40-divmodrem.t
+t/18-50-sqrtint.t
+t/18-52-rootint.t
+t/18-60-logint.t
+t/18-90-int_rtype.t
 t/19-chebyshev.t
 t/19-chinese.t
-t/19-divint.t
 t/19-divisorsum.t
 t/19-gcd.t
 t/19-kronecker.t
@@ -202,7 +212,6 @@ t/19-moebius.t
 t/19-popcount.t
 t/19-primroots.t
 t/19-ramanujan.t
-t/19-rootint.t
 t/19-totients.t
 t/19-valuation.t
 t/19-znorder.t
@@ -239,7 +248,7 @@ t/26-issquarefree.t
 t/26-istotient.t
 t/26-lucky.t
 t/26-mex.t
-t/26-mod.t
+t/26-modops.t
 t/26-perfectpowers.t
 t/26-pillai.t
 t/26-pisano.t

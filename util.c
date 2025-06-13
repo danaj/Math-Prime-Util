@@ -687,7 +687,7 @@ static uint32_t _est_root(UV n, unsigned k, unsigned msbit)
    *
    * One problem is that n==1 underflows.  We could fix this
    * (add k<<20 before division and subtract 1<<10 after), but
-   * it's simpelr just to special case n==1. */
+   * it is simpler just to special case n==1. */
 
   both32.i = (both32.i - float_one - 89788) / k + float_one - 282298;
   x = both32.f;

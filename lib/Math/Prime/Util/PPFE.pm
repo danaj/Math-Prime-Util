@@ -253,8 +253,6 @@ sub entropy_bytes {
 *negint = \&Math::Prime::Util::PP::negint;
 *signint = \&Math::Prime::Util::PP::signint;
 *cmpint = \&Math::Prime::Util::PP::cmpint;
-*add1int = \&Math::Prime::Util::PP::add1int;
-*sub1int = \&Math::Prime::Util::PP::sub1int;
 
 *negmod = \&Math::Prime::Util::PP::negmod;
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
@@ -809,6 +807,16 @@ sub subint {
   _validate_integer($a);
   _validate_integer($b);
   return Math::Prime::Util::PP::subint($a, $b);
+}
+sub add1int {
+  my($n) = @_;
+  _validate_integer($n);
+  return Math::Prime::Util::PP::add1int($n);
+}
+sub sub1int {
+  my($n) = @_;
+  _validate_integer($n);
+  return Math::Prime::Util::PP::sub1int($n);
 }
 sub lshiftint {
   my($n, $k) = @_;
