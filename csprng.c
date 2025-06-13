@@ -41,21 +41,26 @@
 #define CSELFTEST()                 chacha_selftest()
 
 /* Helper macros, similar to ChaCha, so we're consistent. */
+#if !defined(__x86_64__)
+#undef U8TO32_LE
+#undef U32TO8_LE
+#endif
 #ifndef U8TO32_LE
 #define U8TO32_LE(p) \
-  (((uint32_t)((p)[0])      ) | \
-   ((uint32_t)((p)[1]) <<  8) | \
-   ((uint32_t)((p)[2]) << 16) | \
-   ((uint32_t)((p)[3]) << 24))
+  ((uint32_t)(p)[0]       | \
+   (uint32_t)(p)[1] <<  8 | \
+   (uint32_t)(p)[2] << 16 | \
+   (uint32_t)(p)[3] << 24)
 #endif
+#ifndef U32TO8_LE
 #define U32TO8_LE(p, v) \
-  do { \
-    uint32_t _v = v; \
-    (p)[0] = (((_v)      ) & 0xFFU); \
-    (p)[1] = (((_v) >>  8) & 0xFFU); \
-    (p)[2] = (((_v) >> 16) & 0xFFU); \
-    (p)[3] = (((_v) >> 24) & 0xFFU); \
+  do { uint32_t _v = v; \
+       (p)[0] = _v       & 0xFF; \
+       (p)[1] = _v >>  8 & 0xFF; \
+       (p)[2] = _v >> 16 & 0xFF; \
+       (p)[3] = _v >> 24 & 0xFF; \
   } while (0)
+#endif
 
 /*****************************************************************************/
 
@@ -128,10 +133,10 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
     uint32_t a, b, c, d, i;
     memcpy(seed, data, bytes);
     memset(seed+bytes, 0, sizeof(seed)-bytes);
-    a = U8TO32_LE((seed +  0));
-    b = U8TO32_LE((seed +  4));
-    c = U8TO32_LE((seed +  8));
-    d = U8TO32_LE((seed + 12));
+    a = U8TO32_LE(seed +  0);
+    b = U8TO32_LE(seed +  4);
+    c = U8TO32_LE(seed +  8);
+    d = U8TO32_LE(seed + 12);
     rng = prng_new(a,b,c,d);
     for (i = 4*((bytes+3)/4); i < SEED_BYTES; i += 4)
       U32TO8_LE(seed + i, prng_next(rng));

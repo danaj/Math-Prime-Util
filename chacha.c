@@ -128,7 +128,7 @@ static void chacha_core(unsigned char buf[64], const uint32_t s[16]) {
   memcpy(buf, x, 16*sizeof(uint32_t));
 #else
   for (i = 0; i < 16; i++)
-    U32TO8_LE( buf+4*i, x[i] );
+    U32TO8_LE(buf+4*i, x[i]);
 #endif
 }
 
