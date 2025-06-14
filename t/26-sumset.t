@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/sumset setbinop addint/;
 
-plan tests => 11+17;
+plan tests => 14+17;
 
 ###### sumset
 my $pr200 = [qw/2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199/];
@@ -17,6 +17,9 @@ is_deeply([sumset($pr200)],$sumset_pr200,"sumset of primes under 200");
 is_deeply([sumset [2,4,6,8],[3,5,7]], [5,7,9,11,13,15], "sumset([2,4,6,8],[3,5,7])");
 is_deeply([sumset [1,2,3]], [2,3,4,5,6], "sumset([1,2,3])");
 is_deeply([sumset [1,2,3],[2,3,4]], [3,4,5,6,7], "sumset([1,2,3],[2,3,4])");
+is_deeply([sumset([1],[2])], [3], "sumset([1],[2])");
+is_deeply([sumset([1],[])], [], "sumset([1],[])");
+is_deeply([sumset([],[2])], [], "sumset([],[2])");
 
 is_deeply([sumset([map {2*$_} 1..10])], [4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40], "sumset of evens 2-20");
 { my $s = sumset([map {2*$_} 1..10]); is($s,19,"sumset of evens 2-20 makes only 19 entries"); }

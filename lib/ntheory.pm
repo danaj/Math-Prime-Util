@@ -230,6 +230,7 @@ Tags:
   setinvert(\@A,\@B)                  invert for all values in integer list B
   setcontains(\@A,$v)                 is integer v in integer set A
   setcontains(\@A,\@B)                is int set B a subset of int set A
+  setcontainsany(\@A,\@B)             is any value in B in int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
   sumset \@A[,\@B]                    apply a+b to all a,b [a:A,b:B]
   setunion(\@A,\@B)                   union of two integer lists

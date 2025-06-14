@@ -128,7 +128,7 @@ sub mpu_public_regex {
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
       vecsort vecsorti
       setbinop sumset setunion setintersect setminus setdelta toset
-      setcontains setinsert setremove setinvert
+      setcontains setcontainsany setinsert setremove setinvert
       is_sidon_set is_sumfree_set
       set_is_disjoint set_is_equal set_is_proper_intersection
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset

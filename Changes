@@ -169,6 +169,7 @@ Revision history for Perl module Math::Prime::Util
     - setinvert(\@A,\@B)              invert for all values in integer list B
     - setcontains(\@A,$v)             is integer v in integer set A
     - setcontains(\@A,\@B)            is integer set B a subset of int set A
+    - setcontainsany(\@A,\@B)         is any value in B in int set A
     - setbinop {...} \@A[,\@B]        apply op to cross product of set(s)
     - sumset(\@A[,\@B])               new set from a+b {a:A,b:B}
     - setunion(\@A,\@B)               union of two integer lists

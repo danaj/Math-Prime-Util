@@ -146,6 +146,10 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #  define SvREFCNT_dec_NN(sv)    SvREFCNT_dec(sv)
 #endif
 
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+
 #if BITS_PER_WORD == 32
   static const unsigned int uvmax_maxlen = 10;
   static const unsigned int ivmax_maxlen = 10;
@@ -188,6 +192,8 @@ static int _is_sv_bigint(pTHX_ SV* n)
   }
   return 0;
 }
+
+/******************************************************************************/
 
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
@@ -293,6 +299,8 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   return status;
 }
 
+/******************************************************************************/
+
 static UV neg_iv(UV n) {
   if ((IV)n == IV_MIN)  return (UV_MAX >> 1) + 1;
   else                  return (UV) (-(IV)n);
@@ -308,6 +316,8 @@ static void _mod_with(UV *a, int astatus, UV n) {
     *a = (r == 0) ? 0 : n-r;
   }
 }
+
+/******************************************************************************/
 
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
@@ -351,19 +361,6 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 #define CALLPPSUB(func) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP,func,items,0)
 #define CALLGMPSUB(func,ver) (void)_vcallsubn(aTHX_ GIMME_V,VCALL_PP|VCALL_GMP,func,items,ver)
 
-
-#define SETSUBREF(cv, block) \
-  do { \
-    cv = sv_2cv(block, &stash, &gv, 0); \
-    if (cv == Nullcv) croak("%s: Not a subroutine reference", SUBNAME); \
-  } while (0)
-#define CHECK_ARRAYREF(sv) \
-  do { \
-    if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV)) \
-      croak("%s: expected array reference", SUBNAME); \
-  } while (0)
-
-
 #if 0
 static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minversion)
 {
@@ -381,6 +378,19 @@ static int _vcallgmpsubn(pTHX_ I32 flags, const char* name, int nargs, int minve
   return 0;
 }
 #endif
+
+/******************************************************************************/
+
+#define SETSUBREF(cv, block) \
+  do { \
+    cv = sv_2cv(block, &stash, &gv, 0); \
+    if (cv == Nullcv) croak("%s: Not a subroutine reference", SUBNAME); \
+  } while (0)
+#define CHECK_ARRAYREF(sv) \
+  do { \
+    if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV)) \
+      croak("%s: expected array reference", SUBNAME); \
+  } while (0)
 
 /* In my testing, this constant return works fine with threads, but to be
  * correct (see perlxs) one has to make a context, store separate copies in
@@ -493,6 +503,8 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
     Safefree(arr); \
     XSRETURN(1); \
   }
+
+/******************************************************************************/
 
 static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 {
@@ -757,57 +769,6 @@ static int is_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
   return (index < 0) ? index : !index;
 }
 
-#if 0
-/* Take two SV pointers to array references, slurp them all in.
- * Returns -1 if cannot answer, 0 if not a subset, 1 if a subset. */
-static int is_subset_read_all(pTHX_ SV* svset, SV* svsub)
-{
-  int atype, btype, bstatus, res;
-  UV *ra, *rb;
-  size_t alen, blen, ia, ib;
-
-  atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, svset, "setcontains arg 1");
-  if (atype != IARR_TYPE_BAD) {
-    if (SvROK(svsub) && SvTYPE(SvRV(svsub)) == SVt_PVAV) {
-      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svsub, "setcontains arg 1");
-    } else {   /* We got a single integer */
-      blen = 1;
-      New(0, rb, blen, UV);
-      bstatus = _validate_and_set(rb+0, aTHX_ svsub, IFLAG_ANY);
-      btype = STATUS_TO_IARR_TYPE(bstatus, rb[0]);
-    }
-  }
-  if (atype == IARR_TYPE_BAD || btype == IARR_TYPE_BAD) {
-    Safefree(ra);
-    Safefree(rb);
-    return -1;
-  }
-  res = 1;
-  /* Check for empty sets */
-  if (alen == 0 || blen == 0)
-    { Safefree(ra);  Safefree(rb);  return (blen == 0); }
-  /* Check if impossible via types */
-  if ( (btype == IARR_TYPE_NEG && atype != IARR_TYPE_NEG) ||
-       (btype == IARR_TYPE_POS && atype != IARR_TYPE_POS) ||
-       (blen > alen) )
-    res = 0;
-  /* Check to see if the subset is outside the range */
-  if ( (atype != IARR_TYPE_NEG &&
-        (rb[0] < ra[0] || rb[blen-1] > ra[alen-1])) ||
-       (atype == IARR_TYPE_NEG &&
-        ((IV)rb[0] < (IV)ra[0] || (IV)rb[blen-1] > (IV)ra[alen-1])) )
-    res = 0;
-  for (ia = 0, ib = 0;  ia < alen && ib < blen && res; ia++) {
-    if (ra[ia] == rb[ib])
-      ib++;
-    else if (SIGNED_CMP_GT(btype != IARR_TYPE_NEG, ra[ia], rb[ib]))
-      res = 0;
-  }
-  Safefree(ra);
-  Safefree(rb);
-  return res;
-}
-#endif
 
 static int _compare_array_refs(pTHX_ SV* a, SV* b)
 {
@@ -932,7 +893,8 @@ static int _comb_iterate(UV* cm, UV k, UV n, int ix) {
   return 0;
 }
 
-
+/******************************************************************************/
+/******************************************************************************/
 
 MODULE = Math::Prime::Util	PACKAGE = Math::Prime::Util
 
@@ -4388,6 +4350,11 @@ void sumset(IN SV* sva, IN SV* svb = 0)
     } else {
       btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "sumset arg 2");
     }
+    if (alen == 0 || blen == 0) {
+      if (rb != ra) Safefree(rb);
+      Safefree(ra);
+      XSRETURN_EMPTY;
+    }
     if (atype == IARR_TYPE_BAD || btype == IARR_TYPE_BAD)
       stype = IARR_TYPE_BAD;
     else
@@ -4397,11 +4364,6 @@ void sumset(IN SV* sva, IN SV* svb = 0)
       Safefree(ra);
       _vcallsubn(aTHX_ GIMME_V, VCALL_PP, "sumset", items, 0);
       return;
-    }
-    if (alen == 0 || blen == 0) {
-      if (rb != ra) Safefree(rb);
-      Safefree(ra);
-      XSRETURN_EMPTY;
     }
     sign = IARR_TYPE_TO_STATUS(stype);
     /* Sumset */
@@ -4546,8 +4508,8 @@ void setunion(IN SV* sva, IN SV* svb)
     size_t alen, blen;
   PPCODE:
     /* Get the integers and check if they are sorted unique integers first. */
-    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setunion arg 1");
-    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setunion arg 2");
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
+    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
 
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
       UV *r;
@@ -4642,8 +4604,8 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     }
 
     /* Get the integers as sorted arrays of IV or UV */
-    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "set_is first");
-    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "set_is second");
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
+    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
 
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
       size_t rlen = 0, ia = 0, ib = 0;
@@ -4679,6 +4641,8 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     return;
 
 void setcontains(IN SV* sva, IN SV* svb)
+  ALIAS:
+    setcontainsany = 1
   PROTOTYPE: $$
   PREINIT:
     UV b;
@@ -4694,26 +4658,26 @@ void setcontains(IN SV* sva, IN SV* svb)
       bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
       subset = is_in_set(aTHX_ ava, 0, bstatus, b);
     } else { /* The second argument is an array reference (set) */
-      avb = _simple_array_ref_from_sv(aTHX_ svb, "setcontains");
+      avb = _simple_array_ref_from_sv(aTHX_ svb, SUBNAME);
       blen = av_count(avb);
-      if (blen > alen) {
+      if (ix == 0 && blen > alen) {
         subset = 0;  /* cannot fit */
       } else {
+        int findall = (ix == 0) ? 1 : 0;
         SV** arr = AvARRAY(avb);
         set_data_t cache = init_set_lookup_cache(aTHX_ ava);
-        for (i = 0, subset = 1; i < blen && subset == 1; i++) {
+        /* setcontains:    if we find anything that is NOT in SETA, return 0
+         * setcontainsany: if we find anything that IS     in SETA, return 1  */
+        for (i = 0, subset = findall; i < blen && subset == findall; i++) {
           bstatus = _validate_and_set(&b, aTHX_ arr[i], IFLAG_ANY);
           subset = is_in_set(aTHX_ ava, &cache, bstatus, b);
         }
         free_set_lookup_cache(&cache);
       }
-      /* Much slower in most cases:
-       * subset = is_subset_read_all(aTHX_ sva, svb);
-       */
     }
     if (subset != -1)
       RETURN_NPARITY(subset);
-    CALLPPSUB("setcontains");
+    CALLTHISPPSUB();
     return;
 
 void setinsert(IN SV* sva, IN SV* svb)

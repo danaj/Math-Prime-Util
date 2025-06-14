@@ -102,7 +102,7 @@ our @EXPORT_OK =
       vecsort vecsorti
       setbinop sumset toset
       setunion setintersect setminus setdelta
-      setcontains setinsert setremove setinvert
+      setcontains setcontainsany setinsert setremove setinvert
       is_sidon_set is_sumfree_set
       set_is_disjoint set_is_equal set_is_proper_intersection
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
@@ -3644,6 +3644,29 @@ to give a correct answer.  Use L</toset> to convert an arbitrary integer list
 into set form.
 
 
+=head2 setcontainsany
+
+  my $has_one_of = setcontains( [-12,1..20], [-14, 0, 1, 100] );  # true
+
+Given an array reference of integers in set form, and a second argument of
+of either a single integer or an array reference of integers,
+returns either 1 or 0 indicating whether B<any> element of the second set
+is an element of the first set.
+
+There is some functionality duplication, e.g. checking for disjoint sets
+can be done with any of these:
+
+  my $dj1 = set_is_disjoint($set1, $set2);
+  my $dj2 = scalar(setintersect($set1, $set2)) == 0;
+  my $dj3 = !setcontainsany($set1, $set2);
+
+The last, this function,  B<requires> the first set be in set form or
+the result is undefined.  In return it can be thousands of times faster
+when that is a large set.
+
+Similar to L</setcontains>, the first set B<must> be in set form.
+
+
 =head2 setbinop
 
   my @sumset = setbinop { $a + $b } [1,2,3], [2,3,4];  # [3,4,5,6,7]
@@ -5215,6 +5238,9 @@ The returned list will then have only C<k> elements.
 This is more efficient than truncating the full shuffled list.
 
 The randomness comes from our CSPRNG.
+
+The slicing technique shown in the last example gives functionality similar
+to the C<sample> function of L<List::Util>.
 
 =head2 shuffle
 

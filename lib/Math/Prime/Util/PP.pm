@@ -11085,6 +11085,22 @@ sub setcontains {
   1;
 }
 
+# Are any members of sub also a member of set?
+sub setcontainsany {
+  my($set, $sub) = @_;
+  $sub = [$sub] if !ref($sub) || ref($sub) ne 'ARRAY';
+  croak 'Not an array reference' unless (ref($set) || '') eq 'ARRAY'
+                                     && (ref($sub) || '') eq 'ARRAY';
+
+  # For better performance, make sub the larger
+  ($set,$sub) = ($sub,$set) if scalar(@$set) > scalar(@$sub);
+  return 0 if @$set == 0;
+
+  my %ina;
+  undef @ina{@$set};
+  return 0 + (scalar(grep { exists $ina{$_} } @$sub) > 0);
+}
+
 sub _setinsert1 {
   my($rset, $v) = @_;
   validate_integer($v);

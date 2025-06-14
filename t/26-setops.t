@@ -28,12 +28,14 @@ use warnings;
 # second arg is any integer list:
 #   setinsert
 #   setcontains
+#   setcontainsany
 #   setremove
 #   setinvert
 
 use Test::More;
 use Math::Prime::Util qw/setunion setintersect setminus setdelta
-                         setcontains setinsert setremove setinvert
+                         setcontains setcontainsany
+                         setinsert setremove setinvert
                          toset is_sidon_set is_sumfree_set
                          set_is_disjoint set_is_equal
                          set_is_subset set_is_superset
@@ -135,6 +137,7 @@ plan tests => 2        # specific tests
             + 4        # union etc. on sets and lists
             + 1 + 1    # sidon and sumfree
             + 1        # setcontains
+            + 1        # setcontainsany
             + 1        # setinsert
             + 1        # set_is_subset
             + 7        # equal, disjoint, etc.
@@ -319,6 +322,21 @@ subtest 'setcontains', sub {
 
   # We think we work with unsorted second arg
   is(setcontains([1..8],[5,4,5,1,3]), 1, "setcontains with non-set second arg");
+};
+
+subtest 'setcontainsany', sub {
+  is( setcontainsany([],[]), 0, "empty set has no elements of empty set");
+  is( setcontainsany([1],[]), 0, "regular set has no elements of empty set");
+  is( setcontainsany([],[1]), 0, "empty set has no elements of other set");
+
+  is( setcontainsany([1,3,5,8],1), 1, "setcontainsany scalar true");
+  is( setcontainsany([1,3,5,8],4), 0, "setcontainsany scalar false");
+
+  is( setcontainsany([1,3,5,8],[1,3,12]), 1, "setcontainsany basic true");
+  is( setcontainsany([1,3,5,8],[2,4,7]),  0, "setcontainsany basic false");
+
+  is( setcontainsany([-5..-1],[-3]),     1, "setcontainsany neg true");
+  is( setcontainsany([-5..-1],[-65536]), 0, "setcontainsany neg false");
 };
 
 
