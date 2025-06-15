@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/sumset setbinop addint/;
 
-plan tests => 14+17;
+plan tests => 14+17+1;
 
 ###### sumset
 my $pr200 = [qw/2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173 179 181 191 193 197 199/];
@@ -56,6 +56,11 @@ testsumset([-1,2], [3,4], "sumset NEG ANY with sumset ANY");
 testsumset([-6,2], [3,4], "sumset NEG ANY with sumset NEG");
 testsumset([-6,2], [-3,4], "sumset NEG NEG with sumset NEG");
 testsumset([-6,-2], [-4,-3], "sumset NEG NEG with sumset NEG");
+
+# bigint
+is_deeply( [sumset([1,2],[3,4,"73786976294838206464"])],
+           [qw/4 5 6 73786976294838206465 73786976294838206466/],
+           "sumset with bigint element" );
 
 sub testsumset {
   my($ra, $rb, $name) = @_;

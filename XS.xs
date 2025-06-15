@@ -788,8 +788,10 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
 
   av = _simple_array_ref_from_sv(aTHX_ sva, fstr);
   len = av_count(av);
+  *retlen = len;
   if (len == 0) {
-    *retlen = 0;  *ret = 0;  return itype;
+    *ret = 0;
+    return itype;
   }
   arr = AvARRAY(av);
   New(0, r, len, UV);
@@ -818,9 +820,9 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
   }
   if (i < len) {
     Safefree(r);
-    *retlen = 0;  *ret = 0;  return IARR_TYPE_BAD;
+    *ret = 0;
+    return IARR_TYPE_BAD;
   }
-  *retlen = len;
   *ret = r;
   if (want_sort) {
     if (itype == IARR_TYPE_NEG) {
