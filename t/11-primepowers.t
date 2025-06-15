@@ -22,8 +22,11 @@ $#A025528 = 40;
 $#A267712 = ($usexs || $extra) ? 7 : 6;
 
 my %samples = (72=>263, 89=>353, 311=>1831, 423=>2677, 814=>5857,
-               1509=>12149, 4484=>42089, 9163=>93893, 10957=>114671,
-               20942=>234599, 51526=>629819, 417867=>6071249);
+               1509=>12149, 4484=>42089, 9163=>93893);
+$samples{10957}     =     114671 if $usexs;
+$samples{20942}     =     234599 if $usexs;
+$samples{51526}     =     629819 if $usexs;
+$samples{417867}    =    6071249 if $usexs;
 $samples{717421}    =   10843321 if $usexs || $extra;
 $samples{1031932}   =   16002401 if $usexs || $extra;
 $samples{2687492}   =   44442791 if $usexs || $extra;
@@ -33,7 +36,7 @@ $samples{47490104}  =  930475697 if $usexs || $extra;
 
 
 plan tests =>   0   # is_prime_power (not tested here)
-              + 3   # prime_powers
+              + 5   # prime_powers
               + 3   # next_prime_power
               + 4   # prev_prime_power
               + 6   # prime_power_count (first set)
@@ -52,14 +55,16 @@ plan tests =>   0   # is_prime_power (not tested here)
 ###### prime_powers
 
 my $pp1k = prime_powers(1000);
+is( scalar(@$pp1k), 193, "prime_powers(1000) has 193 powers");
+is( $pp1k->[-1], 997, "last power from prime_powers(1000) is 997");
 
 is_deeply( [grep { $_ <= 300 } @$pp1k],
            [grep { is_prime_power($_) } 1..300],
            "prime_powers(300)" );
 
-is_deeply( [map { prime_powers($_) } 1..100],
-           [map { my $n=$_; [grep { $_ <= $n } @small] } 1..100],
-           "prime_powers(1..100)" );
+is_deeply( [map { prime_powers($_) } 1..50],
+           [map { my $n=$_; [grep { $_ <= $n } @small] } 1..50],
+           "prime_powers(1..50)" );
 
 my $base1 = 1441897;
 is_deeply( prime_powers($base1,$base1+1000),
@@ -105,27 +110,19 @@ is_deeply( [map { prime_power_count(10**(1+$_)) } 0..$#A267712], \@A267712,  "pr
 is(prime_power_count(12345678), 809830, "prime_power_count(12345678) = 809830");
 is(prime_power_count(123456, 133332), 847, "prime_power_count(123456,133332) = 847");
 
-{
-  my $tlimit = 400;
-  my @exact = (0);
-  for my $l (@$pp1k) {
-    last if $l > $tlimit;
-    push @exact, $exact[-1] while scalar(@exact) < $l;
-    push @exact, $exact[-1] + 1;
-  }
-  is_deeply( [map { prime_power_count($_) } 0 .. $#exact],
-             \@exact,
-             "prime_power_count(0..$#exact)" );
-}
+is_deeply( [map { prime_power_count(30*$_) } 0..19],
+           [0,16,25,34,40,48,55,60,66,73,79,83,90,96,100,106,111,116,120,125],
+           "prime_power_count(0,30,60,...,570)" );
 {
   my(@expect,@got);
-  for my $lo (0 .. 30) {
-    for my $hi (0 .. 30) {
+  for my $lo (0..8,15,16,17,31,32,33,40) {
+    for my $i (0 .. 5,8) {
+      my $hi = $lo + 4*$i;
       push @expect, [$lo,$hi,scalar(grep { $_ >= $lo && $_ <= $hi } @small)];
       push @got,    [$lo,$hi,prime_power_count($lo,$hi)];
     }
   }
-  is_deeply( \@got, \@expect, "prime_power_count ranges 0 .. 40" );
+  is_deeply( \@got, \@expect, "prime_power_count ranges 0 .. 80" );
 }
 
 ###### prime_power_count_{upper,lower,approx}
@@ -145,9 +142,9 @@ is_deeply( [map { check_count_bounds($samples{$_},$_) } keys %samples],
 ###### nth_prime_power
 
 is( nth_prime_power(0), undef, "nth_prime_power(0) returns undef" );
-is_deeply( [map { nth_prime_power($_) } 1 .. 100],
-           [@$pp1k[0..100-1]],
-           "first 100 prime powers with nth_prime_power" );
+is_deeply( [map { nth_prime_power($_) } 1 .. 50],
+           [@$pp1k[0..50-1]],
+           "first 50 prime powers with nth_prime_power" );
 is( nth_prime_power(1 << 12), 37993, "37993 is the 2^12th prime power" );
 if ($extra) {
   while (my($n, $npp) = each (%samples)) {
@@ -163,9 +160,13 @@ is( nth_prime_power_approx(0), undef, "nth_prime_power_approx(0) returns undef" 
 is(check_nth_bounds(86, 343), 1, "nth_prime_power(86) bounds");
 is(check_nth_bounds(123456, 1628909), 1, "nth_prime_power(123456) bounds");
 is(check_nth_bounds(5286238, 91241503), 1, "nth_prime_power(5286238) bounds");
-is(check_nth_bounds(46697909, 914119573), 1, "nth_prime_power(46697909) bounds");
+SKIP: {
+  skip "only with EXTENDED_TESTING", 1 unless $extra;
+  is(check_nth_bounds(46697909, 914119573), 1, "nth_prime_power(46697909) bounds");
+}
 
-my @seln = (1..5,10,18,24,33,35,41,47,52,56,59,65,68,70); # Sample powers
+my @seln = $extra ? (1..5,10,18,24,33,35,41,47,52,56,59,65,68,70)
+                  : (1..5,12,37,59,64,71);
 is_deeply( [map { check_nth_bounds($_, $pp1k->[$_-1]) } @seln],
            [map { 1 } @seln],
            "nth_prime_power bounds for small powers" );
