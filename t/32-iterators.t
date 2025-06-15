@@ -29,6 +29,7 @@ plan tests => 8        # forprimes errors
             + 2        # forprimes/iterator nesting
             + 1        # forprimes nested function
             + 3        # forprimes BigInt/BigFloat
+                       #
             + 3        # oo iterator errors
             + 7        # oo iterator simple
             + 28       # oo iterator methods
@@ -37,6 +38,7 @@ plan tests => 8        # forprimes errors
             + 1        # forsemiprimes
             + 1+10     # foralmostprimes
             + 9        # forsetproduct
+            + 1        # bigint ranges
             + 0;
 
 ok(!eval { forprimes { 1 } undef; },   "forprimes undef");
@@ -436,4 +438,44 @@ for my $k (1 .. 10) {
 
   @set=([1,2],[qw/a b c/]);  @out=();forsetproduct {push @out,"@_"; @_=(1..10); }@set;
   is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], 'forsetproduct replace @_ in sub');
+}
+
+###### Bigint range
+subtest 'for<...> with bigint ranges', sub {
+  my @r;
+  my @X = map { plus_2_66($_) } 0..20;
+
+  @r=(); forprimes { push @r,$_ } $X[0],$X[10];
+  is_deeply(\@r, [qw/73786976294838206473/], "forprimes {} 2^66, 2^66+10");
+
+  @r=(); forsemiprimes { push @r,$_ } $X[2], $X[3];
+  is_deeply(\@r, [qw/73786976294838206467/], "forsemiprimes {} 2^66+2, 2^66+3");
+
+  @r=(); foralmostprimes { push @r,$_ } 3, $X[3], $X[5];
+  is_deeply(\@r, [qw/73786976294838206469/], "foralmostprimes {} 3, 2^66, 2^66+5");
+
+  @r=(); forcomposites { push @r,$_ } $X[8], $X[10];
+  is_deeply(\@r, [qw/73786976294838206472 73786976294838206474/], "forcomposites {} 2^66+8, 2^66+10");
+
+  @r=(); foroddcomposites { push @r,$_ } $X[8], $X[13];
+  is_deeply(\@r, [qw/73786976294838206475 73786976294838206477/], "foroddcomposites {} 2^66+8, 2^66+13");
+
+  @r=(); forsquarefree { push @r,[$_,[@_]] } plus_2_66(38), plus_2_66(41);
+  is_deeply(\@r, [ ["73786976294838206502",[qw/2 3 227 54175459834682971/]],["73786976294838206503",[qw/59 149 9173 915018848621/]] ], "forsquarefree {} 2^66+38, 2^66+41");
+
+  @r=(); forsquarefreeint { push @r,$_ } plus_2_66(38), plus_2_66(41);
+  is_deeply(\@r, [qw/73786976294838206502 73786976294838206503/], "forsquarefreeint {} 2^66+38, 2^66+41");
+
+  @r=(); forfactored { push @r,[$_,[@_]] } "73786976294838206472","73786976294838206473";
+  is_deeply(\@r, [ ["73786976294838206472",[qw/2 2 2 3 3 3 19 43 5419 77158673929/]],["73786976294838206473",["73786976294838206473"]] ], "forfactored { } 2^66+8, 2^66+9");
+
+  @r=(); fordivisors { push @r,$_ } "73786976294838206468";
+  is_deeply(\@r, [qw/1 2 4 274177 548354 1096708 67280421310721 134560842621442 269121685242884 18446744073709551617 36893488147419103234 73786976294838206468/], "fordivisors {} 2^66+4");
+};
+
+sub plus_2_66 { # add n to 2^66 (73786976294838206464)
+  my $add = shift;
+  my $final = $add + 6464;
+  die "too large" if $final > 99999;
+  return "737869762948382" . sprintf("%05d",$final);
 }
