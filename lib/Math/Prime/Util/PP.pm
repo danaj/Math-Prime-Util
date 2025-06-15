@@ -11368,8 +11368,9 @@ sub foralmostprimes {
   #  if $k >= 3 && $lo >= 6e13 && ($hi-$lo) <= 1e6;
 
   my $estcount = almost_prime_count_approx($k,$hi) - almost_prime_count_approx($k,$lo);
-  my $nsegs = $estcount / 1e6;
-  my $segsize = ($nsegs <= 1.1) ? ($hi-$lo+1) : int(1+($hi-$lo)/$nsegs);
+  my $nsegs = "$estcount" / 1e6;
+  my $len = Maddint(Msubint($hi,$lo),1);
+  my $segsize = ($nsegs <= 1.1) ? $len : int("$len"/$nsegs);
   if ($segsize < 5*1e6) { $segsize = 5e6; }
   # warn "  estcount $estcount   nsegs $nsegs   segsize $segsize\n";
 
