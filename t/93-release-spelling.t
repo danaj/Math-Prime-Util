@@ -54,7 +54,7 @@ add_stopwords(qw/-th
                  biquadrate powerfree k-powerfree k-free workaround
                  sumpowerful powersum
                  sumset setbinop setunion setintersect setminus setdelta toset
-                 setcontains setinsert setremove setinvert
+                 setcontains setcontainsany setinsert setremove setinvert
                  contfrac farey
                  pp 100ns/);
 

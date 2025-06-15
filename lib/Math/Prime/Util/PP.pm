@@ -2562,8 +2562,17 @@ sub almost_primes {
   my $minlow = Mpowint(2,$k);
   $low = $minlow if $low < $minlow;
   return [] if $low > $high;
-
   my @ap;
+
+  if ($low > 1e9) {
+    #while ($low <= $high) {
+    #  push @ap, $low if is_almost_prime($k, $low);
+    #  $low = add1int($low);
+    #}
+    Math::Prime::Util::forfactored(sub { push @ap,$_ if scalar(@_) == $k }, $low, $high);
+    return \@ap;
+  }
+
   _generate_almost_primes($low, $high, $k, sub { push @ap,$_[0]; });
   Mvecsorti(\@ap);
 }
@@ -6770,9 +6779,9 @@ sub fromdigits {
 sub _validate_zeckendorf {
   my $s = shift;
   if ($s ne '0') {
-    croak "fromzeckendorf takes a binary string as input"
+    croak "fromzeckendorf: expected binary string"
       unless $s =~ /^1[01]*\z/;
-    croak "fromzeckendorf binary input not in canonical Zeckendorf form"
+    croak "fromzeckendorf: expected binary string in canonical Zeckendorf form"
       if $s =~ /11/;
   }
   1;
@@ -11473,6 +11482,10 @@ sub random_strong_prime {
     if $Math::Prime::Util::_GMPfunc{"random_strong_prime"};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
+}
+
+sub random_proven_prime {
+  random_maurer_prime(@_);
 }
 
 sub random_maurer_prime {
