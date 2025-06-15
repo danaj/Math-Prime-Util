@@ -236,8 +236,10 @@ typedef __int8 int8_t;
 
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(__INTEL_COMPILER)
   #define ISCONSTFUNC __attribute__((const))
+  #define NOINLINE __attribute__((noinline))
 #else
   #define ISCONSTFUNC
+  #define NOINLINE
 #endif
 
 #if __BIG_ENDIAN__ || (defined(BYTEORDER) && (BYTEORDER == 0x4321 || BYTEORDER == 0x87654321))
