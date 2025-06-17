@@ -160,6 +160,7 @@ Revision history for Perl module Math::Prime::Util
     - vecuniq(...)                    remove duplicates from list of integers
     - vecsort(@L)                     numerically sort integer list
     - vecsorti(\@L)                   in-place numeric sort a list ref
+    - vecsample(k,@list)              return k random elements of list
     - toset(\@A)                      convert to unique sorted integer list
     - setinsert(\@A,$v)               insert integer v into integer set A
     - setinsert(\@A,\@B)              insert list B into integer set A

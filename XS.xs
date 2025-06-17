@@ -5057,6 +5057,76 @@ void shuffle(...)
     }
     XSRETURN(items);
 
+void vecsample(IN SV* svk, ...)
+  PROTOTYPE: $@
+  PREINIT:
+    void   *randcxt;
+    AV     *av;
+    SV    **arr;
+    UV      k;
+    size_t  nitems, i;
+    dMY_CXT;
+  PPCODE:
+    if (items == 1)
+      XSRETURN_EMPTY;
+    randcxt = MY_CXT.randcxt;
+    /*
+     * Fisher-Yates shuffle with first 'k' selections returned.
+     *
+     * There is only one algorithm here, no shortcuts other than
+     * detecting an empty list.
+     *
+     * With a list input, the input is on the stack ST(1),ST(2),...
+     * We move the last item to ST(0) then shuffle 'k' iterations.
+     *
+     * With an array reference input, we cannot modify the input at all.
+     * We create an index array and shuffle using that.  Remembering to
+     * act like the last item is at the front so we match the list results.
+     * We optimize by pushing each selection onto the return stack as
+     * we find it rather than pushing them all at the end with another loop.
+     */
+    if (items > 2 || !SvROK(ST(1)) || SvTYPE(SvRV(ST(1))) != SVt_PVAV) {
+      /* Standard form, where we are given an array of items */
+      nitems = items-1;
+      if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
+        k = nitems;
+      ST(0) = ST(items-1); /* Move last value to the first stack entry. */
+      for (i = 0; i < k; i++) {
+        uint32_t j = urandomm32(randcxt, nitems-i);
+        { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
+      }
+      XSRETURN(k);
+    }
+
+    /* We are given a single array reference.  Select from it. */
+    av = (AV*) SvRV(ST(1));
+    nitems = av_count(av);
+    arr = AvARRAY(av);
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
+      k = nitems;
+    if (k == 0)
+      XSRETURN_EMPTY;
+    if (nitems < 65536) {
+      uint16_t *I;
+      New(0, I, nitems, uint16_t);
+      I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
+      for (i = 0; i < k; i++) {
+        uint32_t j = urandomm32(randcxt, nitems-i);
+        uint16_t t = I[i+j];  I[i+j] = I[i];  XPUSHs(arr[t]);
+      }
+      Safefree(I);
+    } else {
+      size_t *I;
+      New(0, I, nitems, size_t);
+      I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
+      for (i = 0; i < k; i++) {
+        size_t j = urandomm64(randcxt, nitems-i);
+        size_t t = I[i+j];  I[i+j] = I[i];  XPUSHs(arr[t]);
+      }
+      Safefree(I);
+    }
+    XSRETURN(k);
+
 void is_happy(SV* svn, UV base = 10, UV k = 2)
   PREINIT:
     UV n, sum;

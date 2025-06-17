@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/binomial factorial subfactorial factorialmod fubini
                          falling_factorial rising_factorial
                          forcomb forperm forderange formultiperm
-                         numtoperm permtonum randperm shuffle
+                         numtoperm permtonum randperm shuffle vecsample
                          csrand
                         /;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -62,6 +62,8 @@ plan tests => 2                        # factorial
             + 5                        # shuffle
             + 11                       # randperm using csrand
             + 3                        # shuffle using csrand
+            + 1                        # vecsample
+            + 2                        # destroy tests
             ;
 
 ###### factorial
@@ -310,4 +312,66 @@ SKIP: {
   is_deeply([shuffle(qw<a b c d e f>)], [qw<d f c a b e>], "shuffle(a b c d e f)");
   is_deeply([shuffle(10..20)], [11,17,14,20,13,15,10,19,12,18,16], "shuffle(10..20)");
   is_deeply([shuffle(qw<a b b b b b c>)], [qw<b b b b a c b>], "shuffle(a b b b b b c)");
+}
+
+###### sampling
+subtest 'vecsample', sub {
+  csrand();
+  is_deeply([map {[vecsample($_)]} 0,1,1000], [[],[],[]], "vecsample(k) = ()");
+  is_deeply([map {[vecsample($_,())]} 0,1,999],[[],[],[]], "vecsample(k,()) = ()");
+  is_deeply([map {[vecsample($_,[])]} 0,1,999],[[],[],[]], "vecsample(k,[]) = ()");
+  is_deeply([map {[vecsample(1,($_))]} 0,1,999],[[0],[1],[999]], "vecsample(1,(n)) = (n)");
+  is_deeply([map {[vecsample(1,[$_])]} 0,1,999],[[0],[1],[999]], "vecsample(1,(n)) = (n)");
+  is(scalar @{[vecsample(2,[80..100])]}, 2, "returns k items with a large list");
+  is(scalar @{[vecsample(45,[8,9,10])]}, 3, "returns all items with large k");
+  is(scalar @{[vecsample(4,[8..11])]}, 4, "returns all items with exact k");
+  is_deeply([sort {$a<=>$b} vecsample(5,[177,888,15,4,-2])],
+            [-2,4,15,177,888], "returns all items");
+  ok(is_one_of(vecsample(1,500..600), 500..600), "vecsample(1,L) returns something from L");
+  {
+    my $L = [87,388,657,890];
+    my %seen;
+    my $tries = 0;
+    # Average tries is 3.8, but could be 20+.
+    for (1 .. 300) {
+      $tries++;
+      my @S = vecsample(2,$L);
+      undef @seen{@S};
+      last if 4 <= scalar keys %seen;
+    }
+    my @S = sort { $a<=>$b } keys %seen;
+    is_deeply(\@S, $L, "vecsample(2,a,b,c,d) selected each value at least once ($tries tries)");
+  }
+  {
+    my @L = (1588..1620);
+    vecsample(5,@L);
+    is_deeply(\@L, [1588..1620], "Input list is not modified");
+    vecsample(5,\@L);
+    is_deeply(\@L, [1588..1620], "Input aref is not modified");
+  }
+};
+
+# Destruction test, from List::MoreUtils
+{
+  my $dcount;
+  sub TObjSample::DESTROY { $dcount++; }
+  my @ret = vecsample(3, map { bless [], "TObjSample" } 1..10);
+  is($dcount, 7, "vecsample unselected items destroyed");
+  @ret=();
+  is($dcount, 10, "vecsample all items destroyed");
+}
+
+
+sub is_one_of {
+  my($n, @list) = @_;
+  if (defined $n) {
+    for (@list) {
+      return 1 if defined $_ && $n eq $_;
+    }
+  } else {
+    for (@list) {
+      return 1 if !defined $_;
+    }
+  }
+  0;
 }

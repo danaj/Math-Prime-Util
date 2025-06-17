@@ -37,7 +37,7 @@ my @vals = (
   [qw/18446744073709551616 -9223372036854775808 9223372036854775808/],
 );
 
-plan tests => 
+plan tests =>
             + 2  # trivial addint, subint
             + 1  # addint/subint on test array
             + 2  # add1int and sub1int

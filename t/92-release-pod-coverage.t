@@ -74,7 +74,7 @@ sub mpu_public_regex {
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       fordivisors forfactored forsquarefree forsquarefreeint
       lastfor
-      numtoperm permtonum randperm shuffle
+      numtoperm permtonum randperm shuffle vecsample
       prime_iterator prime_iterator_object
       next_prime prev_prime
       next_prime_power prev_prime_power

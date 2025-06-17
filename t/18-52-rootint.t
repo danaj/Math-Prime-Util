@@ -72,7 +72,7 @@ is(rootint("266667176579895999",3), 643659, "integer third root of 2666671765798
   }
   is_deeply( \@got, \@expected, "rootint on perfect powers where log fails" );
 }
-{  
+{
   my(@got, @expected);
   for my $arr (@rootints) {
     my($n, $k, $exp) = @$arr;

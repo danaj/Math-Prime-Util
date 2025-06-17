@@ -10912,6 +10912,23 @@ sub shuffle {
   @S;
 }
 
+sub vecsample {
+  my $k = shift;
+  return () if $k == 0 || @_ == 0;
+  my $R = $_[0];
+  my $isarr = (@_ > 1 || !ref($R) || ref($R) ne 'ARRAY');
+  my $len = $isarr  ?  scalar(@_)  :  scalar(@$R);
+
+  $k = $len if $k > $len;
+  my @I = ($len-1, 0 .. $len-2);
+  my $j;
+  my @O = map { $j = Murandomm(scalar(@I));    # random index from remaining
+                @I[0,$j] = @I[$j,0];           # move to front
+                shift @I;                      # take it off
+              } 1 .. $k;
+  return $isarr  ?  @_[@O]  :  @$R[@O];
+}
+
 ###############################################################################
 
 sub vecsort {

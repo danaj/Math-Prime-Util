@@ -47,7 +47,7 @@ our @EXPORT_OK =
       forpart forcomp forcomb forperm forderange formultiperm forsetproduct
       fordivisors forfactored forsquarefree forsquarefreeint
       lastfor
-      numtoperm permtonum randperm shuffle
+      numtoperm permtonum randperm shuffle vecsample
       prime_iterator prime_iterator_object
       next_prime prev_prime
       next_prime_power prev_prime_power
@@ -5239,8 +5239,7 @@ This is more efficient than truncating the full shuffled list.
 
 The randomness comes from our CSPRNG.
 
-The slicing technique shown in the last example gives functionality similar
-to the C<sample> function of L<List::Util>.
+The slicing technique shown in the last example is similar to L</vecsample>.
 
 =head2 shuffle
 
@@ -5255,9 +5254,31 @@ with better randomness, a larger period, and a larger state).  This
 does make it slower.
 
 If the entire shuffled array is desired, this is faster than slicing
-with L</randperm> as shown in its example above.  If, however, a "pick"
-operation is desired, e.g. pick 2 random elements from a large array,
-then the slice technique can be hundreds of times faster.
+with L</randperm> as shown in its example above.  If fewer elements
+are needed (a "pick" or "sample") then L</vecsample> or slicing with
+L</randperm> will be much more efficient.
+
+=head2 vecsample
+
+  $oneof = vecsample(1,@data);  # Select one random value
+  @twoof = vecsample(2,@data);  # Select two random values
+
+Takes a non-negative integer C<k> and a list, and returns C<k> randomly
+selected values from the list.  The randomness comes from our CSPRNG.
+
+If the input is exactly two elements (C<k> and one other) and the second
+value is an array reference, then we will use it as the input list:
+
+  $oneof = vecsample(1, $arrayref);
+  @twoof = vecsample(1, \@data);
+
+This can be a large performance increase if the input list is large
+(e.g. 2x at 1000 elements, can be 10x with more).
+While there might be confusion when sampling a list with exactly
+one element, where that element is an array reference, this is
+assumed to be a rare case.
+
+This is similar to C<sample> from L<List::Util>.
 
 
 
@@ -7436,9 +7457,17 @@ as speedup relative to Perl's sort (higher is faster).
   Sort::XS::quick_sort      1.1x   1.5x   1.8x   2.0x   2.1x   2.7x
   Sort::Key usort           1.2x   1.3x   1.3x   1.3x   1.3x   1.4x
   sort                      1.0x   1.0x   1.0x   1.0x   1.0x   1.0x
+  List::MoreUtils::qsort    0.7x   0.5x   0.4x   0.5x   0.5x   0.6x
 
-The implementation does not currently try to exploit patterns.  Perl's sort
-is much faster on sorted and reverse sorted data than it is on random data.
+The implementation does not currently try to exploit patterns.
+Regarding the above timing, when given sorted or reverse sorted data,
+Perl's sort is much faster vs the random values used above.
+
+List::MoreUtils::qsort has very different goals in mind than standard
+sorting of integer lists, as mentioned in their documentation.
+In contrast, this is exactly (and only) what vecsort does, so it should
+not be a surprise that our function looks good on this benchmark.
+Different use cases would show things differently.
 
 
 =head1 AUTHORS

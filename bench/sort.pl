@@ -8,6 +8,7 @@ use Math::Prime::Util ":all";
 use Sort::XS;
 use Sort::Key::Radix;
 use Sort::Key;
+use List::MoreUtils;
 
 my $narrays = 10000;
 
@@ -27,7 +28,9 @@ for my $len (10,100,1000,10000,100000,1000000) {
     $times[2] += time_sortkey(\@ints);
     $times[3] += time_sortkeyradix(\@ints);
     $times[4] += time_vecsort(\@ints);
+    $times[5] += time_lmu(\@ints);
   }
+  show_res($times[0], $times[5], "LMU::qsort", 20*$narrays, $len);
   show_res($times[0], $times[0], "sort", 20*$narrays, $len);
   show_res($times[0], $times[2], "Sort::Key::usort", 20*$narrays, $len);
   show_res($times[0], $times[1], "Sort::XS::quick_sort", 20*$narrays, $len);
@@ -82,5 +85,11 @@ sub time_sortkeyradix {
   my $ints = shift;
   my $t0 = [gettimeofday];
   for my $t (@$ints) { my @sorted = Sort::Key::Radix::usort(@$t); }
+  return tv_interval($t0);
+}
+sub time_lmu {
+  my $ints = shift;
+  my $t0 = [gettimeofday];
+  for my $t (@$ints) { my @S=@$t; List::MoreUtils::qsort {$a<=>$b} @S; }
   return tv_interval($t0);
 }

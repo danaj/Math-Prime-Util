@@ -1067,6 +1067,11 @@ sub vecextract {
   return Math::Prime::Util::PP::vecextract(@_);
 }
 
+sub vecsample ($@) {       ## no critic qw(ProhibitSubroutinePrototypes)
+  _validate_integer_nonneg($_[0]);
+  Math::Prime::Util::PP::vecsample(@_);
+}
+
 1;
 
 __END__
