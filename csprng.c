@@ -262,13 +262,73 @@ NV drand64(void* ctx)
   return r;
 }
 
-/* Return rand 32-bit integer between 0 to n-1 inclusive */
+
+/* Return rand 32-bit/64-bit integer between 0 to n-1 inclusive */
+/* https://www.pcg-random.org/posts/bounded-rands.html */
+
+#define BOUND_OPENBSD 1
+#define BOUND_LEMIRE  2 /* https://arxiv.org/pdf/1805.10941 */
+#define BOUND_CANON   3 /* https://github.com/swiftlang/swift/pull/39143 */
+
+#define BOUND_METHOD  BOUND_OPENBSD
+
+#if BOUND_METHOD == BOUND_LIMIRE && HAVE_STD_U64
+uint32_t urandomm32(void *ctx, uint32_t n)
+{
+  uint32_t x, l;
+  uint64_t m;
+
+  if (n <= 1) return 0;
+
+  x = CIRAND32(ctx);
+  m = (uint64_t) x * (uint64_t) n;
+  l = (uint32_t) m;
+  if (l < n) {
+    uint32_t t = -n % n;
+    while (l < t) {
+      x = CIRAND32(ctx);
+      m = (uint64_t) x * (uint64_t) n;
+      l = (uint32_t) m;
+    }
+  }
+  return m >> 32;
+}
+#elif BOUND_METHOD == BOUND_CANON && HAVE_STD_U64
+uint32_t urandomm32(void *ctx, uint32_t n)
+{
+  const uint32_t max_followup_iterations = 10;
+  uint32_t i, f, rand, j, f2;
+  uint64_t prod;
+
+  if (n <= 1) return 0;
+
+  rand = CIRAND32(ctx);
+  prod = (uint64_t)n * rand;
+  i = prod >> 32;
+  f = prod & 0xffffffff;
+  if (f <= 1 + ~n)
+    return i;
+
+  for (j = 0; j < max_followup_iterations; j++) {
+    rand = CIRAND32(ctx);
+    prod = (uint64_t)n * rand;
+    f2 = prod >> 32;
+    f += f2;
+    /* Overflow.  Add carry and return. */
+    if (f < f2) return i + 1;
+    /* No carry.  Return. */
+    if (f != 0xffffffff) return i;
+    /* Continue (unlikely). */
+    f = prod & 0xffffffff;
+  }
+  return i;
+}
+#else
 uint32_t urandomm32(void *ctx, uint32_t n)
 {
   uint32_t r, rmin;
 
-  if (n <= 1)
-    return 0;
+  if (n <= 1) return 0;
 
   rmin = -n % n;
   while (1) {
@@ -278,15 +338,39 @@ uint32_t urandomm32(void *ctx, uint32_t n)
   }
   return r % n;
 }
+#endif
 
+#if BOUND_METHOD == BOUND_LIMIRE && BITS_PER_WORD == 64 && HAVE_STD_U64 && HAVE_UINT128
+UV urandomm64(void *ctx, UV n)
+{
+  uint64_t x, l;
+  uint128_t m;
+
+  if (n   <= 4294967295UL) return urandomm32(ctx,n);
+  if (n-1 == 4294967295UL) return irand32(ctx);
+
+  x = CIRAND64(ctx);
+  m = (uint128_t) x * (uint128_t) n;
+  l = (uint64_t) m;
+  if (l < n) {
+    uint64_t t = -n % n;
+    while (l < t) {
+      x = CIRAND64(ctx);
+      m = (uint128_t) x * (uint128_t) n;
+      l = (uint64_t) m;
+    }
+  }
+  return m >> 64;
+}
+#elif 0 && BOUND_METHOD == BOUND_CANON && BITS_PER_WORD == 64 && HAVE_STD_U64 && HAVE_UINT128
+...
+#else
 UV urandomm64(void* ctx, UV n)
 {
   UV r, rmin;
 
-  if (n <= 4294967295UL)
-    return urandomm32(ctx,n);
-  if (n-1 == 4294967295UL)
-    return irand32(ctx);
+  if (n   <= 4294967295UL) return urandomm32(ctx,n);
+  if (n-1 == 4294967295UL) return irand32(ctx);
 
   rmin = -n % n;
   while (1) {
@@ -296,6 +380,8 @@ UV urandomm64(void* ctx, UV n)
   }
   return r % n;
 }
+#endif
+
 
 UV urandomb(void* ctx, int nbits)
 {
