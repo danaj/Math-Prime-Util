@@ -5282,11 +5282,21 @@ sub vecprod {
   return 1 unless @_;
   return reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_))
     if $Math::Prime::Util::_GMPfunc{"vecprod"};
-  # Product tree:
-  my $prod = _product(0, $#_, [map { Math::BigInt->new("$_") } @_]);
+
+  my $prod;
+
   # Linear:
-  # my $prod = BONE->copy;  $prod *= "$_" for @_;
-  $prod = _bigint_to_int($prod) if $prod->bacmp(BMAX) <= 0 && $prod->bcmp(-(BMAX>>1)) > 0;
+  # $prod = BONE->copy;  $prod *= "$_" for @_;
+
+  # Product tree:
+  if (scalar(@_) < 14) {
+    my @S = @_;
+    $prod = _product_mpu(0, $#S, \@S);
+  } else {
+    $prod = _product_bigint(0, $#_, [map { Math::BigInt->new("$_") } @_]);
+  }
+
+  $prod = _bigint_to_int($prod) if ref($prod) && $prod->bcmp(BMAX) <= 0 && $prod->bcmp(BMIN) >= 0;
   $prod;
 }
 
@@ -7364,7 +7374,8 @@ sub binomialmod {
 }
 
 
-sub _product {
+# compute product of bigint array ref $r->[$a .. $b] into $r->[$a]
+sub _product_bigint {
   my($a, $b, $r) = @_;
   if ($b <= $a) {
     $r->[$a];
@@ -7374,9 +7385,28 @@ sub _product {
     $r->[$a] -> bmul( $r->[$a+1] ) -> bmul( $r->[$a+2] );
   } else {
     my $c = $a + (($b-$a+1)>>1);
-    _product($a, $c-1, $r);
-    _product($c, $b, $r);
+    _product_bigint($a, $c-1, $r);
+    _product_bigint($c, $b, $r);
     $r->[$a] -> bmul( $r->[$c] );
+  }
+}
+# compute product of integer array ref $r->[$a .. $b] into $r->[$a]
+sub _product_mpu {
+  my($a, $b, $r) = @_;
+  if ($b <= $a) {
+    $r->[$a];
+  } elsif ($b == $a+1) {
+    $r->[$a] = Mmulint($r->[$a], $r->[$b]);
+  } elsif ($b == $a+2) {
+    $r->[$a] = Mmulint(Mmulint($r->[$a], $r->[$a+1]), $r->[$a+2]);
+  } elsif ($b == $a+3) {
+    $r->[$a] = Mmulint( Mmulint($r->[$a  ], $r->[$a+1]),
+                        Mmulint($r->[$a+2], $r->[$a+3]) );
+  } else {
+    my $c = $a + (($b-$a+1)>>1);
+    _product_mpu($a, $c-1, $r);
+    _product_mpu($c, $b, $r);
+    $r->[$a] = Mmulint($r->[$a], $r->[$c]);
   }
 }
 
@@ -10861,7 +10891,7 @@ sub randperm {
       push @S,$v;
     }
   } else {
-    @S = map { $_ } 0..$n-1;
+    @S = (0..$n-1);
     for my $i (0 .. $n-2) {
       last if $i >= $k;
       my $j = Murandomm($n-$i);
