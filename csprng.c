@@ -272,7 +272,7 @@ NV drand64(void* ctx)
 
 #define BOUND_METHOD  BOUND_OPENBSD
 
-#if BOUND_METHOD == BOUND_LIMIRE && HAVE_STD_U64
+#if BOUND_METHOD == BOUND_LEMIRE && HAVE_STD_U64
 uint32_t urandomm32(void *ctx, uint32_t n)
 {
   uint32_t x, l;
@@ -284,7 +284,12 @@ uint32_t urandomm32(void *ctx, uint32_t n)
   m = (uint64_t) x * (uint64_t) n;
   l = (uint32_t) m;
   if (l < n) {
-    uint32_t t = -n % n;
+    uint32_t t = -n;    /* t = -n % n;  try to skip the mod */
+    if (t >= n) {
+      t -= n;
+      if (t >= n)
+        t %= n;
+    }
     while (l < t) {
       x = CIRAND32(ctx);
       m = (uint64_t) x * (uint64_t) n;
@@ -340,7 +345,7 @@ uint32_t urandomm32(void *ctx, uint32_t n)
 }
 #endif
 
-#if BOUND_METHOD == BOUND_LIMIRE && BITS_PER_WORD == 64 && HAVE_STD_U64 && HAVE_UINT128
+#if BOUND_METHOD == BOUND_LEMIRE && BITS_PER_WORD == 64 && HAVE_STD_U64 && HAVE_UINT128
 UV urandomm64(void *ctx, UV n)
 {
   uint64_t x, l;
@@ -353,7 +358,12 @@ UV urandomm64(void *ctx, UV n)
   m = (uint128_t) x * (uint128_t) n;
   l = (uint64_t) m;
   if (l < n) {
-    uint64_t t = -n % n;
+    uint64_t t = -n;    /* t = -n % n;  try to skip the mod */
+    if (t >= n) {
+      t -= n;
+      if (t >= n)
+        t %= n;
+    }
     while (l < t) {
       x = CIRAND64(ctx);
       m = (uint128_t) x * (uint128_t) n;
