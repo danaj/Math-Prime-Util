@@ -8,6 +8,7 @@ use Math::Prime::Util qw/lucasu    lucasv    lucasuv
                          foroddcomposites modint/;
 
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 
@@ -108,9 +109,10 @@ if ($usexs || !$usegmp || $Math::Prime::Util::GMP::VERSION >= 0.53) {
 }
 my %lucas_large = ();
 if (!$usegmp || $Math::Prime::Util::GMP::VERSION >= 0.53) {
-  %lucas_large = (
-    "10891238901329801329801234 9823092438924798 9234809243809243890243 390" => [qw/6124196139840885691066464 8614669321673340197867400/],
-  );
+  $lucas_large{"10891238901329801329843210 8823012438914798 7334809241809243190243 37"} = [qw/9793462298071844822738199 7806353955219259067966732/];
+  if ($extra) {
+    $lucas_large{"10891238901329801329801234 9823092438924798 9234809243809243890243 390"} = [qw/6124196139840885691066464 8614669321673340197867400/];
+  }
 }
 
 
