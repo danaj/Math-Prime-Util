@@ -5,6 +5,7 @@
 
 extern NV Ei(NV x);
 extern NV Li(NV x);
+extern long double ld_inverse_li(long double x);
 extern long double ld_riemann_zeta(long double x);
 extern long double RiemannR(long double x, long double eps);
 extern NV lambertw(NV k);

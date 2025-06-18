@@ -3519,30 +3519,39 @@ sub nth_prime_lower {
   return int($lower + 0.999999999);
 }
 
-sub inverse_li {
+sub inverse_li_nv {
   my($n) = @_;
-  validate_integer_nonneg($n);
-
-  return (0,2,3,5,6,8)[$n] if $n <= 5;
-  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
+  $n = 0.0 + "$n";
   my $t = $n * log($n);
 
   # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
   for my $iter (1 .. 10000) {
     my $dn = MLi($t) - $n;
+    $dn = 0.0 + "$dn" if ref($dn);
     my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
     last if abs($term) >= abs($old_term);
     $old_term = $term;
     $t -= $term;
     last if abs($term) < 1e-6;
   }
+  $t;
+}
 
-  if (ref($t)) {
-    $t = Math::BigInt->new($t->bceil->bstr);
-    $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
+sub inverse_li {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+
+  return (0,2,3,5,6,8)[$n] if $n <= 5;
+  my $t = Math::Prime::Util::inverse_li_nv($n);
+
+  # Seriously, we need $t = to_int($t);
+  if ($t < 2**45) {
+    $t = int($t+0.5);
   } else {
-    $t = int($t+0.999999);
+    my $tf = _upgrade_to_float($t);
+    $t = Math::BigInt->new($tf->bceil->bstr);
+    $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
   }
 
   # Make it an exact answer
@@ -4039,11 +4048,10 @@ sub twin_prime_count_approx {
   my($n) = @_;
   validate_integer_nonneg($n);
   return twin_prime_count(3,$n) if $n < 2000;
-  $n = _upgrade_to_float($n) if ref($n);
+  # Remove bigint / bigfloat.  Everything here will be done with native NV.
+  $n = 0.0+"$n" if ref($n);
   my $logn = log($n);
-  # The loss of full Ei precision is a few orders of magnitude less than the
-  # accuracy of the estimate, so save huge time and don't bother.
-  my $li2 = Math::Prime::Util::ExponentialIntegral("$logn") + 2.8853900817779268147198494 - ($n/$logn);
+  my $li2 = Math::Prime::Util::ExponentialIntegral($logn) + 2.8853900817779268147198494 - ($n/$logn);
 
   # Empirical correction factor
   my $fm;

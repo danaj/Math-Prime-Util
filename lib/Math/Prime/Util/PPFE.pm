@@ -117,6 +117,7 @@ sub entropy_bytes {
 *todigitstring = \&Math::Prime::Util::PP::todigitstring;
 *fromdigits = \&Math::Prime::Util::PP::fromdigits;
 *inverse_li = \&Math::Prime::Util::PP::inverse_li;
+*inverse_li_nv = \&Math::Prime::Util::PP::inverse_li_nv;
 *sieve_prime_cluster = \&Math::Prime::Util::PP::sieve_prime_cluster;
 *sieve_range = \&Math::Prime::Util::PP::sieve_range;
 *lucky_numbers = \&Math::Prime::Util::PP::lucky_numbers;

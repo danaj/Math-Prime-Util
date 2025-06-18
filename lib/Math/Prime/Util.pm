@@ -54,7 +54,8 @@ our @EXPORT_OK =
       next_perfect_power prev_perfect_power
       next_chen_prime
       prime_count prime_count_lower prime_count_upper prime_count_approx
-      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      inverse_li inverse_li_nv
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       semiprime_count semiprime_count_approx
@@ -5194,6 +5195,21 @@ such that C<Li(k)> E<gt>= n>.  Since the logarithmic integral C<Li(n)> is
 a good approximation to the number of primes less than C<n>, this function
 is a good simple approximation to the nth prime.
 
+=head2 inverse_li_nv
+
+  $faster_approx_prime_count = inverse_li_nv(1000000000);
+
+With input C<x> and output both in NV (floating point), computes the
+inverse of the logarithmic integral.  This should be very fast, as everything
+is done in native long double precision, no Perl bigints or bigfloats are
+involved, and the computed result is returned as an NV.
+
+The L</inverse_li> function uses this to start, then ensures the integer
+return value is the closest inverse of the integer result of the
+L</LogarithmicIntegral> function.  While this is a small amount of extra
+time for small inputs, once we have to go to Perl and use BigInt / BigFloat,
+the extra time can be significant.
+
 
 =head2 numtoperm
 
@@ -7461,7 +7477,7 @@ as speedup relative to Perl's sort (higher is faster).
 
 The implementation does not currently try to exploit patterns.
 Regarding the above timing, when given sorted or reverse sorted data,
-Perl's sort is much faster vs the random values used above.
+Perl's sort is much faster versus the random values used above.
 
 List::MoreUtils::qsort has very different goals in mind than standard
 sorting of integer lists, as mentioned in their documentation.

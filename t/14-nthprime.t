@@ -7,7 +7,7 @@ use Math::Prime::Util qw/primes nth_prime nth_twin_prime
                          nth_prime_lower nth_prime_upper
                          nth_prime_approx nth_twin_prime_approx
                          nth_semiprime is_semiprime
-                         inverse_li/;
+                         inverse_li inverse_li_nv/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -94,101 +94,116 @@ $nthsemi{1234567890}  =   8214915893  if $usexs && $extra && $use64;
 $nthsemi{8589934592}  =  60662588879  if $usexs && $extra && $use64;
 $nthsemi{17179869184} = 123806899739  if $usexs && $extra && $use64;
 
-plan tests => 0 + 2*scalar(keys %pivals32)
-                + 1
-                + 3*scalar(keys %nthprimes32)
-                + scalar(keys %nthprimes_small)
-                + $use64 * 3 * scalar(keys %nthprimes64)
-                + 3   # nth_prime_lower with max index
-                + 3   # nth_twin_prime
-                + 3   # inverse_li
-                + scalar(keys %ntpcs)   # nth_twin_prime_approx
-                + 2 + scalar(keys %nthsemi)   # nth_semiprime
-                + (($extra && $use64 && $usexs) ? 1 : 0);
+plan tests => 1   # nth_prime
+            + 1   # nth_prime lower/upper/approx
+            + 1   # nth_twin_prime and approx
+            + 1   # nth_semiprime
+            + 1   # inverse_li and inverse_li_nv
+            + 0;
 
+subtest 'nth_prime', sub {
 
-while (my($n, $pin) = each (%pivals32)) {
-  my $next = $pin+1;
-  cmp_ok( $pin ? nth_prime($pin) : 0, '<=', $n, "nth_prime($pin) <= $n");
-  cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
-}
+  is(nth_prime(0), undef, "nth_prime(0) = undef");
 
-{
-  my @nth_primes = map { nth_prime($_) }  (0 .. $#small_primes);
-  is_deeply( \@nth_primes, \@small_primes, "nth_prime for primes 0 .. $#small_primes" );
-}
+  my @pri100 = @{primes(541)};  # First 100 primes
+  my @nth100 = map { nth_prime($_) } 1 .. 100;
+  is_deeply(\@nth100, \@pri100, "nth_prime(1..100)");
 
-while (my($n, $nth) = each (%nthprimes32)) {
-  cmp_ok( nth_prime_upper($n), '>=', $nth, "nth_prime($n) <= upper estimate" );
-  cmp_ok( nth_prime_lower($n), '<=', $nth, "nth_prime($n) >= lower estimate" );
+  is_deeply([map { nth_prime($_) } 1229,1230,9592,9593,78498,78499],
+            [9973,10007,99991,100003,999983,1000003],
+            "nth_prime(n) results around 10k, 100k, 1M");
 
-  my $approx = nth_prime_approx($n);
-  my $percent_limit = ($n >= 775) ? 1 : 2;
-  cmp_ok( abs($nth - $approx) / $nth, '<=', $percent_limit/100.0, "nth_prime_approx($n) = $approx within $percent_limit\% of $nth");
-}
-while (my($n, $nth) = each (%nthprimes_small)) {
-  is( nth_prime($n), $nth, "nth_prime($n) = $nth" );
-}
+  is_deeply([map { nth_prime($_) } 6305537, 6305540, 6305543],
+            [110040379,110040407,110040503],
+            "nth_prime(6305537, 6305540, 6305543)");
 
-if ($use64) {
-  while (my($n, $nth) = each (%nthprimes64)) {
-    cmp_ok( nth_prime_upper($n), '>=', $nth, "nth_prime($n) <= upper estimate" );
-    cmp_ok( nth_prime_lower($n), '<=', $nth, "nth_prime($n) >= lower estimate" );
+  is_deeply([map { nth_prime($_) } 1000,10000,100000,1000000,10000000],
+            [7919,104729,1299709,15485863,179424673],
+            "nth_prime(n) 1k,10k,100k,1M,10M");
 
-    my $approx = "" . nth_prime_approx($n);   # ensure not a bigint
-    my $percent_limit = 0.001;
-    cmp_ok( abs($nth - $approx) / $nth, '<=', $percent_limit/100.0, "nth_prime_approx($n) = $approx within $percent_limit\% of $nth");
-  }
-}
-
-my $maxindex   = $use64 ? '425656284035217743' : '203280221';
-my $maxindexp1 = $use64 ? '425656284035217744' : '203280222';
-my $maxprime   = $use64 ? '18446744073709551557' : '4294967291';
-cmp_ok( nth_prime_lower($maxindex), '<=', $maxprime, "nth_prime_lower(maxindex) <= maxprime");
-cmp_ok( nth_prime_upper($maxindex), '>=', $maxprime, "nth_prime_upper(maxindex) >= maxprime");
-cmp_ok( nth_prime_lower($maxindexp1), '>=', nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");
-
-my $overindex = ($broken64) ? 425656284035217843 : $maxindexp1;
-
-if ($extra && $use64 && $usexs) {
   # Test an nth prime value that uses the binary-search-on-R(n) algorithm
-  is( nth_prime(21234567890), 551990503367, "nth_prime(21234567890)" );
-}
+  SKIP: {
+    # TODO: Can we use the NV R to solve this with PP?
+    skip "nth_prime(21234567890) for 64-bit XS EXTENDED_TESTING", 1 unless $extra && $use64 && $usexs;
+    is( nth_prime(21234567890), 551990503367, "nth_prime(21234567890)" );
+  }
+};
 
-####################################3
+subtest 'nth_prime upper/lower/approx', sub {
+  while (my($n, $nth) = each (%nthprimes32)) {
+    cmp_ok(nth_prime_upper($n),'>=',$nth, "nth_prime($n) <= upper estimate");
+    cmp_ok(nth_prime_lower($n),'<=',$nth, "nth_prime($n) >= lower estimate");
 
-is( nth_twin_prime(0), undef, "nth_twin_prime(0) = undef" );
-is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
-is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
+    my $okpct = ($n >= 775) ? 1 : 2;
+    cmp_within(nth_prime_approx($n), $nth, $okpct, "nth_prime_approx($n)");
+  }
+  if ($use64) {
+    while (my($n, $nth) = each (%nthprimes64)) {
+      cmp_ok(nth_prime_upper($n),'>=',$nth, "nth_prime($n) <= upper estimate");
+      cmp_ok(nth_prime_lower($n),'<=',$nth, "nth_prime($n) >= lower estimate");
+      cmp_within(nth_prime_approx($n), $nth, .001, "nth_prime_approx($n)");
+    }
+  }
 
-while (my($n, $nthtpc) = each (%ntpcs)) {
-  my $approx = nth_twin_prime_approx($n);
-  my $errorp = 100 * abs($nthtpc - $approx) / $nthtpc;
-  my $estr = sprintf "%8.6f%%", $errorp;
-  cmp_ok( $errorp, '<=', 2, "nth_twin_prime_approx($n) is $estr (got $approx, expected ~$nthtpc)");
-}
+  my $maxindex   = $use64 ? '425656284035217743' : '203280221';
+  my $maxindexp1 = $use64 ? '425656284035217744' : '203280222';
+  my $maxprime   = $use64 ? '18446744073709551557' : '4294967291';
+  cmp_ok(nth_prime_lower($maxindex),'<=',$maxprime, "nth_prime_lower(maxindex) <= maxprime");
+  cmp_ok(nth_prime_upper($maxindex),'>=',$maxprime, "nth_prime_upper(maxindex) >= maxprime");
+  cmp_ok(nth_prime_lower($maxindexp1),'>=',nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");
+};
 
-####################################3
+####################################
+subtest 'nth_twin_prime and approx', sub {
+  is( nth_twin_prime(0), undef, "nth_twin_prime(0) = undef" );
+  is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
+  is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
 
-is( nth_semiprime(0), undef, "nth_semiprime(0) = undef" );
-{
+  while (my($n, $nthtpc) = each (%ntpcs)) {
+    cmp_within(nth_twin_prime_approx($n), $nthtpc, 2, "nth_twin_prime_approx($n)");
+  }
+};
+
+####################################
+subtest 'nth_semiprime', sub {
+
+  is( nth_semiprime(0), undef, "nth_semiprime(0) = undef" );
+
   my $range = $extra ? 10000 : 500;
   my @semiprimes = grep { is_semiprime($_) } 0 .. $range;
   my $nsmall = scalar(@semiprimes);
   my @nth_semis = map { nth_semiprime($_) } 1 .. $nsmall;
   is_deeply(\@nth_semis, \@semiprimes, "nth_semiprime(1 .. $nsmall)");
-}
-while (my($n, $nthsemi) = each (%nthsemi)) {
-  is( nth_semiprime($n), $nthsemi, "nth_semiprime($n) = $nthsemi" );
-}
 
-####################################3
+  while (my($n, $nthsemi) = each (%nthsemi)) {
+    is( nth_semiprime($n), $nthsemi, "nth_semiprime($n) = $nthsemi" );
+  }
+};
 
-is_deeply(
-  [ map { inverse_li($_) } 0 .. 50 ],
-  [qw/0 2 3 5 6 8 10 12 15 18 21 24 27 30 34 37 41 45 49 53 57 61 65 69 73 78 82 86 91 95 100 105 109 114 119 123 128 133 138 143 148 153 158 163 168 173 179 184 189 194 199/],
-  "inverse_li: Li^-1(0..50)"
-);
-# Allow +/- 2 for floating point differences in LogarithmicIntegral
-like(inverse_li(1000000000), qr/^2280162741[34567]$/, "inverse_li(1e9)");
-like(inverse_li(1100000000000), qr/^3310443690704[01234]$/, "inverse_li(11e11)");
+####################################
+subtest 'inverse_li and inverse_li_nv', sub {
+  is_deeply(
+    [ map { inverse_li($_) } 0 .. 50 ],
+    [qw/0 2 3 5 6 8 10 12 15 18 21 24 27 30 34 37 41 45 49 53 57 61 65 69 73 78 82 86 91 95 100 105 109 114 119 123 128 133 138 143 148 153 158 163 168 173 179 184 189 194 199/],
+    "inverse_li: Li^-1(0..50)"
+  );
+  # Allow +/- 2 for floating point differences in LogarithmicIntegral
+  like(inverse_li(1000000000), qr/^2280162741[34567]$/, "inverse_li(1e9)");
+  like(inverse_li(1100000000000), qr/^3310443690704[01234]$/, "inverse_li(11e11)");
+
+  cmp_within(inverse_li_nv(4), 5.60927669305089, .001, "inverse_li_nv(4)");
+  cmp_within(inverse_li_nv(64.2731216921018), 277, .001, "inverse_li_nv(64.2731216921018)");
+  cmp_within(inverse_li_nv(40000), 478956.000953764, .001, "inverse_li_nv(40000)");
+  cmp_within(inverse_li_nv(1234567890123), 37301814610592.3, .1, "inverse_li_nv(1234567890123)");
+};
+
+sub cmp_within {
+  my($got, $exp, $tolpct, $mess) = @_;
+
+  my $diffok = 0.01 * $tolpct * abs("$exp") + 0.5;
+  my($diff)  = map { 0.0+"$_" } ($got > $exp ? $got-$exp : $exp-$got);
+  my $diffstr = ($got == $exp) ? "0" : ($got > $exp) ? "+$diff" : "-$diff";
+
+  ok($diff <= $diffok, "$mess =~ $exp ($diffstr)")
+    or diag "$mess got $got with diff $diff > $diffok";
+}

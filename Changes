@@ -49,6 +49,7 @@ Revision history for Perl module Math::Prime::Util
     - cmpint(a, b)                    integer comparison (like <=>)
     - signint(a, b)                   integer sign (-1,0,1)
     - random_safe_prime               for n-bit safe primes
+    - inverse_li_nv(x)                float inverse logarithmic integral
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
     - is_lucky(n)                     predicate for lucky number sieve
     - is_happy(n)                     if n happy number, returns height of n

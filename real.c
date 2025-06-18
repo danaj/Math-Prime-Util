@@ -307,7 +307,7 @@ NV Li(NV x) {
   return Ei(loglnv(x));
 }
 
-static long double ld_inverse_li(long double lx) {
+long double ld_inverse_li(long double lx) {
   int i;
   long double t, term, old_term = 0;
   /* Iterate Halley's method until error grows. */

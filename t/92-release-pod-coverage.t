@@ -81,7 +81,8 @@ sub mpu_public_regex {
       next_perfect_power prev_perfect_power
       next_chen_prime
       prime_count prime_count_lower prime_count_upper prime_count_approx
-      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx inverse_li
+      nth_prime nth_prime_lower nth_prime_upper nth_prime_approx
+      inverse_li inverse_li_nv
       twin_prime_count twin_prime_count_approx
       nth_twin_prime nth_twin_prime_approx
       semiprime_count semiprime_count_approx

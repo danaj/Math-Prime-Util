@@ -2508,6 +2508,12 @@ void inverse_li(IN SV* svn)
     DISPATCHPP();
     XSRETURN(1);
 
+NV inverse_li_nv(IN NV x)
+  CODE:
+    RETVAL = ld_inverse_li(x);
+  OUTPUT:
+    RETVAL
+
 void nth_prime(IN SV* svn)
   ALIAS:
     nth_prime_upper = 1

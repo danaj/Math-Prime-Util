@@ -134,6 +134,7 @@ Tags:
   nth_ramanujan_prime_approx(n)       fast approximate Rn
   legendre_phi(n,a)                   # below n not div by first a primes
   inverse_li(n)                       integer inverse logarithmic integral
+  inverse_li_nv(x)                    float inverse logarithmic integral
   prime_precalc(n)                    precalculate primes to n
   sum_primes([start,] end)            return summation of primes in range
   print_primes(start,end[,fd])        print primes to stdout or fd
