@@ -263,16 +263,29 @@ NV drand64(void* ctx)
 }
 
 
-/* Return rand 32-bit/64-bit integer between 0 to n-1 inclusive */
-/* https://www.pcg-random.org/posts/bounded-rands.html */
+/* Return rand 32-bit/64-bit integer between 0 to n-1 inclusive
+ *
+ * https://www.pcg-random.org/posts/bounded-rands.html
+ * https://arxiv.org/pdf/1805.10941
+ *
+ * I have also tried Stephen Canon's method:
+ *      https://github.com/swiftlang/swift/pull/39143
+ * which is consistently slower for me.
+ *
+ * Here we will select one:
+ *
+ *    OPENBSD = DEBIASED_MODx2
+ *    LEMIRE  = INT_MULT_TOPT_MOPT
+ *
+ * The main issue with LEMIRE is that it *requires* full width multiplies.
+ * We still try to support old systems that may not have 64-bit.
+ * We definitely expect 64-bit systems without uint128_t support.
+ */
 
-#define BOUND_OPENBSD 1
-#define BOUND_LEMIRE  2 /* https://arxiv.org/pdf/1805.10941 */
-#define BOUND_CANON   3 /* https://github.com/swiftlang/swift/pull/39143 */
+/* If this is set, we will try to use Lemire / O'Neill method. */
+#define PREFER_LEMIRE 0
 
-#define BOUND_METHOD  BOUND_OPENBSD
-
-#if BOUND_METHOD == BOUND_LEMIRE && HAVE_UINT64
+#if PREFER_LEMIRE && HAVE_UINT64
 uint32_t urandomm32(void *ctx, uint32_t n)
 {
   uint32_t x, l;
@@ -298,36 +311,6 @@ uint32_t urandomm32(void *ctx, uint32_t n)
   }
   return m >> 32;
 }
-#elif BOUND_METHOD == BOUND_CANON && HAVE_UINT64
-uint32_t urandomm32(void *ctx, uint32_t n)
-{
-  const uint32_t max_followup_iterations = 10;
-  uint32_t i, f, rand, j, f2;
-  uint64_t prod;
-
-  if (n <= 1) return 0;
-
-  rand = CIRAND32(ctx);
-  prod = (uint64_t)n * rand;
-  i = prod >> 32;
-  f = prod & 0xffffffff;
-  if (f <= 1 + ~n)
-    return i;
-
-  for (j = 0; j < max_followup_iterations; j++) {
-    rand = CIRAND32(ctx);
-    prod = (uint64_t)n * rand;
-    f2 = prod >> 32;
-    f += f2;
-    /* Overflow.  Add carry and return. */
-    if (f < f2) return i + 1;
-    /* No carry.  Return. */
-    if (f != 0xffffffff) return i;
-    /* Continue (unlikely). */
-    f = prod & 0xffffffff;
-  }
-  return i;
-}
 #else
 uint32_t urandomm32(void *ctx, uint32_t n)
 {
@@ -345,7 +328,7 @@ uint32_t urandomm32(void *ctx, uint32_t n)
 }
 #endif
 
-#if BOUND_METHOD == BOUND_LEMIRE && BITS_PER_WORD == 64 && HAVE_UINT64 && HAVE_UINT128
+#if PREFER_LEMIRE && HAVE_UINT64 && HAVE_UINT128
 UV urandomm64(void *ctx, UV n)
 {
   uint64_t x, l;
@@ -372,8 +355,6 @@ UV urandomm64(void *ctx, UV n)
   }
   return m >> 64;
 }
-#elif 0 && BOUND_METHOD == BOUND_CANON && BITS_PER_WORD == 64 && HAVE_UINT64 && HAVE_UINT128
-...
 #else
 UV urandomm64(void* ctx, UV n)
 {
