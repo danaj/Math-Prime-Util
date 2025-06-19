@@ -194,7 +194,7 @@ t/18-15-cmpint.t
 t/18-20-addint.t
 t/18-22-mulint.t
 t/18-24-powint.t
-t/18-25-shiftint.t
+t/18-26-shiftint.t
 t/18-40-divmodrem.t
 t/18-50-sqrtint.t
 t/18-52-rootint.t
@@ -223,6 +223,7 @@ t/23-primality-proofs.t
 t/23-random-certs.t
 t/24-partitions.t
 t/25-lucas_sequences.t
+t/26-binomial.t
 t/26-binomialmod.t
 t/26-chenprimes.t
 t/26-combinatorial.t
@@ -231,6 +232,8 @@ t/26-contfrac.t
 t/26-cornacchia.t
 t/26-delicateprime.t
 t/26-digits.t
+t/26-factorial.t
+t/26-factorialmod.t
 t/26-frobeniusnum.t
 t/26-isalmostprime.t
 t/26-iscarmichael.t
@@ -257,6 +260,7 @@ t/26-powerfree.t
 t/26-powerful.t
 t/26-powersum.t
 t/26-practical.t
+t/26-randperm.t
 t/26-rationaltrees.t
 t/26-rootmod.t
 t/26-setbinop.t

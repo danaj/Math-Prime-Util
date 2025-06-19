@@ -8,7 +8,6 @@ use Math::Prime::Util qw/binomialmod/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs  = Math::Prime::Util::prime_get_config->{'xs'};
-#my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 
 my @tests = (
   [0,0,7, 1],

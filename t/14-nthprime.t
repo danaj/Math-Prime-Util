@@ -12,7 +12,6 @@ use Math::Prime::Util qw/primes nth_prime nth_twin_prime
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $broken64 = (18446744073709550592 == ~0);
 
 my $nsmallprimes = 1000;
 my $nth_small_prime = 7919;  # nth_prime(1000)
