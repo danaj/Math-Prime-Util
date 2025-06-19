@@ -2479,7 +2479,7 @@ bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
 
 
 
-#if HAVE_STD_U64
+#if HAVE_UINT64
   #define U64T uint64_t
 #else
   #define U64T UV

@@ -21,7 +21,7 @@
  */
 
 
-#if (BITS_PER_WORD == 32) && HAVE_STD_U64
+#if (BITS_PER_WORD == 32) && HAVE_UINT64
 
   /* We have 64-bit available, but UV is 32-bit.  Do the math in 64-bit.
    * Even if it is emulated, it should be as fast or faster than us doing it.

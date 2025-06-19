@@ -272,7 +272,7 @@ NV drand64(void* ctx)
 
 #define BOUND_METHOD  BOUND_OPENBSD
 
-#if BOUND_METHOD == BOUND_LEMIRE && HAVE_STD_U64
+#if BOUND_METHOD == BOUND_LEMIRE && HAVE_UINT64
 uint32_t urandomm32(void *ctx, uint32_t n)
 {
   uint32_t x, l;
@@ -298,7 +298,7 @@ uint32_t urandomm32(void *ctx, uint32_t n)
   }
   return m >> 32;
 }
-#elif BOUND_METHOD == BOUND_CANON && HAVE_STD_U64
+#elif BOUND_METHOD == BOUND_CANON && HAVE_UINT64
 uint32_t urandomm32(void *ctx, uint32_t n)
 {
   const uint32_t max_followup_iterations = 10;
@@ -345,7 +345,7 @@ uint32_t urandomm32(void *ctx, uint32_t n)
 }
 #endif
 
-#if BOUND_METHOD == BOUND_LEMIRE && BITS_PER_WORD == 64 && HAVE_STD_U64 && HAVE_UINT128
+#if BOUND_METHOD == BOUND_LEMIRE && BITS_PER_WORD == 64 && HAVE_UINT64 && HAVE_UINT128
 UV urandomm64(void *ctx, UV n)
 {
   uint64_t x, l;
@@ -372,7 +372,7 @@ UV urandomm64(void *ctx, UV n)
   }
   return m >> 64;
 }
-#elif 0 && BOUND_METHOD == BOUND_CANON && BITS_PER_WORD == 64 && HAVE_STD_U64 && HAVE_UINT128
+#elif 0 && BOUND_METHOD == BOUND_CANON && BITS_PER_WORD == 64 && HAVE_UINT64 && HAVE_UINT128
 ...
 #else
 UV urandomm64(void* ctx, UV n)
