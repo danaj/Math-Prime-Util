@@ -3752,7 +3752,7 @@ void addint(IN SV* sva, IN SV* svb)
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
     bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 7) ? IFLAG_POS : IFLAG_ANY);
 
-    if (0 && astatus != 0 && bstatus != 0) {
+    if (astatus != 0 && bstatus != 0) {
       /* We will try to do everything with non-negative integers, with overflow
        * detection.  This means some pre-processing and post-processing for
        * negative inputs. */
