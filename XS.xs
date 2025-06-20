@@ -307,6 +307,7 @@ static const gmp_info_t gmp_info[] = {
   {              "sieve_range", 36, 0xFF, R_BIGINT }, /* needs objectify */
   {      "sieve_prime_cluster", 34, 0xFF, R_BIGINT }, /* needs objectify */
   {                 "divisors", 53, 0xFF, R_BIGINT }, /* needs objectify */
+
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },
 
@@ -326,6 +327,8 @@ static const gmp_info_t gmp_info[] = {
 
   /* if the input is already a bigint type, we want to use that */
   /* {                "factorial", 24, 1, R_BIGINT }, */
+  /* need to objectify */
+  /* {                   "factor", 41, 0xFF, R_BIGINT }, */
 };
 
 /******************************************************************************/
@@ -1376,8 +1379,7 @@ void prime_count(IN SV* svlo, IN SV* svhi = 0)
       }
       XSRETURN_UV(count);
     }
-    if (ix == 0) CALLROOTSUB("_generic_prime_count");
-    else         DISPATCHPP();
+    DISPATCHPP();
     XSRETURN(1);
 
 
@@ -3127,7 +3129,7 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-      CALLROOTSUB(ix == 0 ? "_generic_factor" : "_generic_factor_exp");
+      DISPATCHPP();
       return;
     }
 
@@ -5348,7 +5350,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      CALLROOTSUB_VOID("_generic_forprimes");
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
     if (!svend) { end = beg; beg = 2; }
@@ -5452,7 +5454,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      CALLROOTSUB_VOID( ix==0 ? "_generic_foroddcomposites" : "_generic_forcomposites");
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
     if (!svend) { end = beg; beg = ix ? 4 : 9; }
@@ -5562,7 +5564,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      CALLROOTSUB_VOID("_generic_forsemiprimes");
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
     if (!svend) { end = beg; beg = 4; }
@@ -5735,7 +5737,7 @@ fordivisors (SV* block, IN SV* svn)
     SETSUBREF(subcv, block);
 
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      CALLROOTSUB_VOID("_generic_fordivisors");
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
 
@@ -5788,7 +5790,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
   PPCODE:
     SETSUBREF(subcv, block);
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      DISPATCHPP();
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
     if (n > (UV_MAX-2)) croak("%s: argument overflow", SUBNAME);
@@ -6088,7 +6090,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      CALLROOTSUB_VOID( ix==0 ? "_generic_forfactored" : "_generic_forsquarefree");
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
     if (!svend) { end = beg; beg = 1; }
@@ -6182,7 +6184,7 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
 
     if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
         (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
-      CALLROOTSUB_VOID("_generic_forsquarefree");
+      DISPATCH_VOIDPP();
       XSRETURN(0);
     }
     if (!svend) { end = beg; beg = 1; }

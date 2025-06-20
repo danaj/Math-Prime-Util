@@ -191,10 +191,6 @@ BEGIN {
 
     # Init rand
     Math::Prime::Util::csrand();
-
-    *prime_count   = \&Math::Prime::Util::_generic_prime_count;
-    *factor        = \&Math::Prime::Util::_generic_factor;
-    *factor_exp    = \&Math::Prime::Util::_generic_factor_exp;
   };
 
   $_Config{'secure'} = 0;
@@ -437,126 +433,6 @@ sub random_proven_prime_with_cert {
 }
 
 #############################################################################
-# forprimes, forcomposites, fordivisors.
-# These are used when the XS code can't handle it.
-
-sub _generic_forprimes {
-  my($sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 2; }
-  _validate_integer_nonneg($beg);
-  _validate_integer_nonneg($end);
-  $beg = 2 if $beg < 2;
-  my $oldforexit = Math::Prime::Util::_start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
-      $pp = $p;
-      $sub->();
-      last if Math::Prime::Util::_get_forexit();
-    }
-  }
-  Math::Prime::Util::_end_for_loop($oldforexit);
-}
-
-# TODO: This is awful for almost-primes with a large k
-
-sub _generic_forcomp_sub {
-  my($what, $sub, $beg, $end) = @_;
-  if (!defined $end) { $end = $beg; $beg = 0; }
-  _validate_integer_nonneg($beg);
-  _validate_integer_nonneg($end);
-  my($cinc,$k) = (1,0);
-  $what = 'almost-2' if $what eq 'semiprimes';
-  if ($what =~ /^almost-(\d+)$/) {
-    $k = int($1);
-    $beg = (1 << $k) if $beg < (1 << $k);
-  } elsif ($what eq 'oddcomposites') {
-    $beg = 9 if $beg < 9;
-    $beg++ unless $beg & 1;
-    $cinc = 2;
-  } else {
-    $beg = 4 if $beg < 4;
-  }
-  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
-  my $oldforexit = Math::Prime::Util::_start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    for (my $p = next_prime($beg-1);  $beg <= $end;  $p = next_prime($p)) {
-      for ( ; $beg < $p && $beg <= $end ; $beg += $cinc ) {
-        next if $k && !is_almost_prime($k,$beg);
-        $pp = $beg;
-        $sub->();
-        last if Math::Prime::Util::_get_forexit();
-      }
-      $beg += $cinc;
-      last if Math::Prime::Util::_get_forexit();
-    }
-  }
-  Math::Prime::Util::_end_for_loop($oldforexit);
-}
-
-sub _generic_forcomposites {
-  _generic_forcomp_sub('composites', @_);
-}
-
-sub _generic_foroddcomposites {
-  _generic_forcomp_sub('oddcomposites', @_);
-}
-
-sub _generic_forsemiprimes {
-  _generic_forcomp_sub('semiprimes', @_);
-}
-
-sub _generic_forfac {
-  my($sf, $sub, $beg, $end) = @_;
-  _validate_integer_nonneg($beg);
-  if (defined $end) {
-    _validate_integer_nonneg($end);
-    $beg = 1 if $beg < 1;
-  } else {
-    ($beg,$end) = (1,$beg);
-  }
-  my $oldforexit = Math::Prime::Util::_start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    while ($beg <= $end) {
-      if (!$sf || is_square_free($beg)) {
-        $pp = $beg;
-        my @f = factor($beg);
-        $sub->(@f);
-        last if Math::Prime::Util::_get_forexit();
-      }
-      $beg++;
-    }
-  }
-  Math::Prime::Util::_end_for_loop($oldforexit);
-}
-sub _generic_forfactored {
-  _generic_forfac(0, @_);
-}
-sub _generic_forsquarefree {
-  _generic_forfac(1, @_);
-}
-
-sub _generic_fordivisors {
-  my($sub, $n) = @_;
-  _validate_integer_nonneg($n);
-  my @divisors = divisors($n);
-  my $oldforexit = Math::Prime::Util::_start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    foreach my $d (@divisors) {
-      $pp = $d;
-      $sub->();
-      last if Math::Prime::Util::_get_forexit();
-    }
-  }
-  Math::Prime::Util::_end_for_loop($oldforexit);
-}
 
 sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $iref) = @_;
@@ -619,58 +495,6 @@ sub prime_iterator_object {
 # These will do input validation, then call the appropriate internal function
 # based on the input (XS, GMP, PP).
 #############################################################################
-
-sub _generic_prime_count {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    _validate_integer_nonneg($low);
-  } else {
-    ($low,$high) = (2, $low);
-  }
-  _validate_integer_nonneg($high);
-  return 0 if $high < 2  ||  $low > $high;
-
-  # We can relax these constraints if MPU::GMP gets a fast implementation.
-  return Math::Prime::Util::GMP::prime_count($low,$high) if $_HAVE_GMP
-                       && defined &Math::Prime::Util::GMP::prime_count
-                       && (   (ref($high) eq 'Math::BigInt')
-                           || (($high-$low) < int($low/1_000_000))
-                          );
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::prime_count($low,$high);
-}
-
-sub _generic_factor {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-
-  if ($_HAVE_GMP) {
-    my @factors;
-    if ($n != 1) {
-      @factors = Math::Prime::Util::GMP::factor($n);
-      #if (ref($_[0]) eq 'Math::BigInt') {
-      #  @factors = map { ($_ > ~0) ? Math::BigInt->new(''.$_) : $_ } @factors;
-      #}
-      if (ref($_[0])) {
-        @factors = map { ($_ > ~0) ? ref($_[0])->new(''.$_) : $_ } @factors;
-      }
-    }
-    return @factors;
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::factor($n);
-}
-
-sub _generic_factor_exp {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-
-  my %exponents;
-  my @factors = grep { !$exponents{$_}++ } factor($n);
-  return scalar @factors unless wantarray;
-  return (map { [$_, $exponents{$_}] } @factors);
-}
 
 #############################################################################
 
@@ -7403,10 +7227,10 @@ Finding the sumset size of the first 10,000 primes.
 
   my %r;  my $p = primes(nth_prime(10000));
 
-  13.4s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
+  13.3s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
                 say scalar(keys %r);
    9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
-   2.6s    3MB  say scalar setbinop { $a+$b } $p;
+   2.5s    3MB  say scalar setbinop { $a+$b } $p;
    0.4s    3MB  say scalar sumset $p;
 
 Set intersection of C<[-1000..100]> and C<[-100..1000]>.

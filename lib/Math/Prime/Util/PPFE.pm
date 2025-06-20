@@ -123,6 +123,7 @@ sub entropy_bytes {
 *lucky_numbers = \&Math::Prime::Util::PP::lucky_numbers;
 *powerful_numbers = \&Math::Prime::Util::PP::powerful_numbers;
 
+*prime_count = \&Math::Prime::Util::PP::prime_count;
 *prime_power_count = \&Math::Prime::Util::PP::prime_power_count;
 *twin_prime_count = \&Math::Prime::Util::PP::twin_prime_count;
 *semiprime_count = \&Math::Prime::Util::PP::semiprime_count;
@@ -334,6 +335,8 @@ sub entropy_bytes {
 
 *almost_prime_count_approx = \&Math::Prime::Util::PP::almost_prime_count_approx;
 
+*factor = \&Math::Prime::Util::PP::factor;
+*factor_exp = \&Math::Prime::Util::PP::factor_exp;
 *prho_factor = \&Math::Prime::Util::PP::prho_factor;
 *pbrent_factor = \&Math::Prime::Util::PP::pbrent_factor;
 *ecm_factor = \&Math::Prime::Util::PP::ecm_factor;
@@ -911,67 +914,32 @@ sub _start_for_loop { my $old = $_exitloop; $_exitloop = 0; $old; }
 sub _end_for_loop { $_exitloop = shift; }
 
 sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $beg, $end) = @_;
-  if (scalar @_ > 2) {
-    _validate_integer_nonneg($beg);
-  } else {
-    ($beg,$end) = (2,$beg);
-  }
-  _validate_integer_nonneg($end);
-  $beg = 2 if $beg < 2;
-  my $oldforexit = _start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    for (my $p = next_prime($beg-1);  $p <= $end;  $p = next_prime($p)) {
-      $pp = $p;
-      $sub->();
-      last if $_exitloop;
-    }
-  }
-  _end_for_loop($oldforexit);
+  Math::Prime::Util::PP::forprimes(@_);
 }
-
 sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_forcomp_sub('composites', @_);
+  Math::Prime::Util::PP::forcomposites(@_);
 }
 sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_forcomp_sub('oddcomposites', @_);
+  Math::Prime::Util::PP::foroddcomposites(@_);
 }
 sub forsemiprimes(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_forcomp_sub('semiprimes', @_);
+  Math::Prime::Util::PP::forsemiprimes(@_);
 }
 sub foralmostprimes(&$$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::PP::foralmostprimes(@_);
 }
-
 sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_forfac(0, @_);
+  Math::Prime::Util::PP::forfactored(@_);
 }
 sub forsquarefree(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_forfac(1, @_);
+  Math::Prime::Util::PP::forsquarefree(@_);
 }
 sub forsquarefreeint(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::_generic_forfac(1, @_);
+  Math::Prime::Util::PP::forsquarefreeint(@_);
 }
-
 sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $n) = @_;
-  _validate_integer_nonneg($n);
-  my @divisors = divisors($n);
-  my $oldforexit = _start_for_loop();
-  {
-    my $pp;
-    local *_ = \$pp;
-    foreach my $d (@divisors) {
-      $pp = $d;
-      $sub->();
-      last if $_exitloop;
-    }
-  }
-  _end_for_loop($oldforexit);
+  Math::Prime::Util::PP::fordivisors(@_);
 }
-
 sub forpart (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::PP::forpart(@_);
 }

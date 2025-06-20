@@ -318,49 +318,58 @@ require_ok 'Math::Prime::Util::PrimalityProving';
     *is_frobenius_underwood_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_underwood_pseudoprime;
     *is_perrin_pseudoprime = \&Math::Prime::Util::PP::is_perrin_pseudoprime;
     *is_frobenius_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_pseudoprime;
-    *is_aks_prime = \&Math::Prime::Util::PP::is_aks_prime;
+    *is_aks_prime      = \&Math::Prime::Util::PP::is_aks_prime;
     *is_gaussian_prime = \&Math::Prime::Util::PP::is_gaussian_prime;
 
-    *is_ramanujan_prime = \&Math::Prime::Util::PP::is_ramanujan_prime;
+    *is_ramanujan_prime= \&Math::Prime::Util::PP::is_ramanujan_prime;
     *nth_ramanujan_prime = \&Math::Prime::Util::PP::nth_ramanujan_prime;
-    *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
-    *is_semiprime   = \&Math::Prime::Util::PP::is_semiprime;
-    *is_totient     = \&Math::Prime::Util::PP::is_totient;
-    *is_carmichael  = \&Math::Prime::Util::PP::is_carmichael;
+    *inverse_totient   = \&Math::Prime::Util::PP::inverse_totient;
+    *is_semiprime      = \&Math::Prime::Util::PP::is_semiprime;
+    *is_totient        = \&Math::Prime::Util::PP::is_totient;
+    *is_carmichael     = \&Math::Prime::Util::PP::is_carmichael;
 
-    *factor         = \&Math::Prime::Util::PP::factor;
+    *factor            = \&Math::Prime::Util::PP::factor;
 
-    *gcd            = \&Math::Prime::Util::PP::gcd;
-    *lcm            = \&Math::Prime::Util::PP::lcm;
+    *gcd               = \&Math::Prime::Util::PP::gcd;
+    *lcm               = \&Math::Prime::Util::PP::lcm;
 
-    *moebius        = \&Math::Prime::Util::PP::moebius;
-    *euler_phi      = \&Math::Prime::Util::PP::euler_phi;
-    *jordan_totient = \&Math::Prime::Util::PP::jordan_totient;
-    *mertens        = \&Math::Prime::Util::PP::mertens;
-    *exp_mangoldt   = \&Math::Prime::Util::PP::exp_mangoldt;
-    *chebyshev_theta= \&Math::Prime::Util::PP::chebyshev_theta;
-    *chebyshev_psi  = \&Math::Prime::Util::PP::chebyshev_psi;
-    *ramanujan_sum  = \&Math::Prime::Util::PP::ramanujan_sum;
+    *moebius           = \&Math::Prime::Util::PP::moebius;
+    *euler_phi         = \&Math::Prime::Util::PP::euler_phi;
+    *jordan_totient    = \&Math::Prime::Util::PP::jordan_totient;
+    *mertens           = \&Math::Prime::Util::PP::mertens;
+    *exp_mangoldt      = \&Math::Prime::Util::PP::exp_mangoldt;
+    *chebyshev_theta   = \&Math::Prime::Util::PP::chebyshev_theta;
+    *chebyshev_psi     = \&Math::Prime::Util::PP::chebyshev_psi;
+    *ramanujan_sum     = \&Math::Prime::Util::PP::ramanujan_sum;
 
-    *znprimroot     = \&Math::Prime::Util::PP::znprimroot;
-    *znorder        = \&Math::Prime::Util::PP::znorder;
-    *znlog          = \&Math::Prime::Util::PP::znlog;
-    *binomial       = \&Math::Prime::Util::PP::binomial;
-    *stirling       = \&Math::Prime::Util::PP::stirling;
-    *bernfrac       = \&Math::Prime::Util::PP::bernfrac;
-    *valuation      = \&Math::Prime::Util::PP::valuation;
-    *gcdext         = \&Math::Prime::Util::PP::gcdext;
-    *invmod         = \&Math::Prime::Util::PP::invmod;
-    *vecmin         = \&Math::Prime::Util::PP::vecmin;
-    *vecmax         = \&Math::Prime::Util::PP::vecmax;
-    *vecsum         = \&Math::Prime::Util::PP::vecsum;
-    *vecprod        = \&Math::Prime::Util::PP::vecprod;
-    *liouville      = \&Math::Prime::Util::PP::liouville;
+    *Pi                = \&Math::Prime::Util::PP::Pi;
+    *znprimroot        = \&Math::Prime::Util::PP::znprimroot;
+    *znorder           = \&Math::Prime::Util::PP::znorder;
+    *znlog             = \&Math::Prime::Util::PP::znlog;
+    *binomial          = \&Math::Prime::Util::PP::binomial;
+    *stirling          = \&Math::Prime::Util::PP::stirling;
+    *bernfrac          = \&Math::Prime::Util::PP::bernfrac;
+    *valuation         = \&Math::Prime::Util::PP::valuation;
+    *gcdext            = \&Math::Prime::Util::PP::gcdext;
+    *invmod            = \&Math::Prime::Util::PP::invmod;
+    *vecmin            = \&Math::Prime::Util::PP::vecmin;
+    *vecmax            = \&Math::Prime::Util::PP::vecmax;
+    *vecsum            = \&Math::Prime::Util::PP::vecsum;
+    *vecprod           = \&Math::Prime::Util::PP::vecprod;
+    *liouville         = \&Math::Prime::Util::PP::liouville;
     *carmichael_lambda = \&Math::Prime::Util::PP::carmichael_lambda;
-    *forperm        = \&Math::Prime::Util::PP::forperm;
-    *forcomb        = \&Math::Prime::Util::PP::forcomb;
-    *forpart        = \&Math::Prime::Util::PP::forpart;
-    *Pi             = \&Math::Prime::Util::PP::Pi;
+    *forperm           = \&Math::Prime::Util::PP::forperm;
+    *forcomb           = \&Math::Prime::Util::PP::forcomb;
+    *forpart           = \&Math::Prime::Util::PP::forpart;
+    *forprimes         = \&Math::Prime::Util::PP::forprimes;
+    *forcomposites     = \&Math::Prime::Util::PP::forcomposites;
+    *foroddcomposites  = \&Math::Prime::Util::PP::foroddcomposites;
+    *forfactored       = \&Math::Prime::Util::PP::forfactored;
+    *fordivisors       = \&Math::Prime::Util::PP::fordivisors;
+    # TODO test this
+    #*forsemiprimes     = \&Math::Prime::Util::PP::forsemiprimes;
+    #*forsquarefree     = \&Math::Prime::Util::PP::forsquarefree;
+    #*forsquarefreeint  = \&Math::Prime::Util::PP::forsquarefreeint;
 
     *RiemannR            = \&Math::Prime::Util::PP::RiemannR;
     *RiemannZeta         = \&Math::Prime::Util::PP::RiemannZeta;
@@ -835,25 +844,25 @@ if ($use64) {
   is( miller_rabin_random(4294967281, 20), "0", "Miller-Rabin random 40 on composite" );
 
   { my @t;
-    Math::Prime::Util::_generic_forprimes(sub {push @t,$_}, 2387234,2387303);
+    forprimes(sub {push @t,$_}, 2387234,2387303);
     is_deeply( [@t], [2387237,2387243,2387249,2387269,2387291,2387299,2387303],
-               "generic forprimes 2387234,2387303" );
+               "forprimes 2387234,2387303" );
   }
   { my @t;
-    Math::Prime::Util::_generic_forcomposites(sub {push @t,$_}, 15202630,15202641);
-    is_deeply( [@t], [15202630,15202632,15202634,15202635,15202636,15202638,15202640,15202641], "generic forcomposites 15202630,15202641" );
+    forcomposites(sub {push @t,$_}, 15202630,15202641);
+    is_deeply( [@t], [15202630,15202632,15202634,15202635,15202636,15202638,15202640,15202641], "forcomposites 15202630,15202641" );
   }
   { my @t;
-    Math::Prime::Util::_generic_foroddcomposites(sub {push @t,$_}, 15202630,15202641);
-    is_deeply( [@t], [15202635,15202641], "generic foroddcomposites 15202630,15202641" );
+    foroddcomposites(sub {push @t,$_}, 15202630,15202641);
+    is_deeply( [@t], [15202635,15202641], "foroddcomposites 15202630,15202641" );
   }
   { my $k = 0;
-    Math::Prime::Util::_generic_fordivisors(sub {$k += $_+int(sqrt($_))},92834);
-    is( $k, 168921, "generic fordivisors: d|92834: k+=d+int(sqrt(d))" );
+    fordivisors(sub {$k += $_+int(sqrt($_))},92834);
+    is( $k, 168921, "fordivisors: d|92834: k+=d+int(sqrt(d))" );
   }
   { my @t;
-    Math::Prime::Util::_generic_forfac(0, sub {push @t,[@_]}, 15202630,15202641);
-    is_deeply( \@t, [[2,5,433,3511],[15202631],[2,2,2,3,23,27541],[15202633],[2,37,205441],[3,5,7,67,2161],[2,2,41,92699],[15202637],[2,3,3,11,76781],[15202639],[2,2,2,2,5,307,619],[3,17,19,29,541]], "generic forfactored" );
+    forfactored(sub {push @t,[@_]}, 15202630,15202641);
+    is_deeply( \@t, [[2,5,433,3511],[15202631],[2,2,2,3,23,27541],[15202633],[2,37,205441],[3,5,7,67,2161],[2,2,41,92699],[15202637],[2,3,3,11,76781],[15202639],[2,2,2,2,5,307,619],[3,17,19,29,541]], "forfactored" );
   }
 
   { my @p;

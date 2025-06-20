@@ -2557,7 +2557,8 @@ sub almost_primes {
 
   if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
   if ($k == 1) { return Mprimes($low,$high); }
-  if ($k == 2) { return Math::Prime::Util::semi_primes($low,$high); }
+  # Don't call this, we could end up back here
+  #if ($k == 2) { return Math::Prime::Util::semi_primes($low,$high); }
 
   my $minlow = Mpowint(2,$k);
   $low = $minlow if $low < $minlow;
@@ -3372,16 +3373,19 @@ sub _lehmer_pi {
 
 sub prime_count {
   my($low,$high) = @_;
-
   if (defined $high) { validate_integer_nonneg($low); }
   else               { ($low,$high) = (2, $low);      }
   validate_integer_nonneg($high);
 
-  my $count = 0;
+  return 0 if $high < 2 || $low > $high;
 
+  return reftyped($high, Math::Prime::Util::GMP::prime_count($low,$high))
+    if $Math::Prime::Util::_GMPfunc{"prime_count"}
+    && (ref($high) eq 'Math::BigInt' || ($high-$low) < int($low/1_000_000));
+
+  my $count = 0;
   $count++ if ($low <= 2) && ($high >= 2);   # Count 2
   $low = 3 if $low < 3;
-
   $low++ if ($low % 2) == 0;   # Make low go to odd number.
   $high-- if ($high % 2) == 0; # Make high go to odd number.
   return $count if $low > $high;
@@ -5264,7 +5268,6 @@ sub chinese {
 sub _from_128 {
   my($hi, $lo) = @_;
   return 0 unless defined $hi && defined $lo;
-  #print "hi $hi lo $lo\n";
   (Math::BigInt->new("$hi") << MPU_MAXBITS) + $lo;
 }
 
@@ -8942,6 +8945,18 @@ sub is_aks_prime {
 }
 
 
+################################################################################
+
+sub factor_exp {
+  my($n) = @_;
+  _validate_integer_nonneg($n);
+
+  my %exponents;
+  my @factors = grep { !$exponents{$_}++ } Mfactor($n);
+  return scalar @factors unless wantarray;
+  return (map { [$_, $exponents{$_}] } @factors);
+}
+
 sub _basic_factor {
   # MODIFIES INPUT SCALAR
   return ($_[0] == 1) ? () : ($_[0])   if $_[0] < 4;
@@ -9095,8 +9110,9 @@ my @_fsublist = (
 
 sub factor {
   my($n) = @_;
-  my @factors;
+  _validate_integer_nonneg($n);
 
+  my @factors;
   if ($n < 4) {
     @factors = ($n == 1) ? () : ($n);
     return @factors;
@@ -9169,6 +9185,8 @@ sub _found_factor {
   }
   @factors;
 }
+
+################################################################################
 
 # TODO:
 sub squfof_factor { trial_factor(@_) }
@@ -9887,6 +9905,9 @@ sub divisors {
   @d = map { $_ <= INTMAX ? _bigint_to_int($_) : $_ } @d   if $bigint;
   Mvecsort(@d);
 }
+
+
+################################################################################
 
 
 sub chebyshev_theta {
@@ -10629,6 +10650,124 @@ sub Pi {
   print "  using BigFloat for Pi($digits)\n" if $_verbose;
   _upgrade_to_float(0);
   return Math::BigFloat::bpi($digits+10)->round($digits);
+}
+
+################################################################################
+
+sub forprimes {
+  my($sub, $beg, $end) = @_;
+  if (defined $end) { _validate_integer_nonneg($beg); }
+  else              { ($beg,$end) = (2, $beg);        }
+  _validate_integer_nonneg($end);
+  $beg = 2 if $beg < 2;
+
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  {
+    my $pp;
+    local *_ = \$pp;
+    for (my $p = Mnext_prime($beg-1);  $p <= $end;  $p = Mnext_prime($p)) {
+      $pp = $p;
+      $sub->();
+      last if Math::Prime::Util::_get_forexit();
+    }
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
+}
+
+
+sub _forcomp_sub {
+  my($what, $sub, $beg, $end) = @_;
+  if (defined $end) { _validate_integer_nonneg($beg); }
+  else              { ($beg,$end) = (0, $beg);        }
+  _validate_integer_nonneg($end);
+
+  my $cinc = 1;
+  if ($what eq 'oddcomposites') {
+    $beg = 9 if $beg < 9;
+    $beg++ unless $beg & 1;
+    $cinc = 2;
+  } else {
+    $beg = 4 if $beg < 4;
+  }
+  $end = Math::BigInt->new(''.~0) if ref($end) ne 'Math::BigInt' && $end == ~0;
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  {
+    my $pp;
+    local *_ = \$pp;
+    for (my $p = Mnext_prime($beg-1);  $beg <= $end;  $p = Mnext_prime($p)) {
+      for ( ; $beg < $p && $beg <= $end ; $beg += $cinc ) {
+        $pp = $beg;
+        $sub->();
+        last if Math::Prime::Util::_get_forexit();
+      }
+      $beg += $cinc;
+      last if Math::Prime::Util::_get_forexit();
+    }
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
+}
+sub forcomposites {
+  _forcomp_sub('composites', @_);
+}
+sub foroddcomposites {
+  _forcomp_sub('oddcomposites', @_);
+}
+sub forsemiprimes {
+  foralmostprimes($_[0], 2, $_[1], $_[2]);
+}
+
+sub _forfac_sub {
+  my($sf, $sub, $beg, $end) = @_;
+  if (defined $end) { _validate_integer_nonneg($beg); }
+  else              { ($beg,$end) = (1, $beg);        }
+  _validate_integer_nonneg($end);
+  $beg = 1 if $beg < 1;
+
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  {
+    my $pp;
+    local *_ = \$pp;
+    while ($beg <= $end) {
+      if (!$sf || Mis_square_free($beg)) {
+        $pp = $beg;
+        if ($sf == 2) {
+          $sub->();
+        } else {
+          my @f = Mfactor($beg);
+          $sub->(@f);
+        }
+        last if Math::Prime::Util::_get_forexit();
+      }
+      $beg++;
+    }
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
+}
+sub forfactored {
+  _forfac_sub(0, @_);
+}
+sub forsquarefree {
+  _forfac_sub(1, @_);
+}
+sub forsquarefreeint {
+  _forfac_sub(2, @_);
+}
+
+sub fordivisors {
+  my($sub, $n) = @_;
+  _validate_integer_nonneg($n);
+  my @divisors = Mdivisors($n);
+  my $oldforexit = Math::Prime::Util::_start_for_loop();
+  {
+    my $pp;
+    local *_ = \$pp;
+    foreach my $d (@divisors) {
+      $pp = $d;
+      $sub->();
+      last if Math::Prime::Util::_get_forexit();
+    }
+  }
+  Math::Prime::Util::_end_for_loop($oldforexit);
 }
 
 sub forpart {
@@ -11413,15 +11552,7 @@ sub foralmostprimes {
   $lo = Mvecmax($lo, Mpowint(2, $k));
   return if $lo > $hi;
 
-  # These are typically slower.
-
-  #return Math::Prime::Util::_generic_forprimes($sub,$lo,$hi) if $k == 1;
-  #return Math::Prime::Util::_generic_forcomp_sub('semiprimes',$sub,$lo,$hi) if $k == 2;
-  #return Math::Prime::Util::_generic_forcomp_sub("almost-$k",$sub,$lo,$hi) if $k == 3;
-
-  # This could still be useful without the C code.
-  #return Math::Prime::Util::_generic_forcomp_sub("almost-$k",$sub,$lo,$hi)
-  #  if $k >= 3 && $lo >= 6e13 && ($hi-$lo) <= 1e6;
+  #return Math::Prime::Util::forprimes($sub,$lo,$hi) if $k == 1;
 
   my $estcount = almost_prime_count_approx($k,$hi) - almost_prime_count_approx($k,$lo);
   my $nsegs = "$estcount" / 1e6;
