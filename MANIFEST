@@ -266,6 +266,7 @@ t/26-rootmod.t
 t/26-setbinop.t
 t/26-setops.t
 t/26-smooth.t
+t/26-stirling.t
 t/26-sumset.t
 t/26-vec.t
 t/26-zeckendorf.t
