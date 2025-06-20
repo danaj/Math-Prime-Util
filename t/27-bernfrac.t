@@ -22,7 +22,7 @@ subtest 'bernfrac (Bernoulli numbers)', sub {
   is_deeply( \@num, \@A000367, "B_2n numerators 0 .. $#A000367" );
   is_deeply( \@den, \@A002445, "B_2n denominators 0 .. $#A002445" );
   SKIP: {
-    skip "bernfrac(502) only in EXTENDED_TESTING" unless $extra;
+    skip "bernfrac(502) only in EXTENDED_TESTING",1 unless $extra;
     my($num,$den) = bernfrac(502);
     my $sum = 0;
     $sum += $_ for split(//, $num);
