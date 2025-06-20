@@ -25,6 +25,7 @@ sub import {
 }
 
 use Math::Prime::Util qw/nth_prime nth_prime_upper nth_prime_lower primes prime_precalc next_prime prev_prime/;
+use Math::Prime::Util::MemFree;
 use Tie::Array;
 use Carp qw/carp croak confess/;
 
@@ -247,6 +248,9 @@ C<shift> on the tied array.
 
 =head1 PERFORMANCE
 
+Performance of tied arrays increased substantially (40% faster) between
+Perl v5.18 and 5.24.  It is recommended to use a new-ish Perl.
+
   sumprimes:      sum_primes(nth_prime(100_000))
   MPU forprimes:  forprimes { $sum += $_ } nth_prime(100_000);
   MPU iterator:   my $it = prime_iterator; $sum += $it->() for 1..100000;
@@ -259,53 +263,55 @@ C<shift> on the tied array.
   List::Gen       $sum = primes->take(100000)->sum
 
 Memory use is comparing the delta between just loading the module and running
-the test.  Perl 5.20.0, Math::NumSeq v70, Math::Prime::TiedArray v0.04,
-List::Gen 0.974.
+the test.  M1 Macbook, Perl 5.40.1, Math::NumSeq v75,
+Math::Prime::TiedArray v0.04 with C<extend_step 1000>, List::Gen 0.976.
 
-Summing the first 0.1M primes via walking the array:
+Summing the first 0.1M primes via walking the array (milliseconds):
 
-       .3ms    56k    Math::Prime::Util      sumprimes
-       4ms     56k    Math::Prime::Util      forprimes
-       4ms    4 MB    Math::Prime::Util      sum big array
-      31ms      0     Math::Prime::Util      prime_iterator
-      68ms    644k    MPU::PrimeArray        using FETCH
-     101ms    644k    MPU::PrimeArray        array
-      95ms   1476k    Math::NumSeq::Primes   sequence iterator
-    4451ms   32 MB    List::Gen              sequence
-    6954ms   61 MB    Math::Prime::TiedArray (extend 1k)
+       .05      56k    Math::Prime::Util      sumprimes
+      1.7       56k    Math::Prime::Util      forprimes
+      1.7      4 MB    Math::Prime::Util      sum big array
+     11          0     Math::Prime::Util      prime_iterator
+     27        3 MB    MPU::PrimeArray        using FETCH
+     37        3 MB    MPU::PrimeArray        array
+     63        6 MB    List::Gen              sequence
+     51        950k    Math::NumSeq::Primes   sequence iterator
+   2367ms     78 MB    Math::Prime::TiedArray (extend 1k)
 
-Summing the first 1M primes via walking the array:
+Summing the first 1M primes via walking the array (seconds):
 
-      0.005s  268k    Math::Prime::Util      sumprimes
-      0.05s   268k    Math::Prime::Util      forprimes
-      0.05s  41 MB    Math::Prime::Util      sum big array
-      0.3s      0     Math::Prime::Util      prime_iterator
-      0.7s    644k    MPU::PrimeArray        using FETCH
-      1.0s    644k    MPU::PrimeArray        array
-      6.1s   2428k    Math::NumSeq::Primes   sequence iterator
-    106.0s   93 MB    List::Gen              sequence
-     98.1s  760 MB    Math::Prime::TiedArray (extend 1k)
+      .0003    268k    Math::Prime::Util      sumprimes
+      .017     268k    Math::Prime::Util      forprimes
+      .015    41 MB    Math::Prime::Util      sum big array
+     0.11        0     Math::Prime::Util      prime_iterator
+     0.3       644k    MPU::PrimeArray        using FETCH
+     0.4       644k    MPU::PrimeArray        array
+     0.8      57 MB    List::Gen              sequence
+     4.3      3179k    Math::NumSeq::Primes   sequence iterator
+    35.9s    722 MB    Math::Prime::TiedArray (extend 1k)
 
-Summing the first 10M primes via walking the array:
+Summing the first 10M primes via walking the array (seconds):
 
-      0.07s   432k    Math::Prime::Util      sumprimes
-      0.5s    432k    Math::Prime::Util      forprimes
-      0.6s  394 MB    Math::Prime::Util      sum big array
-      3.2s      0     Math::Prime::Util      prime_iterator
-      6.8s    772k    MPU::PrimeArray        using FETCH
-     10.2s    772k    MPU::PrimeArray        array
-   1046  s  11.1MB    Math::NumSeq::Primes   sequence iterator
-   6763  s  874 MB    List::Gen              sequence
-          >5000 MB    Math::Primes::TiedArray (extend 1k)
+     0.0015    432k    Math::Prime::Util      sumprimes
+     0.18      432k    Math::Prime::Util      forprimes
+     0.16    394 MB    Math::Prime::Util      sum big array
+     1.2         0     Math::Prime::Util      prime_iterator
+     2.7       772k    MPU::PrimeArray        using FETCH
+     3.6       772k    MPU::PrimeArray        array
+     8.3s    652 MB    List::Gen              sequence
+   611       22.8MB    Math::NumSeq::Primes   sequence iterator
+           >5000 MB    Math::Primes::TiedArray (extend 1k)
 
-L<Math::Prime::Util> offers four obvious solutions: the C<sum_primes> function,
-a big array, an iterator, and the C<forprimes> construct.  The big array is
-fast but uses a B<lot> of memory, forcing the user to start programming
-segments.  Using the iterator avoids all the memory use, but isn't as fast
-(this may improve in a later release, as this is a new feature).  The
-C<forprimes> construct is both fast and low memory, but it isn't quite as
-flexible as the iterator
-(e.g. it doesn't lend itself to wrapping inside a filter).
+L<Math::Prime::Util> offers four obvious solutions:
+the C<sum_primes> function,
+summing a big generated array,
+an iterator,
+and the C<forprimes> construct.
+The big array is fast but uses a B<lot> of memory, forcing the user to
+start programming segments.  Using the iterator avoids all the memory
+use, but isn't as fast.
+The C<forprimes> construct is both fast and low memory, but it isn't
+quite as flexible as the iterator.
 
 L<Math::NumSeq::Primes> offers an iterator alternative, and works quite well
 as long as you don't need lots of primes.  It does not support random access.
@@ -314,10 +320,10 @@ successive value takes much longer to generate, and once past 1 million it
 isn't very practical.  Internally it is sieving all primes up to C<n> every
 time it makes a new segment which is why it slows down so much.
 
-L<List::Gen> includes a built-in prime sequence.  It uses an inefficient
-Perl sieve for numbers below 10M, trial division past that.  It uses too
-much time and memory to be practical for anything but very small inputs.
-It also gives incorrect results for large inputs (RT 105758).
+L<List::Gen> includes a built-in prime sequence.  Version 0.975 will use
+this module for primes if it can, which is shown in the above numbers.
+It is the odd module out in this comparison, as primes aren't a core feature.
+Without this module, it is very slow.
 
 L<Math::Primes::TiedArray> is remarkably impractical for anything other
 than tiny numbers.

@@ -13,7 +13,7 @@ my ($s, $nlimit, $ilimit, $expect);
 
 if (1) {
 print '-' x 79, "\n";
-print "summation to 100k, looking for best methods (typically slice)\n";
+print "summation to 100k, looking for best methods (usually slice or fetch)\n";
 $nlimit = 100000;
 $ilimit = prime_count($nlimit)-1;
 $expect = 0; forprimes { $expect += $_ } $nlimit;
@@ -86,6 +86,9 @@ cmpthese($count,{
   'pa slice'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $_ for @primes[0..$ilimit];
                        die unless $s == $expect; },
+  'pa fetch'  => sub { $s=0; my $o = tie my @p, "Math::Prime::Util::PrimeArray";
+                       $s += $o->FETCH($_) for 0..$ilimit;
+                       die unless $s == $expect; },
   'NumSeq'    => sub { $s=0; my $seq = Math::NumSeq::Primes->new;
                        while (1) { my($undev,$v) = $seq->next; last if $v > $nlimit; $s += $v; }
                        die $s unless $s == $expect; },
@@ -118,9 +121,9 @@ cmpthese($count,{
   'pa slice'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $_ for @primes[0..$ilimit];
                        die unless $s == $expect; },
-  'pa each'   => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
-                       while(my(undef,$v) = each @primes) { last if $v > $nlimit; $s += $v; }
-                       die $s unless $s == $expect; },
+  'pa fetch'  => sub { $s=0; my $o = tie my @p, "Math::Prime::Util::PrimeArray";
+                       $s += $o->FETCH($_) for 0..$ilimit;
+                       die unless $s == $expect; },
   'pa shift'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        while ((my $p = shift @primes) <= $nlimit) { $s += $p; }
                        die unless $s == $expect; },
@@ -144,6 +147,9 @@ cmpthese($count,{
   'pa index'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $primes[$_] for reverse 0..$ilimit;
                        die unless $s == $expect; },
+  'pa fetch'  => sub { $s=0; my $o = tie my @p, "Math::Prime::Util::PrimeArray";
+                       $s += $o->FETCH($_) for reverse 0..$ilimit;
+                       die unless $s == $expect; },
   'OO iter'   => sub { $s=0; my $it = prime_iterator_object($nlimit);
                        $s += $it->prev->value() for 0..$ilimit;
                        die unless $s == $expect; },
@@ -166,6 +172,9 @@ cmpthese($count,{
   'nthprime'  => sub { $s=0; $s += nth_prime($_+1) for @rindex; },
   'pa index'  => sub { $s=0; tie my @primes, "Math::Prime::Util::PrimeArray";
                        $s += $primes[$_] for @rindex;
+                       die unless $s == $expect; },
+  'pa fetch'  => sub { $s=0; my $o = tie my @p, "Math::Prime::Util::PrimeArray";
+                       $s += $o->FETCH($_) for @rindex;
                        die unless $s == $expect; },
    # Argh!  Is it possible to write a slower sieve than the one MPTA uses?
   #'tiedarray' => sub { $s=0; tie my @primes, "Math::Prime::TiedArray", extend_step => 10000;

@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use Math::Prime::Util qw/prime_precalc prime_memfree prime_get_config/;
+use Math::Prime::Util::MemFree;
 
 use Test::More  tests => 3 + 3 + 3 + 6;
 

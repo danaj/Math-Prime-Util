@@ -889,8 +889,6 @@ sub setinvert {
 
 #############################################################################
 
-use Math::Prime::Util::MemFree;
-
 1;
 
 __END__
@@ -1043,6 +1041,7 @@ Version 0.73
   prime_memfree;
 
   # Alternate way to free.  When this leaves scope, memory is freed.
+  use Math::Prime::Util::MemFree;
   my $mf = Math::Prime::Util::MemFree->new;
 
 
@@ -5294,7 +5293,8 @@ While there might be confusion when sampling a list with exactly
 one element, where that element is an array reference, this is
 assumed to be a rare case.
 
-This is similar to C<sample> from L<List::Util>.
+This is similar to C<sample> from L<List::Util>, C<choose_multuple> from
+Rust rand, and Raku's C<pick>.
 
 
 
@@ -6040,6 +6040,7 @@ might be a better choice for complicated uses.
 
 =head2 Math::Prime::Util::MemFree->new
 
+  use Math::Prime::Util::MemFree;
   my $mf = Math::Prime::Util::MemFree->new;
   # perform operations.  When $mf goes out of scope, memory will be recovered.
 

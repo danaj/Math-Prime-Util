@@ -20,6 +20,8 @@ Revision history for Perl module Math::Prime::Util
 
     - some error messages with invalid arguments have changed.
 
+    - Callers must 'use Math::Prime::Util::MemFree;' if they want to use it.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n

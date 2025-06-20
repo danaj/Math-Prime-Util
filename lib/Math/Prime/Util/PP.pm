@@ -7336,6 +7336,7 @@ sub binomial {
   return $n if $k == 1 || $k == $n-1;    # Math::BigInt (fixed in 1.90)
 
   # Incomplete work around problem with Math::BigInt not liking bigint n
+  # Fixed in 2.003003 (thanks PJACKLAM).
   return Mdivint(Mfalling_factorial($n,$k),Mfactorial($k))
     if $n > INTMAX && $k < 100;
 
