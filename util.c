@@ -1313,6 +1313,69 @@ IV rising_factorial_s(IV n, UV m)
   return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
 }
 
+/* We should do:
+ *  https://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Seidel
+ */
+bool bernfrac(IV *num, UV *den, UV n) {
+  if (n == 1) { *num = 1; *den = 2; return TRUE; }
+  *num = 0; *den = 1;
+  if (n & 1) return TRUE;
+  n >>= 1;
+  switch (n) {
+    case  0: *num =          1; *den =    1; break;
+    case  1: *num =          1; *den =    6; break;
+    case  2: *num =         -1; *den =   30; break;
+    case  3: *num =          1; *den =   42; break;
+    case  4: *num =         -1; *den =   30; break;
+    case  5: *num =          5; *den =   66; break;
+    case  6: *num =       -691; *den = 2730; break;
+    case  7: *num =          7; *den =    6; break;
+    case  8: *num =      -3617; *den =  510; break;
+    case  9: *num =      43867; *den =  798; break;
+    case 10: *num =    -174611; *den =  330; break;
+    case 11: *num =     854513; *den =  138; break;
+    case 12: *num = -236364091; *den = 2730; break;
+    case 13: *num =    8553103; *den =    6; break;
+    default: break;
+  }
+  return (*num != 0);
+}
+
+static void _harmonic_split(UV *n, UV *d, UV a, UV b) {
+  if (b-a == 1) {
+    *n = 1;
+    *d = a;
+  } else if (b-a == 2) {
+    *n = a + a + 1;
+    *d = a*a + a;
+  } else {
+    UV g,p,q,r,s, m = (a + b) >> 1;
+    _harmonic_split(&p, &q, a, m);
+    _harmonic_split(&r, &s, m, b);
+    *n = p*s + q*r;
+    *d = q*s;
+    g = gcd_ui(*n,*d);
+    *n /= g;
+    *d /= g;
+  }
+}
+bool harmfrac(UV *num, UV *den, UV n) {
+  if (n >= BITS_PER_WORD/2)
+    return FALSE;
+
+  if (n == 0) {
+    *num = 0; *den = 1;
+  } else {
+    UV N, D, g;
+    _harmonic_split(&N, &D, 1, n+1);
+    g = gcd_ui(N, D);
+    *num = N/g;
+    *den = D/g;
+  }
+  return TRUE;
+}
+
+
 bool is_cyclic(UV n) {
   UV phi, facs[MPU_MAX_FACTORS+1];
   int i, nfacs;

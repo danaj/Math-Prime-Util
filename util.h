@@ -130,6 +130,9 @@ extern UV stirling3(UV n, UV m) ISCONSTFUNC;
 extern IV stirling2(UV n, UV m) ISCONSTFUNC;
 extern IV stirling1(UV n, UV m) ISCONSTFUNC;
 
+extern bool bernfrac(IV *num, UV *den, UV n);
+extern bool harmfrac(UV *num, UV *den, UV n);
+
 extern IV hclassno(UV n);
 extern IV ramanujan_tau(UV n);
 

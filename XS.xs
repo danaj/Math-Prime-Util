@@ -12,14 +12,6 @@
 #define NEED_HvNAME_get
 #include "ppport.h"
 
-#if 0 /* For future consideration. */
-#if !defined(PERL_STACK_OFFSET_DEFINED)  /* Perl 5.40+ */
-   typedef I32 Stack_off_t;
-#  define Stack_off_t_MAX I32_MAX
-#  define PERL_STACK_OFFSET_DEFINED
-#endif
-#endif
-
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
@@ -289,6 +281,7 @@ static const gmp_info_t gmp_info[] = {
   {         "rising_factorial", 51, 1, R_BIGINT },
   {                "lucasumod", 53, 1, R_BIGINT },
   {                "lucasvmod", 53, 1, R_BIGINT },
+  {                  "lucasuv", 53, 2, R_BIGINT },
   {               "lucasuvmod", 53, 2, R_BIGINT },
   {            "pisano_period", 53, 1, R_BIGINT },
   {                 "powersum", 53, 1, R_BIGINT },
@@ -311,7 +304,7 @@ static const gmp_info_t gmp_info[] = {
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },
 
-  {           "powerful_count", 53, 1, R_BIGINT }, /* needs objectify */
+  {           "powerful_count", 53, 1, R_BIGINT },
   {          "powerfree_count", 53, 1, R_BIGINT },
   {        "prime_power_count", 53, 1, R_BIGINT },
   {      "perfect_power_count", 53, 1, R_BIGINT },
@@ -324,6 +317,9 @@ static const gmp_info_t gmp_info[] = {
   {                 "is_power", 42, 1, R_NATIVE },  /* no root return */
   {           "is_prime_power", 40, 1, R_NATIVE },  /* no root return */
   {             "is_polygonal", 47, 1, R_BOOL },    /* no root return */
+
+  {                 "bernfrac", 24, 2, R_BIGINT },
+  {                 "harmfrac", 30, 2, R_BIGINT },
 
   /* if the input is already a bigint type, we want to use that */
   /* {                "factorial", 24, 1, R_BIGINT }, */
@@ -578,6 +574,17 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
   (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, fn, 1, 0)
 #define CALLROOTSUB_VOID(fn) \
   (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, fn, items, 0)
+
+#define OBJECTIFY_STACK(n) \
+  do { \
+    uint32_t i_, nargs_ = n; \
+    for (i_ = 0; i_ < nargs_; i_++) \
+      if (SvOK(ST(i_)) && !sv_isobject(ST(i_)) && !SVNUMTEST(ST(i_))) \
+        break; \
+    if (i_ < nargs_) \
+      _vcallsubn(aTHX_ G_ARRAY,VCALL_ROOT,"_maybe_bigint_allargs",nargs_,0); \
+  } while (0)
+
 
 /******************************************************************************/
 
@@ -2222,6 +2229,7 @@ void lucas_sequence(...)
       PUSHs(sv_2mortal(newSVuv( Qk )));
     } else {
       DISPATCHPP();
+      OBJECTIFY_STACK(3);
       XSRETURN(3);
     }
 
@@ -2253,8 +2261,7 @@ void lucasuvmod(IN SV* svp, IN SV* svq, IN SV* svk, IN SV* svn)
       }
     } else {
       DISPATCHPP();
-      objectify_result(aTHX_ svn, ST(0));
-      if (ix == 0) objectify_result(aTHX_ svn, ST(1));
+      OBJECTIFY_STACK(ix==0 ? 2 : 1);
       XSRETURN(ix==0 ? 2 : 1);
     }
 
@@ -2276,8 +2283,7 @@ void lucasuv(IN SV* svp, IN SV* svq, IN SV* svk)
       PUSHs(sv_2mortal(newSViv( V )));
     } else {
       DISPATCHPP();
-      objectify_result(aTHX_ svp, ST(0));
-      if (ix == 0) objectify_result(aTHX_ svp, ST(1));
+      OBJECTIFY_STACK(ix==0 ? 2 : 1);
       XSRETURN(ix==0 ? 2 : 1);
     }
 
@@ -3065,6 +3071,33 @@ void Pi(IN UV digits = 0)
       XSRETURN(1);
     }
 
+void bernfrac(IN SV* svn)
+  ALIAS:
+    harmfrac = 1
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) != 0) {
+      if (ix == 0) {
+        IV num;  UV den;
+        if (bernfrac(&num, &den, n)) {
+          XPUSHs(sv_2mortal(newSViv( num )));
+          XPUSHs(sv_2mortal(newSVuv( den )));
+          XSRETURN(2);
+        }
+      } else {
+        UV num, den;
+        if (harmfrac(&num, &den, n)) {
+          XPUSHs(sv_2mortal(newSVuv( num )));
+          XPUSHs(sv_2mortal(newSVuv( den )));
+          XSRETURN(2);
+        }
+      }
+    }
+    DISPATCHPP();
+    OBJECTIFY_STACK(2);
+    XSRETURN(2);
+
 void
 _pidigits(IN int digits)
   PREINIT:
@@ -3702,6 +3735,7 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
       if (ret > 0) XSRETURN_UV(ret);
     }
     DISPATCHPP();
+    objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 
@@ -3989,8 +4023,7 @@ void divrem(IN SV* sva, IN SV* svb)
       XSRETURN(2);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ sva, ST(0));
-    objectify_result(aTHX_ svb, ST(1));
+    OBJECTIFY_STACK(2);
     XSRETURN(2);
 
 void lshiftint(IN SV* svn, IN unsigned long k = 1)
@@ -4037,9 +4070,7 @@ gcdext(IN SV* sva, IN SV* svb)
       XPUSHs(sv_2mortal(newSViv( d )));
     } else {
       DISPATCHPP();
-      objectify_result(aTHX_ sva, ST(0));
-      objectify_result(aTHX_ sva, ST(1));
-      objectify_result(aTHX_ sva, ST(2));
+      OBJECTIFY_STACK(3);
       XSRETURN(3);
     }
 

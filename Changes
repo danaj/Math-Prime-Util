@@ -22,6 +22,11 @@ Revision history for Perl module Math::Prime::Util
 
     - Callers must 'use Math::Prime::Util::MemFree;' if they want to use it.
 
+    - bernfrac was documented to only accept non-negative inputs.  This is
+      now enforced.
+
+    - bernfrac and harmfrac return values are only bigints if needed.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n

@@ -905,6 +905,18 @@ sub Pi {
   return Math::Prime::Util::PP::Pi($digits);
 }
 
+sub bernfrac {
+  my($n) = @_;
+  _validate_integer_nonneg($n);
+  return (0,1) if $n > 1 && ($n & 1);
+  return Math::Prime::Util::PP::bernfrac($n);
+}
+sub harmfrac {
+  my($n) = @_;
+  _validate_integer_nonneg($n);
+  return Math::Prime::Util::PP::harmfrac($n);
+}
+
 #############################################################################
 
 my $_exitloop = 0;

@@ -6896,7 +6896,7 @@ sub logint {
   return reftyped($_[0], "$e");
 }
 
-# Seidel (Luschny), core using Trizen's simplications from Math::BigNum.
+# Seidel (Luschny), core using Trizen's simplications from Math::AnyNum.
 # http://oeis.org/wiki/User:Peter_Luschny/ComputationAndAsymptoticsOfBernoulliNumbers#Bernoulli_numbers__after_Seidel
 sub _bernoulli_seidel {
   my($n) = @_;

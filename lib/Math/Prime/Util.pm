@@ -362,6 +362,17 @@ sub _reftyped {
   0+"$_[1]";
 }
 
+sub _maybe_bigint_allargs {
+  do { require Math::BigInt; Math::BigInt->import(try=>"GMPz,GMP,LTM"); }
+    unless defined $Math::BigInt::VERSION;
+  for my $i (0..$#_) {
+    next if !defined $_[$i] || ref($_[$i]);
+    next if $_[$i] < INTMAX && $_[$i] > INTMIN;
+    my $n = Math::BigInt->new("$_[$i]");
+    $_[$i] = $n if $n > INTMAX || $n < INTMIN;
+  }
+  @_;
+}
 
 #############################################################################
 
@@ -632,19 +643,6 @@ sub LambertW {
   return Math::Prime::Util::PP::LambertW($x);
 }
 
-sub bernfrac {
-  my($n) = @_;
-  return map { _to_bigint($_) } (0,1) if defined $n && $n < 0;
-  _validate_integer_nonneg($n);
-  return map { _to_bigint($_) } (0,1) if $n > 1 && ($n & 1);
-
-  if ($Math::Prime::Util::_GMPfunc{"bernfrac"}) {
-    return map { _to_bigint($_) } Math::Prime::Util::GMP::bernfrac($n);
-  }
-
-  require Math::Prime::Util::PP;
-  return Math::Prime::Util::PP::bernfrac($n);
-}
 sub bernreal {
   my($n, $precision) = @_;
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
@@ -659,18 +657,6 @@ sub bernreal {
   scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
 
-sub harmfrac {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return map { _to_bigint($_) } (0,1) if $n <= 0;
-
-  if ($Math::Prime::Util::_GMPfunc{"harmfrac"}) {
-    return map { _to_bigint($_) } Math::Prime::Util::GMP::harmfrac($n);
-  }
-
-  require Math::Prime::Util::PP;
-  Math::Prime::Util::PP::harmfrac($n);
-}
 sub harmreal {
   my($n, $precision) = @_;
   _validate_integer_nonneg($n);
@@ -4927,9 +4913,11 @@ This is L<OEIS A259825|http://oeis.org/A259825>.
 
 =head2 bernfrac
 
+  my($num,$den) = bernfrac(12);  # returns (-691,2730)
+
 Returns the Bernoulli number C<B_n> for an integer argument C<n>, as a
-rational number represented by two L<Math::BigInt> objects.  B_1 = 1/2.
-This corresponds to Pari's C<bernfrac(n)> and Mathematica's C<BernoulliB>
+rational number represented by two integers.  B_1 is chosen as 1/2, which
+is the same as Pari's C<bernfrac(n)> and Mathematica's C<BernoulliB>
 functions.
 
 Having a modern version of L<Math::Prime::Util::GMP> installed will make
@@ -4978,8 +4966,10 @@ This is the L<OEIS series A000670|http://oeis.org/A000670>.
 
 =head2 harmfrac
 
+  my($num,$den) = harmfrac(12);  # returns (86021,27720)
+
 Given a non-negative integer C<n>, returns the Harmonic number C<H_n> as a
-rational number represented by two L<Math::BigInt> objects.  The harmonic
+rational number represented by two integers.  The harmonic
 numbers are the sum of reciprocals of the first C<n> natural numbers:
 C<1 + 1/2 + 1/3 + ... + 1/n>.
 
