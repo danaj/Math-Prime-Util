@@ -652,7 +652,7 @@ sub bernreal {
     return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n,$precision),$precision);
   }
 
-  my($num,$den) = bernfrac($n);
+  my($num,$den) = map { _to_bigint($_) } bernfrac($n);
   return Math::BigFloat->bzero if $num->is_zero;
   scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
