@@ -438,10 +438,11 @@ is( prev_prime(19660), 19609, "prev prime of 19660 is 19609" );
 is( prev_prime(19610), 19609, "prev prime of 19610 is 19609" );
 
 is( prev_prime(2), undef, "Previous prime of 2 returns undef" );
-if ($use64) {
-  is( next_prime(18446744073709551611), "18446744073709551629", "Next prime of ~0-4 returns bigint next prime" );
-} else {
-  is( next_prime(4294967291), "4294967311", "Next prime of ~0-4 returns bigint next prime" );
+{
+  my $n   = $use64 ? 18446744073709551611 : 4294967291;
+  my $exp = $use64 ? "18446744073709551629" : "4294967311";
+  my $got = next_prime($n);
+  ok(ref($got) =~ /^Math::/ && "$got" eq $exp, "next_prime(~0-4) returns bigint result");
 }
 
 {
