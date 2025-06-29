@@ -9,7 +9,7 @@ BEGIN {
 }
 
 BEGIN {
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); }
     unless defined $Math::BigInt::VERSION;
 }
 
@@ -46,6 +46,11 @@ BEGIN {
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
 }
 
+# TODO: Change this whole file to use this / tobigint
+our $_BIGINT;
+*_BIGINT = \$Math::Prime::Util::_BIGINT;
+
+
 # By using these aliases, we call into the main code instead of
 # to the PP function.
 #
@@ -67,6 +72,9 @@ BEGIN {
 *validate_integer_positive = \&Math::Prime::Util::_validate_integer_positive;
 *validate_integer_abs = \&Math::Prime::Util::_validate_integer_abs;
 *reftyped = \&Math::Prime::Util::_reftyped;
+*load_bigint = \&Math::Prime::Util::_load_bigint;
+*tobigint = \&Math::Prime::Util::_to_bigint;
+*maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
 
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
@@ -83,6 +91,7 @@ BEGIN {
 *Mcmpint = \&Math::Prime::Util::cmpint;
 *Mlshiftint = \&Math::Prime::Util::lshiftint;
 *Mrshiftint = \&Math::Prime::Util::rshiftint;
+*Mdivrem  = \&Math::Prime::Util::divrem;
 *Mtdivrem = \&Math::Prime::Util::tdivrem;
 
 *Maddmod = \&Math::Prime::Util::addmod;
@@ -417,12 +426,18 @@ sub _tiny_prime_count {
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
-  $n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt' && $n <= BMAX;
-  if (ref($n) eq 'Math::BigInt') {
-    return 0 unless Math::BigInt::bgcd($n, B_PRIM767)->is_one;
+  $n = _bigint_to_int($n) if ref($n) && $n <= BMAX;
+
+  if (ref($n)) {
+    # Check div by 7,11,13
+    return 0 unless $n % 7  &&  $n % 11  &&  $n % 13;
+    # Check div by 17,19,...,97
+    return 0 unless Mgcd($n,'76775489974875738420016721522869') == 1;
     return 0 unless _miller_rabin_2($n);
-    my $is_esl_prime = is_extra_strong_lucas_pseudoprime($n);
-    return ($is_esl_prime)  ?  (($n <= "18446744073709551615") ? 2 : 1)  :  0;
+    if (Mcmpint($n,"18446744073709551615") <= 0) {
+      return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
+    }
+    return is_extra_strong_lucas_pseudoprime($n) ? 1 : 0;
   }
 
   if ($n < 61*61) {
@@ -1012,23 +1027,17 @@ sub next_prime {
   # This turns out not to be faster.
   # return $_primes_small[1+_tiny_prime_count($n)] if $n < $_primes_small[-1];
 
-  return Math::BigInt->new(MPU_32BIT ? "4294967311" : "18446744073709551629") if ref($n) ne 'Math::BigInt' && $n >= MPU_MAXPRIME;
+  return tobigint(MPU_32BIT ? "4294967311" : "18446744073709551629") if !ref($n) && $n >= MPU_MAXPRIME;
   # n is now either 1) not bigint and < maxprime, or (2) bigint and >= uvmax
 
   if ($n > 4294967295 && Math::Prime::Util::prime_get_config()->{'gmp'}) {
     return reftyped($_[0], Math::Prime::Util::GMP::next_prime($n));
   }
 
-  if (ref($n) eq 'Math::BigInt') {
-    do {
-      $n += $_wheeladvance30[$n%30];
-    } while !Math::BigInt::bgcd($n, B_PRIM767)->is_one ||
-            !_miller_rabin_2($n) || !is_extra_strong_lucas_pseudoprime($n);
-  } else {
-    do {
-      $n += $_wheeladvance30[$n%30];
-    } while !($n%7) || !_is_prime7($n);
-  }
+  do {
+    $n += $_wheeladvance30[$n%30];
+  } while !($n%7) || !_is_prime7($n);
+
   $n;
 }
 
@@ -1040,16 +1049,10 @@ sub prev_prime {
     return reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
   }
 
-  if (ref($n) eq 'Math::BigInt') {
-    do {
-      $n -= $_wheelretreat30[$n%30];
-    } while !Math::BigInt::bgcd($n, B_PRIM767)->is_one ||
-            !_miller_rabin_2($n) || !is_extra_strong_lucas_pseudoprime($n);
-  } else {
-    do {
-      $n -= $_wheelretreat30[$n%30];
-    } while !($n%7) || !_is_prime7($n);
-  }
+  do {
+    $n -= $_wheelretreat30[$n%30];
+  } while !($n%7) || !_is_prime7($n);
+
   $n;
 }
 
@@ -1436,7 +1439,7 @@ sub inverse_totient {
   return wantarray ? (1,2) : 2 if $n == 1;
   return wantarray ? () : 0 if $n < 1 || ($n & 1);
 
-  $n = Math::Prime::Util::_to_bigint("$n") if !ref($n) && $n > 2**49;
+  $n = tobigint("$n") if !ref($n) && $n > 2**49;
   my $do_bigint = ref($n);
 
   if (Mis_prime($n >> 1)) {   # Coleman Remark 3.3 (Thm 3.1) and Prop 6.2
@@ -2748,8 +2751,13 @@ sub is_delicate_prime {
       my $dold = substr($N,$d,1);
       for my $dnew (0 .. 9) {
         next if $dnew == $dold;
-        substr($N,$d,1) = $dnew;
-        return 0 if Mis_prime($N);
+        if ($d == 0 && $dnew == 0) {  # Leading zeros
+          (my $T = substr($N,1)) =~ s/^0*//;
+          return 0 if Mis_prime($T);
+        } else {
+          substr($N,$d,1) = $dnew;
+          return 0 if Mis_prime($N);
+        }
       }
     }
   } else {
@@ -2772,7 +2780,7 @@ sub is_delicate_prime {
 
 sub _totpred {
   my($n, $maxd) = @_;
-  return 0 if $maxd <= 1 || (ref($n) ? $n->is_odd() : ($n & 1));
+  return 0 if $maxd <= 1 || Mis_odd($n);
   $n = Math::BigInt->new("$n") unless ref($n) || $n < INTMAX;
   return 1 if ($n & ($n-1)) == 0;
   $n >>= 1;
@@ -2782,11 +2790,12 @@ sub _totpred {
     my $p = ($d < (INTMAX >> 2))  ?  ($d << 1) + 1 :
             Maddint(Mlshiftint($d,1),1);
     next unless Mis_prime($p);
-    my $r = int($n / $d);
+    my $r = Mdivint($n,$d);
     while (1) {
       return 1 if $r == $p || _totpred($r, $d);
-      last if ($r % $p) != 0;
-      $r = int($r / $p);
+      my($Q,$R) = divrem($r,$p);
+      last if $R != 0;
+      $r = $Q;
     }
   }
   0;
@@ -2975,12 +2984,9 @@ sub carmichael_lambda {
       map { ($_->[0] ** ($_->[1]-1)) * ($_->[0]-1) } @pe
     );
   } else {
-    $lcm = Math::BigInt::blcm(
-      map { $_->[0]->copy->bpow($_->[1]->copy->bdec)->bmul($_->[0]->copy->bdec) }
-      map { [ map { Math::BigInt->new("$_") } @$_ ] }
-      @pe
+    $lcm = Mlcm(
+      map { Mmulint(Mpowint($_->[0],$_->[1]-1),$_->[0]-1) } @pe
     );
-    $lcm = _bigint_to_int($lcm) if $lcm->bacmp(BMAX) <= 0;
   }
   $lcm;
 }
@@ -4854,7 +4860,7 @@ sub powint {
   }
 
   $res = Math::BigInt->new("$a")->bpow("$b") unless ref($res);
-  $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+  $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
   $res;
 }
 
@@ -4869,7 +4875,7 @@ sub mulint {
   if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
     # If it wasn't already a reference, do it via bigint
     $res = Math::BigInt->new("$a")->bmul("$b") unless ref($res);
-    $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+    $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
   }
   $res;
 }
@@ -4884,7 +4890,7 @@ sub addint {
   if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
     # If it wasn't already a reference, do it via bigint
     $res = Math::BigInt->new("$a")->badd("$b") unless ref($res);
-    $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+    $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
   }
   $res;
 }
@@ -4896,7 +4902,7 @@ sub subint {
   if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
     # If it wasn't already a reference, do it via bigint
     $res = Math::BigInt->new("$a")->bsub("$b") unless ref($res);
-    $res = _bigint_to_int($res) if $res->bcmp(BMAX) <= 0 && $res->bcmp(BMIN) >= 0;
+    $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
   }
   $res;
 }
@@ -4904,14 +4910,14 @@ sub add1int {
   my($n) = @_;
   return $n+1 if $n > INTMIN && $n < INTMAX;
   my $r = Math::BigInt->new("$n")->binc;
-  $r = _bigint_to_int($r) if $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $r = _bigint_to_int($r) if $r <= BMAX && $r >= BMIN;
   $r;
 }
 sub sub1int {
   my($n) = @_;
   return $n-1 if $n > INTMIN && $n < INTMAX;
   my $r = Math::BigInt->new("$n")->bdec;
-  $r = _bigint_to_int($r) if $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $r = _bigint_to_int($r) if $r <= BMAX && $r >= BMIN;
   $r;
 }
 
@@ -4934,13 +4940,13 @@ sub _tquotient {
 
   if (ref($a) || ref($b)) {
     $a = Math::BigInt->new("$a") unless ref($a);
-    # Earlier versions of Math::BigInt did not use floor division for bdiv.
-    my $bigintver = ($Math::BigInt::VERSION =~ tr/.0123456789//cd);
-    return $a->copy->btdiv($b) if $bigintver >= 1.999716;
+    if (ref($a) eq 'Math::BigInt') {
+      # Earlier versions of Math::BigInt did not use floor division for bdiv.
+      my $bigintver = ($Math::BigInt::VERSION =~ tr/.0123456789//cd);
+      return $a->copy->btdiv($b) if $bigintver >= 1.999716;
+    }
     $b = Math::BigInt->new("$b") unless ref($b);
-    my $A = $a->copy->babs;
-    my $B = $b->copy->babs;
-    my $Q = $A->bdiv($B);
+    my $Q = abs($a) / abs($b);
     return ($a < 0 && $b > 0) || ($b < 0 && $a > 0)  ?  -$Q  :  $Q;
   } else {
     use integer;  # Beware: this is >>> SIGNED <<< integer.
@@ -4983,8 +4989,8 @@ sub fdivrem {
   # qf = qt-I     rf = rt+I*d    I = (signum(rt) = -signum(b)) 1 : 0
   if ( ($r < 0 && $b > 0) || ($r > 0 && $b < 0) )
     { $q--; $r += $b; }
-  $q = _bigint_to_int($q) if ref($q) && $q->bcmp(BMAX) <= 0 && $q->bcmp(BMIN) >= 0;
-  $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $q = _bigint_to_int($q) if ref($q) && $q <= BMAX && $q >= BMIN;
+  $r = _bigint_to_int($r) if ref($r) && $r <= BMAX && $r >= BMIN;
   ($q,$r);
 }
 # Ceiling Division
@@ -5002,8 +5008,8 @@ sub cdivrem {
   $r = $a - $b * $q;
   if ($r != 0 && (($a >= 0) == ($b >= 0)))
     { $q++; $r -= $b; }
-  $q = _bigint_to_int($q) if ref($q) && $q->bcmp(BMAX) <= 0 && $q->bcmp(BMIN) >= 0;
-  $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $q = _bigint_to_int($q) if ref($q) && $q <= BMAX && $q >= BMIN;
+  $r = _bigint_to_int($r) if ref($r) && $r <= BMAX && $r >= BMIN;
   ($q,$r);
 }
 # Euclidean Division
@@ -5023,8 +5029,8 @@ sub divrem {
     if ($b > 0) { $q--; $r += $b; }
     else        { $q++; $r -= $b; }
   }
-  $q = _bigint_to_int($q) if ref($q) && $q->bcmp(BMAX) <= 0 && $q->bcmp(BMIN) >= 0;
-  $r = _bigint_to_int($r) if ref($r) && $r->bcmp(BMAX) <= 0 && $r->bcmp(BMIN) >= 0;
+  $q = _bigint_to_int($q) if ref($q) && $q <= BMAX && $q >= BMIN;
+  $r = _bigint_to_int($r) if ref($r) && $r <= BMAX && $r >= BMIN;
   ($q,$r);
 }
 
@@ -5139,7 +5145,7 @@ sub lcm {
     $v = -$v if $v < 0;
     $v;
   } @_ );
-  $lcm = _bigint_to_int($lcm) if $lcm->bacmp(BMAX) <= 0;
+  $lcm = _bigint_to_int($lcm) if $lcm <= BMAX;
   return $lcm;
 }
 sub gcdext {
@@ -5166,17 +5172,13 @@ sub gcdext {
       ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$r);
     }
   } else {
-    ($a,$b,$g,$u,$v,$w) = (BONE->copy,BZERO->copy,Math::BigInt->new("$x"),
-                           BZERO->copy,BONE->copy,Math::BigInt->new("$y"));
+    ($a,$b,$g,$u,$v,$w) = (1,0,$x,0,1,$y);
     while ($w != 0) {
-      # Using the array bdiv is logical, but is the wrong sign.
-      my $r = $g->copy->bmod($w);
-      my $q = $g->copy->bsub($r)->bdiv($w);
-      ($a,$b,$g,$u,$v,$w) = ($u,$v,$w,$a-$q*$u,$b-$q*$v,$r);
+      my($q,$r) = Mdivrem($g,$w);
+      ($a,$b,$g,$u,$v,$w) = ($u, $v, $w,
+                             Msubint($a,Mmulint($q,$u)),
+                             Msubint($b,Mmulint($q,$v)), $r);
     }
-    $a = _bigint_to_int($a) if $a->bacmp(BMAX) <= 0;
-    $b = _bigint_to_int($b) if $b->bacmp(BMAX) <= 0;
-    $g = _bigint_to_int($g) if $g->bacmp(BMAX) <= 0;
   }
   if ($g < 0) { ($a,$b,$g) = (-$a,-$b,-$g); }
   return ($a,$b,$g);
@@ -5190,11 +5192,11 @@ sub chinese2 {
     ($sum,$lcm) = Math::Prime::Util::GMP::chinese2(@_);
     if (defined $sum) {
       $sum = Math::BigInt->new("$sum");
-      $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
+      $sum = _bigint_to_int($sum) if ref($sum) && $sum <= BMAX;
     }
     if (defined $lcm) {
       $lcm = Math::BigInt->new("$lcm");
-      $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm->bacmp(BMAX) <= 0;
+      $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm <= BMAX;
     }
     return ($sum,$lcm);
   }
@@ -5256,8 +5258,8 @@ sub chinese2 {
       $sum = _addmod($m1, $m2, $lcm);
     }
   }
-  $sum = _bigint_to_int($sum) if ref($sum) && $sum->bacmp(BMAX) <= 0;
-  $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm->bacmp(BMAX) <= 0;
+  $sum = _bigint_to_int($sum) if ref($sum) && $sum <= BMAX;
+  $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm <= BMAX;
   ($sum,$lcm);
 }
 
@@ -5307,7 +5309,7 @@ sub vecprod {
     $prod = _product_bigint(0, $#_, [map { Math::BigInt->new("$_") } @_]);
   }
 
-  $prod = _bigint_to_int($prod) if ref($prod) && $prod->bcmp(BMAX) <= 0 && $prod->bcmp(BMIN) >= 0;
+  $prod = _bigint_to_int($prod) if ref($prod) && $prod <= BMAX && $prod >= BMIN;
   $prod;
 }
 
@@ -6426,7 +6428,7 @@ sub is_prime_power {
   my $r;
   my $k = Mis_power($n,0,\$r);
   if ($k) {
-    $r = _bigint_to_int($r) if ref($r) && $r->bacmp(BMAX) <= 0;
+    $r = _bigint_to_int($r) if ref($r) && $r <= BMAX;
     return 0 unless Mis_prime($r);
     $$refp = $r if defined $refp;
   }
@@ -7090,23 +7092,19 @@ sub is_euler_plumb_pseudoprime {
 sub _miller_rabin_2 {
   my($n, $nm1, $s, $d) = @_;
 
-  if ( ref($n) eq 'Math::BigInt' ) {
+  if (ref($n)) {
 
     if (!defined $nm1) {
-      $nm1 = $n->copy->bdec();
-      $s = 0;
-      $d = $nm1->copy;
-      do {
-        $s++;
-        $d->brsft(BONE);
-      } while $d->is_even;
+      $nm1 = Msubint($n,1);
+      $s = Mvaluation($nm1,2);
+      $d = Mrshiftint($nm1,$s);
     }
-    my $x = BTWO->copy->bmodpow($d,$n);
-    return 1 if $x->is_one || $x->bcmp($nm1) == 0;
+    my $x = Mpowmod(2,$d,$n);
+    return 1 if $x == 1 || $x == $nm1;
     foreach my $r (1 .. $s-1) {
-      $x->bmul($x)->bmod($n);
-      last if $x->is_one;
-      return 1 if $x->bcmp($nm1) == 0;
+      $x = Mmulmod($x,$x,$n);
+      last if $x == 1;
+      return 1 if $x == $nm1;
     }
 
   } else {
@@ -7321,16 +7319,19 @@ sub binomial {
   else         {  return 0 if $k < 0 && $k > $n;  }
   $k = $n - $k if $k < 0;
 
-  # 3. Try to do in integer Perl
   my $r;
-  if ($n >= 0) {
-    $r = _binomialu($n, $k);
-    return $r  if $r > 0 && $r eq int($r);
-  } else {
-    $r = _binomialu(-$n+$k-1, $k);
-    if ($r > 0 && $r eq int($r)) {
-      return $r   if !($k & 1);
-      return Mnegint($r);
+
+  # 3. Try to do in integer Perl
+  if (!ref($n)) {
+    if ($n >= 0) {
+      $r = _binomialu($n, $k);
+      return $r  if $r > 0 && $r eq int($r);
+    } else {
+      $r = _binomialu(-$n+$k-1, $k);
+      if ($r > 0 && $r eq int($r)) {
+        return $r   if !($k & 1);
+        return Mnegint($r);
+      }
     }
   }
 
@@ -7697,18 +7698,14 @@ sub _is_perfect_square {
   my($n) = @_;
   return (1,1,0,0,1)[$n] if $n <= 4;
 
-  if (ref($n) eq 'Math::BigInt') {
-    my $mc = _bigint_to_int($n & 31);
-    if ($mc==0||$mc==1||$mc==4||$mc==9||$mc==16||$mc==17||$mc==25) {
-      my $sq = $n->copy->bsqrt->bfloor;
-      $sq->bmul($sq);
-      return 1 if $sq == $n;
-    }
+  if (ref($n)) {
+    return 0 if ((1 << Mmodint($n,32)) & 0xfdfcfdec);
+    my $sq = Msqrtint($n);
+    return 1 if Mmulint($sq,$sq) == $n;
   } else {
-    if (((1 << ($n & 31)) & 0xfdfcfdec) == 0) {
-      my $sq = int(sqrt($n));
-      return 1 if ($sq*$sq) == $n;
-    }
+    return 0 if (1 << ($n & 31)) & 0xfdfcfdec;
+    my $sq = int(sqrt($n));
+    return 1 if ($sq*$sq) == $n;
   }
   0;
 }
@@ -8163,7 +8160,7 @@ sub lucasuv {
   return (0,2) if $k == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"lucasuv"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-    return map { Math::Prime::Util::_to_bigint_if_needed($_) }
+    return map { maybetobigint($_) }
            Math::Prime::Util::GMP::lucasuv($P, $Q, $k);
   }
 
@@ -8276,7 +8273,7 @@ sub lucasuvmod {
   return (0, Mmodint(2,$n)) if $k == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"lucasuvmod"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-    return map { Math::Prime::Util::_to_bigint_if_needed($_) }
+    return map { maybetobigint($_) }
            Math::Prime::Util::GMP::lucasuvmod($P, $Q, $k, $n);
   }
 
@@ -8400,24 +8397,24 @@ sub lucasuvmod {
 }
 
 sub lucasu {
-  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasu($_[0], $_[1], $_[2]) )
+  return maybetobigint( Math::Prime::Util::GMP::lucasu($_[0], $_[1], $_[2]) )
     if $Math::Prime::Util::_GMPfunc{"lucasu"};
   (lucasuv(@_))[0];
 }
 sub lucasv {
-  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasv($_[0], $_[1], $_[2]) )
+  return maybetobigint( Math::Prime::Util::GMP::lucasv($_[0], $_[1], $_[2]) )
     if $Math::Prime::Util::_GMPfunc{"lucasv"};
   (lucasuv(@_))[1];
 }
 
 sub lucasumod {
-  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasumod($_[0], $_[1], $_[2], $_[3]) )
+  return maybetobigint( Math::Prime::Util::GMP::lucasumod($_[0], $_[1], $_[2], $_[3]) )
     if $Math::Prime::Util::_GMPfunc{"lucasumod"};
   (lucasuvmod(@_))[0];
 }
 sub lucasvmod {
   my($P, $Q, $k, $n) = @_;
-  return Math::Prime::Util::_to_bigint_if_needed( Math::Prime::Util::GMP::lucasvmod($P, $Q, $k, $n) )
+  return maybetobigint( Math::Prime::Util::GMP::lucasvmod($P, $Q, $k, $n) )
     if $Math::Prime::Util::_GMPfunc{"lucasvmod"};
   validate_integer($P);
   validate_integer($Q);
@@ -11840,7 +11837,7 @@ sub random_unrestricted_semiprime {
     my $q = random_prime($ranmin, $ranmax);
     $n = Mmulint($p,$q);
   }
-  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
+  $n = _bigint_to_int($n) if ref($n) && $n <= BMAX;
   $n;
 }
 
