@@ -179,6 +179,9 @@ if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION
   *Spowint = \&Math::Prime::Util::powint;
 }
 
+# We don't have this function yet.  Use a simple version for now.
+*Mtoint = \&_toint_simple;
+
 my $_precalc_size = 0;
 sub prime_precalc {
   my($n) = @_;
@@ -391,6 +394,31 @@ sub _toint {
     push @out, $v;
   }
   @out;
+}
+
+sub _toint_simple {
+  my $n = shift;
+  if ($n >= 0) {
+    my $max = MPU_32BIT ? 4294967295 : 70368744177664;  # 2^46
+    if ($n =~ /^[+]?\d+\z/) {
+      return int($n) if $n < $max;
+    } elsif ($n < $max) {
+      return int($n);
+    } else {
+      $n = _upgrade_to_float($n)->as_int;
+    }
+  } else {
+    my $min = MPU_32BIT ? -2147483648 : -35184372088832;  # -2^45
+    if ($n =~ /^[-]\d+\z/) {
+      return int($n) if $n > $min;
+    } elsif ($n > $min) {
+      return int($n);
+    } else {
+      $n = _upgrade_to_float($n)->as_int;
+    }
+  }
+  validate_integer($n);
+  $n;
 }
 
 my @_primes_small = (0,2);
@@ -1053,6 +1081,7 @@ sub prev_prime {
     $n -= $_wheelretreat30[$n%30];
   } while !($n%7) || !_is_prime7($n);
 
+  $n = _bigint_to_int($n) if ref($n) && $n <= BMAX;
   $n;
 }
 
@@ -1159,14 +1188,14 @@ sub lucky_count {
 }
 sub _simple_lucky_count_approx {
   my $n = shift;
-  $n = "$n" if ref($n) eq 'Math::BigInt';
+  $n = "$n" if ref($n);
   return 0 + ($n > 0) + ($n > 2) if $n < 7;
   return 0.9957 * $n/log($n) if $n <= 1000000;
   return (1.03670 - log($n)/299) * $n/log($n);
 }
 sub _simple_lucky_count_upper {
   my $n = shift;
-  $n = "$n" if ref($n) eq 'Math::BigInt';
+  $n = "$n" if ref($n);
   return 0 + ($n > 0) + ($n > 2) if $n < 7;
   return int(5 + 1.039 * $n/log($n)) if $n <= 7000;
   my $a = ($n < 10017000) ?   0.58003 - 3.00e-9 * ($n-7000)   : 0.55;
@@ -1216,7 +1245,7 @@ sub nth_lucky_approx {
   my $n = shift;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
-  $n = "$n" if ref($n) eq 'Math::BigInt';
+  $n = "$n" if ref($n);
   my($logn, $loglogn, $mult) = (log($n), log(log($n)), 1);
   if ($n <= 80000) {
     my $c = ($n <= 10000) ? 0.2502 : 0.2581;
@@ -2311,10 +2340,7 @@ sub nth_perfect_power_approx {
     $pp += -2*$n**(13/11) + -2*$n**(15/13);
     $pp +=  2*$n**(16/14) +  2*$n**(17/15);
     $pp -= 0.48*$n**(19/17);
-    $pp -= 1.5;
-    # Another place to use Mtoint($pp);
-    return int($pp) if $pp < INTMAX;
-    return _upgrade_to_float($pp)->as_int;
+    return Mtoint($pp - 1.5);
   }
 
   # Taking roots is very expensive with Math::BigFloat, so minimize.
@@ -3553,16 +3579,9 @@ sub inverse_li {
   validate_integer_nonneg($n);
 
   return (0,2,3,5,6,8)[$n] if $n <= 5;
-  my $t = Math::Prime::Util::inverse_li_nv($n);
+  my $t = Math::Prime::Util::inverse_li_nv(0.0 + "$n");
 
-  # Seriously, we need $t = to_int($t);
-  if ($t < 2**45) {
-    $t = int($t+0.5);
-  } else {
-    my $tf = _upgrade_to_float($t);
-    $t = Math::BigInt->new($tf->bceil->bstr);
-    $t = _bigint_to_int($t) if $t->bacmp(BMAX) <= 0;
-  }
+  $t = Mtoint($t + 0.5);
 
   # Make it an exact answer
   my $inc = ($n > 4e16) ? 2048 : 128;
@@ -4097,7 +4116,7 @@ sub semiprime_count_approx {
   #my $est = $n * $l2 / $l1;
   #my $est = $n * ($l2 + 0.302) / $l1;
   my $est = ($n/$l1) * (0.11147910114 + 0.00223801350*$l1 + 0.44233207922*$l2 + 1.65236647896*log($l2));
-  int(0.5+$est);
+  Mtoint($est + 0.5);
 }
 
 sub almost_prime_count_approx {
@@ -4114,11 +4133,12 @@ sub almost_prime_count_approx {
     my $hi = Math::Prime::Util::almost_prime_count_upper($k, $n);
     return $lo + (($hi - $lo) >> 1);
   } else {
-    return int(0.5 + _almost_prime_count_asymptotic($k,$n));
-    #my $est = Math::Prime::Util::prime_count_approx($n);
-    #my $loglogn = log(log(0.0 + "$n"));
-    #for my $i (1 .. $k-1) { $est *= ($loglogn/$i); }
-    #return int(0.5+$est);
+    my $est = 0.5 + _almost_prime_count_asymptotic($k,$n);
+    # Alternately:
+    # my $est = Math::Prime::Util::prime_count_approx($n);
+    # my $loglogn = log(log(0.0 + "$n"));
+    # for my $i (1 .. $k-1) { $est *= ($loglogn/$i); }
+    return Mtoint($est);
   }
 }
 
@@ -4179,10 +4199,7 @@ sub nth_semiprime_approx {
   my $l1 = log($n);
   my $l2 = log($l1);
   my $est = 0.966 * $n * $l1 / $l2;
-  # Mtoint($est+0.5);
-  $est += 0.5;
-  return int($est) if $est < INTMAX;
-  return _upgrade_to_float($est)->as_int;
+  Mtoint($est+0.5);
 }
 
 sub _almost_prime_count_asymptotic {
@@ -4257,7 +4274,7 @@ sub almost_prime_count_lower {
     $bound = 0.8 * _almost_prime_count_asymptotic($k,$n);
   }
   $bound = 1 if $bound < 1;  # We would have returned zero earlier
-  int($bound);
+  Mtoint($bound)
 }
 sub almost_prime_count_upper {
   my($k, $n) = @_;
@@ -4322,7 +4339,7 @@ sub almost_prime_count_upper {
     $bound->bdiv($temp);
     return $bound->bceil->as_int();
   }
-  int($bound+1);
+  Mtoint($bound + 1)
 }
 
 sub _kap_reduce_nth {   # returns reduction amount r
@@ -6848,7 +6865,7 @@ sub tozeckendorf {
 
 sub sqrtint {
   my($n) = @_;
-  return int(sqrt($n)) if $n <= 562949953421312;  # 2^49 safe everywhere
+  return int(sqrt("$n")) if $n <= 562949953421312;  # 2^49 safe everywhere
   my $sqrt = Math::BigInt->new("$n")->bsqrt;
   reftyped($_[0], "$sqrt");
 }
