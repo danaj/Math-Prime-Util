@@ -74,7 +74,7 @@ for my $t (@tests) {
   my $sum = addint($a,$b);
 
   my $gotr = ref($sum) ? "BIGINT" : "NATIVE";
-  ok($sum eq $r && $gotr eq $expr, "$sum [$gotr]  expect $r [$expr]");
+  ok("$sum" eq $r && $gotr eq $expr, "$sum [$gotr]  expect $r [$expr]");
 }
 
 

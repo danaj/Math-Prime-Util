@@ -49,7 +49,7 @@ subtest 'stirling numbers of the first kind', sub {
 
   SKIP: {
     skip "stirling(132,67) only with EXTENDED_TESTING", 1 unless $extra;
-    is( stirling(132,67,1), '-6132458966070920781607687809239433538883836871765225500351514785120957322534135782514155513931693375104995311496306605620444680401484569675682191339176710', "s(132,67)" );
+    is( "".stirling(132,67,1), '-6132458966070920781607687809239433538883836871765225500351514785120957322534135782514155513931693375104995311496306605620444680401484569675682191339176710', "s(132,67)" );
   }
 };
 
@@ -88,7 +88,7 @@ subtest 'stirling numbers of the second kind', sub {
 
   SKIP: {
     skip "large stirling tests only with EXTENDED_TESTING", 1 unless $extra;
-    is( stirling(114,85,2), '722095587897382907118640452680242028195738761915144254970925658656935934040', "S(114,85)" );
+    is( "".stirling(114,85,2), '722095587897382907118640452680242028195738761915144254970925658656935934040', "S(114,85)" );
     my $sum = 0;
     $sum += $_ for split(//, stirling(234,96));
     is($sum, 1504, "sumdigits(stirling(234,96) = 1504");
@@ -124,7 +124,7 @@ subtest 'stirling numbers of the third kind', sub {
   );
   my $n = 0;
   foreach my $narr (@stirling3) {
-    my @s3 = map { stirling($n,$_,3) } 0..$n+1;
+    my @s3 = map { "".stirling($n,$_,3) } 0..$n+1;
     is_deeply( \@s3, $narr, "Stirling 3: L($n,0..". ($n+1) .")" );
     $n++;
   }

@@ -147,19 +147,19 @@ subtest 'vecmax', sub {
 subtest 'vecsum', sub {
   foreach my $r (@vecsums) {
     my($exp, @vals) = @$r;
-    is( vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
+    is( "".vecsum(@vals), $exp, "vecsum(@vals) = $exp" );
   }
 };
 ###### vecprod
 subtest 'vecprod', sub {
   foreach my $r (@vecprods) {
     my($exp, @vals) = @$r;
-    is( vecprod(@vals), $exp, "vecprod(@vals) = $exp" );
+    is( "".vecprod(@vals), $exp, "vecprod(@vals) = $exp" );
   }
   my(@prod,@fact);
   for my $f (0 .. 50) {
-    push @fact, factorial($f);
-    push @prod, vecprod(1 .. $f);
+    push @fact, "".factorial($f);
+    push @prod, "".vecprod(1 .. $f);
   }
   is_deeply(\@prod, \@fact, "vecprod matches factorial for 0 .. 50");
 };

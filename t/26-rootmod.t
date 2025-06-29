@@ -133,7 +133,7 @@ foreach my $r (@sqrtmods) {
     my $val = sqrtmod($a,$n);
     if ($prime) {
         # sqrtmod() must return least root for prime modulus
-        is($val, $exp->[0], "sqrtmod($a,$n) = $exp->[0]");
+        is("$val", $exp->[0], "sqrtmod($a,$n) = $exp->[0]");
     } else {
         ok( is_one_of($val, @$exp), "sqrtmod($a,$n) = $val, roots [@$exp]" );
     }
@@ -193,7 +193,7 @@ sub is_one_of {
   my($n, @list) = @_;
   if (defined $n) {
     for (@list) {
-      return 1 if defined $_ && $n eq $_;
+      return 1 if defined $_ && "$n" eq $_;
     }
   } else {
     for (@list) {

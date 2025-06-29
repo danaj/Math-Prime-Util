@@ -64,5 +64,5 @@ while (my($range, $expect) = each (%sums)) {
 
 foreach my $pair (@large) {
   my($n,$sum) = @$pair;
-  is( sum_primes(0,$n), $sum, "sum_primes($n) = $sum" );
+  is( "".sum_primes(0,$n), $sum, "sum_primes($n) = $sum" );
 }

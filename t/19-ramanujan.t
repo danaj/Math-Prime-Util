@@ -78,5 +78,5 @@ while (my($n, $h) = each (%hclassno)) {
 
 ###### Ramanujan Tau
 while (my($n, $tau) = each (%rtau)) {
-  is( ramanujan_tau(0 + $n), $tau, "Ramanujan Tau($n) = $tau" );
+  is( "".ramanujan_tau(0 + $n), $tau, "Ramanujan Tau($n) = $tau" );
 }

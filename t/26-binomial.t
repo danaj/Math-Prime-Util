@@ -84,5 +84,5 @@ is_deeply( [map { binomial(-13, $_) } -15 .. 15],
 # Selected binomials
 foreach my $r (@binomials) {
   my($n, $k, $exp) = @$r;
-  is( binomial($n,$k), $exp, "binomial($n,$k)) = $exp" );
+  is( "".binomial($n,$k), $exp, "binomial($n,$k)) = $exp" );
 }

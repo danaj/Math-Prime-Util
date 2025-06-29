@@ -33,7 +33,7 @@ for my $num (@N, @negN) {
     my $bi = Math::BigInt->new($num)->btdiv($den);
     die "$num $den" if $bi ne $mx;
     my $mp = (Math::Prime::Util::PP::tdivrem($num,$den))[0];
-    die "$num $den" if $mp ne $mx;
+    die "$num $den" if "$mp" ne "$mx";
 
     # This does not
     #my $nd = (ndivrem($num,$den))[0];

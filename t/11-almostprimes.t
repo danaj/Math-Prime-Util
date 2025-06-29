@@ -73,7 +73,7 @@ SKIP: {
   is(nth_almost_prime(24,5555), "21678243840", "5555th 24-almost-prime is 21678243840");
 }
 
-is(nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");
+is("".nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");
 
 ###### Test limits
 is( cmp_kap(3,59643,234618), 234618, "3-almost prime limits for 59643" );

@@ -82,9 +82,9 @@ is( prev_prime(2), undef, "Previous prime of 2 returns undef" );
 if ($use64) {
   # With 5.8.8 and earlier, this can cause problems due to Perl getting lost
   # when the return value is turned into a Math::BigInt.  Fixed in 5.8.9.
-  is( next_prime(18446744073709551611), "18446744073709551629", "Next prime of ~0-4 returns bigint next prime" );
+  is( "".next_prime(18446744073709551611), "18446744073709551629", "Next prime of ~0-4 returns bigint next prime" );
 } else {
-  is( next_prime(4294967291), "4294967311", "Next prime of ~0-4 returns bigint next prime" );
+  is( "".next_prime(4294967291), "4294967311", "Next prime of ~0-4 returns bigint next prime" );
 }
 
 # Turns out the testing of prev/next from 0-3572 still misses some cases.

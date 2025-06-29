@@ -189,7 +189,7 @@ prime_set_config(nobigint=>0);
 
 {
   my $n = random_nbit_prime(80);
-  is( ref($n), 'Math::BigInt', "random 80-bit prime returns a BigInt" );
+  ok( ref($n) =~ /^Math::/, "random 80-bit prime returns a BigInt" );
   ok(    $n >= Math::BigInt->new(2)->bpow(79)
       && $n <= Math::BigInt->new(2)->bpow(80),
       "random 80-bit prime '$n' is in range" );
@@ -197,7 +197,7 @@ prime_set_config(nobigint=>0);
 SKIP: {
   skip "Skipping 30-digit random prime with broken 64-bit Perl", 2 if $broken64;
   my $n = random_ndigit_prime(30);
-  is( ref($n), 'Math::BigInt', "random 30-digit prime returns a BigInt" );
+  ok( ref($n) =~ /^Math::/, "random 30-digit prime returns a BigInt" );
   ok(    $n >= Math::BigInt->new(10)->bpow(29)
       && $n <= Math::BigInt->new(10)->bpow(30),
       "random 30-digit prime '$n' is in range" );

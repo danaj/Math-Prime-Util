@@ -61,15 +61,15 @@ sub nth_prime {
 }
 
 foreach my $n (0 .. $#pn_primorials) {
-  is( primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
-  is( pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
+  is( "".primorial(nth_prime($n)), $pn_primorials[$n], "primorial(nth($n))" );
+  is( "".pn_primorial($n), $pn_primorials[$n], "pn_primorial($n)" );
 }
 
 
-is( primorial(100), '2305567963945518424753102147331756070', "primorial(100)");
+is( "".primorial(100), '2305567963945518424753102147331756070', "primorial(100)");
 
 is(
-    primorial(541),
+    "".primorial(541),
     '4711930799906184953162487834760260422020574773409675520188634839616415335845034221205289256705544681972439104097777157991804380284218315038719444943990492579030720635990538452312528339864352999310398481791730017201031090',
     "primorial(541)"
   );

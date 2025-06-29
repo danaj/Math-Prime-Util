@@ -95,9 +95,9 @@ is(powerfree_part(-4000), -10, "powerfree_part(-4000) = -10");
   is(powerfree_part($n,2), 1333310, "powerfree_part(n,2) = 1333310");
   is(powerfree_part($n,3), "2607554680038", "powerfree_part(n,3)");
   is(powerfree_part($n,4), "11841796277238534750", "powerfree_part(n,4)");
-  is(powerfree_part($n,5), "1653305696539190388308250", "powerfree_part(n,5)");
-  is(powerfree_part($n,6), "1315461663807740740160892737772750", "powerfree_part(n,6)");
-  is(powerfree_part($n,7), "65926023382783093515719030419129876118250", "powerfree_part(n,7)");
+  is("".powerfree_part($n,5), "1653305696539190388308250", "powerfree_part(n,5)");
+  is("".powerfree_part($n,6), "1315461663807740740160892737772750", "powerfree_part(n,6)");
+  is("".powerfree_part($n,7), "65926023382783093515719030419129876118250", "powerfree_part(n,7)");
 }
 
 ##### powerfree_part

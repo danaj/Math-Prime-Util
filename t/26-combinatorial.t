@@ -125,7 +125,7 @@ subtest 'numtoperm / permtonum', sub {
   is(permtonum([0]),0,"permtonum([0])");
   is(permtonum([6,3,4,2,5,0,1]),4768,"permtonum([6,3,4,2,5,0,1])");
   is(permtonum([reverse(0..14),15..19]),"1790774578500738480","permtonum( 20 )");
-  is(permtonum([reverse(0..12),reverse(13..25)]),"193228515634198442606207999","permtonum( 26 )");
+  is("".permtonum([reverse(0..12),reverse(13..25)]),"193228515634198442606207999","permtonum( 26 )");
 
   is(permtonum([numtoperm(14,8467582)]),8467582,"permtonum(numtoperm)");
 };

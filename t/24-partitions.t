@@ -84,7 +84,7 @@ foreach my $n (0..$#parts) {
 }
 
 while (my($n, $epart) = each (%bparts)) {
-  is( partitions($n), $epart, "partitions($n)" );
+  is( "".partitions($n), $epart, "partitions($n)" );
 }
 
 ################### forpart

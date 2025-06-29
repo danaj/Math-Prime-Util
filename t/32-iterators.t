@@ -243,12 +243,15 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
     my $top_prime = prev_prime(~0);
     my $big_prime = next_prime(Math::BigInt->new(''.~0));
     ok( $big_prime > ~0, "internal check, next_prime on big int works");
+    # is(x,y) compares the two using eq.
+    # Math::BigInt is fine with this, but Math::GMP and Math::GMPz are not.
+    $big_prime = "$big_prime";
     $it->rewind($top_prime);
     is( $it->value(), $top_prime, "iterator object can rewind to $top_prime");
     $it->next;
-    is( $it->value(), $big_prime, "iterator object next is $big_prime");
+    is( "".$it->value(), $big_prime, "iterator object next is $big_prime");
     $it->rewind(~0);
-    is( $it->value(), $big_prime, "iterator object rewound to ~0 is $big_prime");
+    is( "".$it->value(), $big_prime, "iterator object rewound to ~0 is $big_prime");
     $it->prev;
     is( $it->value(), $top_prime, "iterator object prev goes back to $top_prime");
   }

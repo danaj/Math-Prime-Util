@@ -110,10 +110,10 @@ is( join(" ", cdivint(1,2),cdivint(1,-2),cdivint(-1,2),cdivint(-1,-2)),
 is(divint("1895315831", -1), "-1895315831", "Divide 31-bit input by -1");
 is(divint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1");
 is(cdivint("3483637757", -1), "-3483637757", "Divide 32-bit input by -1 (ceiling)");
-is(divint("6127303089832103323", -1), "-6127303089832103323", "Divide 63-bit input by -1");
-is(divint("13026328650942325963", -1), "-13026328650942325963", "Divide 64-bit input by -1");
-is(divint("14123555781055773270", 2), "7061777890527886635", "Divide 64-bit input by 2");
-is(divint("12844039487317506779", "12844039487317506779"), 1, "Divide 64-bit input by itself");
+is("".divint("6127303089832103323", -1), "-6127303089832103323", "Divide 63-bit input by -1");
+is("".divint("13026328650942325963", -1), "-13026328650942325963", "Divide 64-bit input by -1");
+is("".divint("14123555781055773270", 2), "7061777890527886635", "Divide 64-bit input by 2");
+is("".divint("12844039487317506779", "12844039487317506779"), 1, "Divide 64-bit input by itself");
 is(divint(3, "12844039487317506779"), 0, "Divide small int by 64-bit input");
 # Note this is floor division:
 is(divint(-3, "12844039487317506779"), -1, "Divide negative small int by 64-bit input");

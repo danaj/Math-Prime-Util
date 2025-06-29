@@ -33,7 +33,7 @@ is_deeply([map { fromzeckendorf($_) } @z20], [0..20], "fromzeckendorf(Z(0..20))"
 for my $pair (@toz) {
   my($n,$s) = @$pair;
   my $sp = $s;  $sp = substr($sp,0,30)."..." if length($s) > 33;
-  is(fromzeckendorf($s), $n, "fromzeckendorf($sp)");
+  is("".fromzeckendorf($s), $n, "fromzeckendorf($sp)");
 }
 
 ######

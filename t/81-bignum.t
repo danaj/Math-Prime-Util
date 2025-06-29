@@ -94,7 +94,7 @@ plan tests =>  0
              + 1;
 
 # Using GMP makes these tests run about 2x faster on some machines
-use bigint try => 'GMP,GMPz,Pari'; #  <------------ large numbers ahead!  > 2^64
+use bigint try => 'GMP,GMPz,LTM,Pari'; #  <-------- large numbers ahead!  > 2^64
 use Math::BigFloat;
 
 use Math::Prime::Util qw/
@@ -275,7 +275,7 @@ SKIP: {
 
   if ($extra) {
     $n = 48981631802481400359696467;
-    is( jordan_totient(5,$n), "281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000", "jordan_totient(5,$n)" );
+    is( jordan_totient(5,$n), 281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000, "jordan_totient(5,$n)" );
     is( divisor_sum( $n, sub { my $d=shift; $d**5 * moebius($n/$d); }), "281946200770875813001683560563488308767928594805846855593191749929654015729263525162226378019837608857421063724603387506651820000", "jordan totient using divisor_sum and moebius" );
   }
 
@@ -285,8 +285,8 @@ SKIP: {
   # These should yield bigint results.
   # Quoted 0 to prevent error in perl 5.8.2 + bigint 0.23 (0 turns into NaN)
   is( divisor_sum(pn_primorial(27),"0"), 134217728, "Divisor count(103#)" );
-  is( divisor_sum(pn_primorial(27),1), "123801167235014219383860918985791897600000", "Divisor sum(103#)" );
-  is( divisor_sum(pn_primorial(27),2), "872887488619258559049272439859735080160421720974947767918289356800000000000000000", "sigma_2(103#)" );
+  is( divisor_sum(pn_primorial(27),1), 123801167235014219383860918985791897600000, "Divisor sum(103#)" );
+  is( divisor_sum(pn_primorial(27),2), 872887488619258559049272439859735080160421720974947767918289356800000000000000000, "sigma_2(103#)" );
   if ($extra) {
     is( divisor_sum(pn_primorial(71),"0"), 2361183241434822606848, "Divisor count(353#)" );
   }

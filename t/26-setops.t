@@ -178,7 +178,7 @@ subtest 'union', sub {
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort @$_] } ([setunion($x,$y)], $aunion);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setunion($x,$y)], $aunion);
     is_deeply($got, $exp, "vec $str");
   }
 };
@@ -189,7 +189,7 @@ subtest 'intersect', sub {
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort @$_] } ([setintersect($x,$y)], $ainter);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setintersect($x,$y)], $ainter);
     is_deeply($got, $exp, "vec $str");
   }
 };
@@ -200,7 +200,7 @@ subtest 'minus (difference)', sub {
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort @$_] } ([setminus($x,$y)], $aminus);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setminus($x,$y)], $aminus);
     is_deeply($got, $exp, "vec $str");
   }
 };
@@ -211,7 +211,7 @@ subtest 'delta (symmetric difference)', sub {
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort @$_] } ([setdelta($x,$y)], $adelta);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setdelta($x,$y)], $adelta);
     is_deeply($got, $exp, "vec $str");
   }
 };
