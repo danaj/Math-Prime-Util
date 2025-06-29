@@ -89,6 +89,14 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   #define strtold strtod
 #endif
 
+#ifdef USE_QUADMATH
+  #define STRTONV(t)  strtoflt128(t,NULL)
+#elif defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
+  #define STRTONV(t)  strtold(t,NULL)
+#else
+  #define STRTONV(t)  strtod(t,NULL)
+#endif
+
 #if PERL_VERSION_LT(5,7,0) && BITS_PER_WORD == 64
  /* Workaround perl 5.6 UVs and bigints */
  #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
@@ -3043,15 +3051,12 @@ void next_farey(IN SV* svn, IN SV* svfrac)
 void Pi(IN UV digits = 0)
   PREINIT:
 #ifdef USE_QUADMATH
-#define STRTONV(t)  strtoflt128(t,NULL)
     const UV mantsize = FLT128_DIG;
     const NV pival = 3.141592653589793238462643383279502884197169Q;
 #elif defined(USE_LONG_DOUBLE) && defined(HAS_LONG_DOUBLE)
-#define STRTONV(t)  strtold(t,NULL)
     const UV mantsize = LDBL_DIG;
     const NV pival = 3.141592653589793238462643383279502884197169L;
 #else
-#define STRTONV(t)  strtod(t,NULL)
     const UV mantsize = DBL_DIG;
     const NV pival = 3.141592653589793238462643383279502884197169;
 #endif
@@ -4104,7 +4109,7 @@ _XS_ExponentialIntegral(IN SV* x)
   PREINIT:
     NV nv, ret;
   CODE:
-    nv = SvNV(x);
+    nv = !SvROK(x)  ?  SvNV(x)  :  STRTONV(SvPV_nolen(x));
     switch (ix) {
       case 0: ret = Ei(nv); break;
       case 1: ret = Li(nv); break;
