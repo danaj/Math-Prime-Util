@@ -144,6 +144,7 @@ sub import {
       ${"${pkg}::a"} = ${"${pkg}::a"};
       ${"${pkg}::b"} = ${"${pkg}::b"};
     }
+    # TODO: trybigint=>Math::GMPz
     foreach my $opt (qw/nobigint secure/) {
       my @options = grep $_ ne "-$opt", @_;
       $_Config{$opt} = 1 if @options != @_;
@@ -224,6 +225,12 @@ $_Config{'maxprime'}    = MPU_MAXPRIME;
 $_Config{'maxprimeidx'} = MPU_MAXPRIMEIDX;
 $_Config{'assume_rh'}   = 0;
 $_Config{'verbose'}     = 0;
+$_Config{'bigintclass'} = undef;
+
+# For testing, we could start with something else.
+# This helps find out what parts assume Math::BigInt
+#use Math::GMP;
+#$_Config{'bigintclass'} = 'Math::GMP';
 
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
@@ -231,6 +238,8 @@ $_Config{'verbose'}     = 0;
 my $_XS_MAXVAL = $_Config{'xs'}  ?  MPU_MAXPARAM  :  -1;
 my $_HAVE_GMP = $_Config{'gmp'};
 _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
+
+our $_BIGINT = $_Config{'bigintclass'};
 
 # Infinity in Perl is rather O/S specific.
 our $_Infinity = 0+'inf';
@@ -266,6 +275,23 @@ sub prime_set_config {
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+    } elsif ($param eq 'bigint' || $param eq 'trybigint') {
+      my $ok = 1;
+      my $class = ref($value);
+      if (!$class) {  # We were given a class name
+        $class = $value;
+        (my $cfname="$class.pm")=~s|::|/|g; # Foo::Bar::Baz => Foo/Bar/Baz.pm
+        $ok = eval { require $cfname; $class->import(); 1; };
+      }
+      if ($ok) {  # Check we can use it
+        $ok = eval { $class->new(1) == 1 };
+      }
+      if ($ok) { # Loaded correctly.
+        $_BIGINT = $_Config{'bigintclass'} = $class;
+      } else {
+        # Couldn't load.  Leave config alone.  Complain.
+        carp "ntheory bigint could not load '$value'" unless $param =~ /try/;
+      }
     } elsif ($param eq 'secure') {
       croak "Cannot disable secure once set" if !$value && $_Config{'secure'};
       if ($value) {
@@ -293,40 +319,58 @@ sub prime_set_config {
   1;
 }
 
+# This is for loading the default bigint class the very first time.
+sub _load_bigint {
+  return $_BIGINT if defined $_BIGINT;
+
+  # This is what we'd like to do in the future.  Use the best available.
+  #
+  #if (defined $Math::GMPz::VERSION || eval {require Math::GMPz; Math::GMPz->import(); 1;}) {
+  #  $_BIGINT = $_Config{'bigintclass'} = 'Math::GMPz';
+  #} elsif (defined $Math::GMP::VERSION || eval {require Math::GMP; Math::GMP->import(); 1;}) {
+  #  $_BIGINT = $_Config{'bigintclass'} = 'Math::GMP';
+  #} else {
+  #  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
+  #  $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
+  #}
+
+  # For now, the old behaviour of using Math::BigInt.
+
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
+  $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
+}
+
 sub _bigint_to_int {
-  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,$_[0]->bstr))
-                            : int($_[0]->bstr);
+  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
+                            : int("$_[0]");
 }
 sub _to_bigint {
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-    unless defined $Math::BigInt::VERSION;
   return undef unless defined($_[0]);
-  my $n = (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
-  croak "Parameter '$_[0]' must be an integer" unless $n->is_int();
+  _load_bigint() unless defined $_BIGINT;
+  # We don't do any validation other than that the class is happy.
+  my $n = (ref($_[0]) eq $_BIGINT) ? $_[0] : $_BIGINT->new("$_[0]");
+  croak "Parameter '$_[0]' must be an integer" unless $_BIGINT ne 'Math::BigInt' || $n->is_int();
   $n;
 }
 sub _to_bigint_nonneg {
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-    unless defined $Math::BigInt::VERSION;
   return undef unless defined($_[0]);
-  my $n = (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
-  croak "Parameter '$_[0]' must be a non-negative integer" unless $n->is_int() && !$n->is_negative();
+  _load_bigint() unless defined $_BIGINT;
+  my $n = (ref($_[0]) eq $_BIGINT) ? $_[0] : $_BIGINT->new("$_[0]");
+  croak "Parameter '$_[0]' must be a non-negative integer" unless $n >= 0 && ($_BIGINT ne 'Math::BigInt' || $n->is_int());
   $n;
 }
 sub _to_bigint_abs {
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-    unless defined $Math::BigInt::VERSION;
   return undef unless defined($_[0]);
-  my $n = (ref($_[0]) eq 'Math::BigInt') ? $_[0] : Math::BigInt->new("$_[0]");
-  croak "Parameter '$_[0]' must be an integer" unless $n->is_int();
-  $n->copy->babs;
+  _load_bigint() unless defined $_BIGINT;
+  my $n = (ref($_[0]) eq $_BIGINT) ? $_[0] : $_BIGINT->new("$_[0]");
+  croak "Parameter '$_[0]' must be an integer" unless $_BIGINT ne 'Math::BigInt' || $n->is_int();
+  return ($n < 0) ? -$n : $n;
 }
 sub _to_bigint_if_needed {
   return $_[0] if !defined $_[0] || ref($_[0]);
   if ($_[0] >= INTMAX || $_[0] <= INTMIN) {    # Probably a bigint
-    do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-      unless defined $Math::BigInt::VERSION;
-    my $n = Math::BigInt->new("$_[0]");
+    _load_bigint() unless defined $_BIGINT;
+    my $n = $_BIGINT->new("$_[0]");
     return $n if $n > INTMAX || $n < INTMIN;   # Definitely a bigint
   }
   $_[0];
@@ -354,21 +398,19 @@ sub _reftyped {
   if ($ref0) {
     $bign = $ref0->new("$_[1]");
   } else {
-    do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
-      unless defined $Math::BigInt::VERSION;
-    $bign = Math::BigInt->new("$_[1]");
+    _load_bigint() unless defined $_BIGINT;
+    $bign = $_BIGINT->new("$_[1]");
   }
   return $bign if $bign > INTMAX || $bign < INTMIN;
   0+"$_[1]";
 }
 
 sub _maybe_bigint_allargs {
-  do { require Math::BigInt; Math::BigInt->import(try=>"GMPz,GMP,LTM"); }
-    unless defined $Math::BigInt::VERSION;
+  _load_bigint() unless defined $_BIGINT;
   for my $i (0..$#_) {
     next if !defined $_[$i] || ref($_[$i]);
     next if $_[$i] < INTMAX && $_[$i] > INTMIN;
-    my $n = Math::BigInt->new("$_[$i]");
+    my $n = $_BIGINT->new("$_[$i]");
     $_[$i] = $n if $n > INTMAX || $n < INTMIN;
   }
   @_;
@@ -471,7 +513,7 @@ sub prime_iterator {
   # This works fine:
   #   return sub { $p = next_prime($p); return $p; };
   # but we can optimize a little
-  if (ref($p) ne 'Math::BigInt' && $p <= $_XS_MAXVAL) {
+  if (!ref($p) && $p <= $_XS_MAXVAL) {
     # This is simple and low memory, but slower than segments:
     #     return sub { $p = next_prime($p); return $p; };
     my $pr = [];
@@ -653,7 +695,7 @@ sub bernreal {
   }
 
   my($num,$den) = map { _to_bigint($_) } bernfrac($n);
-  return Math::BigFloat->bzero if $num->is_zero;
+  return Math::BigFloat->bzero if $num == 0;
   scalar Math::BigFloat->new($num)->bdiv($den, $precision);
 }
 
@@ -945,9 +987,23 @@ module operates normally.
 
 =head1 BIGNUM SUPPORT
 
-By default all functions support bignums.  For performance, you should
-install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, and
-L<Math::Prime::Util::GMP>.
+By default all functions support bigints.  For performance, you should
+install L<Math::Prime::Util::GMP> which will be automatically used as a
+backend.
+
+The default bigint class is L<Math::BigInt>, which is not particularly speedy
+but is available by default in all Perl distributions, and is well tested.
+If you want to try something different, you can install and use L<Math::GMPz>
+or L<Math::GMP> which will be B<much> faster.  You can have this module
+use and return them using, for exmaple:
+
+  prime_set_config(bigint => Math::GMPz);
+  my $n = next_prime(~0);
+  say "$n ",ref($n);
+  # 18446744073709551629 Math::GMPz
+
+If you use Math::BigInt, I highly recommend also installing one of
+L<Math::BigInt::GMPz>, L<Math::BigInt::GMP>, or L<Math::BigInt::LTM>.
 
 If you are using bigints, here are some performance suggestions:
 
@@ -963,11 +1019,11 @@ package installation tool.
 
 =item *
 
-Install and use L<Math::BigInt::GMP> or L<Math::BigInt::Pari>, then use
-C<use bigint try =E<gt> 'GMP,Pari'> in your script, or on the command line
-C<-Mbigint=lib,GMP>.  Large modular exponentiation is much faster using the
-GMP or Pari backends, as are the math and approximation functions when
-called with very large inputs.
+Install and use L<Math::BigInt::GMP> (or GMPz or LTM), then use
+C<use bigint try =E<gt> 'GMPz,GMP,LTM,Pari'> in your script, or on the
+command line e.g. C<-Mbigint=lib,GMP>.  Large modular exponentiation is
+much faster using the better backends, as are the math and approximation
+functions when called with very large inputs.
 
 =item *
 
@@ -5869,10 +5925,15 @@ in place because you still have an object.
 
   my $cached_up_to = prime_get_config->{'precalc_to'};
 
+  # Print all configuration
+  my $r=prime_get_config();
+  say "$_ $r->{$_}" for sort (keys %$r);
+
 Returns a reference to a hash of the current settings.  The hash is copy of
 the configuration, so changing it has no effect.  The settings include:
 
   verbose         verbose level.  1 or more will result in extra output.
+  bigintclass     the bigint type name (default Math::BigInt)
   precalc_to      primes up to this number are calculated
   maxbits         the maximum number of bits for native operations
   xs              0 or 1, indicating the XS code is available
@@ -5888,6 +5949,8 @@ the configuration, so changing it has no effect.  The settings include:
 
   prime_set_config( assume_rh => 1 );
 
+  prime_set_config(bigint=>Math::GMPz);
+
 Allows setting of some parameters.  Currently the only parameters are:
 
   verbose      The default setting of 0 will generate no extra output.
@@ -5898,6 +5961,13 @@ Allows setting of some parameters.  Currently the only parameters are:
                random_maurer_prime, setting 3 shows real time progress.
                Factoring large numbers is another place where verbose
                settings can give progress indications.
+
+  bigint       You can give either a class name (e.g. "Math::GMPz")
+               or object.  We will try to use this type in all operations
+               that need a bigint.
+
+  trybigint    Exactly the same behavior as C<bigint> but will silently
+               fail if the class isn't found.
 
   xs           Allows turning off the XS code, forcing the Pure Perl
                code to be used.  Set to 0 to disable XS, set to 1 to
