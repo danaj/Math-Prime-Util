@@ -417,17 +417,14 @@ static int _validate_int(pTHX_ SV* n, int negok)
   /* We're going to look more carefully at the string to ensure it's a number */
   if (isneg) { ret = -1;  maxlen = ivmax_maxlen;  maxstr = ivmin_str; }
   else       { ret =  1;  maxlen = uvmax_maxlen;  maxstr = uvmax_str; }
-  if (len > maxlen)
-    return 0;                          /* Huge number, don't even look at it */
   for (i = 0; i < len; i++)            /* Ensure all characters are digits */
     if (!isDIGIT(ptr[i]))
       croak("Parameter '%" SVf "' %s", n, mustbe);
-  if (len < maxlen)                    /* Valid small integer */
-    return ret;
-  for (i = 0; i < maxlen; i++) {       /* Check if in range */
-    if (ptr[i] < maxstr[i]) return ret;
-    if (ptr[i] > maxstr[i]) return 0;
-  }
+  if (len > maxlen)  return 0;         /* Obvious bigint */
+  if (len < maxlen)  return ret;       /* Valid small integer */
+  for (i = 0; i < maxlen; i++)         /* Check if in range */
+    if (ptr[i] != maxstr[i])
+      return ptr[i] < maxstr[i] ? ret : 0;
   return ret;                          /* value = UV_MAX/UV_MIN.  That's ok */
 }
 
