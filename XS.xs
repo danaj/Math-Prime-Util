@@ -279,7 +279,7 @@ static const gmp_info_t gmp_info[] = {
   {                   "lucasu", 29, 1, R_BIGINT },
   {                   "lucasv", 29, 1, R_BIGINT },
   {                  "chinese", 32, 1, R_BIGINT },
-  {            "ramanujan_tau", 32, 1, R_BIGINT },
+  {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
   {                   "gcdext", 35, 3, R_BIGINT },
   {                "primorial", 37, 1, R_BIGINT },
   {             "pn_primorial", 37, 1, R_BIGINT },

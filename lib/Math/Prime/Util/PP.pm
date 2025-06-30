@@ -139,6 +139,7 @@ our $_BIGINT;
 *Mprime_count = \&Math::Prime::Util::prime_count;
 *Mlucasumod = \&Math::Prime::Util::lucasumod;
 *Mznorder = \&Math::Prime::Util::znorder;
+*Mhclassno = \&Math::Prime::Util::hclassno;
 
 *Mvecall = \&Math::Prime::Util::vecall;
 *Mvecany = \&Math::Prime::Util::vecany;
@@ -3192,73 +3193,23 @@ sub divisor_sum {
   return reftyped($_[0], Math::Prime::Util::GMP::sigma($n, $k))
     if $Math::Prime::Util::_GMPfunc{"sigma"};
 
-  my $will_overflow = ($k == 0) ? (length($n) >= $_ds_overflow[0])
-                    : ($k <= 5) ? ($n >= $_ds_overflow[$k])
-                    : 1;
-
-  # The standard way is:
-  #    my $pk = $f ** $k;  $product *= ($pk ** ($e+1) - 1) / ($pk - 1);
-  # But we get less overflow using:
-  #    my $pk = $f ** $k;  $product *= $pk**E for E in 0 .. e
-  # Also separate BigInt and do fiddly bits for better performance.
-
   my @factors = Mfactor_exp($n);
-  my $product = 1;
-  my @fm;
-  if ($k == 0) {
-    $product = Mvecprod(map { $_->[1]+1 } @factors);
-  } elsif (!$will_overflow) {
-    foreach my $f (@factors) {
-      my ($p, $e) = @$f;
-      my $pk = $p ** $k;
-      my $fmult = $pk + 1;
-      foreach my $E (2 .. $e) { $fmult += $pk**$E }
-      $product *= $fmult;
+
+  return Mvecprod(map { $_->[1]+1 } @factors) if $k == 0;
+
+  my @prod;
+  foreach my $f (@factors) {
+    my ($p, $e) = @$f;
+    my $pk = Mpowint($p,$k);
+    if ($e == 1) {
+      push @prod, Maddint($pk,1);
+    } else {
+      my @fm = (Maddint($pk,1));
+      push @fm, Mpowint($pk,$_) for 2..$e;
+      push @prod, Mvecsum(@fm);
     }
-  } elsif (ref($n) && ref($n) ne 'Math::BigInt') {
-    # This can help a lot for Math::GMP, etc.
-    $product = ref($n)->new(1);
-    foreach my $f (@factors) {
-      my ($p, $e) = @$f;
-      my $pk = ref($n)->new($p) ** $k;
-      my $fmult = $pk;  $fmult++;
-      if ($e >= 2) {
-        my $pke = $pk;
-        for (2 .. $e) { $pke *= $pk; $fmult += $pke; }
-      }
-      $product *= $fmult;
-    }
-  } elsif ($k == 1) {
-    foreach my $f (@factors) {
-      my ($p, $e) = @$f;
-      my $pk = Math::BigInt->new("$p");
-      if ($e == 1) { push @fm, $pk->binc; next; }
-      my $fmult = $pk->copy->binc;
-      my $pke = $pk->copy;
-      for my $E (2 .. $e) {
-        $pke->bmul($pk);
-        $fmult->badd($pke);
-      }
-      push @fm, $fmult;
-    }
-    $product = Mvecprod(@fm);
-  } else {
-    my $bik = Math::BigInt->new("$k");
-    foreach my $f (@factors) {
-      my ($p, $e) = @$f;
-      my $pk = Math::BigInt->new("$p")->bpow($bik);
-      if ($e == 1) { push @fm, $pk->binc; next; }
-      my $fmult = $pk->copy->binc;
-      my $pke = $pk->copy;
-      for my $E (2 .. $e) {
-        $pke->bmul($pk);
-        $fmult->badd($pke);
-      }
-      push @fm, $fmult;
-    }
-    $product = Mvecprod(@fm);
   }
-  $product;
+  Mvecprod(@prod);
 }
 
 #############################################################################
@@ -7164,30 +7115,21 @@ sub is_strong_pseudoprime {
   return 1 if scalar(@newbases) == 0;
   @bases = @newbases;
 
-  if ( ref($n) eq 'Math::BigInt' ) {
+  if (ref($n)) {
 
-    my $nminus1 = $n->copy->bdec();
-    my $s = 0;
-    my $d = $nminus1->copy;
-    do {  # n is > 2 and odd, so n-1 must be even
-      $s++;
-      $d->brsft(BONE);
-    } while $d->is_even;
-    # Different way of doing the above.  Fewer function calls, slower on ave.
-    #my $dbin = $nminus1->as_bin;
-    #my $last1 = rindex($dbin, '1');
-    #my $s = length($dbin)-2-$last1+1;
-    #my $d = $nminus1->copy->brsft($s);
+    my $nm1 = Msubint($n,1);
+    my $s = Mvaluation($nm1,2);
+    my $d = Mrshiftint($nm1,$s);
 
     foreach my $ma (@bases) {
-      my $x = $n->copy->bzero->badd($ma)->bmodpow($d,$n);
-      next if $x->is_one || $x->bcmp($nminus1) == 0;
+      my $x = Mpowmod($ma,$d,$n);
+      next if $x == 1 || $x == $nm1;
       foreach my $r (1 .. $s-1) {
-        $x->bmul($x); $x->bmod($n);
-        return 0 if $x->is_one;
-        do { $ma = 0; last; } if $x->bcmp($nminus1) == 0;
+        $x = Mmulmod($x,$x,$n);
+        return 0 if $x == 1;
+        last if $x == $nm1;
       }
-      return 0 if $ma != 0;
+      return 0 if $x != $nm1;
     }
 
   } else {
@@ -9971,79 +9913,58 @@ sub hclassno {
   return (($b2*3 == $n) ? 2*(3*$h+1) : $square ? 3*(2*$h+1) : 6*$h) << 1;
 }
 
-# Sigma method for prime powers
-sub _taup {
-  my($p, $e, $n) = @_;
-  my($bp) = Math::BigInt->new("".$p);
-  if ($e == 1) {
-    return (0,1,-24,252,-1472,4830,-6048,-16744,84480)[$p] if $p <= 8;
-    my $ds5  = $bp->copy->bpow( 5)->binc();  # divisor_sum(p,5)
-    my $ds11 = $bp->copy->bpow(11)->binc();  # divisor_sum(p,11)
-    my $s    = Math::BigInt->new("". Mvecsum(
-                map {
-                  Mvecprod(BTWO, Mdivisor_sum($_,5), Mdivisor_sum($p-$_,5))
-                } 1..($p-1)>>1));
-    $n = ( 65*$ds11 + 691*$ds5 - (691*252)*$s ) / 756;
-  } else {
-    my $t = Math::BigInt->new(""._taup($p,1));
-    $n = $t->copy->bpow($e);
-    if ($e == 2) {
-      $n -= $bp->copy->bpow(11);
-    } elsif ($e == 3) {
-      $n -= BTWO * $t * $bp->copy->bpow(11);
-    } else {
-      $n += Mvecsum( map { Mvecprod( ($_&1) ? - BONE : BONE,
-                                     $bp->copy->bpow(11*$_),
-                                     #Mpowint($p,11*$_),
-                                     Mbinomial($e-$_, $e-2*$_),
-                                     #Mpowint($t,$e-2*$_) ) } 1 .. ($e>>1) );
-                                     $t ** ($e-2*$_) ) } 1 .. ($e>>1) );
-    }
-  }
-  #$n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
-  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0 && $n->bcmp(-(BMAX>>1)) > 0;
-  $n;
-}
-
-# Cohen's method using Hurwitz class numbers
+# Ramanujan Tau using Cohen's method with Hurwitz class numbers.
+# Also see Lygeros (2010).
 # The two hclassno calls could be collapsed with some work
 sub _tauprime {
   my $p = shift;
   return -24 if $p == 2;
-  my $sum = Math::BigInt->new(0);
 
-  if ($p < (MPU_32BIT ?  300  :  1600)) {
-    my($p9,$pp7) = (9*$p, 7*$p*$p);
-    for my $t (1 .. Msqrtint($p)) {
-      my $t2 = $t * $t;
-      my $v = $p - $t2;
-      $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
+  my $sum = 0;
+  my($p9,$pp7) = (Mmulint(9,$p), Mvecprod(7,$p,$p));
+  for my $t (1 .. Msqrtint($p)) {
+    my $t2 = Mpowint($t,2);
+    my $v = Msubint($p,$t2);
+    my $T1 = Mpowint($t2,3);
+    my $T2 = Maddint( Msubint(Mvecprod(4,$t2,$t2), Mmulint($p9,$t2)), $pp7);
+    my $T3;
+    my $v4 = $v % 4;
+    if ($v4 == 0) {
+      $T3 = Maddint(Mmulint(2,Mhclassno($v)), Mhclassno(Mmulint(4,$v)) );
+    } elsif ($v4 == 3) {
+      $T3 = Mmulint( $v%8 == 3 ? 6 : 4, Mhclassno($v) );
+    } else {
+      $T3 = Mhclassno(Mmulint(4,$v));
     }
-    $p = Math::BigInt->new("$p");
-  } else {
-    $p = Math::BigInt->new("$p");
-    my($p9,$pp7) = (9*$p, 7*$p*$p);
-    for my $t (1 .. Msqrtint($p)) {
-      my $t2 = Math::BigInt->new("$t") ** 2;
-      my $v = $p - $t2;
-      $sum += $t2**3 * (4*$t2*$t2 - $p9*$t2 + $pp7) * (Math::Prime::Util::hclassno(4*$v) + 2 * Math::Prime::Util::hclassno($v));
-    }
+
+    $sum = Maddint($sum, Mvecprod($T1, $T2, $T3));
   }
-  28*$p**6 - 28*$p**5 - 90*$p**4 - 35*$p**3 - 1 - 32 * ($sum/3);
+  Mvecsum( Mmulint( 28, Mpowint($p,6)),
+           Mmulint(-28, Mpowint($p,5)),
+           Mmulint(-90, Mpowint($p,4)),
+           Mmulint(-35, Mpowint($p,3)),
+           -1,
+           Mmulint(-32,Mdivint($sum,3)) );
 }
 
 # Recursive method for handling prime powers
 sub _taupower {
-  my($p, $e) = @_;
+  my($p, $e, $tp) = @_;
   return 1 if $e <= 0;
-  return _tauprime($p) if $e == 1;
-  $p = Math::BigInt->new("$p");
-  my($tp, $p11) = ( _tauprime($p), $p**11 );
-  return $tp ** 2 - $p11 if $e == 2;
-  return $tp ** 3 - 2 * $tp * $p11 if $e == 3;
-  return $tp ** 4 - 3 * $tp**2 * $p11 + $p11**2 if $e == 4;
+  $tp = _tauprime($p) unless defined $tp;
+
+  return $tp if $e == 1;
+
+  my $p11 = Mpowint($p,11);
+  return Msubint(Mpowint($tp,2), $p11) if $e == 2;
+  return Msubint(Mpowint($tp,3), Mvecprod(2,$tp,$p11)) if $e == 3;
+  return Mvecsum(Mpowint($tp,4), Mvecprod(-3,Mpowint($tp,2),$p11), Mpowint($p11,2)) if $e == 4;
+
   # Recurse -3
-  ($tp**3 - 2*$tp*$p11) * _taupower($p,$e-3) + ($p11*$p11 - $tp*$tp*$p11) * _taupower($p,$e-4);
+  my $F3 = Msubint(Mpowint($tp,3),Mvecprod(2,$tp,$p11));
+  my $F4 = Msubint(Mmulint($p11,$p11),Mvecprod($tp,$tp,$p11));
+  Maddint( Mmulint($F3,_taupower($p,$e-3,$tp)),
+           Mmulint($F4,_taupower($p,$e-4,$tp)) );
 }
 
 sub ramanujan_tau {
@@ -10056,9 +9977,6 @@ sub ramanujan_tau {
       return reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
     }
   }
-
-  # _taup is faster for small numbers, but gets very slow.  It's not a huge
-  # deal, and the GMP code will probably get run for small inputs anyway.
   Mvecprod(map { _taupower($_->[0],$_->[1]) } Mfactor_exp($n));
 }
 

@@ -25,7 +25,7 @@ my %sigmak = (
 my @tau4 = (1,4,4,10,4,16,4,20,10,16,4,40,4,16,16,35,4,40,4,40,16,16,4,80,10,16,20,40,4,64,4,56,16,16,16,100);
 push @tau4, (4,16,16,80,4,64,4,40,40,16,4,140,10,40,16,40,4,80,16,80,16,16,4,160,4,16,40,84,16,64,4,40,16,64,4,200,4,16,40,40,16) if $extra;
 
-plan tests => 1 + 2*scalar(keys %sigmak) + 1 + 2 + 1;
+plan tests => 1 + 2*scalar(keys %sigmak) + 1 + 2 + 1 + 5;
 
 ###### Divisor sum
 
@@ -65,3 +65,10 @@ while (my($k, $sigmaref) = each (%sigmak)) {
   }
   is_deeply( \@t, \@tau4, "Tau4 (A007426), nested divisor sums" );
 }
+
+# Check some cases for integer overflow
+is( "".divisor_sum( 1<<27,2),   "24019198012642645", "divisor_sum(2^27,2)" );
+is( "".divisor_sum(262144,3),   "20587884010836553", "divisor_sum(2^18,3)" );
+is( "".divisor_sum( 16384,4),   "76861433640456465", "divisor_sum(2^16,4)" );
+is( "".divisor_sum(  2048,5),   "37191016277640225", "divisor_sum(2^11,5)" );
+is( "".divisor_sum(  5003,5), "3134386256752025244", "divisor_sum(5003,5)" );

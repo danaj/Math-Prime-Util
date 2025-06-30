@@ -3,7 +3,7 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/chinese lcm chinese2 urandomb urandomm/;
+use Math::Prime::Util qw/chinese lcm chinese2 powint urandomb urandomm/;
 use Math::ModInt qw(mod);
 use Math::ModInt::ChineseRemainder qw(cr_combine);
 
@@ -11,12 +11,13 @@ my $limit = shift || 10_000;
 my $printmod = int(($limit+77) / 78);
 
 
-cmp_chinese($limit, 1<<16, 2);
-cmp_chinese($limit, 1<<32, 2);
-cmp_chinese($limit, 1<<16, 4);
-cmp_chinese($limit, 1<<40, 3);
-cmp_chinese($limit, 1<<31, 13);
+cmp_chinese($limit, powint(2,16), 2);
+cmp_chinese($limit, powint(2,32), 2);
+cmp_chinese($limit, powint(2,16), 4);
+cmp_chinese($limit, powint(2,40), 3);
+cmp_chinese($limit, powint(2,31), 13);
 print "\nDone\n";
+
 
 sub rpairs {
   my($lim, $num) = @_;
