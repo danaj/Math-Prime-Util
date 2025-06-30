@@ -5180,8 +5180,8 @@ sub gcdext {
 
   my($a,$b,$g,$u,$v,$w);
   if (abs($x) < (~0>>1) && abs($y) < (~0>>1)) {
-    $x = _bigint_to_int($x) if ref($x) eq 'Math::BigInt';
-    $y = _bigint_to_int($y) if ref($y) eq 'Math::BigInt';
+    $x = _bigint_to_int($x) if ref($x);
+    $y = _bigint_to_int($y) if ref($y);
     ($a,$b,$g,$u,$v,$w) = (1,0,$x,0,1,$y);
     while ($w != 0) {
       my $r = $g % $w;
@@ -5233,47 +5233,31 @@ sub chinese2 {
   }
   return @{$items[0]} if scalar @items == 1;
   @items = sort { $b->[1] <=> $a->[1] } @items;
+
+  ($sum, $lcm) = @{shift @items};
+
   foreach my $aref (@items) {
     my($ai, $ni) = @$aref;
-    $ai = Math::BigInt->new("$ai") if !ref($ai) && ($ai > (~0>>1) || OLD_PERL_VERSION);
-    $ni = Math::BigInt->new("$ni") if !ref($ni) && ($ni > (~0>>1) || OLD_PERL_VERSION);
-    if (!defined $lcm) {
-      ($sum, $lcm) = ($ai, $ni);
-      # Make sure we have our own versions
-      $sum = $sum->copy if ref $sum;
-      $lcm = $lcm->copy if ref $lcm;
-      next;
-    }
     # gcdext
     my($u,$v,$g,$s,$t,$w) = (1,0,$lcm,0,1,$ni);
     while ($w != 0) {
-      my $r = $g % $w;
-      my $q = ref($g)  ?  $g->copy->bsub($r)->bdiv($w)  :  int(($g-$r)/$w);
-      ($u,$v,$g,$s,$t,$w) = ($s,$t,$w,$u-$q*$s,$v-$q*$t,$r);
+      my($q,$r) = Mdivrem($g,$w);
+      ($u,$v,$g,$s,$t,$w) = ($s, $t, $w,
+                             Msubint($u,Mmulint($q,$s)),
+                             Msubint($v,Mmulint($q,$t)), $r);
     }
     ($u,$v,$g) = (-$u,-$v,-$g)  if $g < 0;
     return (undef,undef) if $g != 1 && ($sum % $g) != ($ai % $g); # Not co-prime
     $s = -$s if $s < 0;
     $t = -$t if $t < 0;
-    # Convert to bigint if necessary.  Performance goes to hell.
-    if (!ref($lcm) && ($lcm*$s) > ~0) { $lcm = Math::BigInt->new("$lcm"); }
-    if (ref($lcm)) {
-      $lcm->bmul("$s");
-      my $m1 = Math::BigInt->new("$v")->bmul("$s")->bmod($lcm);
-      my $m2 = Math::BigInt->new("$u")->bmul("$t")->bmod($lcm);
-      $m1->bmul("$sum")->bmod($lcm);
-      $m2->bmul("$ai")->bmod($lcm);
-      $sum = $m1->badd($m2)->bmod($lcm);
-    } else {
-      $lcm *= $s;
-      $u += $lcm if $u < 0;
-      $v += $lcm if $v < 0;
-      my $vs = _mulmod($v,$s,$lcm);
-      my $ut = _mulmod($u,$t,$lcm);
-      my $m1 = _mulmod($sum,$vs,$lcm);
-      my $m2 = _mulmod($ut,$ai,$lcm);
-      $sum = _addmod($m1, $m2, $lcm);
-    }
+    $lcm = Mmulint($lcm, $s);
+    $u = Maddint($u, $lcm) if $u < 0;
+    $v = Maddint($v, $lcm) if $v < 0;
+    my $vs = Mmulmod($v,$s,$lcm);
+    my $ut = Mmulmod($u,$t,$lcm);
+    my $m1 = Mmulmod($sum,$vs,$lcm);
+    my $m2 = Mmulmod($ut,$ai,$lcm);
+    $sum = Maddmod($m1, $m2, $lcm);
   }
   $sum = _bigint_to_int($sum) if ref($sum) && $sum <= BMAX;
   $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm <= BMAX;
