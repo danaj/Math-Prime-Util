@@ -37,6 +37,7 @@ plan tests => 0
             + 1                      # muladdmod
             + 1                      # mulsubmod
             + 4                      # muladdmod and mulsubmod large inputs
+            + 1                      # large negative modulus
             + 0;
 
 ###### negmod
@@ -187,7 +188,7 @@ is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random i
   is( addmod($a,$b,$m), 1043877553, "addmod with large negative arg" );
   is( submod($a,$b,$m), 1682846811, "submod with large negative arg" );
   is( mulmod($a,$b,$m), 1486752452, "mulmod with large negative arg" );
-  is( divmod($a,$b,$m),  160625959, "mulmod with large negative arg" );
+  is( divmod($a,$b,$m),  160625959, "divmod with large negative arg" );
   is( powmod($a,$b,$m), 1550454861, "powmod with large negative arg" );
   is( powmod($b,$a,$m),   16491583, "powmod with large negative arg" );
 }
@@ -218,8 +219,11 @@ is("".mulsubmod("293482938498234","982498230923490234234","982349823092355","877
 is("".muladdmod("175109911729618543589989257539043768012","21887412602962542281538131483385626868","263466159656861646486075450888763957942","83494980727347746728226137271418851789"), "28511529282241296497665677199750506129", "muladdmod with 128-bit inputs mod a 126-bit prime");
 is("".mulsubmod("171821502870939196679518625154011220409","182569474286058024586486590841354369890","329619958784558749434516006469339236320","49684876044205406960769234394385141897"), "43334010019275970236275282850802256285", "mulsubmod with 128-bit inputs mod a 126-bit prime");
 
-
-
+subtest 'big raw negative mod ', sub {
+  is("".addmod("18446744073709551615","18446744073709551615","-19446744073709551616"),"17446744073709551614");
+  is("".submod("17446744073709551614",0,"-19446744073709551616"),"17446744073709551614");
+  is("".mulmod("18446744073709551615",2,"-19446744073709551616"),"17446744073709551614");
+};
 
 
 sub nrand {
