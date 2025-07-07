@@ -54,10 +54,8 @@ sub _make_big_gcds {
     return;
   }
   $_big_gcd_use = 1;
-  my $p0 = primorial(Math::BigInt->new( 520));
-  my $p1 = primorial(Math::BigInt->new(2052));
-  my $p2 = primorial(Math::BigInt->new(6028));
-  my $p3 = primorial(Math::BigInt->new($_big_gcd_top));
+  my($p0,$p1,$p2,$p3) = map { Math::BigInt->new(primorial($_)) }
+                        (520,2052,6028,$_big_gcd_top);
   $_big_gcd[0] = $p0->bdiv(223092870)->bfloor->as_int;
   $_big_gcd[1] = $p1->bdiv($p0)->bfloor->as_int;
   $_big_gcd[2] = $p2->bdiv($p1)->bfloor->as_int;
