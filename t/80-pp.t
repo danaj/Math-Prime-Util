@@ -257,10 +257,10 @@ plan tests => 2 +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) + scalar(keys %rzvals) +
               ($extra ? 4 : 0) +  # Bigfloat RiemannZeta
               1 + 1 +             # factor
-              10 + 7*3 +          # factoring subs
+              10 + 7 +            # factoring subs
               1 +                 # HOLF
-              ($extra ? 3 : 0) +  # HOLF extra
-              ($extra ? 3 : 0) +  # factor stage 2
+              ($extra ? 1 : 0) +  # HOLF extra
+              ($extra ? 1 : 0) +  # factor stage 2
               10 +                # AKS
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               6 +                 # M-R and Lucas on bigint
@@ -281,6 +281,7 @@ use Math::Prime::Util qw/primes
                          consecutive_integer_lcm
                          primorial pn_primorial partitions miller_rabin_random
                          is_prob_prime
+                         mulint vecsort vecnone cmpint
                         /;
 use Math::BigInt;
 use Math::BigFloat;
@@ -628,61 +629,37 @@ if ($extra) {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor($n64) ],
              [ 13, 4294967197 ],
              "pbrent(55834573561)" );
+
   # 1013 4294967197 4294967291
   my $nbig = Math::BigInt->new("18686551294184381720251");
-  my @nfac;
-  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($nbig);
-  is(scalar @nfac, 2, "prho finds a factor of 18686551294184381720251");
-  is($nfac[0] * $nfac[1], $nbig, "prho found a correct factor");
-  ok($nfac[0] != 1 && $nfac[1] != 1, "prho didn't return a degenerate factor");
-  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor($nbig);
-  is(scalar @nfac, 2, "pbrent finds a factor of 18686551294184381720251");
-  is($nfac[0] * $nfac[1], $nbig, "pbrent found a correct factor");
-  ok($nfac[0] != 1 && $nfac[1] != 1, "pbrent didn't return a degenerate factor");
-  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig);
-  is(scalar @nfac, 2, "pminus1 finds a factor of 18686551294184381720251");
-  is($nfac[0] * $nfac[1], $nbig, "pminus1 found a correct factor");
-  ok($nfac[0] != 1 && $nfac[1] != 1, "pminus1 didn't return a degenerate factor");
-  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor($nbig);
+  test_facres("prho", $nbig, Math::Prime::Util::PP::prho_factor($nbig));
+  test_facres("pbrent", $nbig, Math::Prime::Util::PP::pbrent_factor($nbig));
+  test_facres("pminus1", $nbig, Math::Prime::Util::PP::pminus1_factor($nbig));
   SKIP: {
-    skip "Skipping ecm test", 3 if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION < 0.20;
-    is(scalar @nfac, 2, "ecm finds a factor of 18686551294184381720251");
-    is($nfac[0] * $nfac[1], $nbig, "ecm found a correct factor");
-    ok($nfac[0] != 1 && $nfac[1] != 1, "ecm didn't return a degenerate factor");
+    skip "Skipping ecm test", 1 if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION < 0.20;
+    test_facres("ecm", $nbig, Math::Prime::Util::PP::ecm_factor($nbig));
   }
 
   $nbig = Math::BigInt->new("73786976930493367637");
   # Check stage 2 p-1.  Fast with Math::BigInt::GMP, slow without.
   SKIP: {
-    skip "Skipping p-1 stage 2 tests", 3 unless $extra;
-    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig, 27000, 35000);
-    is(scalar @nfac, 2, "pminus1 finds a factor of 73786976930493367637");
-    is($nfac[0] * $nfac[1], $nbig, "pminus1 found a correct factor");
-    ok($nfac[0] != 1 && $nfac[1] != 1, "pminus1 didn't return a degenerate factor");
+    skip "Skipping p-1 stage 2 tests", 1 unless $extra;
+    test_facres("pminus1", $nbig, Math::Prime::Util::PP::pminus1_factor($nbig, 27000, 35000));
   }
-  @nfac = sort {$a<=>$b} Math::Prime::Util::PP::fermat_factor($nbig);
-  is(scalar @nfac, 2, "fermat finds a factor of 73786976930493367637");
-  is($nfac[0] * $nfac[1], $nbig, "fermat found a correct factor");
-  ok($nfac[0] != 1 && $nfac[1] != 1, "fermat didn't return a degenerate factor");
+  test_facres("fermat", $nbig, Math::Prime::Util::PP::fermat_factor($nbig));
   if ($extra) {
-    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
-    is(scalar @nfac, 2, "holf finds a factor of 18686551294184381720251");
-    is($nfac[0] * $nfac[1], $nbig, "holf found a correct factor");
-    ok($nfac[0] != 1 && $nfac[1] != 1, "holf didn't return a degenerate factor");
+    test_facres("holf", $nbig, Math::Prime::Util::PP::holf_factor($nbig));
   }
   {
     $nbig = Math::BigInt->new("99999999999979999998975857");
-    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
+    my @nfac = sort {$a<=>$b} Math::Prime::Util::PP::holf_factor($nbig);
     is_deeply(\@nfac, [9999999998987,10000000001011], "holf correctly factors 99999999999979999998975857");
   }
   SKIP: {
     # Unfortunately we can't guarantee this isn't found in stage 1.
-    skip "ecm stage 2", 3 unless $extra;
+    skip "ecm stage 2", 1 unless $extra;
     $nbig = Math::BigInt->new("14270401808568703916861");
-    @nfac = sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor($nbig, 5, 2000, 40);
-    is(scalar @nfac, 2, "ecm(5,2000) finds a factor of 14270401808568703916861");
-    is($nfac[0] * $nfac[1], $nbig, "ecm(5,2000) found a correct factor");
-    ok($nfac[0] != 1 && $nfac[1] != 1, "ecm(5,2000) didn't return a degenerate factor");
+    test_facres("ecm(5,2000)", $nbig, Math::Prime::Util::PP::ecm_factor($nbig, 5, 2000, 40));
   }
 }
 
@@ -697,6 +674,17 @@ if ($extra) {
   @nfac = sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor($nbig, 10,1000,100);
   is_deeply( [@nfac], ["24133","376559091722747783"], "ecm factor finds factors of $nbig" );
 }
+
+sub test_facres {
+  my($name, $n, @facs) = @_;
+  my $eq = cmpint($n, vecprod(@facs)) == 0;
+  if (scalar @facs > 1 && $eq && vecnone { $_ == 1 } @facs) {
+    pass("$name: $n => [@facs]");
+  } else {
+    fail("$name: $n => [@facs]");
+  }
+}
+
 
 ##### AKS primality test.  Be very careful with performance.
 is( is_aks_prime(1), 0, "AKS: 1 is composite (less than 2)" );

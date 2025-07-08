@@ -127,7 +127,7 @@ subtest 'vecmin', sub {
       is(vecmin(), undef, "vecmin() = undef");
     } else {
       my($exp, @vals) = @$r;
-      is( vecmin(@vals), $exp, "vecmin(@vals) = $exp" );
+      is("".vecmin(@vals), $exp, "vecmin(@vals) = $exp");
     }
   }
 };
@@ -138,7 +138,7 @@ subtest 'vecmax', sub {
       is(vecmax(), undef, "vecmax() = undef");
     } else {
       my($exp, @vals) = @$r;
-      is( vecmax(@vals), $exp, "vecmax(@vals) = $exp" );
+      is("".vecmax(@vals), $exp, "vecmax(@vals) = $exp");
     }
   }
 };
