@@ -70,7 +70,7 @@ SKIP: {
   skip "The almost prime pure Perl is *very* slow",3 unless $usexs;
   is(nth_almost_prime(4,5678), 31382, "5678th 4-almost-prime is 31382");
   is(nth_almost_prime(5,67890), 558246, "67890th 5-almost-prime is 558246");
-  is(nth_almost_prime(24,5555), "21678243840", "5555th 24-almost-prime is 21678243840");
+  is("".nth_almost_prime(24,5555), "21678243840", "5555th 24-almost-prime is 21678243840");
 }
 
 is("".nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");

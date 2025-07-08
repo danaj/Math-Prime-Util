@@ -68,7 +68,7 @@ is( powerfree_sum(12345,3), 63404053, "powerfree_sum(12345,3) = 63404053");
 is( powerfree_sum(12345,4), 70415676, "powerfree_sum(12345,4) = 70415676");
 
 is( powerfree_count(123456,32), 123456, "powerfree_count(123456,32) = 123456");
-is( powerfree_sum(123456,32), 7620753696, "powerfree_sum(123456,32) = 7620753696");
+is("".powerfree_sum(123456,32), 7620753696, "powerfree_sum(123456,32) = 7620753696");
 
 ##### nth_powerfree
 is(nth_powerfree(7503), 12345, "nth_powerfree(7503) = 12345");
@@ -109,7 +109,7 @@ for my $k (0 .. 7) {
       [map { vecsum(map { powerfree_part($_, $k) } 1..$_) } 0..32],
       "powerfree_part_sum(0..64, $k)"
   );
-  is( powerfree_part_sum(654321,$k), $pfpst[$k], "powerfree_part_sum(654321,$k) = $pfpst[$k]" );
+  is( "".powerfree_part_sum(654321,$k), $pfpst[$k], "powerfree_part_sum(654321,$k) = $pfpst[$k]" );
 }
 
 ##### powerfree_part and squarefree_kernel
