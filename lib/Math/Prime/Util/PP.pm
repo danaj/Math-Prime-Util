@@ -71,10 +71,12 @@ our $_BIGINT;
 *validate_integer_nonneg = \&Math::Prime::Util::_validate_integer_nonneg;
 *validate_integer_positive = \&Math::Prime::Util::_validate_integer_positive;
 *validate_integer_abs = \&Math::Prime::Util::_validate_integer_abs;
+*_bigint_to_int = \&Math::Prime::Util::_bigint_to_int;
 *reftyped = \&Math::Prime::Util::_reftyped;
-*load_bigint = \&Math::Prime::Util::_load_bigint;
+#*load_bigint = \&Math::Prime::Util::_load_bigint;
 *tobigint = \&Math::Prime::Util::_to_bigint;
 *maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
+
 
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
@@ -200,14 +202,6 @@ sub _prime_memfreeall { prime_memfree; }
 
 sub _is_nonneg_int {
   ((defined $_[0]) && $_[0] ne '' && ($_[0] !~ tr/0123456789//c));
-}
-
-sub _bigint_to_int {
-  #if (OLD_PERL_VERSION) {
-  #  my $pack = ($_[0] < 0) ? lc(UVPACKLET) : UVPACKLET;
-  #  return unpack($pack,pack($pack,"$_[0]"));
-  #}
-  int("$_[0]");
 }
 
 sub _upgrade_to_float {
@@ -421,6 +415,9 @@ sub _toint_simple {
   validate_integer($n);
   $n;
 }
+
+################################################################################
+################################################################################
 
 my @_primes_small = (0,2);
 {
@@ -4809,27 +4806,17 @@ sub powint {
     return 1 << $b if $a == 2 && $b < MPU_MAXBITS;
     return 1 << (2*$b) if $a == 4 && $b < MPU_MAXBITS/2;
   }
+
   return 1 if $b == 0;
   return $a if $b == 1;
-
-  my $res;
-  if (!ref($a) && $a > INTMIN && $a < INTMAX) {
-    if ($b == 2) {
-      $res = $a*$a;
-      return $res if $res > INTMIN && $res < INTMAX;
-    } elsif ($b == 3) {
-      $res = $a*$a*$a;
-      return $res if $res > INTMIN && $res < INTMAX;
-    } else {
-      $res = $a ** $b;
-      my $ires = int($res);
-      return $ires if abs($ires) < (1<<53) && $ires > INTMIN && $ires < INTMAX;
-    }
+  if ($b == 2) {
+    return int("$a")*int("$a") if abs($a) <= (MPU_32BIT ? 65535 : 4294967295);
+    return Mmulint($a,$a);
   }
+  return Mmulint(Mmulint($a,$a),$a) if $b == 3;
 
-  $res = Math::BigInt->new("$a")->bpow("$b") unless ref($res);
-  $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
-  $res;
+  my $r = tobigint($a) ** tobigint($b);
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 
 sub mulint {
@@ -4838,55 +4825,63 @@ sub mulint {
   return reftyped($_[0], Math::Prime::Util::GMP::mulint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"mulint"};
 
-  my $res = $a*$b;
+  my $r = $a * $b;
 
-  if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
-    # If it wasn't already a reference, do it via bigint
-    $res = Math::BigInt->new("$a")->bmul("$b") unless ref($res);
-    $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
-  }
-  $res;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r
+    if ref($r);
+
+  return $r if $r < INTMAX && $r > INTMIN &&
+               $a < INTMAX && $a > INTMIN &&
+               $b < INTMAX && $b > INTMIN;
+
+  $r = tobigint($a) * $b;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub addint {
   my($a, $b) = @_;
   return reftyped($_[0], Math::Prime::Util::GMP::addint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"addint"};
 
-  # return Mvecsum(@_);
-  my $res = $a+$b;
+  my $r = $a + $b;
 
-  if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
-    # If it wasn't already a reference, do it via bigint
-    $res = Math::BigInt->new("$a")->badd("$b") unless ref($res);
-    $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
-  }
-  $res;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r
+    if ref($r);
+
+  return $r if $r < INTMAX && $r > INTMIN &&
+               $a < INTMAX && $a > INTMIN &&
+               $b < INTMAX && $b > INTMIN;
+
+  $r = tobigint($a) + $b;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub subint {
   my($a, $b) = @_;
   return reftyped($_[0], Math::Prime::Util::GMP::subint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"subint"};
-  my $res = $a-$b;
-  if (ref($res) || $a <= INTMIN || $a >= INTMAX || $b <= INTMIN || $b >= INTMAX || $res <= INTMIN || $res >= INTMAX) {
-    # If it wasn't already a reference, do it via bigint
-    $res = Math::BigInt->new("$a")->bsub("$b") unless ref($res);
-    $res = _bigint_to_int($res) if $res <= BMAX && $res >= BMIN;
-  }
-  $res;
+
+  my $r = $a - $b;
+
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r
+    if ref($r);
+
+  return $r if $r < INTMAX && $r > INTMIN &&
+               $a < INTMAX && $a > INTMIN &&
+               $b < INTMAX && $b > INTMIN;
+
+  $r = tobigint($a) - $b;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub add1int {
   my($n) = @_;
   return $n+1 if $n > INTMIN && $n < INTMAX;
-  my $r = Math::BigInt->new("$n")->binc;
-  $r = _bigint_to_int($r) if $r <= BMAX && $r >= BMIN;
-  $r;
+  my $r = tobigint($n) + 1;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub sub1int {
   my($n) = @_;
   return $n-1 if $n > INTMIN && $n < INTMAX;
-  my $r = Math::BigInt->new("$n")->bdec;
-  $r = _bigint_to_int($r) if $r <= BMAX && $r >= BMIN;
-  $r;
+  my $r = tobigint($n) - 1;
+  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 
 # For division / modulo, see:
@@ -5006,6 +5001,19 @@ sub divint {
   (fdivrem(@_))[0];
 }
 sub modint {
+  if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
+    my $r;
+    if (ref($_[1]) || ref($_[0])) {
+      $r = $_[0] % $_[1];
+      $r = _bigint_to_int($r) if $r <= INTMAX;
+    } elsif ($_[1] < INTMAX && $_[0] < INTMAX) {
+      $r = $_[0] % $_[1];
+    } else {
+      $r = tobigint($_[0]) % tobigint($_[1]);
+      $r = _bigint_to_int($r) if $r <= INTMAX;
+    }
+    return $r;
+  }
   (fdivrem(@_))[1];
 }
 sub cdivint {
@@ -5087,8 +5095,14 @@ sub powersum {
 # Make sure to work around RT71548, Math::BigInt::Lite,
 # and use correct lcm semantics.
 sub gcd {
-  # First see if all inputs are non-bigints  5-10x faster if so.
-  if (0 == scalar(grep { ref($_) } @_)) {
+  my $REF = undef;
+  for my $n (@_) {
+    my $refn = ref($n);
+    if ($refn) { $REF = $refn; last; }
+  }
+
+  # Try all-native if all inputs are native ints.
+  if (!$REF) {
     my($x,$y) = (shift || 0, 0);
     $x = -$x if $x < 0;
     while (@_) {
@@ -5098,12 +5112,24 @@ sub gcd {
     }
     return $x;
   }
-  my $gcd = Math::BigInt::bgcd( map {
-    my $v = (($_ < 2147483647 && !ref($_)) || ref($_) eq 'Math::BigInt') ? $_ : "$_";
-    $v;
-  } @_ );
-  $gcd = _bigint_to_int($gcd) if $gcd->bacmp(BMAX) <= 0;
-  return $gcd;
+
+  my @N = map { ref($_) eq $REF ? $_ : $REF->new("$_") } @_;
+  my $gcd;
+
+  if ($REF eq 'Math::BigInt') {
+    $gcd = Math::BigInt::bgcd(@N);
+  } elsif ($REF eq 'Math::GMPz') {
+    $gcd = shift(@N);
+    Math::GMPz::Rmpz_gcd($gcd,$gcd,$_) for @N;
+  } elsif ($REF eq 'Math::GMP') {
+    $gcd = shift(@N);
+    $gcd = Math::GMP::gcd($gcd,$_) for @N;
+  } else {
+    $gcd = Math::BigInt::bgcd(map { Math::BigInt->new("$_") } @N);
+    $gcd = tobigint($gcd);
+  }
+  $gcd = _bigint_to_int($gcd) if $gcd <= INTMAX;
+  $gcd;
 }
 sub lcm {
   return 1 unless @_;
@@ -5159,12 +5185,12 @@ sub chinese2 {
   if ($Math::Prime::Util::_GMPfunc{"chinese2"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
     ($sum,$lcm) = Math::Prime::Util::GMP::chinese2(@_);
     if (defined $sum) {
-      $sum = Math::BigInt->new("$sum");
-      $sum = _bigint_to_int($sum) if ref($sum) && $sum <= BMAX;
+      $sum = tobigint($sum);
+      $sum = _bigint_to_int($sum) if ref($sum) && $sum <= INTMAX;
     }
     if (defined $lcm) {
-      $lcm = Math::BigInt->new("$lcm");
-      $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm <= BMAX;
+      $lcm = tobigint($lcm);
+      $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm <= INTMAX;
     }
     return ($sum,$lcm);
   }
@@ -5222,7 +5248,7 @@ sub chinese {
 sub _from_128 {
   my($hi, $lo) = @_;
   return 0 unless defined $hi && defined $lo;
-  (Math::BigInt->new("$hi") << MPU_MAXBITS) + $lo;
+  Maddint(tobigint("$hi") << MPU_MAXBITS, $lo);
 }
 
 sub vecsum {
@@ -5235,12 +5261,29 @@ sub vecsum {
     $sum += $v;
     if ($sum > (INTMAX-250) || $sum < (INTMIN+250)) {
       # Sum again from the start using bigint sum
-      $sum = BZERO->copy;
-      $sum->badd("$_") for @_;
+      $sum = 0;
+      $sum = Maddint($sum,$_) for @_;
       return $sum;
     }
   }
   $sum;
+}
+
+sub _product_mulint {
+  my($a, $b, $r) = @_;
+  return $r->[$a] if $b <= $a;
+  return Mmulint($r->[$a], $r->[$b]) if $b == $a+1;
+  return Mmulint(Mmulint($r->[$a], $r->[$a+1]), $r->[$a+2]) if $b == $a+2;
+  my $c = $a + (($b-$a+1)>>1);
+  Mmulint( _product_mulint($a, $c-1, $r),  _product_mulint($c, $b, $r) );
+}
+sub _product_mult {
+  my($a, $b, $r) = @_;
+  return $r->[$a] if $b <= $a;
+  return $r->[$a] * $r->[$a+1] if $b == $a+1;
+  return $r->[$a] * $r->[$a+1] * $r->[$a+2] if $b == $a+2;
+  my $c = $a + (($b-$a+1)>>1);
+  _product_mult($a, $c-1, $r) * _product_mult($c, $b, $r);
 }
 
 sub vecprod {
@@ -5248,20 +5291,13 @@ sub vecprod {
   return reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_))
     if $Math::Prime::Util::_GMPfunc{"vecprod"};
 
-  my $prod;
-
-  # Linear:
-  # $prod = BONE->copy;  $prod *= "$_" for @_;
-
   # Product tree:
-  if (scalar(@_) < 14) {
-    my @S = @_;
-    $prod = _product_mpu(0, $#S, \@S);
-  } else {
-    $prod = _product_bigint(0, $#_, [map { Math::BigInt->new("$_") } @_]);
-  }
-
-  $prod = _bigint_to_int($prod) if ref($prod) && $prod <= BMAX && $prod >= BMIN;
+  #
+  # my $prod = _product_mulint(0, $#_, \@_);
+  # $prod = _bigint_to_int($prod) if ref($prod) && $prod <= INTMAX && $prod >= INTMIN;
+  # Or faster:
+  my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
+  $prod = _bigint_to_int($prod) if $prod <= INTMAX && $prod >= INTMIN;
   $prod;
 }
 
@@ -5410,29 +5446,6 @@ sub is_happy {
     $h++;
   }
   return ($n == 1) ? $h : 0;
-}
-
-sub invmod {
-  my($a,$n) = @_;
-  $n = -$n if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
-  return if $a == 0;
-  if ($n > ~0) {
-    my $invmod = Math::BigInt->new("$a")->bmodinv("$n");
-    return if !defined $invmod || $invmod->is_nan;
-    $invmod = _bigint_to_int($invmod) if $invmod->bacmp(BMAX) <= 0;
-    return $invmod;
-  }
-  my($t,$nt,$r,$nr) = (0, 1, $n, $a % $n);
-  while ($nr != 0) {
-    # Use mod before divide to force correct behavior with high bit set
-    my $quot = int( ($r-($r % $nr))/$nr );
-    ($nt,$t) = ($t-$quot*$nt,$nt);
-    ($nr,$r) = ($r-$quot*$nr,$nr);
-  }
-  return if $r > 1;
-  $t += $n if $t < 0;
-  $t;
 }
 
 
@@ -6107,7 +6120,7 @@ sub allrootmod {
   return () if $k <= 0 && $A == 0;
 
   if ($k < 0) {
-    $A = invmod($A, $n);
+    $A = Minvmod($A, $n);
     return () unless defined $A && $A > 0;
     $k = -$k;
   }
@@ -6142,59 +6155,96 @@ sub allrootmod {
 ################################################################################
 ################################################################################
 
+sub _modabsint {
+  my($a, $n) = @_;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
+  if ($n < INTMAX && $a < INTMAX && $a > INTMIN) {
+    $a = $n - ((-$a) % $n) if $a < 0;
+    $a %= $n if $a >= $n;
+  } else {
+    $a = tobigint($a) % $n;
+    $a = _bigint_to_int($a) if $a <= INTMAX;
+  }
+  $a;
+}
+
 sub addmod {
   my($a, $b, $n) = @_;
-  $n = -$n if $n < 0;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
   return (undef,0)[$n] if $n <= 1;
   if ($n <= INTMAX && $a <= INTMAX && $b <= INTMAX && $a >= INTMIN && $b >= INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
-    #$a %= $n if $a >= $n;  $b %= $n if $b >= $n;
-    return _addmod($a,$b,$n);
+    $a %= $n if $a >= $n;
+    $b %= $n if $b >= $n;
+    return  $n-$a > $b  ?  $a+$b
+          : $a > $b     ?  ($a-$n)+$b
+          :                ($b-$n)+$a;
   }
-  my $ret = Math::BigInt->new("$a")->badd("$b")->bmod("$n");
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
+  # Impl 1.  Make $a a bigint and let things promote.  Fastest.
+  my $r = (tobigint($a) + $b) % $n;
+  return $r <= INTMAX ? _bigint_to_int($r) : $r;
+
+  # Impl 2.  Use Maddint but mod with a $n as a bigint.
+  #my $r = Maddint($a,$b) % tobigint($n);
+  #return $r <= INTMAX ? _bigint_to_int($r) : $r;
+
+  # Impl 3.  Prefered, but slowest.  Probably fine when we use amagic in XS.
+  #Mmodint(Maddint($a,$b),$n);
 }
 sub submod {
   my($a, $b, $n) = @_;
-  $n = -$n if $n < 0;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
   return (undef,0)[$n] if $n <= 1;
   if ($n <= INTMAX && $a <= INTMAX && $b <= INTMAX && $a >= INTMIN && $b >= INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
-    #$a %= $n if $a >= $n;
+    $a %= $n if $a >= $n;
     $b %= $n if $b >= $n;
-    return _addmod($a,$n-$b,$n);
+    $b = $n-$b;  # negate b then we add as above
+    return  $n-$a > $b  ?  $a+$b
+          : $a > $b     ?  ($a-$n)+$b
+          :                ($b-$n)+$a;
   }
-  my $ret = Math::BigInt->new("$a")->bsub("$b")->bmod("$n");
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
+  my $r = (tobigint($a) - $b) % $n;
+  return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 
 sub mulmod {
   my($a, $b, $n) = @_;
-  $n = -$n if $n < 0;
+  # ABS(n)
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
+  # Handle n = 0, n = 1
   return (undef,0)[$n] if $n <= 1;
-  return _mulmod($a,$b,$n) if $n <= INTMAX && $a>=0 && $a<=INTMAX && $b>=0 && $b<=INTMAX;
+
+  # If n is a native int, we can reduce a and b then do everything native
+  if ($n < INTMAX) {
+    if ($a >= INTMAX || $a < 0 || $b >= INTMAX || $b < 0) {
+      $a = _bigint_to_int(tobigint($a) % $n) if $a >= INTMAX || $a < 0;
+      $b = _bigint_to_int(tobigint($b) % $n) if $b >= INTMAX || $b < 0;
+    }
+    return _mulmod($a,$b,$n);
+  }
+
+  # Try GMP
   return reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n))
     if $Math::Prime::Util::_GMPfunc{"mulmod"};
-  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bmod("$n");
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
+
+  my $refn = ref($n);
+  if (!$refn) {
+    $n = tobigint($n);
+    $refn = ref($n);
+  }
+  $a = $refn->new("$a") unless ref($a) eq $refn;
+  $b = $refn->new("$b") unless ref($b) eq $refn;
+  my $r = ($a * $b) % $n;
+  return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
-sub divmod {
-  my($a, $b, $n) = @_;
-  $n = -$n if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
-  my $ret = Math::BigInt->new("$b")->bmodinv("$n")->bmul("$a")->bmod("$n");
-  return undef if $ret->is_nan;
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
-}
+
 sub powmod {
   my($a, $b, $n) = @_;
-  $n = -$n if $n < 0;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
   return (undef,0)[$n] if $n <= 1;
   return ($b > 0) ? 0 : 1  if $a == 0;
 
@@ -6203,15 +6253,50 @@ sub powmod {
     return (defined $r) ? reftyped($_[0], $r) : undef;
   }
 
-  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
-  return undef if $ret->is_nan;
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
+  # If the exponent is negative: a=1/a ; b=-b
+  if ($b < 0) {
+    $a = Minvmod($a,$n);
+    return undef unless defined $a;
+    $b = tobigint($b) if $b <= INTMIN && !ref($b);
+    $b = -$b;
+  }
+
+  return 1 if $b == 0;
+  return _modabsint($a,$n) if $b == 1;
+  return Mmulmod($a,$a,$n) if $b == 2;
+
+  my $r;
+  my $refn = ref($n);
+  if (!$refn) {
+    $n = tobigint($n);
+    $refn = ref($n);
+  }
+  $a = $refn->new($a) unless ref($a) eq $refn;
+  $b = $refn->new($b) unless ref($b) eq $refn;
+
+  if ($refn eq 'Math::GMPz') {
+    $r = Math::GMPz->new();
+    Math::GMPz::Rmpz_powm($r, $a, $b, $n);
+  } elsif ($refn eq 'Math::GMP') {
+    $r = $a->powm_gmp($b,$n);
+  } elsif ($refn eq 'Math::BigInt') {
+    $r = $a->copy->bmodpow($b,$n);
+  } else {
+    $r = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
+    # Or power ladder:
+    # $r = 1;
+    # while ($b) {
+    #   if ($b & 1) { $r = Mmulmod($r, $a, $n); }
+    #   $b = Mrshiftint($b,1);
+    #   if ($b)     { $a = Mmulmod($a, $a, $n); }
+    # }
+  }
+  return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 
 sub muladdmod {
   my($a, $b, $c, $n) = @_;
-  $n = -$n if $n < 0;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
   return (undef,0)[$n] if $n <= 1;
 
   if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
@@ -6225,14 +6310,11 @@ sub muladdmod {
   return reftyped($_[0], Math::Prime::Util::GMP::muladdmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"muladdmod"};
 
-  #Maddmod(Mmulmod($a,$b,$n),$c,$n);
-  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->badd("$c")->bmod("$n");
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
+  Maddmod(Mmulmod($a,$b,$n),$c,$n);
 }
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
-  $n = -$n if $n < 0;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
   return (undef,0)[$n] if $n <= 1;
 
   if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
@@ -6246,10 +6328,60 @@ sub mulsubmod {
   return reftyped($_[0], Math::Prime::Util::GMP::mulsubmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"mulsubmod"};
 
-  #Msubmod(Mmulmod($a,$b,$n),$c,$n);
-  my $ret = Math::BigInt->new("$a")->bmod("$n")->bmul("$b")->bsub("$c")->bmod("$n");
-  $ret = _bigint_to_int($ret) if $ret->bacmp(BMAX) <= 0;
-  $ret;
+  Msubmod(Mmulmod($a,$b,$n),$c,$n);
+}
+
+sub invmod {
+  my($a,$n) = @_;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
+  return if $a == 0;
+
+  if ($n < INTMAX) {  # Fast all native math
+    my($t,$nt,$r,$nr) = (0, 1, $n, _modabsint($a,$n));
+    while ($nr != 0) {
+      # Use mod before divide to force correct behavior with high bit set
+      my $quot = int( ($r-($r % $nr))/$nr );
+      ($nt,$t) = ($t-$quot*$nt,$nt);
+      ($nr,$r) = ($r-$quot*$nr,$nr);
+    }
+    return $r > 1  ?  undef
+        :  $t < 0  ?  $t+$n
+                   :  $t;
+  }
+
+  $n = tobigint($n);
+  $a = tobigint($a) % $n;
+  my $refn = ref($n);
+  my $I;
+
+  if ($refn eq 'Math::BigInt') {
+    $I = $a->copy->bmodinv($n);
+    $I = undef if defined $I && !$I->is_int();
+  } elsif ($refn eq 'Math::GMPz') {
+    $I = Math::GMPz->new();
+    Math::GMPz::Rmpz_invert($I, $a, $n);
+    $I = undef if defined $I && $I == 0;
+  } elsif ($refn eq 'Math::GMP') {
+    $I = $a->gmp_copy->bmodinv($n);
+    $I = undef if defined $I && $I == 0;
+  } else {
+    $I = Math::BigInt->new("$a")->bmodinv("$n");
+    $I = undef if defined $I && !$I->is_int();
+    $I = tobigint("$I") if defined $I;
+  }
+  $I = _bigint_to_int($I) if defined $I && $I <= INTMAX;
+  return $I;
+}
+
+sub divmod {
+  my($a, $b, $n) = @_;
+  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
+  return (undef,0)[$n] if $n <= 1;
+
+  my $invb = Minvmod($b,$n);
+  return undef unless defined $invb;
+  return Mmulmod($a,$invb,$n);
 }
 
 sub negmod {
@@ -6257,17 +6389,16 @@ sub negmod {
   validate_integer($a);
   validate_integer($n);
 
-  # $n ? Mmodint(-$a, Mabsint($n)) : undef;
-
   if ($n <= 0) {
     return undef if $n == 0;   # standard mod behavior with n = 0
+    $n = tobigint($n) if $n <= INTMIN && !ref($n);
     $n = -$n;                  # we use |n|, unlike modint
   }
-  Msubmod(0, $a, $n);
+  # Easy:
+  # Msubmod(0, $a, $n);
 
-  # Alternatives to the submod
-  #Mmodint(-$a,$n);
-  #$a = Mmodint($a,$n) if $a >= $n || $a < 0;   return ($a) ? ($n-$a) : 0;
+  $a = Mmodint($a,$n) if $a >= $n || $a < 0;
+  return $a ? $n-$a : 0;
 }
 
 # No validation.
@@ -6275,11 +6406,15 @@ sub _negmod {
   my($a,$n) = @_;
   if ($n <= 0) {
     return undef if $n == 0;
+    $n = tobigint($n) if $n <= INTMIN && !ref($n);
     $n = -$n;
   }
   $a = Mmodint($a,$n) if $a >= $n || $a < 0;
-  return ($a) ? ($n-$a) : 0;
+  return $a ? $n-$a : 0;
 }
+
+################################################################################
+################################################################################
 
 # no validation, x is allowed to be negative, y must be >= 0
 sub _gcd_ui {
@@ -6641,7 +6776,7 @@ sub valuation {
 
 sub hammingweight {
   my $n = shift;
-  return 0 + (Math::BigInt->new("$n")->as_bin() =~ tr/1//);
+  return 0 + (Mtodigitstring($n,2) =~ tr/1//);
 }
 
 my @_digitmap = (0..9, 'a'..'z');
@@ -6684,15 +6819,41 @@ sub todigits {
 sub todigitstring {
   my($n,$base,$len) = @_;
   $base = 10 unless defined $base;
+  croak "Invalid base for string: $base" if $base < 2 || $base > 36;
   $len = -1 unless defined $len;
   $n =~ s/^-//;
-  return substr(Math::BigInt->new("$n")->as_bin,2) if $base ==  2 && $len < 0;
-  return substr(Math::BigInt->new("$n")->as_oct,1) if $base ==  8 && $len < 0;
-  return substr(Math::BigInt->new("$n")->as_hex,2) if $base == 16 && $len < 0;
-  my @d = ($n == 0) ? () : _splitdigits($n, $base, $len);
-  return join("", @d) if $base <= 10;
-  die "Invalid base for string: $base" if $base > 36;
-  join("", map { $_digitmap[$_] } @d);
+
+  return "" if $len == 0 || $n == 0;
+
+  if ($n < INTMAX) {
+    if ($base != 2 && $base != 8 && $base != 16) {
+      return join "", _splitdigits($n, $base, $len)  if $base <= 10;
+      return join "", map { $_digitmap[$_] } _splitdigits($n, $base, $len);
+    }
+    my $s;
+    $s = sprintf("%b",$n)  if $base ==  2;
+    $s = sprintf("%o",$n)  if $base ==  8;
+    $s = sprintf("%x",$n)  if $base == 16;
+    $s = substr($s,0,$len) if $len > 0;
+    # TODO: zero pad and add test
+    return $s;
+  }
+
+  $n = tobigint($n) unless ref($n);
+  my $refn = ref($n);
+  my $s;
+
+  if ($refn eq 'Math::GMPz') {
+    $s = Math::GMPz::Rmpz_get_str($n,$base);
+  } elsif ($refn eq 'Math::GMP') {
+    $s = Math::GMP::get_str_gmp($n,$base);
+  } else {
+    $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
+    $s = $n->to_base($base);
+  }
+  $s = substr($s,0,$len) if $len > 0;
+  # TODO zero pad
+  return lc($s);
 }
 
 sub _FastIntegerInput {
@@ -6719,36 +6880,31 @@ sub _FastIntegerInput {
 sub fromdigits {
   my($r, $base) = @_;
   $base = 10 unless defined $base;
-  return $r if $base == 10 && ref($r) =~ /^Math::/;
+  my $refr = ref($r);
+
+  if ($refr && $refr !~ /^Math::/) {
+    croak "fromdigits: first argument must be a string or array reference"
+      unless $refr eq 'ARRAY';
+    return _FastIntegerInput($r,$base);
+  }
+
   my $n;
-  if (ref($r) && ref($r) !~ /^Math::/) {
-    croak "fromdigits first argument must be a string or array reference"
-      unless ref($r) eq 'ARRAY';
-    $n = BZERO + _FastIntegerInput($r,$base);
-  } elsif ($base == 2) {
-    $n = Math::BigInt->from_bin("0b$r");
-  } elsif ($base == 8) {
-    $n = Math::BigInt->from_oct("0$r");
-  } elsif ($base == 16) {
-    $n = Math::BigInt->from_hex("0x$r");
-  } else {
-    $r =~ s/^0*//;
-    ($n,$base) = (BZERO->copy, BZERO + $base);
-    #for my $d (map { $_mapdigit{$_} } split(//,$r)) {
-    #  croak "Invalid digit for base $base" unless defined $d && $d < $base;
-    #  $n = $n * $base + $d;
-    #}
-    for my $c (split(//, lc($r))) {
-      $n->bmul($base);
-      if ($c ne '0') {
-        my $d = index("0123456789abcdefghijklmnopqrstuvwxyz", $c);
-        croak "Invalid digit for base $base" unless $d >= 0;
-        $n->badd($d);
-      }
+  $r =~ s/^0*//;
+  return 0 if $r eq "";
+  { # Validate string
+    my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
+    for my $c (split(//,lc($r))) {
+      my $v = index($cmap,$c);
+      croak "Invalid digit for base $base" if $v < 0;
     }
   }
-  $n = _bigint_to_int($n) if $n->bacmp(BMAX) <= 0;
-  $n;
+  if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/) {
+    $n = $_BIGINT->new($r, $base);
+  } else {
+    $n = Math::BigInt->from_base($r, $base);
+    $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne 'Math::BigInt';
+  }
+  return $n <= INTMAX ? _bigint_to_int($n) : $n;
 }
 
 sub _validate_zeckendorf {
@@ -7019,7 +7175,7 @@ sub is_euler_pseudoprime {
   foreach my $a (@bases) {
     croak "Base $a is invalid" if $a < 2;
     $a = $a % $n if $a >= $n;
-    my $j = kronecker($a, $n);
+    my $j = Mkronecker($a, $n);
     return 0 if $j == 0;   # gcd(a,n) != 1
     $j = ($j > 0) ? 1 : $n-1;
     return 0 unless Mpowmod($a, ($n-1)>>1, $n) == $j;
@@ -7327,43 +7483,6 @@ sub binomialmod {
 
   # Give up.
   return Mmodint(Mbinomial($n,$k),$m);
-}
-
-
-# compute product of bigint array ref $r->[$a .. $b] into $r->[$a]
-sub _product_bigint {
-  my($a, $b, $r) = @_;
-  if ($b <= $a) {
-    $r->[$a];
-  } elsif ($b == $a+1) {
-    $r->[$a] -> bmul( $r->[$b] );
-  } elsif ($b == $a+2) {
-    $r->[$a] -> bmul( $r->[$a+1] ) -> bmul( $r->[$a+2] );
-  } else {
-    my $c = $a + (($b-$a+1)>>1);
-    _product_bigint($a, $c-1, $r);
-    _product_bigint($c, $b, $r);
-    $r->[$a] -> bmul( $r->[$c] );
-  }
-}
-# compute product of integer array ref $r->[$a .. $b] into $r->[$a]
-sub _product_mpu {
-  my($a, $b, $r) = @_;
-  if ($b <= $a) {
-    $r->[$a];
-  } elsif ($b == $a+1) {
-    $r->[$a] = Mmulint($r->[$a], $r->[$b]);
-  } elsif ($b == $a+2) {
-    $r->[$a] = Mmulint(Mmulint($r->[$a], $r->[$a+1]), $r->[$a+2]);
-  } elsif ($b == $a+3) {
-    $r->[$a] = Mmulint( Mmulint($r->[$a  ], $r->[$a+1]),
-                        Mmulint($r->[$a+2], $r->[$a+3]) );
-  } else {
-    my $c = $a + (($b-$a+1)>>1);
-    _product_mpu($a, $c-1, $r);
-    _product_mpu($c, $b, $r);
-    $r->[$a] = Mmulint($r->[$a], $r->[$c]);
-  }
 }
 
 sub _falling_factorial {
@@ -7765,7 +7884,7 @@ sub _dlp_trial {
 }
 sub _dlp_bsgs {
   my ($a,$g,$p,$n,$_verbose) = @_;
-  my $invg = invmod($g, $p);
+  my $invg = Minvmod($g, $p);
   return unless defined $invg;
   my $maxm = Msqrtint($n)+1;
   my $b = ($p + $maxm - 1) / $maxm;
@@ -11512,7 +11631,11 @@ sub urandomb {
   return ( Math::Prime::Util::irand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
   my $bytes = Math::Prime::Util::random_bytes(($n+7)>>3);
   my $binary = substr(unpack("B*",$bytes),0,$n);
-  return Math::BigInt->new("0b$binary");
+  return $_BIGINT->new("0b$binary")
+    if defined $_BIGINT && $_BIGINT =~ /^Math::(BigInt|GMPz|GMP)$/;
+  my $N = Math::BigInt->new("0b$binary");
+  $N = tobigint($N) if defined $_BIGINT;
+  return $N;
 }
 sub urandomm {
   my($n) = @_;
@@ -11529,9 +11652,8 @@ sub urandomm {
     do { $r = Math::Prime::Util::irand64() } while $r >= $rmax;
   } else {
     # TODO: verify and try to optimize this
-    my $bits = length($n->as_bin) - 2;
-    my $bytes = 1 + (($bits+7)>>3);
-    my $rmax = Math::BigInt->bone->blsft($bytes*8)->bdec;
+    my $bytes = 1 + length(todigitstring($n,16));
+    my $rmax = Msubint(Mpowint(2,$bytes*8),1);
     my $overflow = $rmax - ($rmax % $n);
     do { $r = Murandomb($bytes*8); } while $r >= $overflow;
   }
@@ -11660,15 +11782,13 @@ sub random_semiprime {
   croak "random_semiprime bits must be >= 4" unless $b >= 4;
 
   my $n;
-  my $min = ($b <= MPU_MAXBITS)  ?  (1 << ($b-1))  :  BTWO->copy->bpow($b-1);
+  my $min = Mpowint(2,$b-1);
   my $max = $min + ($min - 1);
   my $L = $b >> 1;
   my $N = $b - $L;
-  my $one = ($b <= MPU_MAXBITS) ? 1 : BONE;
   do {
-    $n = $one * random_nbit_prime($L) * random_nbit_prime($N);
+    $n = Mmulint(random_nbit_prime($L), random_nbit_prime($N));
   } while $n < $min || $n > $max;
-  $n = _bigint_to_int($n) if ref($n) && $n->bacmp(BMAX) <= 0;
   $n;
 }
 
@@ -11746,17 +11866,17 @@ sub random_unrestricted_semiprime {
         $r  = Math::Prime::Util::drand($weight) - $M;
       } while $r < $minr;
       # Using Math::BigFloat::bexp is ungodly slow, so avoid at all costs.
+      # TODO: try Math::Prime::Util::GMP::expreal
       my $re = exp($r);
       my $a = ($re < log(~0)) ? int(exp($re)+0.5)
                               : _upgrade_to_float($re)->bexp->bround->as_int;
       $p = $a < 2 ? 2 : Mprev_prime($a+1);
     }
-    my $ranmin = ref($min) ? $min->badd($p-1)->bdiv($p)->as_int : int(($min+$p-1)/$p);
-    my $ranmax = ref($max) ? $max->bdiv($p)->as_int : int($max/$p);
+    my $ranmin = Mcdivint($min, $p);
+    my $ranmax = Mdivint($max, $p);
     my $q = random_prime($ranmin, $ranmax);
     $n = Mmulint($p,$q);
   }
-  $n = _bigint_to_int($n) if ref($n) && $n <= BMAX;
   $n;
 }
 

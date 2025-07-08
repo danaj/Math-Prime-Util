@@ -87,8 +87,8 @@ WriteMakefile1(
                       'base'             => 0,
                       'constant'         => 0,
                       'Config'           => 0,
-                      # 1.99 fixes the FastCalc SvUV bug, we work around it.
-                      'Math::BigInt'     => '1.88',
+                      # Has from_base
+                      'Math::BigInt'     => '1.999814',
                       'Math::BigFloat'   => '1.59',
                       # Add in MPU::GMP if we can
                       %require_mpugmp,

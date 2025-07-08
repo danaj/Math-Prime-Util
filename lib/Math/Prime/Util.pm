@@ -995,7 +995,7 @@ The default bigint class is L<Math::BigInt>, which is not particularly speedy
 but is available by default in all Perl distributions, and is well tested.
 If you want to try something different, you can install and use L<Math::GMPz>
 or L<Math::GMP> which will be B<much> faster.  You can have this module
-use and return them using, for exmaple:
+use and return them using, for example:
 
   prime_set_config(bigint => Math::GMPz);
   my $n = next_prime(~0);
@@ -1019,7 +1019,7 @@ package installation tool.
 
 =item *
 
-Install and use L<Math::BigInt::GMP> (or GMPz or LTM), then use
+Install and use L<Math::BigInt::GMP> (or C<GMPz> or C<LTM>), then use
 C<use bigint try =E<gt> 'GMPz,GMP,LTM,Pari'> in your script, or on the
 command line e.g. C<-Mbigint=lib,GMP>.  Large modular exponentiation is
 much faster using the better backends, as are the math and approximation

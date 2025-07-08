@@ -32,6 +32,8 @@ foreach my $m (@modules) {
   };
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), mpu_PPM_regex()]
     if $m eq 'Math::Prime::Util::PP';
+  $param->{trustme} = [qw/maybetobigint tobigint/]
+    if $m eq 'Math::Prime::Util::RandomPrimes';
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), qw/rand srand/]
     if $m eq 'ntheory';
   pod_coverage_ok( $m, $param );
@@ -165,7 +167,7 @@ sub mpu_factor_regex {
 sub mpu_PPM_regex {
   my @funcs = qw(
       Maddint Msubint Mmulint Mdivint Mcdivint Mpowint Mabsint Mnegint
-      Mtdivrem
+      Mdivrem Mtdivrem
       Mmodint Mlogint Mrootint Msqrtint Mcmpint
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
@@ -181,16 +183,18 @@ sub mpu_PPM_regex {
       Mprimes
       Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
       Mdivisor_sum Mis_congruent Mis_divisible
-      Mis_semiprime Mis_square_free
+      Mis_semiprime Mis_square_free Mhclassno
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
       Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
       Mlucasumod Mvecfirst Mvecsort Mvecsorti
       Saddint Ssubint Smulint Sdivint Spowint
+      Mtoint
       reftyped
       validate_integer     validate_integer_nonneg
       validate_integer_abs validate_integer_positive
+      tobigint maybetobigint
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
