@@ -452,7 +452,7 @@ sub _tiny_prime_count {
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   my($n) = @_;
 
-  $n = _bigint_to_int($n) if ref($n) && $n <= BMAX;
+  $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
 
   if (ref($n)) {
     # Check div by 7,11,13
@@ -5119,10 +5119,10 @@ sub gcd {
   if ($REF eq 'Math::BigInt') {
     $gcd = Math::BigInt::bgcd(@N);
   } elsif ($REF eq 'Math::GMPz') {
-    $gcd = shift(@N);
+    $gcd = Math::GMPz->new(shift(@N));
     Math::GMPz::Rmpz_gcd($gcd,$gcd,$_) for @N;
   } elsif ($REF eq 'Math::GMP') {
-    $gcd = shift(@N);
+    $gcd = Math::GMP->new(shift(@N));
     $gcd = Math::GMP::gcd($gcd,$_) for @N;
   } else {
     $gcd = Math::BigInt::bgcd(map { Math::BigInt->new("$_") } @N);
@@ -7199,6 +7199,9 @@ sub is_euler_plumb_pseudoprime {
 
 sub _miller_rabin_2 {
   my($n, $nm1, $s, $d) = @_;
+  return 0 if $n < 0;
+  return 0+($n >= 2) if $n < 4;
+  return 0 if ($n % 2) == 0;
 
   if (ref($n)) {
 

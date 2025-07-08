@@ -90,4 +90,4 @@ is_deeply( [euler_phi(-5,5)], [0,0,0,0,0,0,1,1,2,2,4], "euler_phi -5 to 5" );
 ###### sumtotient
 is_deeply([map { sumtotient($_) } 0..10], [0,1,2,4,6,10,12,18,22,28,32], "sumtotient(0..10)");
 is(sumtotient(12345),46326398,"sumtotient(12345)");
-is(sumtotient(654321),130137945644,"sumtotient(654321)");
+is("".sumtotient(654321),130137945644,"sumtotient(654321)");

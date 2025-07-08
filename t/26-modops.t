@@ -62,7 +62,14 @@ ok(!eval { invmod('nan',11); }, "invmod('nan',11)");
 
 foreach my $r (@invmods) {
   my($a, $n, $exp) = @$r;
-  is( invmod($a,$n), $exp, "invmod($a,$n) = ".((defined $exp)?$exp:"<undef>") );
+  my $got = invmod($a,$n);
+  if (!defined $exp) {
+    is($got, $exp, "invmod($a,$n) = <undef>");
+  } elsif (!defined $got) {
+    is($got, $exp, "invmod($a,$n) = $exp");
+  } else {
+    is("$got", $exp, "invmod($a,$n) = $exp");
+  }
 }
 # Pari, Mathematica, SAGE, Math::BigInt  all return 0 for this case.
 is( invmod(0,1), 0, "invmod(0,1) = 0");
