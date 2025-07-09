@@ -257,10 +257,9 @@ plan tests => 2 +
               scalar(keys %eivals) + scalar(keys %livals) + scalar(keys %rvals) + scalar(keys %rzvals) +
               ($extra ? 4 : 0) +  # Bigfloat RiemannZeta
               1 + 1 +             # factor
-              10 + 7 +            # factoring subs
-              1 +                 # HOLF
-              ($extra ? 1 : 0) +  # HOLF extra
-              ($extra ? 1 : 0) +  # factor stage 2
+              10 +                # factoring subs
+              9 +                 # factoring subs with bigints
+              3 +                 # factor stage 2
               10 +                # AKS
               ($use64 ? 3 : 2) +  # Lucas and BLS75 primality proofs
               6 +                 # M-R and Lucas on bigint
@@ -630,6 +629,8 @@ if ($extra) {
              [ 13, 4294967197 ],
              "pbrent(55834573561)" );
 
+  ##### factoring subs with BigInts
+
   # 1013 4294967197 4294967291
   my $nbig = Math::BigInt->new("18686551294184381720251");
   test_facres("prho", $nbig, Math::Prime::Util::PP::prho_factor($nbig));
@@ -647,7 +648,9 @@ if ($extra) {
     test_facres("pminus1", $nbig, Math::Prime::Util::PP::pminus1_factor($nbig, 27000, 35000));
   }
   test_facres("fermat", $nbig, Math::Prime::Util::PP::fermat_factor($nbig));
-  if ($extra) {
+
+  SKIP: {
+    skip "Skipping HOLF big test without extended testing", 1 unless $extra;
     test_facres("holf", $nbig, Math::Prime::Util::PP::holf_factor($nbig));
   }
   {
@@ -664,7 +667,8 @@ if ($extra) {
 }
 
 ##### Some numbers that go to stage 2 of tests
-if ($extra) {
+SKIP: {
+  skip "stage 2 factoring tests for extended testing", 3 unless $extra;
   my $nbig = Math::BigInt->new("9087500560545072247139");
   my @nfac;
   @nfac = sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor($nbig,1000,10000);
