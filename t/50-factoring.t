@@ -57,7 +57,7 @@ push @testn64, "1434569741817480287"  if $usegmp || $usexs;
 push @testn64, "1256490565186616147"  if $usegmp || $usexs;
 push @testn64, "13356777177440210791" if $usegmp || $usexs;
 
-my @omegai = (qw/0 1 2 36 102 392 8593952 18505662216305663679/);
+my @omegai = (qw/0 1 2 36 102 392 8593952 1309524066293741924073/);
 my @omegao = (qw/1 0 1 2  3   2   3       5/);
 my @omegab = (qw/1 0 1 4  3   5   7       7/);
 

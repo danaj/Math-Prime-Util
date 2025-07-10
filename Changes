@@ -331,6 +331,10 @@ Revision history for Perl module Math::Prime::Util
     - valuation(n,k) now will error if k < 2.  This follows Pari and SAGE.
       undef is returned for n = 0.  Arguable "Inf" would be preferable.
 
+    - Added ability to select the bigint library, and rewrote large parts of
+      the Perl backend to support other bigint classes (e.g. Math::GMPz and
+      Math::GMP) rather than being specific to Math::BigInt.
+
 
 0.73 2018-11-15
 

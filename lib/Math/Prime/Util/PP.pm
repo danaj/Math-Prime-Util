@@ -4608,8 +4608,11 @@ sub sum_primes {
   # Easy, not unreasonable, but seems slower than the windowed sum.
   # return _sum_primes_n($high) if $low <= 2;
 
-  # Performance decision, which to use.  TODO: This needs tuning!
-  if ($high <= ~0 && $high > 10_000_000 && ($high-$low) > $high/50 && !Math::Prime::Util::prime_get_config()->{'xs'}) {
+  # Performance decision, which to use.
+  if ( $high <= ~0 &&
+       $high > (MPU_64BIT ? 2000000 : 320000) &&
+       ($high-$low) > $high/50 &&
+       !Math::Prime::Util::prime_get_config()->{'xs'}) {
     my $hsum = _sum_primes_n($high);
     my $lsum = ($low <= 2) ? 0 : _sum_primes_n($low - 1);
     return $hsum - $lsum;
