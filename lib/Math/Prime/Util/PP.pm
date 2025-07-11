@@ -76,6 +76,7 @@ our $_BIGINT;
 #*load_bigint = \&Math::Prime::Util::_load_bigint;
 *tobigint = \&Math::Prime::Util::_to_bigint;
 *maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
+*maybetobigintall = \&Math::Prime::Util::_maybe_bigint_allargs;
 
 
 *Maddint = \&Math::Prime::Util::addint;
@@ -781,8 +782,9 @@ sub sieve_prime_cluster {
   validate_integer_nonneg($hi);
 
   if ($Math::Prime::Util::_GMPfunc{"sieve_prime_cluster"}) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl);
+    return maybetobigintall(
+             Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl)
+           );
   }
 
   return @{Mprimes($lo,$hi)} if scalar(@cl) == 0;
@@ -794,6 +796,9 @@ sub sieve_prime_cluster {
     croak "sieve_prime_cluster: values must be increasing" if $cl[$i] <= $cl[$i-1];
   }
   my($p,$sievelim,@p) = (17, 2000);
+  if (defined $_BIGINT && (ref($lo) || ref($hi))) {
+    ($lo,$hi) = map {tobigint($_)} ($lo,$hi) if ref($lo) ne $_BIGINT || ref($hi) ne $_BIGINT;
+  }
   $p = 13 if ($hi-$lo) < 50_000_000;
   $p = 11 if ($hi-$lo) <  1_000_000;
   $p =  7 if ($hi-$lo) <     20_000 && $lo < INTMAX;
@@ -4768,14 +4773,12 @@ sub mulint {
 
   my $r = $a * $b;
 
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r
-    if ref($r);
-
-  return $r if $r < INTMAX && $r > INTMIN &&
-               $a < INTMAX && $a > INTMIN &&
-               $b < INTMAX && $b > INTMIN;
-
-  $r = tobigint($a) * $b;
+  if (!ref($r)) {
+    return $r if $r < INTMAX && $r > INTMIN &&
+                 $a < INTMAX && $a > INTMIN &&
+                 $b < INTMAX && $b > INTMIN;
+    $r = tobigint($a) * $b;
+  }
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub addint {
@@ -6268,17 +6271,28 @@ sub muladdmod {
   return reftyped($_[0], Math::Prime::Util::GMP::muladdmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"muladdmod"};
 
-  # An example optimization.
-  if (ref($n) eq 'Math::GMPz') {
+  my $refn = ref($n);
+  if ($refn eq 'Math::GMPz') {
     my $r = Math::GMPz->new($c);
-    $a = Math::GMPz->new($a) unless ref($a) eq 'Math::GMPz';
-    $b = Math::GMPz->new($b) unless ref($b) eq 'Math::GMPz';
+    $a = Math::GMPz->new($a) unless ref($a) eq $refn;
+    $b = Math::GMPz->new($b) unless ref($b) eq $refn;
     Math::GMPz::Rmpz_addmul($r, $a, $b);
     Math::GMPz::Rmpz_mod($r, $r, $n);
-    return $r <= INTMAX                            ?  _bigint_to_int($r)  :
-           defined $_BIGINT && $_BIGINT eq ref($n) ?  $r                  :
-                                                      tobigint("$r");
+    return $r <= INTMAX                          ?  _bigint_to_int($r)
+         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
+         :                                          tobigint($r);
+  } elsif ($refn eq 'Math::BigInt') {
+    $a = ref($a) eq $refn ? $a->copy : Math::BigInt->new("$a");
+    $b = ref($b) eq $refn ? $b->copy : Math::BigInt->new("$b");
+    $a->bmod($n) if $a >= $n;
+    $b->bmod($n) if $b >= $n;
+    $c = Math::BigInt->new("$c") unless ref($c) eq $refn;
+    my $r = $a->bmul($b)->badd($c)->bmod($n);
+    return $r <= INTMAX                          ?  _bigint_to_int($r)
+         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
+         :                                          tobigint($r);
   }
+
   Maddmod(Mmulmod($a,$b,$n),$c,$n);
 }
 sub mulsubmod {
@@ -6296,6 +6310,29 @@ sub mulsubmod {
   }
   return reftyped($_[0], Math::Prime::Util::GMP::mulsubmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"mulsubmod"};
+
+  my $refn = ref($n);
+  if ($refn eq 'Math::GMPz') {
+    my $r = Math::GMPz->new($c);
+    $a = Math::GMPz->new($a) unless ref($a) eq $refn;
+    $b = Math::GMPz->new($b) unless ref($b) eq $refn;
+    Math::GMPz::Rmpz_neg($r, $r);
+    Math::GMPz::Rmpz_addmul($r, $a, $b);
+    Math::GMPz::Rmpz_mod($r, $r, $n);
+    return $r <= INTMAX                          ?  _bigint_to_int($r)
+         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
+         :                                          tobigint($r);
+  } elsif ($refn eq 'Math::BigInt') {
+    $a = ref($a) eq $refn ? $a->copy : Math::BigInt->new("$a");
+    $b = ref($b) eq $refn ? $b->copy : Math::BigInt->new("$b");
+    $a->bmod($n) if $a >= $n;
+    $b->bmod($n) if $b >= $n;
+    $c = Math::BigInt->new("$c") unless ref($c) eq $refn;
+    my $r = $a->bmul($b)->bsub($c)->bmod($n);
+    return $r <= INTMAX                          ?  _bigint_to_int($r)
+         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
+         :                                          tobigint($r);
+  }
 
   Msubmod(Mmulmod($a,$b,$n),$c,$n);
 }
@@ -6396,6 +6433,25 @@ sub _gcd_ui {
   $x;
 }
 
+sub _powerof_ret {
+  my($n, $refp) = @_;
+
+  my $k = 2;
+  while (1) {
+    my $rk;
+    my $r = Mrootint($n, $k, \$rk);
+    return 0 if $r == 1;
+    if ($rk == $n) {
+      my $next = _powerof_ret($r, $refp);
+      $$refp = $r if !$next && defined $refp;
+      $k *= $next if $next != 0;
+      return $k;
+    }
+    $k = Mnext_prime($k);
+  }
+  0;
+}
+
 sub is_power {
   my ($n, $a, $refp) = @_;
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
@@ -6423,48 +6479,35 @@ sub is_power {
     return 0 if $n < 0 && $a % 2 == 0;    # Negative n never an even power
     if ($a == 2) {
       if (_is_perfect_square($n)) {
-        $$refp = int(sqrt($n)) if defined $refp;
+        $$refp = Msqrtint($n) if defined $refp;
         return 1;
       }
     } else {
-      $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-      my $root = $n->copy->babs->broot($a)->bfloor;
-      $root->bneg if $n->is_neg;
-      if ($root->copy->bpow($a) == $n) {
-        $$refp = $root if defined $refp;
-        return 1;
+      my $RK;
+      if ($n >= 0) {
+        my $root = Mrootint($n, $a, \$RK);
+        if ($RK == $n) { $$refp = $root if defined $refp;  return 1; }
+      } else {
+        my $N = Mnegint($n);
+        my $root = Mrootint($N, $a, \$RK);
+        if ($RK == $N) { $$refp = Mnegint($root) if defined $refp;  return 1; }
       }
     }
-  } else {
-    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-    if ($n < 0) {
-      my $absn = $n->copy->babs;
-      my $root = is_power($absn, 0, $refp);
-      return 0 unless $root;
-      if ($root % 2 == 0) {
-        my $power = Mvaluation($root, 2);
-        $root >>= $power;
-        return 0 if $root == 1;
-        $power = BTWO->copy->bpow($power);
-        $$refp = $$refp ** $power if defined $refp;
-      }
-      $$refp = -$$refp if defined $refp;
-      return $root;
-    }
-    my $e = 2;
-    while (1) {
-      my $root = $n->copy()->broot($e)->bfloor;
-      last if $root->is_one();
-      if ($root->copy->bpow($e) == $n) {
-        my $next = is_power($root, 0, $refp);
-        $$refp = $root if !$next && defined $refp;
-        $e *= $next if $next != 0;
-        return $e;
-      }
-      $e = Mnext_prime($e);
-    }
+    return 0;
   }
-  0;
+
+  my $negn = $n < 0;
+  $n = Mnegint($n) if $negn;
+  my $k = _powerof_ret($n, $refp);
+  return 0 if $k < 2;
+  if ($negn && $k % 2 == 0) {
+    my $v = Mvaluation($k, 2);
+    $k >>= $v;
+    return 0 if $k < 2;
+    $$refp = Mpowint($$refp, Mpowint(2,$v)) if defined $refp;
+  }
+  $$refp = Mnegint($$refp) if $negn && defined $refp;
+  $k;
 }
 
 sub is_square {
@@ -8222,8 +8265,9 @@ sub lucasuv {
   return (0,2) if $k == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"lucasuv"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-    return map { maybetobigint($_) }
-           Math::Prime::Util::GMP::lucasuv($P, $Q, $k);
+    return maybetobigintall(
+             Math::Prime::Util::GMP::lucasuv($P, $Q, $k)
+           );
   }
 
   $P = Math::BigInt->new("$P") unless ref($P) eq 'Math::BigInt';
@@ -8335,8 +8379,9 @@ sub lucasuvmod {
   return (0, Mmodint(2,$n)) if $k == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"lucasuvmod"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-    return map { maybetobigint($_) }
-           Math::Prime::Util::GMP::lucasuvmod($P, $Q, $k, $n);
+    return maybetobigintall(
+             Math::Prime::Util::GMP::lucasuvmod($P, $Q, $k, $n)
+           );
   }
 
   $P = Mmodint($P,$n) if $P < 0 || $P >= $n;
