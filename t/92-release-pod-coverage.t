@@ -194,7 +194,7 @@ sub mpu_PPM_regex {
       reftyped
       validate_integer     validate_integer_nonneg
       validate_integer_abs validate_integer_positive
-      tobigint maybetobigint
+      tobigint maybetobigint maybetobigintall
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
