@@ -143,6 +143,7 @@ sub entropy_bytes {
 *is_euler_pseudoprime = \&Math::Prime::Util::PP::is_euler_pseudoprime;
 *is_strong_pseudoprime = \&Math::Prime::Util::PP::is_strong_pseudoprime;
 *is_euler_plumb_pseudoprime = \&Math::Prime::Util::PP::is_euler_plumb_pseudoprime;
+*is_perrin_pseudoprime = \&Math::Prime::Util::PP::is_perrin_pseudoprime;
 
 *is_cyclic = \&Math::Prime::Util::PP::is_cyclic;
 *is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
@@ -554,14 +555,6 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   croak "aes lucas pseudoprime parameter must be 1-256"
     if $increment < 1 || $increment > 256;
   return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $increment);
-}
-sub is_perrin_pseudoprime {
-  my($n,$restrict) = @_;
-  _validate_integer($n);
-  return 0 if $n < 0;
-  if (defined $restrict) { _validate_integer_nonneg($restrict); }
-  else                   { $restrict = 0; }
-  return Math::Prime::Util::PP::is_perrin_pseudoprime($n, $restrict);
 }
 sub is_catalan_pseudoprime {
   my($n) = @_;

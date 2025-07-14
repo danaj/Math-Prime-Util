@@ -33,12 +33,9 @@ BEGIN {
   use constant MPU_HALFWORD    => MPU_32BIT ? 65536 : OLD_PERL_VERSION ? 33554432 : 4294967296;
   use constant UVPACKLET       => MPU_32BIT ? 'L' : 'Q';
   use constant MPU_INFINITY    => (65535 > 0+'inf') ? 20**20**20 : 0+'inf';
-  use constant BONE            => Math::BigInt->bone;
   use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
   use constant INTMIN          => (MPU_32BIT ? -2147483648 : !OLD_PERL_VERSION ? -9223372036854775808 : -562949953421312);
   use constant SINTMAX         => (INTMAX >> 1);
-  use constant BMAX            => Math::BigInt->new('' . INTMAX);
-  use constant B_PRIM767       => Math::BigInt->new("261944051702675568529303");
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
 }
@@ -387,7 +384,12 @@ sub _toint_simple {
 sub _frombinary {
   my($bstr) = @_;
   $bstr =~ s/^0//;
-  return oct('0b' . $bstr) if length($bstr) <= MPU_MAXBITS;
+  return oct('0b' . $bstr) if length($bstr) <= 32;
+  # Avoid the useless portable warning that can't be silenced.
+  if (MPU_MAXBITS >= 64 && length($bstr) <= 64) {  # 64-bit Perl, 33-64 bit str
+    my $low = substr($bstr,-32,32,'');
+    return oct('0b'.$bstr) << 32 + oct('0b'.$low);
+  }
   return $_BIGINT->new("0b$bstr")
     if defined $_BIGINT && $_BIGINT =~ /^Math::(BigInt|GMPz|GMP)$/;
   my $N = Math::BigInt->new("0b$bstr");
@@ -639,26 +641,23 @@ sub _sieve_segment {
   # For large value of end, it's a huge win to just walk primes.
 
   my($p, $s, $primesieveref) = (7-2, 3, _sieve_erat($limit));
+  my $sieve_end = ($end - $beg) >> 1;
   while ( (my $nexts = 1 + index($$primesieveref, '0', $s)) > 0 ) {
     $p += 2 * ($nexts - $s);
     $s = $nexts;
     my $p2 = $p*$p;
-    if ($p2 < $beg) {
-      my $f = 1+int(($beg-1)/$p);
-      $f++ unless $f % 2;
-      $p2 = $p * $f;
+
+    if ($p2 < $beg) {  # Make p2 the next odd multiple of p >= beg
+      my $f = Mcdivint($beg,$p);
+      $p2 = Mmulint($p, $f + (1-($f&1)));
     }
-    # With large bases and small segments, it's common to find we don't hit
-    # the segment at all.  Skip all the setup if we find this now.
-    if ($p2 <= $end) {
-      # Inner loop marking multiples of p
-      # (everything is divided by 2 to keep inner loop simpler)
-      my $filter_end = ($end - $beg) >> 1;
-      my $filter_p2  = ($p2  - $beg) >> 1;
-      while ($filter_p2 <= $filter_end) {
-        substr($sieve, $filter_p2, 1) = "1";
-        $filter_p2 += $p;
-      }
+
+    # Large bases and small segments often don't hit the segment at all.
+    next if $p2 > $end;
+
+    # Inner loop marking multiples of p, divide by 2 to keep loop simpler.
+    for ($p2 = ($p2 - $beg) >> 1;  $p2 <= $sieve_end;  $p2 += $p) {
+      substr($sieve, $p2, 1) = '1';
     }
   }
   \$sieve;
@@ -5104,13 +5103,13 @@ sub gcd {
 }
 sub lcm {
   return 1 unless @_;
-  my $lcm = Math::BigInt::blcm( map {
-    my $v = (($_ < 2147483647 && !ref($_)) || ref($_) eq 'Math::BigInt') ? $_ : "$_";
-    return 0 if $v == 0;
-    $v = -$v if $v < 0;
-    $v;
-  } @_ );
-  $lcm = _bigint_to_int($lcm) if $lcm <= BMAX;
+  return Mabsint($_[0]) if @_==1;
+
+  my $lcm = Mabsint(shift);
+  while (@_) {
+    my $y = Mabsint(shift) || return 0;
+    $lcm = Mmulint($lcm, $y / Mgcd($lcm,$y));
+  }
   return $lcm;
 }
 sub gcdext {
@@ -5525,7 +5524,7 @@ sub _sqrtmod_composite {
     return undef unless defined $s;
     my $inv = Minvmod($N, $fe);
     my $t = Mmulmod($inv, Msubmod($s % $fe, $r % $fe, $fe), $fe);
-    $r = Maddmod($r, Mmulmod($N,$t,$n), $n);
+    $r = Mmuladdmod($N, $t, $r, $n);
     $N = Mmulint($N, $fe);
   }
   #croak "Bad _sqrtmod_composite root $a,$n" unless Mmulmod($r,$r,$n) == $a;
@@ -5863,7 +5862,7 @@ sub _rootmod_kprime {
     return undef unless defined $s;
     my $inv = Minvmod($N, $fe);
     my $t = Mmulmod($inv, Msubmod($s % $fe, $r % $fe, $fe), $fe);
-    $r = Maddmod($r, Mmulmod($N,$t,$n), $n);
+    $r = Mmuladdmod($N, $t, $r, $n);
     $N = Mmulint($N, $fe);
   }
   $r;
@@ -5941,7 +5940,7 @@ sub _allrootmod_cprod {
   for my $q1 (@$aroots1) {
     for my $q2 (@$aroots2) {
       $t = Mmulmod($inv, Msubmod($q2, $q1, $p2), $p2);
-      $t = Maddmod($q1, Mmulmod($p1,$t,$n), $n);
+      $t = Mmuladdmod($p1, $t, $q1, $n);
       push @roots, $t;
     }
   }
@@ -6009,9 +6008,7 @@ sub _allrootmod_prime_power {
     my @roots2 = _allrootmod_prime_power($apk, $k, $p, $e-$k);
     for my $r (@roots2) {
       my $rp = Mmulmod($r, $p, $n);
-      for my $j (0 .. $pe1-1) {
-        push @roots, Maddmod( $rp, Mmulmod($j, $pek, $n), $n);
-      }
+      push @roots, Mmuladdmod($_, $pek, $rp, $n) for 0 .. $pe1-1;
     }
     return @roots;
   }
@@ -6044,7 +6041,7 @@ sub _allrootmod_prime_power {
     my $ndivp = Mdivint($n,$p);
     my $rset = [];
     for my $r (@rootst) {
-      Msetinsert($rset, Mmulmod($r, Maddmod(Mmulmod($_, $ndivp, $n),1,$n), $n))
+      Msetinsert($rset, Mmulmod($r, Mmuladdmod($_, $ndivp, 1, $n), $n))
         for 0 .. $k-1;
     }
     @roots = @$rset;
@@ -7424,8 +7421,8 @@ sub kronecker {
     $k = -$k if $a < 0;
   }
   if ($a < 0) { $a = -$a; $k = -$k if $b % 4 == 3; }
-  $b = _bigint_to_int($b) if ref($b) eq 'Math::BigInt' && $b <= BMAX;
-  $a = _bigint_to_int($a) if ref($a) eq 'Math::BigInt' && $a <= BMAX;
+  $b = _bigint_to_int($b) if ref($b) && $b <= INTMAX;
+  $a = _bigint_to_int($a) if ref($a) && $a <= INTMAX;
   # Now:  b > 0, b odd, a >= 0
   while ($a != 0) {
     if ($a % 2 == 0) {
@@ -7436,10 +7433,8 @@ sub kronecker {
     $k = -$k if $a % 4 == 3 && $b % 4 == 3;
     ($a, $b) = ($b % $a, $a);
     # If a,b are bigints and now small enough, finish as native.
-    if (   ref($a) eq 'Math::BigInt' && $a <= BMAX
-        && ref($b) eq 'Math::BigInt' && $b <= BMAX) {
-      return $k * kronecker(_bigint_to_int($a),_bigint_to_int($b));
-    }
+    return $k * kronecker(_bigint_to_int($a),_bigint_to_int($b))
+      if $a <= INTMAX && $b <= INTMAX && ref($a) && ref($b);
   }
   return ($b == 1) ? $k : 0;
 }
@@ -7519,24 +7514,33 @@ sub binomial {
   return 1 if $k == 0;                   # Work around bug in old
   return $n if $k == 1 || $k == $n-1;    # Math::BigInt (fixed in 1.90)
 
-  # Incomplete work around problem with Math::BigInt not liking bigint n
-  # Fixed in 2.003003 (thanks PJACKLAM).
-  return Mdivint(Mfalling_factorial($n,$k),Mfactorial($k))
-    if $n > INTMAX && $k < 100;
+  my $R;
+  $n = tobigint($n);
 
-  if ($n >= 0) {
-    $r = Math::BigInt->new(''.$n)->bnok($k);
-    $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
-  } else { # Math::BigInt is incorrect for negative n
-    $r = Math::BigInt->new(''.(-$n+$k-1))->bnok($k);
-    if ($k & 1) {
-      $r->bneg;
-      $r = _bigint_to_int($r) if $r->bacmp(''.(~0>>1)) <= 0;
-    } else {
-      $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
-    }
+  # Older Math::BigInt isn't right for negative n.  Adjust now.
+  my $negate = 0;
+  if ($n < 0) {
+    $n = -$n + ($k-1);
+    $negate = 1 if $k & 1;
   }
-  $r;
+
+  if (defined $Math::GMPz::VERSION) {
+    $R = Math::GMPz->new();
+    Math::GMPz::Rmpz_bin_ui($R, Math::GMPz->new($n), $k);
+  } elsif (defined $Math::GMP::VERSION) {
+    $R = Math::GMP->new($n)->bnok($k);
+  } elsif ($n > INTMAX && $k < 100) {
+    # Incomplete work around problem with Math::BigInt not liking bigint n.
+    # Fixed in 2.003003.
+    $R = Mdivint(Mfalling_factorial($n,$k),Mfactorial($k));
+  } else {
+    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+    $R = $n->copy->bnok($k);
+  }
+  $R = -$R if $negate;
+  return $R <= INTMAX && $R <= INTMIN            ?  _bigint_to_int($R)
+       : defined $_BIGINT && $_BIGINT eq ref($R) ?  $R
+       :                                            tobigint($R);
 }
 
 sub binomialmod {
@@ -7605,7 +7609,7 @@ sub factorial {
     return reftyped($_[0], $r)    if defined $r;
   }
   my $r = Math::BigInt->new($n)->bfac();
-  $r = _bigint_to_int($r) if $r->bacmp(BMAX) <= 0;
+  $r = _bigint_to_int($r) if $r <= INTMAX;
   $r;
 }
 
@@ -7913,7 +7917,7 @@ sub znorder {
 
   # The answer is one of the divisors of phi(n) and lambda(n).
   my $lambda = Math::Prime::Util::carmichael_lambda($n);
-  $a = Math::BigInt->new("$a") unless ref($a) eq 'Math::BigInt';
+  $a = tobigint($a);
 
   # This is easy and usually fast, but can bog down with too many divisors.
   if ($lambda <= 2**64) {
@@ -7924,20 +7928,18 @@ sub znorder {
   }
 
   # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
-  $lambda = Math::BigInt->new("$lambda") unless ref($lambda) eq 'Math::BigInt';
-  my $k = Math::BigInt->bone;
+  my $k = 1;
   foreach my $f (Mfactor_exp($lambda)) {
-    my($pi, $ei, $enum) = (Math::BigInt->new("$f->[0]"), $f->[1], 0);
-    my $phidiv = $lambda / ($pi**$ei);
-    my $b = Mpowmod($a,$phidiv,$n);
+    my($pi, $ei, $enum) = ($f->[0],$f->[1], 0);
+    my $phidiv = Mdivint($lambda, Mpowint($pi,$ei));
+    my $b = Mpowmod($a, $phidiv, $n);
     while ($b != 1) {
       return if $enum++ >= $ei;
-      $b = Mpowmod($b,$pi,$n);
-      $k *= $pi;
+      $b = Mpowmod($b, $pi, $n);
+      $k = Mmulint($k, $pi);
     }
   }
-  $k = _bigint_to_int($k) if $k->bacmp(BMAX) <= 0;
-  return $k;
+  $k;
 }
 
 sub _dlp_trial {
@@ -7953,39 +7955,37 @@ sub _dlp_trial {
     return 0;
   }
 
-  my $t = $g->copy;
-  for (my $k = BONE->copy; $k < $limit; $k->binc) {
-    if ($t == $a) {
-      $k = _bigint_to_int($k) if $k->bacmp(BMAX) <= 0;
-      return $k;
-    }
-    $t->bmul($g)->bmod($p);
+  ($a, $g, $p, $limit) = map { tobigint($_) } ($a, $g, $p, $limit);
+  my $t = tobigint($g);
+  for (my $k = tobigint(1); $k < $limit; $k++) {
+    return Maddint($k,0) if $t == $a;
+    $t *= $g;
+    $t %= $p;
   }
   0;
 }
 sub _dlp_bsgs {
-  my ($a,$g,$p,$n,$_verbose) = @_;
+  my ($a,$g,$p,$_verbose) = @_;
   my $invg = Minvmod($g, $p);
-  return unless defined $invg;
-  my $maxm = Msqrtint($n)+1;
-  my $b = ($p + $maxm - 1) / $maxm;
+  return 0 unless defined $invg;
+  my $N = Maddint(Msqrtint($p-1),1);
   # Limit for time and space.
-  $b = ($b > 4_000_000) ? 4_000_000 : int("$b");
-  $maxm = ($maxm > $b) ? $b : int("$maxm");
+  my $b = $N > 4_000_000 ? 4_000_000 : $N;
 
   my %hash;
-  my $am = BONE->copy;
-  my $gm = Mpowmod($invg, $maxm, $p);
-  my $key = $a->copy;
+  my $am = 1;
+  my $gm = Mpowmod($invg, $N, $p);
+  my $key = $a;
   my $r;
 
+  print "  BSGS starting $b loops\n" if $_verbose > 1;
   foreach my $m (0 .. $b) {
     # Baby Step
-    if ($m <= $maxm) {
+    if ($m <= $N) {
       $r = $hash{"$am"};
       if (defined $r) {
         print "  bsgs found in stage 1 after $m tries\n" if $_verbose;
-        $r = Maddmod($m, Mmulmod($r,$maxm,$p), $p);
+        $r = Mmuladdmod($r, $N, $m, $p);
         return $r;
       }
       $hash{"$am"} = $m;
@@ -8000,10 +8000,10 @@ sub _dlp_bsgs {
     $r = $hash{"$key"};
     if (defined $r) {
       print "  bsgs found in stage 2 after $m tries\n" if $_verbose;
-      $r = Maddmod($r, Mmulmod($m,$maxm,$p), $p);
+      $r = Mmuladdmod($m, $N, $r, $p);
       return $r;
     }
-    $hash{"$key"} = $m if $m <= $maxm;
+    $hash{"$key"} = $m;
     $key = Mmulmod($key,$gm,$p);
   }
   0;
@@ -8025,21 +8025,16 @@ sub znlog {
   # For large p, znorder can be very slow.  Do a small trial test first.
   my $x = _dlp_trial($a, $g, $n, 200);
 
-  ($a,$g,$n) = map { ref($_) eq 'Math::BigInt' ? $_ : Math::BigInt->new("$_") } ($a,$g,$n);
-
   if ($x == 0) {
-    my $ord = Mznorder($g, $n);
-    if (defined $ord && $ord > 1000) {
-      $ord = Math::BigInt->new("$ord") unless ref($ord) eq 'Math::BigInt';
-      $x = _dlp_bsgs($a, $g, $n, $ord, $_verbose);
-      $x = _bigint_to_int($x) if ref($x) && $x->bacmp(BMAX) <= 0;
-      return $x if $x > 0 && $g->copy->bmodpow($x, $n) == $a;
-      print "  BSGS giving up\n" if $x == 0 && $_verbose;
-      print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
-    }
+    ($a,$g,$n) = map { tobigint($_) } ($a,$g,$n);
+    $x = _dlp_bsgs($a, $g, $n, $_verbose);
+    $x = _bigint_to_int($x) if ref($x) && $x <= INTMAX;
+    return $x if $x > 0 && Mpowmod($g,$x,$n) == $a;
+    print "  BSGS giving up\n" if $x == 0 && $_verbose;
+    print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
     $x = _dlp_trial($a,$g,$n);
   }
-  $x = _bigint_to_int($x) if ref($x) && $x->bacmp(BMAX) <= 0;
+  $x = _bigint_to_int($x) if ref($x) && $x <= INTMAX;
   return ($x == 0) ? undef : $x;
 }
 
@@ -8330,7 +8325,7 @@ sub lucasuvmod {
         $Vh = Mmulsubmod($Vh, $Vh, Maddmod($Qh, $Qh, $n), $n);
       } else {
         $Qh = $Ql;
-        $Uh = Msubmod(Mmulmod($Uh, $Vl, $n), $Ql, $n);
+        $Uh = Mmulsubmod($Uh, $Vl, $Ql, $n);
         $Vh = Mmulsubmod($Vh, $Vl, Mmulmod($P,  $Ql, $n), $n);
         $Vl = Mmulsubmod($Vl, $Vl, Maddmod($Ql, $Ql, $n), $n);
       }
@@ -8627,9 +8622,11 @@ sub _perrin_signature {
   shift @nbin;
 
   while (@nbin) {
-    my @T = map { Maddmod(Maddmod(Mmulmod($S[$_],$S[$_],$n), $n-$S[5-$_],$n), $n-$S[5-$_],$n); } 0..5;
-    my $T01 = Maddmod($T[2], $n-$T[1], $n);
-    my $T34 = Maddmod($T[5], $n-$T[4], $n);
+    my @SUB = map { Maddmod($n-$S[5-$_], $n-$S[5-$_],$n) } 0..5;
+    my @T = map { Mmuladdmod($S[$_], $S[$_], $SUB[$_], $n); } 0..5;
+
+    my $T01 = Msubmod($T[2], $T[1], $n);
+    my $T34 = Msubmod($T[5], $T[4], $n);
     my $T45 = Maddmod($T34, $T[3], $n);
     if (shift @nbin) {
       @S = ($T[0], $T01, $T[1], $T[4], $T45, $T[5]);
@@ -8642,22 +8639,22 @@ sub _perrin_signature {
 
 sub is_perrin_pseudoprime {
   my($n, $restrict) = @_;
-  $restrict = 0 unless defined $restrict;
+  _validate_integer($n);
+  if (defined $restrict) { _validate_integer_nonneg($restrict); }
+  else                   { $restrict = 0; }
   return 0+($n >= 2) if $n < 4;
   return 0 if $restrict > 2 && ($n % 2) == 0;
-
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
 
   my @S = _perrin_signature($n);
   return 0 unless $S[4] == 0;
   return 1 if $restrict == 0;
-  return 0 unless $S[1] == $n-1;
+  return 0 unless $S[1] == Msubint($n,1);
   return 1 if $restrict == 1;
   my $j = Mkronecker(-23,$n);
   if ($j == -1) {
     my $B = $S[2];
     my $B2 = Mmulmod($B,$B,$n);
-    my $A = Msubmod(Maddmod(1,Mmulmod(3,$B,$n),$n),$B2,$n);
+    my $A = Msubmod(Mmuladdmod(3, $B, 1, $n), $B2, $n);
     my $C = Mmulsubmod(3,$B2,2,$n);
     return 1 if $S[0] == $A && $S[2] == $B && $S[3] == $B && $S[5] == $C && $B != 3 && Mmulsubmod($B2,$B,$B,$n) == 1;
   } else {
@@ -8680,8 +8677,8 @@ sub is_frobenius_pseudoprime {
   ($P,$Q) = (0,0) unless defined $P && defined $Q;
   return 0+($n >= 2) if $n < 4;
 
-  $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-  return 0 if $n->is_even;
+  $n = tobigint($n);
+  return 0 if Mis_even($n);
 
   my($k, $Vcomp, $D, $Du) = (0, 4);
   if ($P == 0 && $Q == 0) {
@@ -8749,15 +8746,10 @@ sub is_mersenne_prime {
 }
 
 
-my $_poly_bignum;
 sub _poly_new {
-  my @poly = @_;
+  my($refn, @poly) = @_;
   push @poly, 0 unless scalar @poly;
-  if ($_poly_bignum) {
-    @poly = map { (ref $_ eq 'Math::BigInt')
-                  ?  $_->copy
-                  :  Math::BigInt->new("$_"); } @poly;
-  }
+  @poly = map { tobigint("$_") } @poly if $refn;
   return \@poly;
 }
 
@@ -8778,23 +8770,16 @@ sub _poly_mod_mul {
 
   my $px_degree = $#$px;
   my $py_degree = $#$py;
-  my @res = map { $_poly_bignum ? Math::BigInt->bzero : 0 } 0 .. $r-1;
+  my @res = ref($n)  ?  map { tobigint(0) } 0..$r-1  :  map { 0 } 0..$r-1;
 
   # convolve(px, py) mod (X^r-1,n)
   my @indices_y = grep { $py->[$_] } (0 .. $py_degree);
   foreach my $ix (0 .. $px_degree) {
     my $px_at_ix = $px->[$ix];
     next unless $px_at_ix;
-    if ($_poly_bignum) {
-      foreach my $iy (@indices_y) {
-        my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
-        $res[$rindex]->badd($px_at_ix->copy->bmul($py->[$iy]))->bmod($n);
-      }
-    } else {
-      foreach my $iy (@indices_y) {
-        my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
-        $res[$rindex] = ($res[$rindex] + $px_at_ix * $py->[$iy]) % $n;
-      }
+    foreach my $iy (@indices_y) {
+      my $rindex = ($ix + $iy) % $r;  # reduce mod X^r-1
+      $res[$rindex] = ($res[$rindex] + $px_at_ix * $py->[$iy]) % $n;
     }
   }
   # In case we had upper terms go to zero after modulo, reduce the degree.
@@ -8804,7 +8789,7 @@ sub _poly_mod_mul {
 
 sub _poly_mod_pow {
   my($pn, $power, $r, $mod) = @_;
-  my $res = _poly_new(1);
+  my $res = _poly_new(ref($mod), 1);
   my $p = $power;
 
   while ($p) {
@@ -8817,7 +8802,7 @@ sub _poly_mod_pow {
 
 sub _test_anr {
   my($a, $n, $r) = @_;
-  my $pp = _poly_mod_pow(_poly_new($a, 1), $n, $r, $n);
+  my $pp = _poly_mod_pow(_poly_new(ref($n), $a, 1), $n, $r, $n);
   my $nr = $n % $r;
   $pp->[$nr] = (($pp->[$nr] || 0) -  1) % $n;  # subtract X^(n%r)
   $pp->[  0] = (($pp->[  0] || 0) - $a) % $n;  # subtract a
@@ -8866,12 +8851,10 @@ sub is_aks_prime {
                                            ->bsqrt->bmul($log2n)->bfloor)
              : int( (sqrt(($r-1)) * $log2n) + 0.001 );
 
-  $_poly_bignum = 1;
-  if ( $n < (MPU_HALFWORD-1) ) {
-    $_poly_bignum = 0;
-    #$n = _bigint_to_int($n) if ref($n) eq 'Math::BigInt';
+  if ($n < (MPU_HALFWORD-1) ) {
+    $n = _bigint_to_int($n) if ref($n);
   } else {
-    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
+    $n = tobigint($n);
   }
 
   my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
@@ -11866,7 +11849,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012-2021 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2025 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
