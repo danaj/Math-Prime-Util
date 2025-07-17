@@ -12,6 +12,14 @@ use Math::Prime::Util qw/vecreduce
                          vecsort vecsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
+# vecmex      in t/26-mex.t
+# vecpmex     in t/26-mex.t
+# vecsample   in t/26-randperm.t
+
+# [related]
+# setcontains       return 0 if we are given something NOT in SETA
+# setcontainsany    return 1 if we are given anything in SETA
+
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 $use64 = 0 if $use64 && 18446744073709550592 == ~0;

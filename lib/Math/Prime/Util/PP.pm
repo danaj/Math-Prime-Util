@@ -6208,6 +6208,32 @@ sub mulmod {
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 
+sub _bi_powmod {
+  my($a, $b, $n) = @_;
+  croak "_bi_powmod must have positive exponent" if $b < 0;
+  croak "_bi_powmod must have n > 1" if $n <= 1;
+
+  my $refn = ref($n);
+  if (!$refn) {
+    $n = tobigint($n);
+    $refn = ref($n);
+  }
+  $b = $refn->new($b) unless ref($b) eq $refn;
+
+  my $r = $refn->new($a);
+
+  if ($refn eq 'Math::GMPz') {
+    Math::GMPz::Rmpz_powm($r, $r, $b, $n);
+  } elsif ($refn eq 'Math::GMP') {
+    $r = $r->powm_gmp($b,$n);
+  } elsif ($refn eq 'Math::BigInt') {
+    $r->bmodpow($b,$n);
+  } else {
+    $r->bmodpow("$b","$n");
+  }
+  $r;
+}
+
 sub powmod {
   my($a, $b, $n) = @_;
   do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
@@ -6231,32 +6257,7 @@ sub powmod {
   return _modabsint($a,$n) if $b == 1;
   return Mmulmod($a,$a,$n) if $b == 2;
 
-  my $r;
-  my $refn = ref($n);
-  if (!$refn) {
-    $n = tobigint($n);
-    $refn = ref($n);
-  }
-  $a = $refn->new($a) unless ref($a) eq $refn;
-  $b = $refn->new($b) unless ref($b) eq $refn;
-
-  if ($refn eq 'Math::GMPz') {
-    $r = Math::GMPz->new();
-    Math::GMPz::Rmpz_powm($r, $a, $b, $n);
-  } elsif ($refn eq 'Math::GMP') {
-    $r = $a->powm_gmp($b,$n);
-  } elsif ($refn eq 'Math::BigInt') {
-    $r = $a->copy->bmodpow($b,$n);
-  } else {
-    $r = Math::BigInt->new("$a")->bmod("$n")->bmodpow("$b","$n");
-    # Or power ladder:
-    # $r = 1;
-    # while ($b) {
-    #   if ($b & 1) { $r = Mmulmod($r, $a, $n); }
-    #   $b = Mrshiftint($b,1);
-    #   if ($b)     { $a = Mmulmod($a, $a, $n); }
-    # }
-  }
+  my $r = _bi_powmod($a,$b,$n);
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 
@@ -6276,29 +6277,11 @@ sub muladdmod {
   return reftyped($_[0], Math::Prime::Util::GMP::muladdmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"muladdmod"};
 
-  my $refn = ref($n);
-  if ($refn eq 'Math::GMPz') {
-    my $r = Math::GMPz->new($c);
-    $a = Math::GMPz->new($a) unless ref($a) eq $refn;
-    $b = Math::GMPz->new($b) unless ref($b) eq $refn;
-    Math::GMPz::Rmpz_addmul($r, $a, $b);
-    Math::GMPz::Rmpz_mod($r, $r, $n);
-    return $r <= INTMAX                          ?  _bigint_to_int($r)
-         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
-         :                                          tobigint($r);
-  } elsif ($refn eq 'Math::BigInt') {
-    $a = ref($a) eq $refn ? $a->copy : Math::BigInt->new("$a");
-    $b = ref($b) eq $refn ? $b->copy : Math::BigInt->new("$b");
-    $a->bmod($n) if $a >= $n;
-    $b->bmod($n) if $b >= $n;
-    $c = Math::BigInt->new("$c") unless ref($c) eq $refn;
-    my $r = $a->bmul($b)->badd($c)->bmod($n);
-    return $r <= INTMAX                          ?  _bigint_to_int($r)
-         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
-         :                                          tobigint($r);
-  }
-
-  Maddmod(Mmulmod($a,$b,$n),$c,$n);
+  $n = tobigint($n) unless ref($n);
+  $a = tobigint($a) unless ref($a) || ref($b);
+  $c = tobigint($c) unless ref($c);
+  my $r = (($a * $b) + $c) % $n;
+  return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
@@ -6316,30 +6299,13 @@ sub mulsubmod {
   return reftyped($_[0], Math::Prime::Util::GMP::mulsubmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"mulsubmod"};
 
-  my $refn = ref($n);
-  if ($refn eq 'Math::GMPz') {
-    my $r = Math::GMPz->new($c);
-    $a = Math::GMPz->new($a) unless ref($a) eq $refn;
-    $b = Math::GMPz->new($b) unless ref($b) eq $refn;
-    Math::GMPz::Rmpz_neg($r, $r);
-    Math::GMPz::Rmpz_addmul($r, $a, $b);
-    Math::GMPz::Rmpz_mod($r, $r, $n);
-    return $r <= INTMAX                          ?  _bigint_to_int($r)
-         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
-         :                                          tobigint($r);
-  } elsif ($refn eq 'Math::BigInt') {
-    $a = ref($a) eq $refn ? $a->copy : Math::BigInt->new("$a");
-    $b = ref($b) eq $refn ? $b->copy : Math::BigInt->new("$b");
-    $a->bmod($n) if $a >= $n;
-    $b->bmod($n) if $b >= $n;
-    $c = Math::BigInt->new("$c") unless ref($c) eq $refn;
-    my $r = $a->bmul($b)->bsub($c)->bmod($n);
-    return $r <= INTMAX                          ?  _bigint_to_int($r)
-         : defined $_BIGINT && $_BIGINT eq $refn ?  $r
-         :                                          tobigint($r);
-  }
+  # return Msubmod(Mmulmod($a,$b,$n),$c,$n);
 
-  Msubmod(Mmulmod($a,$b,$n),$c,$n);
+  $n = tobigint($n) unless ref($n);
+  $a = tobigint($a) unless ref($a) || ref($b);
+  $c = tobigint($c) unless ref($c);
+  my $r = (($a * $b) - $c) % $n;
+  return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 
 sub invmod {
@@ -9118,16 +9084,35 @@ sub prho_factor {
 
   if (ref($n)) {
 
-    for my $i (1 .. $rounds) {
-      $U = Mmuladdmod($U, $U, $pa, $n);
-      $V = Mmuladdmod($V, $V, $pa, $n);
-      $V = Mmuladdmod($V, $V, $pa, $n);
-      my $f = Mgcd(Msubint($U,$V), $n);
-      if ($f == $n) {
-        last if $inloop++;  # We've been here before
-      } elsif ($f != 1) {
-        return _found_factor($f, $n, "prho", @factors);
+    $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne ref($n);
+    ($U, $V, $pa) = map { tobigint($_) } ($U,$V,$pa);
+
+    my $inner = 32;
+    $rounds = int( ($rounds + $inner-1) / $inner );
+    while ($rounds-- > 0) {
+      my($m, $oldU, $oldV, $f) = (1, $U+0, $V+0);
+      for my $i (1 .. $inner) {
+        $U = ($U * $U + $pa) % $n;
+        $V = ($V * $V + $pa) % $n;
+        $V = ($V * $V + $pa) % $n;
+        $f = ($U > $V) ? $U-$V : $V-$U;
+        $m = ($m * $f) % $n;
       }
+      $f = Mgcd($m,$n);
+      next if $f == 1;
+      if ($f == $n) {
+        ($U, $V) = ($oldU, $oldV);
+        for my $i (1 .. $inner) {
+          $U = ($U * $U + $pa) % $n;
+          $V = ($V * $V + $pa) % $n;
+          $V = ($V * $V + $pa) % $n;
+          $f = ($U > $V) ? $U-$V : $V-$U;
+          $f = Mgcd($f, $n);
+          last if $f != 1;
+        }
+        last if $f == 1 || $f == $n;
+      }
+      return _found_factor($f, $n, "prho-bigint", @factors);
     }
 
   } elsif ($n < MPU_HALFWORD) {
@@ -9157,7 +9142,7 @@ sub prho_factor {
         }
         last if $f == 1 || $f == $n;
       }
-      return _found_factor($f, $n, "prho", @factors);
+      return _found_factor($f, $n, "prho-32", @factors);
     }
 
   } else {
@@ -9168,9 +9153,6 @@ sub prho_factor {
        $V = _mulmod($V, $V, $n);  $V += $pa;  # Let the mulmod handle it
        $V = _mulmod($V, $V, $n);  $V += $pa;  $V -= $n if $V >= $n;
       } else {
-       #$U = _mulmod($U, $U, $n); $U=$n-$U; $U = ($pa>=$U) ? $pa-$U : $n-$U+$pa;
-       #$V = _mulmod($V, $V, $n); $V=$n-$V; $V = ($pa>=$V) ? $pa-$V : $n-$V+$pa;
-       #$V = _mulmod($V, $V, $n); $V=$n-$V; $V = ($pa>=$V) ? $pa-$V : $n-$V+$pa;
        $U = _mulmod($U, $U, $n);  $U = _addmod($U, $pa, $n);
        $V = _mulmod($V, $V, $n);  $V = _addmod($V, $pa, $n);
        $V = _mulmod($V, $V, $n);  $V = _addmod($V, $pa, $n);
@@ -9179,7 +9161,7 @@ sub prho_factor {
       if ($f == $n) {
         last if $inloop++;  # We've been here before
       } elsif ($f != 1) {
-        return _found_factor($f, $n, "prho", @factors);
+        return _found_factor($f, $n, "prho-64", @factors);
       }
     }
 
@@ -9214,32 +9196,35 @@ sub pbrent_factor {
     my $saveXi;
     my $f;
     my $r = 1;
+
+    $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne ref($n);
+    ($Xi,$Xm) = map { tobigint($_) } ($Xi,$Xm);
+
     while ($rounds > 0) {
       my $rleft = ($r > $rounds) ? $rounds : $r;
       while ($rleft > 0) {
         my $dorounds = ($rleft > $inner) ? $inner : $rleft;
         my $m = 1;
-        $saveXi = Maddint($Xi,0);
+        $saveXi = $Xi + 0;
         foreach my $i (1 .. $dorounds) {
-          $Xi = Mmuladdmod($Xi,$Xi,$pa,$n);
-          $m = Mmulint($m, Msubint($Xi,$Xm));
+          $Xi = ($Xi * $Xi + $pa) % $n;
+          $m *= ($Xi-$Xm);
         }
         $rleft -= $dorounds;
         $rounds -= $dorounds;
-        $m = Mmodint($m,$n);
-        $f = Mgcd($m,$n);
+        $f = Mgcd($m % $n,$n);
         last unless $f == 1;
       }
       if ($f == 1) {
         $r *= 2;
-        $Xm = Maddint($Xi,0);
+        $Xm = $Xi + 0;
         next;
       }
       if ($f == $n) {  # back up to determine the factor
-        $Xi = Maddint($saveXi,0);
+        $Xi = $saveXi + 0;
         do {
-          $Xi = Mmuladdmod($Xi,$Xi,$pa,$n);
-          $f = Mgcd(Msubint($Xm,$Xi),$n);
+          $Xi = ($Xi * $Xi + $pa) % $n;
+          $f = Mgcd($Xm - $Xi, $n);
         } while ($f != 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
       }
@@ -9251,9 +9236,10 @@ sub pbrent_factor {
     # Doing the gcd batching as above works pretty well here, but it's a lot
     # of code for not much gain for general users.
     for my $i (1 .. $rounds) {
-      $Xi = ($Xi * $Xi + $pa) % $n;
+      $Xi = ($Xi * $Xi) % $n;
+      $Xi += $pa; $Xi -= $n if $Xi >= $n;
       my $f = _gcd_ui( ($Xi>$Xm) ? $Xi-$Xm : $Xm-$Xi, $n);
-      return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
+      return _found_factor($f, $n, "pbrent-32",@factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
@@ -9262,7 +9248,7 @@ sub pbrent_factor {
     for my $i (1 .. $rounds) {
       $Xi = _addmod( _mulmod($Xi, $Xi, $n), $pa, $n);
       my $f = _gcd_ui( ($Xi>$Xm) ? $Xi-$Xm : $Xm-$Xi, $n);
-      return _found_factor($f, $n, "pbrent", @factors) if $f != 1 && $f != $n;
+      return _found_factor($f, $n, "pbrent-64",@factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
@@ -9283,39 +9269,33 @@ sub pminus1_factor {
     return @factors if $n < 4;
   }
 
-  if ( ref($n) ne 'Math::BigInt' ) {
+  if (!ref($n)) {
     # Stage 1 only
-    $B1 = 10_000_000 unless defined $B1;
-    my $pa = 2;
-    my $f = 1;
-    my($pc_beg, $pc_end, @bprimes);
-    $pc_beg = 2;
-    $pc_end = $pc_beg + 100_000;
+    my $sqrtn = Msqrtint($n);
+    $B1 = !defined $B1 || $B1 > $sqrtn ? $sqrtn : $sqrtn;
     my $sqrtb1 = int(sqrt($B1));
+    my($pc_beg, $pc_end) = (2, 6_000-1);
+    my $pa = 2;
+
     while (1) {
       $pc_end = $B1 if $pc_end > $B1;
-      @bprimes = @{ Mprimes($pc_beg, $pc_end) };
-      foreach my $q (@bprimes) {
+      foreach my $q (@{Mprimes($pc_beg, $pc_end)}) {
         my $k = $q;
         if ($q <= $sqrtb1) {
           my $kmin = int($B1 / $q);
           while ($k <= $kmin) { $k *= $q; }
         }
-        $pa = _powmod($pa, $k, $n);
+        $pa = Mpowmod($pa, $k, $n);
         if ($pa == 0) { push @factors, $n; return @factors; }
-        my $f = _gcd_ui( $pa-1, $n );
-        return _found_factor($f, $n, "pminus1", @factors) if $f != 1;
+        my $f = Mgcd($pa-1, $n);
+        return _found_factor($f, $n, "pminus1-64", @factors) if $f != 1;
       }
       last if $pc_end >= $B1;
-      $pc_beg = $pc_end+1;
-      $pc_end += 500_000;
+      ($pc_beg, $pc_end) = ($pc_end+1, $pc_end+18000);
     }
     push @factors, $n;
     return @factors;
   }
-
-  # Stage 2 isn't really any faster than stage 1 for the examples I've tried.
-  # Perl's overhead is greater than the savings of multiply vs. powmod
 
   if (!defined $B1) {
     for my $mul (1, 100, 1000, 10_000, 100_000, 1_000_000) {
@@ -9333,96 +9313,91 @@ sub pminus1_factor {
   }
   $B2 = 1*$B1 unless defined $B2;
 
-  my $one = $n->copy->bone;
-  my ($j, $q, $saveq) = (32, 2, 2);
-  my $t = $one->copy;
-  my $pa = $one->copy->binc();
-  my $savea = $pa->copy;
-  my $f = $one->copy;
-  my($pc_beg, $pc_end, @bprimes);
+  $n = tobigint($n) if !ref($n) || (defined $_BIGINT && $_BIGINT ne ref($n));
+  # bigints:  n, pa, t, savea, [stage2] b, bm
 
-  $pc_beg = 2;
-  $pc_end = $pc_beg + 100_000;
+  my ($j, $q, $saveq) = (32, 2, 2);
+  my $pa = tobigint(2);
+  my $t  = tobigint(1);
+  my $savea = $pa+0;
+  my $f = 1;
+  my($pc_beg, $pc_end) = (2, 2+100_000);
+
   while (1) {
     $pc_end = $B1 if $pc_end > $B1;
-    @bprimes = @{ Mprimes($pc_beg, $pc_end) };
+    my @bprimes = @{ Mprimes($pc_beg, $pc_end) };
     foreach my $q (@bprimes) {
       my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $t *= $k;                         # accumulate powers for a
       if ( ($j++ % 64) == 0) {
         next if $pc_beg > 2 && ($j-1) % 256;
-        $pa->bmodpow($t, $n);
-        $t = $one->copy;
+        $pa = _bi_powmod($pa, $t, $n);
+        $t = tobigint(1);
         if ($pa == 0) { push @factors, $n; return @factors; }
-        $f = Math::BigInt::bgcd( $pa->copy->bdec, $n );
+        $f = Mgcd($pa-1, $n);
         last if $f == $n;
-        return _found_factor($f, $n, "pminus1", @factors) unless $f->is_one;
+        return _found_factor($f, $n, "pminus1-bigint $B1", @factors) unless $f == 1;
         $saveq = $q;
-        $savea = $pa->copy;
+        $savea = $pa+0;
       }
     }
     $q = $bprimes[-1];
-    last if !$f->is_one || $pc_end >= $B1;
-    $pc_beg = $pc_end+1;
-    $pc_end += 500_000;
+    last if $f != 1 || $pc_end >= $B1;
+    ($pc_beg, $pc_end) = (Maddint($pc_end,1), Maddint($pc_end,500_000));
   }
-  undef @bprimes;
-  $pa->bmodpow($t, $n);
+  $pa = _bi_powmod($pa, $t, $n);
   if ($pa == 0) { push @factors, $n; return @factors; }
-  $f = Math::BigInt::bgcd( $pa-1, $n );
+  $f = Mgcd($pa-1, $n);
   if ($f == $n) {
     $q = $saveq;
-    $pa = $savea->copy;
+    $pa = $savea+0;
     while ($q <= $B1) {
       my ($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
-      $pa->bmodpow($k, $n);
-      my $f = Math::BigInt::bgcd( $pa-1, $n );
+      $pa = _bi_powmod($pa, $k, $n);
+      my $f = Mgcd($pa-1, $n);
       if ($f == $n) { push @factors, $n; return @factors; }
-      last if !$f->is_one;
+      last if $f != 1;
       $q = Mnext_prime($q);
     }
   }
   # STAGE 2
-  if ($f->is_one && $B2 > $B1) {
-    my $bm = $pa->copy;
-    my $b = $one->copy;
+  if ($f == 1 && $B2 > $B1) {
+    my $bm = $pa + 0;
+    my $b = tobigint(1);
     my @precomp_bm;
     $precomp_bm[0] = ($bm * $bm) % $n;
-    foreach my $j (1..19) {
-      $precomp_bm[$j] = ($precomp_bm[$j-1] * $bm * $bm) % $n;
-    }
-    $pa->bmodpow($q, $n);
+    $precomp_bm[$_] = ($precomp_bm[$_-1] * $bm * $bm) % $n for 1..19;
+    $pa = _bi_powmod($pa, $q, $n);
+
     my $j = 1;
     $pc_beg = $q+1;
-    $pc_end = $pc_beg + 100_000;
+    $pc_end = Maddint($pc_beg, 100_000);
     while (1) {
       $pc_end = $B2 if $pc_end > $B2;
-      @bprimes = @{ Mprimes($pc_beg, $pc_end) };
+      my @bprimes = @{ Mprimes($pc_beg, $pc_end) };
       foreach my $i (0 .. $#bprimes) {
         my $diff = $bprimes[$i] - $q;
         $q = $bprimes[$i];
         my $qdiff = ($diff >> 1) - 1;
-        if (!defined $precomp_bm[$qdiff]) {
-          $precomp_bm[$qdiff] = $bm->copy->bmodpow($diff, $n);
-        }
-        $pa->bmul($precomp_bm[$qdiff])->bmod($n);
+        $precomp_bm[$qdiff] = _bi_powmod($bm, $diff, $n)
+          unless defined $precomp_bm[$qdiff];
+        $pa = ($pa * $precomp_bm[$qdiff]) % $n;
         if ($pa == 0) { push @factors, $n; return @factors; }
-        $b->bmul($pa-1);
+        $b *= ($pa-1);
         if (($j++ % 128) == 0) {
-          $b->bmod($n);
-          $f = Math::BigInt::bgcd( $b, $n );
-          last if !$f->is_one;
+          $b %= $n;
+          $f = Mgcd($b, $n);
+          last if $f != 1;
         }
       }
-      last if !$f->is_one || $pc_end >= $B2;
-      $pc_beg = $pc_end+1;
-      $pc_end += 500_000;
+      last if $f != 1 || $pc_end >= $B2;
+      ($pc_beg, $pc_end) = (Maddint($pc_end,1), Maddint($pc_end,500_000));
     }
-    $f = Math::BigInt::bgcd( $b, $n );
+    $f = Mgcd($b, $n);
   }
-  return _found_factor($f, $n, "pminus1", @factors);
+  return _found_factor($f, $n, "pminus1-bigint $B1/$B2", @factors);
 }
 
 sub cheb_factor {
