@@ -40,7 +40,7 @@ my @negshifts = (
   [qw/-416649423645764932216789232242651032187 6 -26665563113328955661874510863529666059968 -6510147244465077065887331753791422377 -6510147244465077065887331753791422378/],
 );
 
-plan tests => 4 + 3;
+plan tests => 4 + 3 + 2;
 
 ###### lshiftint
 is_deeply([map { lshiftint($_) } 0..50], [map { $_ << 1 } 0..50], "lshiftint(0..50)");
@@ -60,3 +60,6 @@ is_deeply( [map { rshiftint($_->[0], $_->[1]) } @negshifts],
 is_deeply( [map { rashiftint($_->[0], $_->[1]) } @negshifts],
            [map { $_->[4] } @negshifts],
            "signed arithmetic right shift negative inputs" );
+
+is("".lshiftint("2147483648"),"4294967296","left shift of 2^31 with implied 1 bit");
+is("".lshiftint("9223372036854775808"),"18446744073709551616","left shift of 2^63 with implied 1 bit");

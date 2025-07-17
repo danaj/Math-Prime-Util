@@ -4,7 +4,6 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/:all/;
 use Math::Prime::Util::PrimeArray;
-use List::Util qw/first/;
 
 # Make sure things used as examples in the documentation work.
 
@@ -14,8 +13,8 @@ BEGIN {
   }
 }
 
-use Math::BigInt try=>"GMP,GMPz,Pari";
-my $have_gmp = prime_get_config->{'gmp'} || Math::BigInt->config()->{lib} eq 'Math::BigInt::GMP';
+use Math::BigInt try=>"GMPz,GMP,Pari";
+my $have_gmp = prime_get_config->{'gmp'};
 
 plan tests => 100;
 
@@ -204,7 +203,7 @@ is_deeply([divisors(30)], [1, 2, 3, 5, 6, 10, 15, 30], "divisors(30)");
 
 {
   my $sum = 0;
-  forcomposites { $sum += $_ if is_strong_pseudoprime($_,17) } 1000000;
+  foroddcomposites { $sum += $_ if is_strong_pseudoprime($_,17) } 1000000;
   is($sum, 23206520, "forcomposites looking for base-17 strong probable primes");
 }
 {
@@ -269,7 +268,7 @@ is( nth_prime(10001), 104743, "nth_prime(10001)");
   is($sum, 31626, "sum of amicable numbers using pipeline");
 }
 {
-  my $pd = first { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} reverse @{primes(1000000,9999999)};
+  my $pd = vecfirst { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} reverse @{primes(1000000,9999999)};
   is($pd, 7652413, "largest 7-digit pandigital prime");
 }
 {

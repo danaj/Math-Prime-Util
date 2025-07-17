@@ -766,7 +766,7 @@ if ($use64) {
              [qw/1408 756 800 756 1440 440 1260 576 936 760 1522 504 1200 648 1016 760 1380 384 1530 764 864 696 1224 512 1456/],
              "euler_phi(1513,1537)" );
   is( euler_phi(324234), 108072, "euler_phi(324234)" );
-  is( jordan_totient(4, 899), "653187225600", "jordan_totient(4, 899)" );
+  is( "".jordan_totient(4, 899), "653187225600", "jordan_totient(4, 899)" );
   is( carmichael_lambda(324234), 18012, "carmichael_lambda(324234)" );
 
   is( exp_mangoldt(16), 2, "exp_mangoldt of power of 2 = 2" );

@@ -5020,17 +5020,42 @@ sub cmpint {
 
 sub lshiftint {
   my($n, $k) = @_;
-  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
-  Mmulint($n, $k2);
+  $k = 1 if !defined $k;
+
+  return rshiftint($n, Mnegint($k)) if $k < 0;  # Technically not supported
+  return Mnegint(lshiftint(Mnegint($n),$k)) if $n < 0;
+
+  if (!ref($n)) {
+    return $n << $k if $n < INTMAX && $k < MPU_MAXBITS && $n == ($n<<$k)>>$k;
+    $n = tobigint($n);
+  }
+  $n = $n << $k;
+  return $n <= INTMAX ? _bigint_to_int($n) : $n;
+
+  #my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
+  #Mmulint($n, $k2);
 }
 sub rshiftint {
   my($n, $k) = @_;
-  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
-  (Mtdivrem($n, $k2))[0];
+  $k = 1 if !defined $k;
+
+  return lshiftint($n, Mnegint($k)) if $k < 0;  # Technically not supported
+  return Mnegint(rshiftint(Mnegint($n),$k)) if $n < 0;
+
+  if (!ref($n)) {
+    return $n >> $k if $n < INTMAX;
+    $n = tobigint($n);
+  }
+  $n = $n >> $k;
+  return $n <= INTMAX ? _bigint_to_int($n) : $n;
+
+  #my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
+  #(Mtdivrem($n, $k2))[0];
 }
 
 sub rashiftint {
   my($n, $k) = @_;
+  $k = 1 if !defined $k;
   my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   Mdivint($n, $k2);
 }
