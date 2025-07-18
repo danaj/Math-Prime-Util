@@ -227,6 +227,7 @@ sub entropy_bytes {
 *partitions = \&Math::Prime::Util::PP::partitions;
 *consecutive_integer_lcm = \&Math::Prime::Util::PP::consecutive_integer_lcm;
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
+*binomial = \&Math::Prime::Util::PP::binomial;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
 *fubini = \&Math::Prime::Util::PP::fubini;
 *falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
@@ -650,13 +651,6 @@ sub factorial {
   my($n) = @_;
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::factorial($n);
-}
-
-sub binomial {
-  my($n, $k) = @_;
-  _validate_integer($n);
-  _validate_integer($k);
-  return Math::Prime::Util::PP::binomial($n, $k);
 }
 
 sub stirling {

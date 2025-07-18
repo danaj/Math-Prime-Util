@@ -751,7 +751,7 @@ if ($use64) {
   prime_set_config(xs=>0, gmp=>0);
 
   is( consecutive_integer_lcm(13), 360360, "consecutive_integer_lcm(13)" );
-  is( consecutive_integer_lcm(52), Math::BigInt->new("3099044504245996706400"), "consecutive_integer_lcm(52)" );
+  is( "".consecutive_integer_lcm(52), "3099044504245996706400", "consecutive_integer_lcm(52)" );
 
   is_deeply( [moebius(513,537)],
              [qw/0 1 1 0 1 -1 1 0 -1 0 -1 0 0 1 1 0 0 -1 0 0 1 -1 1 0 1/],

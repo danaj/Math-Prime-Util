@@ -2926,7 +2926,7 @@ sub ramanujan_sum {
 sub liouville {
   my($n) = @_;
   my $l = (-1) ** scalar Mfactor($n);
-  return $l;
+  return $l < 0 ? -1 : $l > 0 ? 1 : 0;
 }
 
 sub sumliouville {
@@ -7527,6 +7527,8 @@ sub _binomialu {
 
 sub binomial {
   my($n, $k) = @_;
+  _validate_integer($n);
+  _validate_integer($k);
 
   # 1. Try GMP
   return reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k))
@@ -7536,6 +7538,9 @@ sub binomial {
   if ($n >= 0) {  return 0 if $k < 0 || $k > $n;  }
   else         {  return 0 if $k < 0 && $k > $n;  }
   $k = $n - $k if $k < 0;
+
+  # TODO: consider reflection for large k (e.g. k=n-2 => k=2)
+  # Also, be careful with large n and k with bigints.
 
   my $r;
 
@@ -7558,7 +7563,7 @@ sub binomial {
   return $n if $k == 1 || $k == $n-1;    # Math::BigInt (fixed in 1.90)
 
   my $R;
-  $n = tobigint($n);
+  $n = tobigint($n) unless ref($n);
 
   # Older Math::BigInt isn't right for negative n.  Adjust now.
   my $negate = 0;
@@ -7570,15 +7575,15 @@ sub binomial {
   if (defined $Math::GMPz::VERSION) {
     $R = Math::GMPz->new();
     Math::GMPz::Rmpz_bin_ui($R, Math::GMPz->new($n), $k);
-  } elsif (defined $Math::GMP::VERSION) {
-    $R = Math::GMP->new($n)->bnok($k);
+  } elsif (defined $Math::GMP::VERSION && $n < 4294967296) {
+    # This will silently coerce inputs to C 'long' type.
+    $R = Math::GMP::bnok("$n","$k");
   } elsif ($n > INTMAX && $k < 100) {
     # Incomplete work around problem with Math::BigInt not liking bigint n.
     # Fixed in 2.003003.
     $R = Mdivint(Mfalling_factorial($n,$k),Mfactorial($k));
   } else {
-    $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-    $R = $n->copy->bnok($k);
+    $R = Math::BigInt::bnok("$n","$k");
   }
   $R = -$R if $negate;
   return $R <= INTMAX && $R <= INTMIN            ?  _bigint_to_int($R)

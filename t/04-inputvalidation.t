@@ -59,7 +59,7 @@ foreach my $v (@incorrect) {
 }
 
 while (my($v, $expect) = each (%correct)) {
-  is(next_prime($v), $expect, "Correct:      next_prime($v)");
+  is("".next_prime($v), $expect, "Correct:      next_prime($v)");
 }
 
 # The next two tests really are not critical, but are nice to check.
