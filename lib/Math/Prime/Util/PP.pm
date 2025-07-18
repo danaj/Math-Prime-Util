@@ -5094,7 +5094,8 @@ sub rshiftint {
   return Mnegint(rshiftint(Mnegint($n),$k)) if $n < 0;
 
   if (!ref($n)) {
-    return $n >> $k if $n < INTMAX;
+    # Pre 5.24.0, large right shifts were undefined.
+    return $k < MPU_MAXBITS ? $n >> $k : 0  if $n < INTMAX;
     $n = tobigint($n);
   }
   $n = $n >> $k;
