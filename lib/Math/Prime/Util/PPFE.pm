@@ -341,7 +341,6 @@ sub entropy_bytes {
 *prho_factor = \&Math::Prime::Util::PP::prho_factor;
 *pbrent_factor = \&Math::Prime::Util::PP::pbrent_factor;
 *ecm_factor = \&Math::Prime::Util::PP::ecm_factor;
-*trial_factor = \&Math::Prime::Util::PP::trial_factor;
 *fermat_factor = \&Math::Prime::Util::PP::fermat_factor;
 *holf_factor = \&Math::Prime::Util::PP::holf_factor;
 *squfof_factor = \&Math::Prime::Util::PP::squfof_factor;
@@ -834,6 +833,7 @@ sub rashiftint {
   if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::rashiftint($n, $k);
 }
+
 sub legendre_phi {
   my($x, $a) = @_;
   _validate_integer_nonneg($x);
@@ -908,6 +908,13 @@ sub harmfrac {
   my($n) = @_;
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::harmfrac($n);
+}
+
+sub trial_factor {
+  my($n, $limit) = @_;
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($limit) if defined $limit;
+  return Math::Prime::Util::PP::trial_factor($n, $limit);
 }
 
 #############################################################################

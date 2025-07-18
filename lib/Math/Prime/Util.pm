@@ -2898,10 +2898,10 @@ perform a left shift of C<n> by C<k> bits.
 If the second argument is not provided, it is assumed to be 1.
 This is equivalent to multiplying by C<2^k>.
 
-With negative C<n>, this behaves as described above.  This is similar to how
-Perl behaves under the C<use integer> or C<use bigint> pragmas, but raw Perl
-coerces the argument into an unsigned before left shifting, which is unlikely
-to ever be what is wanted.
+With negative C<n>, this behaves as described above.  This is similar to
+how Perl behaves with C<use integer> or C<use bigint>, but raw Perl
+coerces the argument into an unsigned before left shifting, which is
+unlikely to ever be what is wanted.
 
 This corresponds to Pari/GP's C<shift> function with a positive number
 of bits, and Mathematica's C<BitShiftLeft> function.

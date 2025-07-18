@@ -1401,21 +1401,29 @@ sub euler_phi {
   validate_integer_nonneg($n);
   return $n if $n <= 1;
 
-  my $totient = 1;
+  my ($t2, $tot) = (1,1);
 
-  # Fast reduction of multiples of 2, may also reduce n for factoring
-  my $v2 = Mvaluation($n,2);
-  if ($v2 > 0) {
-    $totient = Mlshiftint($totient,$v2-1) if $v2 > 1;
-    $n = Mrshiftint($n,$v2);
+  if ($n % 2 == 0) {
+    my $totk = 0;
+    while (($n % 4) == 0) { $n >>= 1;  $totk++; }
+    $n >>= 1;
+    $t2 = $totk < 32 ? 1 << $totk : Mlshiftint(1,$totk) if $totk > 0;
   }
 
-  foreach my $f (Mfactor_exp($n)) {
-    my ($p, $e) = @$f;
-    $totient = Mmulint($totient, $p-1);
-    $totient = Mmulint($totient, $p) for 2 .. $e;
-  }
-  $totient;
+  if ($n < INTMAX) {
+    foreach my $f (Mfactor_exp($n)) {
+      my ($p, $e) = @$f;
+      $tot *= $p-1;
+      $tot *= $p for 2 .. $e;
+    }
+   } else {
+    foreach my $f (Mfactor_exp($n)) {
+      my ($p, $e) = @$f;
+      $tot = Mmulint($tot, $p-1);
+      $tot = Mmulint($tot, $p) for 2 .. $e;
+    }
+   }
+   Mmulint($t2, $tot);
 }
 
 sub inverse_totient {
@@ -3154,17 +3162,36 @@ sub divisor_sum {
   return Mvecprod(map { $_->[1]+1 } @factors) if $k == 0;
 
   my @prod;
-  foreach my $f (@factors) {
-    my ($p, $e) = @$f;
-    my $pk = Mpowint($p,$k);
-    if ($e == 1) {
-      push @prod, Maddint($pk,1);
-    } else {
-      my @fm = (Maddint($pk,1));
-      push @fm, Mpowint($pk,$_) for 2..$e;
-      push @prod, Mvecsum(@fm);
+
+  if ($k == 1) {
+    foreach my $f (@factors) {
+      my ($p, $e) = @$f;
+      if ($e == 1) {
+        push @prod, $p+1;
+      } elsif ($e == 2 && $p < 65536) {
+        push @prod, ($p+1) + $p * $p;
+      } else {
+        push @prod, Mvecsum($p+1, map { Mpowint($p,$_) } 2..$e);
+      }
+    }
+  } else {
+    foreach my $f (@factors) {
+      my ($p, $e) = @$f;
+      my $pk = Mpowint($p,$k);
+      if ($e == 1) {
+        push @prod, Maddint($pk,1);
+      } else {
+        push @prod, Mvecsum(Maddint($pk,1), map { Mpowint($pk,$_) } 2..$e);
+      }
     }
   }
+  return $prod[0] if @prod == 1;
+  if ($k == 1 && $n < 845404560) {   # divisor_sum(n) < 2^32
+    my $r = 1;
+    $r *= $_ for @prod;
+    return $r;
+  }
+  return Mmulint($prod[0],$prod[1]) if @prod == 2;
   Mvecprod(@prod);
 }
 
@@ -4965,6 +4992,17 @@ sub divrem {
 }
 
 sub divint {
+  if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
+    my($a,$b) = @_;
+    my $q;
+    if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
+      use integer; $q = $a / $b;
+    } else {
+      $q = _tquotient($a, $b);
+      $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX;
+    }
+    return $q;
+  }
   (fdivrem(@_))[0];
 }
 sub modint {
@@ -4984,6 +5022,19 @@ sub modint {
   (fdivrem(@_))[1];
 }
 sub cdivint {
+  if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
+    my($a,$b) = @_;
+    my $q;
+    if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
+      use integer; $q = $a / $b;
+      $q++ if $a != $b*$q;
+    } else {
+      $q = _tquotient($a, $b);
+      $q++ if $a != $b*$q;
+      $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX;
+    }
+    return $q;
+  }
   (cdivrem(@_))[0];
 }
 
@@ -8899,13 +8950,49 @@ sub _basic_factor {
 
 sub trial_factor {
   my($n, $limit) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($limit) if defined $limit;
 
-  # Don't use _basic_factor here -- they want a trial forced.
   my @factors;
-  if ($n < 4) {
-    @factors = ($n == 1) ? () : ($n);
+  # Don't use _basic_factor here -- they want a trial forced.
+
+  # For 32-bit n, we can simplify things a lot.
+  if ($n <= 4294967295) {
+    if ($n < 4) {
+      @factors = ($n == 1) ? () : ($n);
+      return @factors;
+    }
+    my $sqrtn = int(sqrt($n));
+    $limit = $sqrtn if !defined $limit || $limit > $sqrtn;
+
+    if ($limit >= 2 && ($n % 2 == 0)) {
+      do { push @factors, 2;  $n >>= 1; } while ($n % 2) == 0;
+      $sqrtn = int(sqrt($n));
+      $limit = $sqrtn if $sqrtn < $limit;
+    }
+    for my $p (3,5,7,11,13,17,19,23,29,31,37,41,43,47,53) {
+      last if $n == 1 || $p > $limit;
+      if ($n % $p == 0) {
+        do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
+        $sqrtn = int(sqrt($n));
+        $limit = $sqrtn if $sqrtn < $limit;
+      }
+    }
+    return @factors if $n == 1;
+    return (@factors,$n) if $limit < 59;
+
+    push @_primes_small, @{Mprimes($_primes_small[-1]+1, $limit+72)}
+      if $limit > $_primes_small[-1];
+
+    for my $i (17 .. $#_primes_small) {
+      my $p = $_primes_small[$i];
+      last if $p > $limit;
+      if (($n % $p) == 0) {
+        do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
+        last if $n == 1;
+        $sqrtn = int(sqrt($n));
+        $limit = $sqrtn if $sqrtn < $limit;
+      }
+    }
+    push @factors, $n if $n > 1;
     return @factors;
   }
 
