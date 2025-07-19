@@ -361,11 +361,11 @@ sub _toint_simple {
   if ($n >= 0) {
     my $max = MPU_32BIT ? 4294967295 : 70368744177664;  # 2^46
     if ($n =~ /^[+]?\d+\z/) {
-      return int($n) if $n < $max;
+      return int("$n") if $n < $max;
     } elsif ($n < $max) {
-      return int($n);
+      return int("$n");
     } else {
-      $n = _upgrade_to_float($n)->as_int;
+      $n = _upgrade_to_float("$n")->as_int;
     }
   } else {
     my $min = MPU_32BIT ? -2147483648 : -35184372088832;  # -2^45
@@ -378,6 +378,7 @@ sub _toint_simple {
     }
   }
   validate_integer($n);
+  $n = tobigint($n) if ref($n) && defined $_BIGINT && ref($n) ne $_BIGINT;
   $n;
 }
 
@@ -393,7 +394,7 @@ sub _frombinary {
   return $_BIGINT->new("0b$bstr")
     if defined $_BIGINT && $_BIGINT =~ /^Math::(BigInt|GMPz|GMP)$/;
   my $N = Math::BigInt->new("0b$bstr");
-  $N = tobigint($N) if defined $_BIGINT;
+  $N = tobigint($N) if defined $_BIGINT && ref($N) ne $_BIGINT;
   return $N;
 }
 
@@ -5394,7 +5395,7 @@ sub vecequal {
     # About 7x faster if we skip the validates.
     # _validate_integer($av);
     # _validate_integer($bv);
-    return 0 unless $av eq $bv;
+    return 0 unless "$av" eq "$bv";
   }
   1;
 }
