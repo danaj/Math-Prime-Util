@@ -4798,6 +4798,12 @@ sub powint {
     return int("$a")*int("$a") if abs($a) <= (MPU_32BIT ? 65535 : 4294967295);
     return Mmulint($a,$a);
   }
+
+  if (!ref($a) && !ref($b)) {
+    my $r = $a ** $b;  # 100001 ** 3 will not be an integer on 32-bit systems
+    return int($r) if $r < 1000030000300001 && $r > -1000030000300001;
+  }
+
   return Mmulint(Mmulint($a,$a),$a) if $b == 3;
 
   my $r = tobigint($a) ** tobigint($b);
@@ -6090,8 +6096,8 @@ sub _allrootmod_prime_power {
 
   return _allrootmod_prime($a, $k, $p) if $e == 1;
 
-  my $n = Mpowint($p,$e);
-  my $pk = Mpowint($p,$k);
+  my $n  = ($e<=13 && $p<=13)||($e<=5 && $p<=1000) ?int($p**$e):Mpowint($p,$e);
+  my $pk = ($k<=13 && $p<=13)||($k<=5 && $p<=1000) ?int($p**$k):Mpowint($p,$k);
   my @roots;
 
   if (($a % $n) == 0) {
@@ -6159,10 +6165,10 @@ sub _allrootmod_kprime {
   my @roots;
   foreach my $F (@nf) {
     my($f,$e) = @$F;
-    my $fe = Mpowint($f, $e);
     my @roots2 = ($e==1) ? _allrootmod_prime($a, $k, $f)
                          : _allrootmod_prime_power($a, $k, $f, $e);
     return () unless @roots2;
+    my $fe = ($e <= 13 && $f <= 13) ? int($f**$e) : Mpowint($f, $e);
     if (scalar(@roots) == 0) {
       @roots = @roots2;
     } else {
@@ -6555,6 +6561,18 @@ sub is_power {
         return 1;
       }
     } else {
+
+      my @rootmask = (
+  0x00000000,0x00000000,0xfdfcfdec,0x54555454,0xfffcfffc,           # 0-4
+  0x55555554,0xfdfdfdfc,0x55555554,0xfffffffc,0x55555554,0xfdfdfdfc,# 5-10
+  0x55555554,0xfffdfffc,0xd5555556,0xfdfdfdfc,0xf57d57d6,0xfffffffc,# 11-16
+  0xffffd556,0xfdfdfdfe,0xd57ffffe,0xfffdfffc,0xffd7ff7e,0xfdfdfdfe,# 17-22
+  0xffffd7fe,0xfffffffc,0xffffffd6,0xfdfffdfe,0xd7fffffe,0xfffdfffe,# 23-28
+  0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc,0xfffffff6,0xfffffdfe,# 29-34
+  0xf7fffffe,0xfffdfffe,0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc # 35-40
+      );
+      return 0 if $a <= 40 && (1 << ($n & 31)) & $rootmask[$a];
+
       my $RK;
       if ($n >= 0) {
         my $root = Mrootint($n, $a, \$RK);
