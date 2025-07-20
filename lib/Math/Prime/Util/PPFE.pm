@@ -246,6 +246,15 @@ sub entropy_bytes {
 *farey_rank = \&Math::Prime::Util::PP::farey_rank;
 
 
+*addint = \&Math::Prime::Util::PP::addint;
+*subint = \&Math::Prime::Util::PP::subint;
+*add1int = \&Math::Prime::Util::PP::add1int;
+*sub1int = \&Math::Prime::Util::PP::sub1int;
+*lshiftint = \&Math::Prime::Util::PP::lshiftint;
+*rshiftint = \&Math::Prime::Util::PP::rshiftint;
+*rashiftint = \&Math::Prime::Util::PP::rashiftint;
+*mulint = \&Math::Prime::Util::PP::mulint;
+*powint = \&Math::Prime::Util::PP::powint;
 *divint = \&Math::Prime::Util::PP::divint;
 *modint = \&Math::Prime::Util::PP::modint;
 *cdivint = \&Math::Prime::Util::PP::cdivint;
@@ -774,58 +783,6 @@ sub logint {
   _validate_integer_positive($n);
   _validate_integer_nonneg($b);
   return Math::Prime::Util::PP::logint($n, $b, $refp);
-}
-sub powint {
-  my($a, $b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  return Math::Prime::Util::PP::powint($a, $b);
-}
-sub mulint {
-  my($a, $b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  return Math::Prime::Util::PP::mulint($a, $b);
-}
-sub addint {
-  my($a, $b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  return Math::Prime::Util::PP::addint($a, $b);
-}
-sub subint {
-  my($a, $b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  return Math::Prime::Util::PP::subint($a, $b);
-}
-sub add1int {
-  my($n) = @_;
-  _validate_integer($n);
-  return Math::Prime::Util::PP::add1int($n);
-}
-sub sub1int {
-  my($n) = @_;
-  _validate_integer($n);
-  return Math::Prime::Util::PP::sub1int($n);
-}
-sub lshiftint {
-  my($n, $k) = @_;
-  _validate_integer($n);
-  if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
-  return Math::Prime::Util::PP::lshiftint($n, $k);
-}
-sub rshiftint {
-  my($n, $k) = @_;
-  _validate_integer($n);
-  if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
-  return Math::Prime::Util::PP::rshiftint($n, $k);
-}
-sub rashiftint {
-  my($n, $k) = @_;
-  _validate_integer($n);
-  if (!defined $k) { $k = 1; } else { _validate_integer_nonneg($k); }
-  return Math::Prime::Util::PP::rashiftint($n, $k);
 }
 
 sub legendre_phi {

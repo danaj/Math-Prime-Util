@@ -4777,6 +4777,8 @@ sub _powmod {
 
 sub powint {
   my($a, $b) = @_;
+  validate_integer($a);
+  validate_integer($b);
   return reftyped($_[0], Math::Prime::Util::GMP::powint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"powint"};
   croak "powint: exponent must be >= 0" if $b < 0;
@@ -4804,6 +4806,8 @@ sub powint {
 
 sub mulint {
   my($a, $b) = @_;
+  validate_integer($a);
+  validate_integer($b);
   return 0 if $a == 0 || $b == 0;
   return reftyped($_[0], Math::Prime::Util::GMP::mulint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"mulint"};
@@ -4811,57 +4815,59 @@ sub mulint {
   my $r = $a * $b;
 
   if (!ref($r)) {
-    return $r if $r < INTMAX && $r > INTMIN &&
-                 $a < INTMAX && $a > INTMIN &&
-                 $b < INTMAX && $b > INTMIN;
+    return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) * $b;
   }
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub addint {
   my($a, $b) = @_;
+  validate_integer($a);
+  validate_integer($b);
   return reftyped($_[0], Math::Prime::Util::GMP::addint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"addint"};
 
   my $r = $a + $b;
 
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r
-    if ref($r);
-
-  return $r if $r < INTMAX && $r > INTMIN &&
-               $a < INTMAX && $a > INTMIN &&
-               $b < INTMAX && $b > INTMIN;
-
-  $r = tobigint($a) + $b;
+  if (!ref($r)) {
+    return $r if $r < INTMAX && $r > INTMIN;
+    $r = tobigint($a) + $b;
+  }
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub subint {
   my($a, $b) = @_;
+  validate_integer($a);
+  validate_integer($b);
   return reftyped($_[0], Math::Prime::Util::GMP::subint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"subint"};
 
   my $r = $a - $b;
 
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r
-    if ref($r);
-
-  return $r if $r < INTMAX && $r > INTMIN &&
-               $a < INTMAX && $a > INTMIN &&
-               $b < INTMAX && $b > INTMIN;
-
-  $r = tobigint($a) - $b;
+  if (!ref($r)) {
+    return $r if $r < INTMAX && $r > INTMIN;
+    $r = tobigint($a) - $b;
+  }
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub add1int {
-  my($n) = @_;
-  return $n+1 if $n > INTMIN && $n < INTMAX;
-  my $r = tobigint($n) + 1;
+  my($a) = @_;
+  validate_integer($a);
+  my $r = $a+1;
+  if (!ref($r)) {
+    return $r if $r < INTMAX;
+    $r = tobigint($a) + 1;
+  }
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub sub1int {
-  my($n) = @_;
-  return $n-1 if $n > INTMIN && $n < INTMAX;
-  my $r = tobigint($n) - 1;
+  my($a) = @_;
+  validate_integer($a);
+  my $r = $a-1;
+  if (!ref($r)) {
+    return $r if $r < INTMAX;
+    $r = tobigint($a) - 1;
+  }
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 
@@ -5072,7 +5078,8 @@ sub cmpint {
 
 sub lshiftint {
   my($n, $k) = @_;
-  $k = 1 if !defined $k;
+  validate_integer($n);
+  if (!defined $k) { $k = 1; } else { validate_integer($k); }
 
   return rshiftint($n, Mnegint($k)) if $k < 0;  # Technically not supported
   return Mnegint(lshiftint(Mnegint($n),$k)) if $n < 0;
@@ -5089,7 +5096,8 @@ sub lshiftint {
 }
 sub rshiftint {
   my($n, $k) = @_;
-  $k = 1 if !defined $k;
+  validate_integer($n);
+  if (!defined $k) { $k = 1; } else { validate_integer($k); }
 
   return lshiftint($n, Mnegint($k)) if $k < 0;  # Technically not supported
   return Mnegint(rshiftint(Mnegint($n),$k)) if $n < 0;
@@ -5108,7 +5116,8 @@ sub rshiftint {
 
 sub rashiftint {
   my($n, $k) = @_;
-  $k = 1 if !defined $k;
+  validate_integer($n);
+  if (!defined $k) { $k = 1; } else { validate_integer($k); }
   my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   Mdivint($n, $k2);
 }
@@ -5337,6 +5346,19 @@ sub vecprod {
   return reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_))
     if $Math::Prime::Util::_GMPfunc{"vecprod"};
 
+  return $_[0] if @_ == 1;
+
+  # Try native for non-negative/non-zero inputs
+  if ($_[0] > 0 && $_[0] <= INTMAX && $_[1] > 0 && $_[1] <= INTMAX) {
+    my $prod = shift @_;
+    $prod *= shift @_
+      while @_ && $_[0] > 0 && $_[0] <= INTMAX && int(INTMAX/$prod) >= $_[0];
+    return $prod if @_ == 0;
+    unshift @_, $prod if $prod > 1;
+  }
+
+  return mulint($_[0], $_[1]) if @_ == 2;
+
   # Product tree:
   #
   # my $prod = _product_mulint(0, $#_, \@_);
@@ -5387,7 +5409,8 @@ sub vecequal {
     my $bv = $bref->[$i++];
     next if !defined $av && !defined $bv;
     return 0 if !defined $av || !defined $bv;
-    if ( (ref($av) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ||
+    if ( ref($av) && ref($bv) &&
+         (ref($av) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ||
          (ref($bv) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ) {
       next if (ref($av) eq ref($bv)) && vecequal($av, $bv);
       return 0;
@@ -9869,7 +9892,7 @@ sub divisors {
   }
 
   my @pe = Mfactor_exp($n);
-  return (1,$n) if @pe == 1 && $pe[0]->[1] == 1;
+  return (1,$n) if @pe == 1 && $pe[0]->[1] == 1 && $n <= $k;
 
   @d = (1);
   for my $pe (@pe) {
