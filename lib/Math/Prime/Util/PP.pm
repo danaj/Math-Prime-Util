@@ -4801,7 +4801,7 @@ sub powint {
 
   if (!ref($a) && !ref($b)) {
     my $r = $a ** $b;  # 100001 ** 3 will not be an integer on 32-bit systems
-    return int($r) if $r < 1000030000300001 && $r > -1000030000300001;
+    return int($r) if $r < 1000000000000000 && $r > -1000000000000000;
   }
 
   return Mmulint(Mmulint($a,$a),$a) if $b == 3;
