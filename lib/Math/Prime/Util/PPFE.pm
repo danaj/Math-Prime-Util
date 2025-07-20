@@ -174,6 +174,7 @@ sub entropy_bytes {
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;
 *perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
+*is_power = \&Math::Prime::Util::PP::is_power;
 *is_square_free = \&Math::Prime::Util::PP::is_square_free;
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
@@ -806,13 +807,6 @@ sub ramanujan_tau {
   my($n) = @_;
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::ramanujan_tau($n);
-}
-
-sub is_power {
-  my($n, $a, $refp) = @_;
-  _validate_integer($n);
-  _validate_integer_nonneg($a) if defined $a;
-  return Math::Prime::Util::PP::is_power($n, $a, $refp);
 }
 sub is_prime_power {
   my($n, $refp) = @_;

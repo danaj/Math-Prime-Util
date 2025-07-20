@@ -6532,13 +6532,14 @@ sub _powerof_ret {
 
 sub is_power {
   my ($n, $a, $refp) = @_;
+  validate_integer($n);
+  if (!defined $a) { $a = 0; } else { validate_integer_nonneg($a); }
   croak("is_power third argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if abs($n) <= 3 && !$a;
 
   if ($Math::Prime::Util::_GMPfunc{"is_power"} &&
       ($Math::Prime::Util::GMP::VERSION >= 0.42 ||
        ($Math::Prime::Util::GMP::VERSION >= 0.28 && $n > 0))) {
-    $a = 0 unless defined $a;
     my $k = Math::Prime::Util::GMP::is_power($n,$a);
     return 0 unless $k > 0;
     if (defined $refp) {
@@ -6552,7 +6553,7 @@ sub is_power {
     return $k;
   }
 
-  if (defined $a && $a != 0) {
+  if ($a != 0) {
     return 1 if $a == 1;                  # Everything is a 1st power
     return 0 if $n < 0 && $a % 2 == 0;    # Negative n never an even power
     if ($a == 2) {
