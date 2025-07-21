@@ -317,6 +317,10 @@ sub entropy_bytes {
 *prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
 *prime_count_lower = \&Math::Prime::Util::PP::prime_count_lower;
 *prime_count_upper = \&Math::Prime::Util::PP::prime_count_upper;
+*nth_prime = \&Math::Prime::Util::PP::nth_prime;
+*nth_prime_approx = \&Math::Prime::Util::PP::nth_prime_approx;
+*nth_prime_lower = \&Math::Prime::Util::PP::nth_prime_lower;
+*nth_prime_upper = \&Math::Prime::Util::PP::nth_prime_upper;
 *prime_power_count_approx = \&Math::Prime::Util::PP::prime_power_count_approx;
 *prime_power_count_lower = \&Math::Prime::Util::PP::prime_power_count_lower;
 *prime_power_count_upper = \&Math::Prime::Util::PP::prime_power_count_upper;
@@ -417,26 +421,6 @@ sub hclassno {
 }
 
 
-sub nth_prime {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_prime($n);
-}
-sub nth_prime_lower {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_prime_lower($n);
-}
-sub nth_prime_upper {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_prime_upper($n);
-}
-sub nth_prime_approx {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_prime_approx($n);
-}
 sub almost_prime_count_lower {
   my($k,$n) = @_;
   _validate_integer_nonneg($k);

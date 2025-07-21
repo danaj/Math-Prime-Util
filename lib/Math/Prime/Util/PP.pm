@@ -391,11 +391,14 @@ sub _frombinary {
     my $low = substr($bstr,-32,32,'');
     return oct('0b'.$bstr) << 32 + oct('0b'.$low);
   }
-  return $_BIGINT->new("0b$bstr")
-    if defined $_BIGINT && $_BIGINT =~ /^Math::(BigInt|GMPz|GMP)$/;
-  my $N = Math::BigInt->new("0b$bstr");
-  $N = tobigint($N) if defined $_BIGINT && ref($N) ne $_BIGINT;
-  return $N;
+  # Length is bigger than word size, so must be a bigint
+  if (!defined $_BIGINT) {
+    return Math::BigInt->new("0b$bstr");
+  } elsif ($_BIGINT =~ /^Math::(BigInt|GMPz|GMP)$/) {
+    return $_BIGINT->new("0b$bstr");
+  } else {
+    return tobigint( Math::BigInt->new("0b$bstr") );
+  }
 }
 
 ################################################################################
@@ -2293,7 +2296,7 @@ sub nth_perfect_power_approx {
     $pp = Gaddreal($pp, Gmulreal(-0.48,Gpowreal($n,19/17,$d),$d),$d);
     $pp = Gaddreal($pp, -1.5,$d);
     $pp =~ s/\..*//;
-    return Math::BigInt->new("$pp");
+    return Mtoint("$pp");
   }
 
   # Without this upgrade, it will return non-integers.
@@ -2328,38 +2331,34 @@ sub nth_perfect_power_approx {
   $pp -= 0.48*$n*$n143**16.82352941176470588;  # close to 2/17
   $pp -= 1.5;
   $pp = $pp->as_int();
-  return ($pp < ~0)  ?  int($pp)  :  $pp;
+  Mtoint($pp);
 }
 
 sub nth_perfect_power_lower {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
-  $n = _upgrade_to_float($n) if $n > 2**32;
+  $n = _upgrade_to_float($n) if ref($n) || $n > 2**32;
 
   my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
   $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
   $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
   $pp += -2*$n**(13/11) + -2*$n**(15/13);
   $pp += 1.5;
-  return int($pp) if $pp < ~0;
-  $pp = $pp->as_int() if ref($pp);
-  return Math::BigInt->new("$pp");
+  Mtoint($pp);
 }
 sub nth_perfect_power_upper {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,1,4,8,9,16,25,27)[$n] if $n < 8;
-  $n = _upgrade_to_float($n) if $n > 2**32;
+  $n = _upgrade_to_float($n) if ref($n) || $n > 2**32;
 
   my $pp = $n*$n  +  (13/3)*$n**(4/3)  +  (32/15)*$n**(16/15);
   $pp += -2*$n**( 5/ 3) + -2*$n**( 7/ 5);
   $pp += -2*$n**( 9/ 7) +  2*$n**(12/10);
   $pp +=  2*$n**(16/14);
   $pp -= 3.5;
-  return int($pp) if $pp < ~0;
-  $pp = $pp->as_int() if ref($pp);
-  return Math::BigInt->new("$pp");
+  Mtoint($pp);
 }
 
 sub nth_perfect_power {
@@ -3291,25 +3290,17 @@ sub _count_with_sieve {
 sub _lehmer_pi {
   my $x = shift;
   return _sieve_prime_count($x) if $x < 1_000;
-  do { require Math::BigFloat; Math::BigFloat->import(); }
-    if ref($x) eq 'Math::BigInt';
-  my $z = (ref($x) ne 'Math::BigInt')
-        ? int(sqrt($x+0.5))
-        : int(Math::BigFloat->new($x)->badd(0.5)->bsqrt->bfloor->bstr);
-  my $a = _lehmer_pi(int(sqrt($z)+0.5));
+
+  my $z = Msqrtint($x);
+  my $a = _lehmer_pi(Msqrtint($z));
   my $b = _lehmer_pi($z);
-  my $c = _lehmer_pi(int( (ref($x) ne 'Math::BigInt')
-                          ? $x**(1/3)+0.5
-                          : Math::BigFloat->new($x)->broot(3)->badd(0.5)->bfloor
-                     ));
-  ($z, $a, $b, $c) = map { (ref($_) =~ /^Math::Big/) ? _bigint_to_int($_) : $_ }
-                     ($z, $a, $b, $c);
+  my $c = _lehmer_pi(Mrootint($x,3));
 
   # Generate at least b primes.
-  my $bth_prime_upper = ($b <= 10) ? 29 : int($b*(log($b) + log(log($b)))) + 1;
+  my $bth_prime_upper = ($b <= 10) ? 29 : int("$b"*(log("$b")+log(log("$b")))) + 1;
   my $primes = Mprimes( $bth_prime_upper );
 
-  my $sum = int(($b + $a - 2) * ($b - $a + 1) / 2);
+  my $sum = Mmulint(Mvecsum($b,$a,-2),Mvecsum($b,-$a,1)) >> 1;
   $sum += legendre_phi($x, $a, $primes);
 
   # Get a big sieve for our primecounts.  The C code compromises with either
@@ -3317,7 +3308,7 @@ sub _lehmer_pi {
   # of the big outer loop counts.
   # Our sieve count isn't nearly as optimized here, so error on the side of
   # more primes.  This uses a lot more memory but saves a lot of time.
-  my $sref = _sieve_erat( int($x / $primes->[$a] / 5) );
+  my $sref = _sieve_erat( Mdivint(Mdivint($x,$primes->[$a]),5) );
 
   my ($lastw, $lastwpc) = (0,0);
   foreach my $i (reverse $a+1 .. $b) {
@@ -3388,15 +3379,12 @@ sub prime_count {
 
 sub nth_prime {
   my($n) = @_;
+  validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  if ($n > MPU_MAXPRIMEIDX && ref($n) ne 'Math::BigFloat') {
-    do { require Math::BigFloat; Math::BigFloat->import(); }
-      if !defined $Math::BigFloat::VERSION;
-    $n = Math::BigFloat->new("$n")
-  }
+  $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
   my $prime = 0;
   my $count = 1;
@@ -3437,11 +3425,12 @@ sub nth_prime {
 # The nth prime will be less or equal to this number
 sub nth_prime_upper {
   my($n) = @_;
+  validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
+  $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -3463,17 +3452,18 @@ sub nth_prime_upper {
     $upper = $n * ( $flogn  +  $flog2n );
   }
 
-  return int($upper + 1.0);
+  Mtoint($upper + 1.0);
 }
 
 # The nth prime will be greater than or equal to this number
 sub nth_prime_lower {
   my($n) = @_;
+  validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
 
-  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
+  $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);  # Note distinction between log_2(n) and log^2(n)
@@ -3487,7 +3477,7 @@ sub nth_prime_lower {
   # Axler 2017 Corollary 1.4
   my $lower = $n * ($flogn + $flog2n-1.0 + (($flog2n-2.00)/$flogn) - (($flog2n*$flog2n - 6*$flog2n + 11.508)/(2*$flogn*$flogn)) );
 
-  return int($lower + 0.999999999);
+  Mtoint($lower + 0.999999999);
 }
 
 sub inverse_li_nv {
@@ -3539,7 +3529,7 @@ sub _inverse_R {
   validate_integer_nonneg($n);
 
   return (0,2,3,5,6,8)[$n] if $n <= 5;
-  $n = _upgrade_to_float($n) if $n > MPU_MAXPRIMEIDX || $n > 2**45;
+  $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
   my $t = $n * log($n);
 
   # Iterate Halley's method until error term grows
@@ -3552,17 +3542,12 @@ sub _inverse_R {
     $t -= $term;
     last if abs($term) < 1e-6;
   }
-  if (ref($t)) {
-    $t = tobigint($t->bceil->bstr);
-    $t = _bigint_to_int($t) if $t <= INTMAX;
-  } else {
-    $t = int($t+0.999999);
-  }
-  $t;
+  Mtoint( ref($t) ? $t->bceil->bstr : $t+0.99999 );
 }
 
 sub nth_prime_approx {
   my($n) = @_;
+  validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= $#_primes_small;
@@ -3570,8 +3555,7 @@ sub nth_prime_approx {
   # Once past 10^12 or so, inverse_li gives better results.
   return Math::Prime::Util::inverse_li($n) if $n > 1e12;
 
-  $n = _upgrade_to_float($n)
-    if ref($n) eq 'Math::BigInt' || $n >= MPU_MAXPRIMEIDX;
+  $n = _upgrade_to_float($n) if ref($n) || $n >= MPU_MAXPRIMEIDX;
 
   my $flogn  = log($n);
   my $flog2n = log($flogn);
@@ -3611,7 +3595,7 @@ sub nth_prime_approx {
   else                    { $approx += -0.058 * $order; }
   # If we want the asymptotic approximation to be >= actual, use -0.010.
 
-  return int($approx + 0.5);
+  Mtoint($approx + 0.5);
 }
 
 #############################################################################
@@ -3623,7 +3607,8 @@ sub prime_count_approx {
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
   # Turn on high precision FP if they gave us a big number.
-  $x = _upgrade_to_float($x) if ref($_[0]) eq 'Math::BigInt' && $x > 1e16;
+  $x = _upgrade_to_float($x) if ref($x) || $x >= 1e16;
+
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
   #    n/(log(n)-1)        .22%          .058%
@@ -3674,12 +3659,7 @@ sub prime_count_approx {
     }
   }
 
-  if (ref($result)) {
-    return $result unless ref($result) eq 'Math::BigFloat';
-    # Math::BigInt::FastCalc 0.19 implements as_int incorrectly.
-    return Math::BigInt->new($result->bfround(0)->bstr);
-  }
-  int($result+0.5);
+  Mtoint($result+0.5);
 }
 
 sub prime_count_lower {
@@ -3691,8 +3671,7 @@ sub prime_count_lower {
   return reftyped($_[0], Math::Prime::Util::GMP::prime_count_lower($x))
     if $Math::Prime::Util::_GMPfunc{"prime_count_lower"};
 
-  $x = _upgrade_to_float($x)
-    if ref($x) eq 'Math::BigInt' || ref($_[0]) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x) if ref($x);
 
   my($result,$a);
   my $fl1 = log($x);
@@ -3746,9 +3725,8 @@ sub prime_count_lower {
     my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
     $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
   }
-
-  return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
-  return int($result);
+  # This will truncate bigfloat or floats to native int or bigint class.
+  Mtoint($result);
 }
 
 sub prime_count_upper {
@@ -3761,8 +3739,7 @@ sub prime_count_upper {
   return reftyped($_[0], Math::Prime::Util::GMP::prime_count_upper($x))
     if $Math::Prime::Util::_GMPfunc{"prime_count_upper"};
 
-  $x = _upgrade_to_float($x)
-    if ref($x) eq 'Math::BigInt' || ref($_[0]) eq 'Math::BigInt';
+  $x = _upgrade_to_float($x) if ref($x);
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
@@ -3840,9 +3817,8 @@ sub prime_count_upper {
     my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
     $result = $x / ($fl1 - $one - $one/$fl1 - 3.35/$fl2 - 12.65/$fl3 - 71.7/$fl4 - 466.1275/$fl5 - 3489.8225/$fl6);
   }
-
-  return Math::BigInt->new($result->bfloor->bstr()) if ref($result) eq 'Math::BigFloat';
-  return int($result);
+  # This will truncate bigfloat or floats to native int or bigint class.
+  Mtoint($result);
 }
 
 sub twin_prime_count {
@@ -8244,10 +8220,10 @@ sub lucas_sequence {
   croak "lucas_sequence: k must be >= 0" if $k < 0;
   return (0,0,0) if $n == 1;
 
-  # Try to do it in GMP if we can.
   if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30 && !ref($P) && !ref($Q)) {
-    return map { ($_ > ''.~0) ? Math::BigInt->new(''.$_) : $_ }
-           Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k);
+    return maybetobigintall(
+             Math::Prime::Util::GMP::lucas_sequence($n, $P, $Q, $k)
+           );
   }
 
   return (lucasuvmod($P,$Q,$k,$n), Mpowmod($Q,$k,$n));
