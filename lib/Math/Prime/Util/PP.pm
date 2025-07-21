@@ -6937,8 +6937,10 @@ sub todigitstring {
     $s = sprintf("%b",$n)  if $base ==  2;
     $s = sprintf("%o",$n)  if $base ==  8;
     $s = sprintf("%x",$n)  if $base == 16;
-    $s = substr($s,0,$len) if $len > 0;
-    # TODO: zero pad and add test
+    if ($len > 0) {
+      $s = substr($s,0,$len);
+      $s = '0' x ($len-length($s)) . $s if length($s) < $len;
+    }
     return $s;
   }
 
@@ -6954,8 +6956,10 @@ sub todigitstring {
     $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
     $s = $n->to_base($base);
   }
-  $s = substr($s,0,$len) if $len > 0;
-  # TODO zero pad
+  if ($len > 0) {
+    $s = substr($s,0,$len);
+    $s = '0' x ($len-length($s)) . $s if length($s) < $len;
+  }
   return lc($s);
 }
 

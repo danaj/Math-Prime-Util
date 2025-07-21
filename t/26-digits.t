@@ -15,7 +15,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 plan tests => 0 + 7 + 3 + 2 + 1    # fromdigits
                 + 6 + 4 + 1 + 1    # todigits
                 + 4 + 2*$extra + 1 # sumdigits
-                + 3 + 1            # todigitstring
+                + 3 + 2            # todigitstring
                 + 12;
 
 ###### fromdigits
@@ -75,6 +75,8 @@ is(todigitstring("7" x 26, 9), "1303055203367717374834745502", "todigitstring ba
 is(todigitstring("9" x 27, 11), "92586630a001888a8112250349", "todigitstring base 11");
 
 is(todigitstring(-143,16), "8f", "todigitstring ignores negative sign");
+
+is(todigitstring(12345,8,10), "0000030071", "todigitstring will 0 pad");
 
 ###### examples from Wolfram docs
 is_deeply([todigits(1234135634,16)], [4,9,8,15,6,10,5,2], "todigits 1234135634 base 16");
