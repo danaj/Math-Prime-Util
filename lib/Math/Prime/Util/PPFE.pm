@@ -267,6 +267,9 @@ sub entropy_bytes {
 *negint = \&Math::Prime::Util::PP::negint;
 *signint = \&Math::Prime::Util::PP::signint;
 *cmpint = \&Math::Prime::Util::PP::cmpint;
+*sqrtint = \&Math::Prime::Util::PP::sqrtint;
+*rootint = \&Math::Prime::Util::PP::rootint;
+*logint = \&Math::Prime::Util::PP::logint;
 
 *negmod = \&Math::Prime::Util::PP::negmod;
 *sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
@@ -751,23 +754,6 @@ sub mulsubmod {
   my ($a, $b, $c, $n) = @_;
   _validate_integer($a); _validate_integer($b); _validate_integer($c); _validate_integer($n);
   return Math::Prime::Util::PP::mulsubmod($a,$b,$c, $n);
-}
-sub sqrtint {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::sqrtint($n);
-}
-sub rootint {
-  my($n, $k, $refp) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::rootint($n, $k, $refp);
-}
-sub logint {
-  my($n, $b, $refp) = @_;
-  _validate_integer_positive($n);
-  _validate_integer_nonneg($b);
-  return Math::Prime::Util::PP::logint($n, $b, $refp);
 }
 
 sub legendre_phi {

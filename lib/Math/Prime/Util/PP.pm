@@ -71,7 +71,7 @@ our $_BIGINT;
 *tobigint = \&Math::Prime::Util::_to_bigint;
 *maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
 *maybetobigintall = \&Math::Prime::Util::_maybe_bigint_allargs;
-
+*getconfig = \&Math::Prime::Util::prime_get_config;
 
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
@@ -788,7 +788,7 @@ sub sieve_range {
 
 sub sieve_prime_cluster {
   my($lo,$hi,@cl) = @_;
-  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+  my $_verbose = getconfig()->{'verbose'};
   validate_integer_nonneg($lo);
   validate_integer_nonneg($hi);
 
@@ -1042,7 +1042,7 @@ sub next_prime {
   return tobigint(MPU_32BIT ? "4294967311" : "18446744073709551629") if !ref($n) && $n >= MPU_MAXPRIME;
   # n is now either 1) not bigint and < maxprime, or (2) bigint and >= uvmax
 
-  if ($n > 4294967295 && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($n > 4294967295 && getconfig()->{'gmp'}) {
     return reftyped($_[0], Math::Prime::Util::GMP::next_prime($n));
   }
 
@@ -1057,7 +1057,7 @@ sub prev_prime {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,undef,undef,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
-  if ($n > 4294967295 && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+  if ($n > 4294967295 && getconfig()->{'gmp'}) {
     return reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
   }
 
@@ -2029,23 +2029,22 @@ sub nth_powerfree {
   return undef if $n == 0 || $k < 2;
   return $n if $n < 4;
 
-  # 1. zm is the zeta multiplier, qk is the expected value.
+  # 1. zm is the zeta multiplier (float), qk is the expected value (integer).
   my($zm, $qk);
   if ($n <= 2**52) {
     $zm = ($k == 2) ? 1.644934066848226 : 1.0 + RiemannZeta($k);
-    $qk = $zm * "$n";
-    $qk = int("$qk");
   } else {
     do { require Math::BigFloat; Math::BigFloat->import(); }
       if !defined $Math::BigFloat::VERSION;
     require Math::Prime::Util::ZetaBigFloat;
     my $acc = length("$n")+10;
     my $bk = Math::BigFloat->new($k);  $bk->accuracy($acc);
-    $zm = Math::Prime::Util::ZetaBigFloat::RiemannZeta($bk)->badd(1);
-    $qk = $zm->copy->bmul("$n");
-    $qk = Math::BigInt->new($qk->bfloor->bstr);
+    $zm = Math::Prime::Util::ZetaBigFloat::RiemannZeta($bk)->badd(1)->numify;
   }
-  $zm = $zm->numify() if ref($zm);
+  my $verbose = getconfig()->{'verbose'};
+
+  $qk = Mtoint($zm * "$n");
+  print "nth_powerfree: zm $zm  qk $qk\n" if $verbose;
 
   my($count, $diff);
   # In practice this converges very rapidly, usually needing only one iteration.
@@ -2053,19 +2052,18 @@ sub nth_powerfree {
     # 2. Get the actual count at qk and the difference from our goal.
     $count = Math::Prime::Util::powerfree_count($qk,$k);
     $diff = ($count >= $n)  ?  $count-$n  :  $n-$count;
-    # print "qk $qk  count $count  diff $diff\n";
+    print "nth_powerfree: iter $_, count $count diff $diff\n" if $verbose;
+    last if $diff <= 300;   # Threshold could be improved.
 
     # 3. If not close, update the estimate using the expected density zm.
-    last if $diff <= 300;   # Threshold could be improved.
-    if ($count > $n) {
-      $qk -= int("$diff" * $zm);
-    } else {
-      $qk += int("$diff" * $zm);
-    }
+    my $delta = Mtoint($zm * "$diff");
+    $qk = $count > $n  ?  Msubint($qk,$delta)  :  Maddint($qk,$delta);
   }
+  print "nth_powerfree: $qk, moving down to a powerfree number\n" if $verbose;
 
   # 4. Make sure we're on a powerfree number.
   $qk-- while !Math::Prime::Util::is_powerfree($qk,$k);
+  print "nth_powerfree: $qk, need to move ",abs($n-$count)," steps\n" if $verbose;
 
   # 5. Walk forward or backward to next/prev powerfree number.
   my $adder = ($count < $n) ? 1 : -1;
@@ -2772,7 +2770,6 @@ sub is_delicate_prime {
 sub _totpred {
   my($n, $maxd) = @_;
   return 0 if $maxd <= 1 || Mis_odd($n);
-  $n = Math::BigInt->new("$n") unless ref($n) || $n < INTMAX;
   return 1 if ($n & ($n-1)) == 0;
   $n >>= 1;
   return 1 if $n == 1 || ($n < $maxd && Mis_prime(2*$n+1));
@@ -2822,7 +2819,7 @@ sub moebius_range {
   }
   my @mu = map { 1 } $lo .. $hi;
   $mu[0] = 0 if $lo == 0;
-  my($p, $sqrtn) = (2, int(sqrt($hi)+0.5));
+  my($p, $sqrtn) = (2, Msqrtint($hi));
   while ($p <= $sqrtn) {
     my $i = $p * $p;
     $i = $i * int($lo/$i) + (($lo % $i)  ? $i : 0)  if $i < $lo;
@@ -3706,7 +3703,7 @@ sub prime_count_lower {
     elsif ($x <    4500000) { $a = 2.31; }
     else                    { $a = 2.35; }
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
-  } elsif ($x < 1.1e26 || Math::Prime::Util::prime_get_config()->{'assume_rh'}){
+  } elsif ($x < 1.1e26 || getconfig()->{'assume_rh'}){
                                           # Büthe 2014/2015
     my $lix = MLi($x);
     my $sqx = sqrt($x);
@@ -3802,7 +3799,7 @@ sub prime_count_upper {
   } elsif ($x < 1e19) {                     # Skewes number lower limit
     $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : ($x < 10126e7) ? 0.021 : 0.0;
     $result = MLi($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
-  } elsif ($x < 1.1e26 || Math::Prime::Util::prime_get_config()->{'assume_rh'}) {
+  } elsif ($x < 1.1e26 || getconfig()->{'assume_rh'}) {
                                             # Schoenfeld / Büthe 2014 Th 7.4
     my $lix = MLi($x);
     my $sqx = sqrt($x);
@@ -3902,7 +3899,7 @@ sub almost_prime_count {
   ($k, $n) = _kap_reduce_count($k, $n);
   return $n if $k == 0;
   # If we reduced parameters, try again if XS might be able to do it.
-  return Math::Prime::Util::almost_prime_count($k,$n) if $ok != $k && !ref($n) && Math::Prime::Util::prime_get_config()->{'xs'};
+  return Math::Prime::Util::almost_prime_count($k,$n) if $ok != $k && !ref($n) && getconfig()->{'xs'};
   return Mprime_count($n) if $k == 1;
   return Math::Prime::Util::semiprime_count($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
@@ -4288,8 +4285,7 @@ sub nth_almost_prime_upper {
   }
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
-  my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
-  $hi = ($hi<=~0) ? int($hi) : Math::BigInt->new("$hi");
+  my $hi = Mtoint(1 + _almost_prime_nth_asymptotic($k, $n));
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_lower($k, $hi);
   while ($rhi < $n) {
@@ -4318,16 +4314,14 @@ sub nth_almost_prime_lower {
   }
 
   my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
-  my $hi = 1 + _almost_prime_nth_asymptotic($k, $n);
+  my $hi = Mtoint(1 + _almost_prime_nth_asymptotic($k, $n));
   # We just guessed at hi, so bump it up until it's in range
-  $hi = ($hi<=~0) ? int($hi) : Math::BigInt->new("$hi");
   my $rhi = almost_prime_count_upper($k, $hi);
   while ($rhi < $n) {
     $lo = $hi+1;
     $hi = $hi + int(1.02 * ($hi/$rhi) * ($n - $rhi)) + 100;
     $rhi = almost_prime_count_upper($k, $hi);
   }
-
   while ($lo < $hi) {
     my $mid = $lo + (($hi-$lo) >> 1);
     if (almost_prime_count_upper($k,$mid) < $n) { $lo = $mid+1; }
@@ -4630,7 +4624,7 @@ sub sum_primes {
   if ( $high <= ~0 &&
        $high > (MPU_64BIT ? 2000000 : 320000) &&
        ($high-$low) > $high/50 &&
-       !Math::Prime::Util::prime_get_config()->{'xs'}) {
+       !getconfig()->{'xs'}) {
     my $hsum = _sum_primes_n($high);
     my $lsum = ($low <= 2) ? 0 : _sum_primes_n($low - 1);
     return $hsum - $lsum;
@@ -4638,7 +4632,7 @@ sub sum_primes {
 
   # Sum in windows.
   # TODO: consider some skipping forward with small tables.
-  my $xssum = (MPU_64BIT && $high < 6e14 && Math::Prime::Util::prime_get_config()->{'xs'});
+  my $xssum = (MPU_64BIT && $high < 6e14 && getconfig()->{'xs'});
   my $step = ($xssum && $high > 5e13) ? 1_000_000 : 11_000_000;
   Math::Prime::Util::prime_precalc(Msqrtint($high));
   while ($low <= $high) {
@@ -6837,14 +6831,18 @@ sub valuation {
   return (undef,0)[$n] if $n <= 1;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2
-    if (ref($n)) {
-      $n = Math::BigInt->new("$n") unless ref($n) eq 'Math::BigInt';
-      my $s = substr($n->as_bin,2);
-      return length($s) - rindex($s,'1') - 1;
+    my $s;
+    if (!ref($n)) {
+      return 0 if $n & 1;
+      return 1 if $n & 2;
+      return 2 if $n & 4;
+      $s = sprintf("%b",$n);
+    } elsif (ref($n) eq 'Math::BigInt') {
+      $s = substr($n->as_bin,2);
+    } else {
+      $s = substr(Math::BigInt->new("$n")->as_bin,2);
     }
-    return 0 if $n & 1;
-    $n >>= 1;                # So -$n stays an integer
-    return 1 + (32,0,1,26,2,23,27,0,3,16,24,30,28,11,0,13,4,7,17,0,25,22,31,15,29,10,12,6,0,21,14,9,5,20,8,19,18)[(-$n & $n) % 37];
+    return length($s) - rindex($s,'1') - 1;
   }
   while ( !($n % $k) ) {
     $n /= $k;
@@ -6887,6 +6885,7 @@ sub _splitdigits {
 
 sub todigits {
   my($n,$base,$len) = @_;
+  validate_integer($n);
   $base = 10 unless defined $base;
   $len = -1 unless defined $len;
   die "Invalid base: $base" if $base < 2;
@@ -6897,6 +6896,7 @@ sub todigits {
 
 sub todigitstring {
   my($n,$base,$len) = @_;
+  validate_integer($n);
   $base = 10 unless defined $base;
   croak "Invalid base for string: $base" if $base < 2 || $base > 36;
   $len = -1 unless defined $len;
@@ -7039,7 +7039,7 @@ sub tozeckendorf {
 
 sub sqrtint {
   my($n) = @_;
-  return undef if $n < 0;
+  validate_integer_nonneg($n);
   return int(sqrt("$n")) if $n <= 562949953421312;  # 2^49 safe everywhere
 
   my $refn = ref($n);
@@ -7061,8 +7061,8 @@ sub sqrtint {
 
 sub rootint {
   my ($n, $k, $refp) = @_;
-  return undef if $n < 0;
-  croak "rootint: k must be > 0" unless $k > 0;
+  validate_integer_nonneg($n);
+  validate_integer_positive($k);
 
   # It's unclear whether we should add GMPfunc here.  We want it in logint
   # because it's slow or not included in Perl bigint classes.
@@ -7142,8 +7142,8 @@ sub logint {
     return reftyped($_[0], $e);
   }
 
-  croak "logint: n must be > 0" unless $n > 0;
-  croak "logint: missing base" unless defined $b;
+  validate_integer_positive($n);
+  validate_integer_nonneg($b);
 
   my $log = _logint($n,$b);
   $$refp = Mpowint($b,$log) if defined $refp;
@@ -7674,7 +7674,7 @@ sub factorial {
       $r = Math::GMPz->new(); Math::GMPz::Rmpz_fac_ui($r,$n);
     } elsif (defined $Math::GMP::VERSION) {
       $r = Math::GMP::bfac($n);
-    } elsif (defined &Math::Prime::Util::GMP::factorial && Math::Prime::Util::prime_get_config()->{'gmp'}) {
+    } elsif (defined &Math::Prime::Util::GMP::factorial && getconfig()->{'gmp'}) {
       $r = Math::Prime::Util::GMP::factorial($n);
     }
     return reftyped($_[0], $r)    if defined $r;
@@ -8091,7 +8091,7 @@ sub znlog {
   $g = Mmodint($g, $n);
   return 0 if $a == 1 || $g == 0 || $n < 2;
 
-  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+  my $_verbose = getconfig()->{'verbose'};
 
   # For large p, znorder can be very slow.  Do a small trial test first.
   my $x = _dlp_trial($a, $g, $n, 200);
@@ -8928,7 +8928,7 @@ sub is_aks_prime {
     $n = tobigint($n);
   }
 
-  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+  my $_verbose = getconfig()->{'verbose'};
   print "# aks r = $r  s = $rlimit\n" if $_verbose;
   local $| = 1 if $_verbose > 1;
   for (my $a = 1; $a <= $rlimit; $a++) {
@@ -9163,7 +9163,7 @@ sub factor {
       $_holf_r = 1;
       foreach my $sub (@_fsublist) {
         last if scalar @ftry >= 2;
-        print "  starting $sub->[0]\n" if Math::Prime::Util::prime_get_config()->{'verbose'} > 1;
+        print "  starting $sub->[0]\n" if getconfig()->{'verbose'} > 1;
         @ftry = $sub->[1]->($n);
       }
       if (scalar @ftry > 1) {
@@ -9193,7 +9193,7 @@ sub _found_factor {
     croak "internal error in $what" unless Mmulint($f,$f2) == $n;
     push @factors, vecsort($f,$f2);
     # MPU::GMP prints this type of message if verbose, so do the same.
-    print "$what found factor $f\n" if Math::Prime::Util::prime_get_config()->{'verbose'} > 0;
+    print "$what found factor $f\n" if getconfig()->{'verbose'} > 0;
   }
   @factors;
 }
@@ -10032,7 +10032,7 @@ sub ramanujan_tau {
   return 0 if $n <= 0;
 
   # Use GMP if we have no XS or if size is small
-  if ($n < 100000 || !Math::Prime::Util::prime_get_config()->{'xs'}) {
+  if ($n < 100000 || !getconfig()->{'xs'}) {
     if ($Math::Prime::Util::_GMPfunc{"ramanujan_tau"}) {
       return reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
     }
@@ -10315,8 +10315,6 @@ my @_Riemann_Zeta_Table = (
 sub RiemannZeta {
   my($x) = @_;
 
-  my $ix = ($x == int($x))  ?  "" . Math::BigInt->new($x)  :  0;
-
   # Try our GMP code if possible.
   if ($Math::Prime::Util::_GMPfunc{"zeta"}) {
     my($wantbf,$xdigits) = _bfdigits($x);
@@ -10563,8 +10561,8 @@ sub Pi {
   # will run ~4x faster than MPFR and ~1.5x faster than MPU::GMP.
 
   my $have_bigint_gmp = Math::BigInt->config()->{lib} =~ /GMP/;
-  my $have_xdigits    = Math::Prime::Util::prime_get_config()->{'xs'};
-  my $_verbose = Math::Prime::Util::prime_get_config()->{'verbose'};
+  my $have_xdigits    = getconfig()->{'xs'};
+  my $_verbose        = getconfig()->{'verbose'};
 
   if ($Math::Prime::Util::_GMPfunc{"Pi"}) {
     print "  using MPUGMP for Pi($digits)\n" if $_verbose;
@@ -11694,7 +11692,7 @@ sub miller_rabin_random {
     return Math::Prime::Util::GMP::miller_rabin_random($n, $k);
   }
 
-  # Math::Prime::Util::prime_get_config()->{'assume_rh'})  ==>  2*log(n)^2
+  # getconfig()->{'assume_rh'})  ==>  2*log(n)^2
   if ($k >= int(3*$n/4) ) {
     for (2 .. int(3*$n/4)+2) {
       return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, $_);
