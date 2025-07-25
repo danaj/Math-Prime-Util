@@ -52,6 +52,8 @@ typedef __int8 int8_t;
   #include <stdlib.h>
   #include <ctype.h>
   #include <stdbool.h>
+  #define TRUE true
+  #define FALSE false
   typedef unsigned long UV;
   typedef   signed long IV;
   typedef        double NV;

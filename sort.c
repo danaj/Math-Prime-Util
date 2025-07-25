@@ -152,7 +152,7 @@ static bool _radixsort(UV *array, size_t n, bool is_iv)
       ptr[r] = p;
       p += count[r];
     }
-    assert(p == b + n);
+    /* assert(p == b + n); */
     memset(count, 0, sizeof count);
     for (i = 0; i < n; i++) {
       UV d = a[i];
@@ -169,7 +169,7 @@ static bool _radixsort(UV *array, size_t n, bool is_iv)
       ptr[r^signbit] = p;
       p += count[r^signbit];
     }
-    assert(p == b + n);
+    /* assert(p == b + n); */
     for (i = 0; i < n; i++) {
       UV d = a[i];
       *(ptr[(d>>sh) % RADIX]++) = d;

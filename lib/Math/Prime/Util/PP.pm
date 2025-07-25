@@ -162,6 +162,7 @@ our $_BIGINT;
 *Mfordivisors = \&Math::Prime::Util::fordivisors;
 *Mforprimes = \&Math::Prime::Util::forprimes;
 *MLi = \&Math::Prime::Util::LogarithmicIntegral;
+*Mprime_omega = \&Math::Prime::Util::prime_omega;
 
 if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53) {
   *Saddint = \&Math::Prime::Util::GMP::addint;
@@ -2574,7 +2575,7 @@ sub _rec_omega_primes {
   my($k, $lo, $hi, $m, $p, $opl) = @_;
   my $s = Mrootint(Mdivint($hi, $m), $k);
   foreach my $q (@{Mprimes($p, $s)}) {
-    next if Mmodint($m,$q) == 0;
+    next if $m % $q == 0;
     for (my $v = Mmulint($m, $q); $v <= $hi ; $v = Mmulint($v, $q)) {
       if ($k == 1) {
         push @$opl, $v  if $v >= $lo;
@@ -2600,15 +2601,18 @@ sub omega_primes {
 
   my $opl = [];
 
-  # Simple iteration
-  #     while ($low <= $high) {
-  #       push @$opl, $low if Math::Prime::Util::prime_omega($low) == $k;
-  #       $low++;
-  #     }
-  # Recursive method from trizen
-  _rec_omega_primes($k, $low, $high, 1, 2, $opl);
-
-  Mvecsorti($opl);
+  if ($high-$low > 1000000000 || ($k >= 10 && $high-$low > 10000000)) {
+    # Recursive method from trizen
+    _rec_omega_primes($k, $low, $high, 1, 2, $opl);
+    Mvecsorti($opl);
+  } else {
+    # Simple iteration
+    while ($low <= $high) {
+      push @$opl, $low if Mprime_omega($low) == $k;
+      $low++;
+    }
+  }
+  $opl;
 }
 
 sub is_semiprime {
@@ -2694,7 +2698,7 @@ sub is_omega_prime {
 
   return 0+($n==1) if $k == 0;
 
-  return (Math::Prime::Util::prime_omega($n) == $k) ? 1 : 0;
+  return (Mprime_omega($n) == $k) ? 1 : 0;
 }
 
 sub is_practical {
@@ -3959,7 +3963,7 @@ sub omega_prime_count {
   # Naive method
   # my ($sum, $low) = (0, Mpn_primorial($k));
   # for (my $i = $low; $i <= $n; $i++) {
-  #   $sum++ if Math::Prime::Util::prime_omega($i) == $k;
+  #   $sum++ if Mprime_omega($i) == $k;
   # }
   # return $sum;
 
@@ -4517,7 +4521,7 @@ sub nth_omega_prime {
   # Very inefficient algorithm.
   my $i = Mpn_primorial($k);
   while (1) {
-    $i++ while Math::Prime::Util::prime_omega($i) != $k;
+    $i++ while Mprime_omega($i) != $k;
     return $i if --$n == 0;
     $i++;
   }
@@ -7691,7 +7695,7 @@ sub factorialmod {
   $m = -$m if $m < 0;
   return (undef,0)[$m] if $m <= 1;
 
-  return Math::Prime::Util::GMP::factorialmod($n,$m)
+  return reftyped($_[1], Math::Prime::Util::GMP::factorialmod($n,$m))
     if $Math::Prime::Util::_GMPfunc{"factorialmod"};
 
   return 0 if $n >= $m || $m == 1;
