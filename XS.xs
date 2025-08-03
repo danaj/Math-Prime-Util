@@ -405,10 +405,9 @@ static int _validate_int(pTHX_ SV* n, int negok)
     isbignum = _is_sv_bigint(aTHX_ n);
     if (!isbignum) return 0;
   }
-  /* Without being very careful, don't process magic variables here */
-  if (SvGAMAGIC(n) && !isbignum) return 0;
   if (!SvOK(n))  croak("Parameter must be defined");
-  ptr = SvPV_nomg(n, len);             /* Includes stringifying bigints */
+  if (SvGAMAGIC(n) && !isbignum)   ptr = SvPV(n, len);
+  else                             ptr = SvPV_nomg(n, len);
   if (len == 0 || ptr == 0)  croak("Parameter %s", mustbe);
   if (ptr[0] == '-' && negok) {
     isneg = 1; ptr++; len--;           /* Read negative sign */

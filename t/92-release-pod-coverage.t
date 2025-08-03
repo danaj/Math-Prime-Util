@@ -177,7 +177,7 @@ sub mpu_PPM_regex {
       Mfalling_factorial
       Mkronecker Mmoebius Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count
-      Mprimorial Mpn_primorial
+      Mprimorial Mpn_primorial Mprime_omega
       MLi Mpowersum
       Murandomb Murandomm Mvaluation
       Mprimes
@@ -195,6 +195,7 @@ sub mpu_PPM_regex {
       validate_integer     validate_integer_nonneg
       validate_integer_abs validate_integer_positive
       tobigint maybetobigint maybetobigintall
+      getconfig
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;
