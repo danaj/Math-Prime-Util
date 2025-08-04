@@ -878,24 +878,22 @@ static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bm
 
 #define MPU_SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
 typedef struct {
-  signed char lostatus, histatus, *midstatus;
-  UV loval, hival, *midval;
-  int *midindex;
+  UV  value;
+  int index;
+  signed char status;
+} set_cache_val_t;
+typedef struct {
+  set_cache_val_t  *v;  /* lo in 0, hi in 1, cached values in rest */
 } set_data_t;
 static set_data_t init_set_lookup_cache(pTHX_ AV *av) {
   set_data_t d;
   Size_t len = av_count(av);
   if (len > MPU_SC_SIZE) len = MPU_SC_SIZE;
-  d.lostatus = d.histatus = 0;
-  Newz(0, d.midstatus, len, signed char);
-  New(0, d.midval, len, UV);
-  New(0, d.midindex, len, int);
+  Newz(0, d.v, 2+len, set_cache_val_t);
   return d;
 }
 static void free_set_lookup_cache(set_data_t *d) {
-  Safefree(d->midstatus);
-  Safefree(d->midval);
-  Safefree(d->midindex);
+  Safefree(d->v);
 }
 #define _TRIVAL(x) (((x) > 0) - ((x) < 0))  /* neg => -1, pos => 1, 0 => 0 */
 #define _SC_GET_VALUE(statvar, var, arr, i) \
@@ -905,27 +903,36 @@ static void free_set_lookup_cache(set_data_t *d) {
 #define SC_SET_MID_VALUE(statvar, var, arr, i, cache) \
   do { \
     unsigned int imod_ = (i) % MPU_SC_SIZE; \
-    if (cache != 0 && cache->midstatus[imod_] != 0 && cache->midindex[imod_] == i) { \
-      statvar = cache->midstatus[imod_];  var = cache->midval[imod_]; \
+    set_cache_val_t *pmid = cache ? cache->v + 2 + imod_ : 0; \
+    if (pmid && pmid->status != 0 && pmid->index == i) { \
+      statvar = pmid->status; \
+      var     = pmid->value; \
     } else { \
       _SC_GET_VALUE(statvar, var, arr, i) \
-      if (cache) { cache->midstatus[imod_] = _TRIVAL(statvar);  cache->midval[imod_] = var; cache->midindex[imod_] = i; } \
+      if (pmid) { \
+        pmid->status = _TRIVAL(statvar); \
+        pmid->value  = var; \
+        pmid->index  = i; \
+      } \
     } \
   } while (0)
 
 static int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, int loindex, int hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
 {
-  if (cache != 0 && cache->lostatus != 0) {
-    *lostatus = cache->lostatus;  *loval = cache->loval;
+  set_cache_val_t *plo = cache  ?  cache->v + 0  :  0;
+  set_cache_val_t *phi = cache  ?  cache->v + 1  :  0;
+
+  if (plo && plo->status != 0) {
+    *lostatus = plo->status;  *loval = plo->value;
   } else {
     _SC_GET_VALUE(*lostatus, *loval, avarr, loindex);
-    if (cache) { cache->lostatus = _TRIVAL(*lostatus);  cache->loval = *loval; }
+    if (plo) { plo->status = _TRIVAL(*lostatus);  plo->value = *loval; }
   }
-  if (cache != 0 && cache->histatus != 0) {
-    *histatus = cache->histatus;  *hival = cache->hival;
+  if (phi && phi->status != 0) {
+    *histatus = phi->status;  *hival = phi->value;
   } else {
     _SC_GET_VALUE(*histatus, *hival, avarr, hiindex);
-    if (cache) { cache->histatus = _TRIVAL(*histatus);  cache->hival = *hival; }
+    if (phi) { phi->status = _TRIVAL(*histatus);  phi->value = *hival; }
   }
   return 1;
 }
