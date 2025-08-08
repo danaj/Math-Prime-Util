@@ -18,8 +18,13 @@ for my $r ( shuffle 0 .. 31 ) {
         $data .= "$c $r whatever\n"
     }
 }
-# say $data; die;
 my @skip = ( 0, 15, 16, 31 );
+
+# If we do this, we have many values to check.
+# The vecany method (or List::Util any) slows down drastically.
+# regex and index slow down too, though not as much.
+# setissubset and setcontainsany slow down a very small amount
+#my @skip = map { 2*$_ } 0..200;
 
 my %skiphash;
 @skiphash{@skip} = undef;

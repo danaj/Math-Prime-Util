@@ -201,11 +201,11 @@ static const gmp_info_t gmp_info[] = {
   {                   "invmod", 20, 1, R_BIGINT },
   {                  "znorder", 22, 1, R_BIGINT },
   {              "zinprimroot", 22, 1, R_BIGINT },
-  {                   "addmod", 36, 1, R_BIGINT },
+  {                   "addmod", 53, 1, R_BIGINT }, /* 36 with n > 0 */
   {                   "submod", 53, 1, R_BIGINT },
-  {                   "mulmod", 36, 1, R_BIGINT },
-  {                   "powmod", 36, 1, R_BIGINT },
-  {                   "divmod", 36, 1, R_BIGINT },
+  {                   "mulmod", 53, 1, R_BIGINT }, /* 36 with n > 0 */
+  {                   "powmod", 53, 1, R_BIGINT }, /* 36 with n > 0 */
+  {                   "divmod", 53, 1, R_BIGINT }, /* 36 with n > 0 */
   {                "muladdmod", 53, 1, R_BIGINT },
   {                "mulsubmod", 53, 1, R_BIGINT },
   {             "factorialmod", 53, 1, R_BIGINT }, /* 47 with m > 0 */
@@ -385,7 +385,8 @@ static int _is_sv_bigint(pTHX_ SV* n)
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
  * Returns 0 if it is an object or a string too large for a UV.
- * Returns 1 if it is good to process by XS.
+ * Returns 1/-1 if it is good to process by XS.
+ * TODO: it would be useful to know the sign even if returning 0 for bigint.
  */
 static int _validate_int(pTHX_ SV* n, int negok)
 {
