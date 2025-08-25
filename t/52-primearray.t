@@ -60,8 +60,20 @@ my %test_indices = (
 );
 
 
-plan tests => 3 + 2 + scalar(keys %test_indices) + 8;
+plan tests => 3 + 3 + 2 + scalar(keys %test_indices) + 8;
 
+my $stderr = '';
+
+{
+  local $SIG{__WARN__} = sub { $stderr = $_[0] };
+  my @primes;  tie @primes, 'Math::Prime::Util::PrimeArray';
+  eval { $primes[0] = 0; };
+  like( $stderr, qr/cannot write/, "Can't store in PrimeArray");
+  eval { delete $primes[0]; };
+  like( $stderr, qr/cannot write/, "Can't delete in PrimeArray");
+  ok( defined $primes[7777], "All are defined" );
+}
+  
 {
   my @primes;  tie @primes, 'Math::Prime::Util::PrimeArray';
   my (@order, @got, @exp);
