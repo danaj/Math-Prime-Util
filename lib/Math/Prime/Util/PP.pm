@@ -11146,6 +11146,19 @@ sub vecuniq {
   return grep { not $seen{$k = $_}++; } @_;
 }
 
+sub vecfreq {
+  my %count = ();
+  my $countundef = 0;
+  my $k;
+  for (@_) {
+    if (defined $_) { $count{$k = $_}++; } else { $countundef++; }
+  }
+  return wantarray ? %count : scalar(keys %count)   if !$countundef;
+  return 1 + scalar(keys %count)                    if !wantarray;
+  undef $k;
+  return (%count, (\$k => $countundef));
+}
+
 # SET/VEC generic.
 
 sub setunion {

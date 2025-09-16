@@ -485,10 +485,15 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
 
 /******************************************************************************/
 
+#if 1
+  /* This is NEGATE_2UV(iv) from handy.h */
+  #define neg_iv(n) ((UV)-((n)+1) + 1U)
+#else
 static UV neg_iv(UV n) {
   if ((IV)n == IV_MIN)  return (UV_MAX >> 1) + 1;
   else                  return (UV) (-(IV)n);
 }
+#endif
 
 /* Given 'a' and astatus (-1 means 'a' is an IV), properly mod with n */
 static void _mod_with(UV *a, int astatus, UV n) {
@@ -6462,3 +6467,62 @@ void vecuniq(...)
       }
       XSRETURN(count);
     }
+
+void vecfreq(...)
+  PROTOTYPE: @
+  PREINIT:
+    int itype, count;
+    size_t len, i, retlen;
+    UV *L;
+  PPCODE:
+    if (items == 0) {
+      if (GIMME_V == G_SCALAR) XSRETURN_UV(0);
+      else                     XSRETURN_EMPTY;
+    }
+    /* Try to read native integers.  Bail to PP if something else. */
+    len = (size_t) items;
+    New(0, L, len, UV);
+    itype = IARR_TYPE_ANY;
+    for (i = 0; i < len && itype != IARR_TYPE_BAD && SVNUMTEST(ST(i)); i++) {
+      IV n = SvIVX(ST(i));
+      if (n < 0)
+        itype |= IARR_TYPE_NEG;
+      else if (SvIsUV(ST(i)))
+        itype |= IARR_TYPE_POS;
+      L[i] = n;
+    }
+    if (i < len || itype == IARR_TYPE_BAD) {
+      Safefree(L);
+      DISPATCHPP();
+      return;
+    }
+    if (itype == IARR_TYPE_NEG)
+      sort_iv_array((IV*)L, len);
+    else
+      sort_uv_array(L, len);
+    /* 2. Walk the sorted integers */
+    if (GIMME_V == G_SCALAR) {
+      count = 0;
+      for (i = 1; i < len; i++)
+        if (L[i] != L[i-1])
+          count++;
+      ST(0) = sv_2mortal(newSVuv(count+1));
+      retlen = 1;
+    } else {
+      int sign = IARR_TYPE_NEG ? -1 : 1;
+      EXTEND(SP, (SSize_t)len*2);
+      retlen = 0;
+      count = 1;
+      for (i = 1; i < len; i++) {
+        if (L[i] == L[i-1]) { count++; continue; }
+        PUSHs(sv_2mortal(NEWSVINT(sign,L[i-1])));  /* key */
+        PUSH_NPARITY((int)count);                  /* val */
+        retlen += 2;
+        count = 1;
+      }
+      PUSHs(sv_2mortal(NEWSVINT(sign,L[i-1])));  /* key */
+      PUSH_NPARITY((int)count);                  /* val */
+      retlen += 2;
+    }
+    Safefree(L);
+    XSRETURN(retlen);

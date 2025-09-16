@@ -208,6 +208,7 @@ Tags:
   vecmin(@list)                       minimum of list of integers
   vecmax(@list)                       maximum of list of integers
   vecuniq(@list)                      remove duplicates from list of integers
+  vecfreq(@list)                      return hash of item => count from list
   vecsort(@list)                      numerically sort a list of integers
   vecsorti(\@list)                    in-place numeric sort a list ref
   vecextract(\@list, mask)            select from list based on mask

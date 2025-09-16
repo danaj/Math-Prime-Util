@@ -9,6 +9,7 @@ use Math::Prime::Util qw/vecreduce
                          vecmin vecmax
                          vecsum vecprod factorial
                          vecuniq
+                         vecfreq
                          vecsort vecsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
@@ -125,6 +126,7 @@ plan tests => 1    # vecmin
             + 1    # vecfirst
             + 1    # vecfirstidx
             + 1    # vecuniq
+            + 1    # vecfreq
             + 1    # vecsort
             + 0;
 
@@ -260,6 +262,51 @@ subtest 'vecuniq', sub {
   is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
   is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
   is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
+};
+
+###### vecfreq
+subtest 'vecfreq', sub {
+  my @L;
+  my %got;
+  my %exp;
+  is_deeply([vecfreq()], [], "vecfreq on empty list");
+  is(0+vecfreq(), 0, "vecfreq on empty list (scalar)");
+
+  is_deeply([vecfreq(1)], [1=>1], "vecfreq one integer");
+  is(0+vecfreq(1), 1, "vecfreq one integer (scalar)");
+
+  is_deeply([vecfreq(1,1)], [1=>2], "vecfreq two identical integers");
+  is(0+vecfreq(1,1), 1, "vecfreq two identical integers (scalar)");
+
+  @L = (-1,1);
+  %got = vecfreq(@L);
+  %exp = (-1=>1, 1=>1);
+  is_deeply(\%got, \%exp, "vecfreq two integers");
+  is(0+vecfreq(@L), 2, "vecfreq two integers (scalar)");
+
+  @L = (-1,14,4,-4,2,2,3,4,3,4,4,1);
+  %got = vecfreq(@L);
+  %exp = (-1=>1, 14=>1, 4=>4, -4=>1, 2=>2, 3=>2, 1=>1);
+  is_deeply(\%got, \%exp, "vecfreq many integers");
+  is(0+vecfreq(@L), 7, "vecfreq many integers (scalar)");
+
+  @L = ("hello", 14, "world", "tree", "world");
+  %got = vecfreq(@L);
+  %exp = (hello=>1, 14=>1, world=>2, tree=>1);
+  is_deeply(\%got, \%exp, "vecfreq strings");
+  is(0+vecfreq(@L), 4, "vecfreq strings (scalar)");
+
+  { # from List::MoreUtils::frequency test
+    @L = ('a', 'b', '', undef, 'b', 'c', '', undef);
+    my %e = (a=>1, b=>2, ''=>2, c=>1);
+    my @f = vecfreq(@L);
+    my $seen_undef;
+    # This works because we always put undef at the end
+    ref $f[-2] and ref $f[-2] eq "SCALAR" and not defined ${$f[-2]} and (undef, $seen_undef) = splice @f, -2, 2, ();
+    my %f = @f;
+    is_deeply(\%f, \%e, "vecfreq mixed with undef");
+    is($seen_undef, 2, "vecfreq counts two undefs");
+  }
 };
 
 ###### vecsort

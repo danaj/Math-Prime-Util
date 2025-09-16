@@ -100,7 +100,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsorti
+      vecsort vecsorti vecfreq
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setcontainsany setinsert setremove setinvert
@@ -3329,6 +3329,21 @@ removed.  The original ordering is preserved.  All values B<must> be defined.
 This is similar to L<List::Util::uniq> but restricted to integers,
 while L<List::Util::uniq> supports undef and arbitrary types.
 In return our function is 2-10x faster in XS for native signed integers.
+
+=head2 vecfreq
+
+  # Produce frequency hash:
+  my %h = vecfreq(1,2,2,2,3,1,4);   #  (1=>2, 2=>3, 3=>1, 4=>1)
+  # Print most common value:
+  say vecreduce { $h{$a} > $h{$b} ? $a : $b } keys %h;
+
+Given an array of items, returns a hash with each key containing the unique
+items, with the associated value being the occurance count in the array.
+
+This is identical to L<List::MoreUtils::frequency>.  It is typically faster
+when given only native integers.
+
+This is very similar to the Pari/GP function C<matreduce> for vectors.
 
 =head2 vecsort
 

@@ -35,7 +35,7 @@ my $skipidxstr = " $skipstr ";
 my $skipset = Set::Tiny->new(@skip);
 
 cmpthese -2, {
-    # Perl 5.42
+    # Perl 5.42, performance is approximately equal to vecany
     #any => sub {
     #    while ( $data =~ /^(\d+) (\d+)/mg ) {
     #        next if any { $1 == $_ || $2 == $_ } @skip;

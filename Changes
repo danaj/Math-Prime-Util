@@ -166,6 +166,7 @@ Revision history for Perl module Math::Prime::Util
     - vecmex(...)                     least non-negative value not in list
     - vecpmex(...)                    least positive value not in list
     - vecuniq(...)                    remove duplicates from list of integers
+    - vecfreq(...)                    return hash of item => count from list
     - vecsort(@L)                     numerically sort integer list
     - vecsorti(\@L)                   in-place numeric sort a list ref
     - vecsample(k,@list)              return k random elements of list
