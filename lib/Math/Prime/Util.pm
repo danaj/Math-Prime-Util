@@ -3338,7 +3338,7 @@ In return our function is 2-10x faster in XS for native signed integers.
   say vecreduce { $h{$a} > $h{$b} ? $a : $b } keys %h;
 
 Given an array of items, returns a hash with each key containing the unique
-items, with the associated value being the occurance count in the array.
+items, with the associated value being the occurrence count in the array.
 
 This is identical to L<List::MoreUtils::frequency>.  It is typically faster
 when given only native integers.
