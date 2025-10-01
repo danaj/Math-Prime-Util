@@ -6510,6 +6510,7 @@ void vecfreq(...)
       retlen = 1;
     } else {
       int sign = IARR_TYPE_NEG ? -1 : 1;
+      dMY_CXT;
       EXTEND(SP, (SSize_t)len*2);
       retlen = 0;
       count = 1;
