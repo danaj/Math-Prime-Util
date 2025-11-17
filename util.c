@@ -1177,14 +1177,14 @@ UV primorial(UV n) {
 }
 UV factorial(UV n) {
   UV i, r = 1;
-  if ( (n > 12 && sizeof(UV) <= 4) || (n > 20 && sizeof(UV) <= 8) ) return 0;
+  if (n > (sizeof(UV) <= 4 ? 12 : 20)) return 0;
   for (i = 2; i <= n; i++)
     r *= i;
   return r;
 }
 UV subfactorial(UV n) {
   if (n <= 3)  return (n ? n-1 : 1);
-  if (n >= ((BITS_PER_WORD == 64) ? 21 : 14))  return 0;
+  if (n >= (BITS_PER_WORD == 64 ? 21 : 14))  return 0;
   return (n * subfactorial(n-1) + ((n & 1) ? -1 : 1));
 }
 

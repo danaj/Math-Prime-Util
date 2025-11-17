@@ -44,9 +44,10 @@ UV random_nbit_prime(void* ctx, UV b)
 UV random_ndigit_prime(void* ctx, UV d)
 {
   UV lo, hi;
-  if ( (d == 0) || (BITS_PER_WORD == 32 && d >= 10) || (BITS_PER_WORD == 64 && d >= 20) ) return 0;
+  if (d == 0) return 0;
   if (d == 1) return nth_prime(1 + urandomm32(ctx,4));
   if (d == 2) return nth_prime(5 + urandomm32(ctx,21));
+  if (d >= (BITS_PER_WORD == 64 ? 20 : 10)) return 0;
   lo = powmod(10,d-1,UV_MAX)+1;
   hi = 10*lo-11;
   while (1) {

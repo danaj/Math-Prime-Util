@@ -1067,6 +1067,29 @@ bool MR32(uint32_t n) {
 
 /******************************************************************************/
 
+                   /********** PRIMALITY TEST **********/
+
+/******************************************************************************/
+
+/*
+ * For numbers under 3481 (59^2) everything handled by trial division.
+ *
+ * For numbers under 500k when we don't have fast ASM Montgomery math,
+ * do it with trial division.
+ *
+ * If input is 32-bit, use a hashed single base Miller-Rabin test.
+ *
+ * Otherwise (input is bigger than 32-bit), do trial division to 89, then
+ * call BPSW.  This is typically about 25% slower than a big (300k+) hash
+ * table to allow two Miller-Rabin tests, and 20% faster than a reasonable
+ * size table allowing three M-R tests.
+ *
+ * See:
+ *   - https://github.com/flintlib/flint/pull/2487
+ *   - https://github.com/JASory/machine-prime
+ * for examples of using the big table.
+ */
+
 bool is_prob_prime(UV n)
 {
 #if BITS_PER_WORD == 64

@@ -260,18 +260,19 @@ static LNV _ei_series_divergent(LNV const x) {
 }
 
 NV Ei(NV x) {
+  bool nv_is_quad = LNV_IS_QUAD;  /* make C2X happy */
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
   /* Protect against messed up rounding modes */
   if (x >=  12000) return INFINITY;
   if (x <= -12000) return 0;
 
   if (x < 0) {
-    if (x >= -1.0 && !LNV_IS_QUAD) return _ei_chebyshev_neg(x);
+    if (x >= -1.0 && !nv_is_quad)  return _ei_chebyshev_neg(x);
     else if (x < -0.80)            return -_eintv_laguerre_series(1, -x);
     else                           return _ei_series_convergent(x);
   } else {
     if (x < (-2 * loglnv(LNV_EPSILON)))         return _ei_series_convergent(x);
-    if (x >= 24 && (!LNV_IS_QUAD || x <= 43.2)) return _ei_chebyshev_pos24(x);
+    if (x >= 24 && (!nv_is_quad || x <= 43.2))  return _ei_chebyshev_pos24(x);
     else                                        return _ei_series_divergent(x);
   }
 }
