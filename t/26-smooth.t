@@ -11,22 +11,29 @@ $use64 = 0 if 18446744073709550592 == ~0;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
-plan tests => 13+13      # small is_smooth / is_rough
+plan tests => 4          # small is_smooth / is_rough
             + 4+3        # special case is_smooth / is_rough
             + 4+4        # is_smooth large
             + 4+2;       # smooth_count / rough_count
 
 ###### is_smooth / is_rough
 
-for my $n (0 .. 12) {
-  my @exp = map { fac_is_smooth($n, $_) } 0 .. 12;
-  my @got = map {     is_smooth($n, $_) } 0 .. 12;
-  is_deeply( \@got, \@exp, "is_smooth($n, 0..12)" );
-}
-for my $n (0 .. 12) {
-  my @exp = map { fac_is_rough($n, $_) } 0 .. 12;
-  my @got = map {     is_rough($n, $_) } 0 .. 12;
-  is_deeply( \@got, \@exp, "is_rough($n, 0..12)" );
+{
+  my(@sexp, @sgot, @sngot,  @rexp, @rgot, @rngot);
+  for my $k (0..9,11,13,17,29) {
+    for my $n (0..12, 143, 187, 253, 319, 341, 851, 1073, 1147) {
+      push @sexp, fac_is_smooth($n, $k);
+      push @rexp, fac_is_rough($n, $k);
+      push @sgot, is_smooth($n, $k);
+      push @rgot, is_rough($n, $k);
+      push @sngot, is_smooth(-$n, $k);
+      push @rngot, is_rough(-$n, $k);
+    }
+  }
+  is_deeply( \@sgot, \@sexp, "is_smooth(n,k) for small inputs" );
+  is_deeply( \@sngot, \@sexp, "is_smooth(-n,k) for small inputs" );
+  is_deeply( \@rgot, \@rexp, "is_rough(n,k) for small inputs" );
+  is_deeply( \@rngot, \@rexp, "is_rough(-n,k) for small inputs" );
 }
 
 is(is_smooth(1000000,10000),1,"1000000 is 10000-smooth");

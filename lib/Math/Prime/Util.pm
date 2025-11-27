@@ -4636,7 +4636,7 @@ The values themselves produce L<OEIS series A090425|http://oeis.org/A090425>.
   my $is_23_smooth = is_smooth($n, 23);
 
 Given two non-negative integer inputs C<n> and C<k>,
-returns C<1> if C<n> is C<k>-smooth, and C<0> otherwise.
+returns C<1> if C<|n|> is C<k>-smooth, and C<0> otherwise.
 This uses the OEIS definition: Returns true if no prime factors
 of C<n> are larger than C<k>.
 
@@ -4654,7 +4654,7 @@ but shortcuts are taken to avoid fully factoring if possible.
   my $is_23_rough = is_rough($n, 23);
 
 Given two non-negative integer inputs C<n> and C<k>,
-returns C<1> if C<n> is C<k>-rough, and C<0> otherwise.
+returns C<1> if C<|n|> is C<k>-rough, and C<0> otherwise.
 This uses the OEIS definition: Returns true if no prime factors
 of C<n> are smaller than C<k>.
 

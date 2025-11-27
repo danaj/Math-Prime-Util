@@ -3661,21 +3661,30 @@ void
 is_smooth(IN SV* svn, IN SV* svk)
   ALIAS:
     is_rough = 1
-    is_omega_prime = 2
-    is_almost_prime = 3
   PREINIT:
     UV n, k;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
         _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
-      int res;
-      switch (ix) {
-        case 0:  res = is_smooth(n,k); break;
-        case 1:  res = is_rough(n,k); break;
-        case 2:  res = is_omega_prime(n,k); break; /* Note order */
-        case 3:
-        default: res = is_almost_prime(n,k); break; /* Note order */
-      }
+      RETURN_NPARITY( (ix == 0) ? is_smooth(n,k) : is_rough(n,k) );
+    }
+    DISPATCHPP();
+    XSRETURN(1);
+
+void
+is_omega_prime(IN SV* svk, IN SV* svn)
+  ALIAS:
+    is_almost_prime = 1
+  PREINIT:
+    UV n, k;
+    int nstatus, kstatus;
+  PPCODE:
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (kstatus != 0 && nstatus != 0) {
+      int res = (nstatus != 1) ? 0
+              : (ix == 0)      ? is_omega_prime(k, n)
+              :                  is_almost_prime(k, n);
       RETURN_NPARITY(res);
     }
     DISPATCHPP();

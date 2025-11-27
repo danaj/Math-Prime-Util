@@ -1627,7 +1627,8 @@ sub is_congruent {
 
 sub is_smooth {
   my($n, $k) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
+  $n = -$n if $n < 0;
   validate_integer_nonneg($k);
 
   return 1 if $n <= 1;
@@ -1652,7 +1653,8 @@ sub is_smooth {
 }
 sub is_rough {
   my($n, $k) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
+  $n = -$n if $n < 0;
   validate_integer_nonneg($k);
 
   return 0+($k == 0) if $n == 0;
