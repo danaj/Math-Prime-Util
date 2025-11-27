@@ -12,6 +12,8 @@ my @simple = (0 .. 16,
               758096738,434420340,870589313,695486396,602721315,418431087,
               752518565,723570005,506916483,617459403);
 
+my @neg = map { -$_ } (1..32);
+
 my @T = (             # powerfree part, squarefree_kernel
  [0, [0, 0]],
  [1, [1, 1]],
@@ -34,14 +36,14 @@ plan tests => 3     # simple is square free
 
 ##### is_powerfree
 
-is_deeply( [map { is_powerfree($_)   } @simple],
-           [map { is_square_free($_) } @simple],
+is_deeply( [map { is_powerfree($_)   } @simple, @neg],
+           [map { is_square_free($_) } @simple, @neg],
            "is_powerfree(n) matches is_square_free(n)" );
-is_deeply( [map { is_powerfree($_)   } @simple],
-           [map { ipf($_)            } @simple],
+is_deeply( [map { is_powerfree($_)   } @simple, @neg],
+           [map { ipf($_)            } @simple, @neg],
            "is_powerfree(n) works for simple inputs" );
-is_deeply( [map { is_powerfree($_,3) } @simple],
-           [map { ipf($_,3)          } @simple],
+is_deeply( [map { is_powerfree($_,3) } @simple, @neg],
+           [map { ipf($_,3)          } @simple, @neg],
            "is_powerfree(n,3) works for simple inputs" );
 
 ##### powerfree_count and powerfree_sum

@@ -2391,11 +2391,11 @@ void is_powerfree(IN SV* svn, IN int k = 2)
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == -1) {
+      n = neg_iv(n);
       if (ix == 2)
-        XSRETURN_IV( neg_iv(powerfree_part(neg_iv(n),k)) );
-      RETURN_NPARITY(0);
+        XSRETURN_IV( neg_iv(powerfree_part(n,k)) );
     }
-    if (status == 1) {
+    if (status != 0) {
       switch (ix) {
         case 0:  res = is_powerfree(n,k);    break;
         case 1:  res = powerfree_sum(n,k);   break;

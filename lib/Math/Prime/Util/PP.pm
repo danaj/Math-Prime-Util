@@ -1672,7 +1672,7 @@ sub is_rough {
 }
 sub is_powerful {
   my($n, $k) = @_;
-  validate_integer($n);   $n = 0 if $n < 0;
+  validate_integer($n);
   if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
 
   return 0 if $n < 1;
