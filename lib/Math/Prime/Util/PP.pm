@@ -2801,9 +2801,8 @@ sub _totpred {
 }
 sub is_totient {
   my($n) = @_;
-  validate_integer_nonneg($n);
-  return 1 if $n == 1;
-  return 0 if $n <= 0;
+  validate_integer($n);
+  return 0+($n==1) if $n <= 1;
   return _totpred($n,$n);
 }
 
