@@ -2708,8 +2708,10 @@ sub is_omega_prime {
 
 sub is_practical {
   my($n) = @_;
+  validate_integer($n);
+  return 0 if $n <= 0;
 
-  return (($n==1) ? 1 : 0) if ($n == 0) || ($n & 1);
+  return 0+($n==1) if $n & 1;
   return 1 if ($n & ($n-1)) == 0;
   return 0 if ($n % 6) && ($n % 20) && ($n % 28) && ($n % 88) && ($n % 104) && ($n % 16);
 

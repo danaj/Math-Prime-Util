@@ -148,6 +148,7 @@ sub entropy_bytes {
 *is_cyclic = \&Math::Prime::Util::PP::is_cyclic;
 *is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
 *is_quasi_carmichael = \&Math::Prime::Util::PP::is_quasi_carmichael;
+*is_practical = \&Math::Prime::Util::PP::is_practical;
 *is_pillai = \&Math::Prime::Util::PP::is_pillai;
 *is_fundamental = \&Math::Prime::Util::PP::is_fundamental;
 *is_semiprime = \&Math::Prime::Util::PP::is_semiprime;
@@ -796,11 +797,6 @@ sub is_sum_of_squares {
   $n = -$n if $n < 0;
   if (!defined $k) { $k = 2; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::is_sum_of_squares($n, $k);
-}
-sub is_practical {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::is_practical($n);
 }
 sub hammingweight {
   my($n) = @_;

@@ -2694,8 +2694,8 @@ Given an integer C<n>, returns 1 if C<n> is even and 0 otherwise.
 
 =head2 is_divisible
 
-Given integers C<n> and C<d>, returns 1 if C<n> is exactly divisible by C<d>,
-and 0 otherwise.
+Given integers C<n> and C<d>, returns 1 if C<|n|> is exactly divisible
+by C<|d|>, and 0 otherwise.
 
 This corresponds to the GMP function C<mpz_divisible_p>.
 This includes its semantics with C<d=0> which returns 0 unless C<n=0>.
@@ -2703,7 +2703,7 @@ This includes its semantics with C<d=0> which returns 0 unless C<n=0>.
 =head2 is_congruent
 
 Given integers C<n>, C<c>, and C<d>, returns 1 if C<n> is congruent to C<c>
-modulo C<d>, and 0 otherwise.
+modulo C<|d|>, and 0 otherwise.
 
 This corresponds to the GMP function C<mpz_congruent_p>.
 This includes its semantics with C<d=0> which returns 0 unless C<n=c>.
