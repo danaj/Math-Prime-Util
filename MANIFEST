@@ -298,6 +298,7 @@ t/97-synopsis.t
 xt/A003459.pl
 xt/allrootmod.pl
 xt/binomialmod.pl
+xt/check-bigint.pl
 xt/check-nth-bounds.pl
 xt/chinese.pl
 xt/create-pc-tables.pl
@@ -330,7 +331,6 @@ xt/rwh_primecount.py
 xt/rwh_primecount_numpy.py
 xt/setop.pl
 xt/sort-return.pl
-xt/test-bigint.pl
 xt/test-bpsw.pl
 xt/test-factor-mpxs.pl
 xt/test-nthapprox.pl
