@@ -3005,7 +3005,8 @@ sub is_cyclic {
 
 sub is_carmichael {
   my($n) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
+  return 0 if $n < 561 || ($n % 2) == 0;
 
   return reftyped($_[0], Math::Prime::Util::GMP::is_carmichael($n))
     if $Math::Prime::Util::_GMPfunc{"is_carmichael"};
@@ -3013,7 +3014,6 @@ sub is_carmichael {
   # This works fine, but very slow
   # return !is_prime($n) && ($n % carmichael_lambda($n)) == 1;
 
-  return 0 if $n < 561 || ($n % 2) == 0;
   return 0 if (!($n % 9) || !($n % 25) || !($n%49) || !($n%121));
 
   # Check Korselt's criterion for small divisors
