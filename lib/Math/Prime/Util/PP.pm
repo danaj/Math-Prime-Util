@@ -1619,6 +1619,7 @@ sub is_congruent {
   validate_integer($c);
   validate_integer($d);
   if ($d != 0) {
+    $d = -$d if $d < 0;
     $n = Mmodint($n,$d) if $n < 0 || $n >= $d;
     $c = Mmodint($c,$d) if $c < 0 || $c >= $d;
   }
@@ -2619,8 +2620,8 @@ sub omega_primes {
 
 sub is_semiprime {
   my($n) = @_;
-  validate_integer_nonneg($n);
-  return ($n == 4) if $n < 6;
+  validate_integer($n);
+  return 0+($n == 4) if $n < 6;
   if ($n > 15) {
     return 0 if ($n %  4) == 0 || ($n %  6) == 0 || ($n %  9) == 0
              || ($n % 10) == 0 || ($n % 14) == 0 || ($n % 15) == 0;
@@ -2654,7 +2655,8 @@ if (0) {  # TODO:  This is all REALLY slow without GMP
 sub is_almost_prime {
   my($k, $n) = @_;
   validate_integer_nonneg($k);
-  validate_integer_nonneg($n);
+  validate_integer($n);
+  return 0 if $n <= 0;
 
   return 0+($n==1) if $k == 0;
   return (Mis_prime($n) ? 1 : 0) if $k == 1;
@@ -2677,7 +2679,7 @@ sub is_almost_prime {
 }
 sub is_chen_prime {
   my($n) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
   return 0 if $n < 2;
   my $n2 = Maddint($n,2);
   return (Mis_prime($n) && (Mis_prime($n2) || Mis_semiprime($n2)));
@@ -2696,7 +2698,8 @@ sub next_chen_prime {
 sub is_omega_prime {
   my($k, $n) = @_;
   validate_integer_nonneg($k);
-  validate_integer_nonneg($n);
+  validate_integer($n);
+  return 0 if $n <= 0;
 
   return 0+($n==1) if $k == 0;
 
@@ -5334,7 +5337,7 @@ sub vecprod {
   if ($_[0] > 0 && $_[0] <= INTMAX && $_[1] > 0 && $_[1] <= INTMAX) {
     my $prod = shift @_;
     $prod *= shift @_
-      while @_ && $_[0] > 0 && $_[0] <= INTMAX && int(INTMAX/$prod) >= $_[0];
+      while @_ && $_[0] > 0 && $_[0] <= INTMAX && int(INTMAX/$prod) > $_[0];
     return $prod if @_ == 0;
     unshift @_, $prod if $prod > 1;
   }
