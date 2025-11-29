@@ -3,14 +3,12 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/contfrac/;
+use Math::Prime::Util qw/contfrac from_contfrac/;
 
 my @ex = (
   [0,1,[0]],
-  [0,2,[0]],
   [1,3,[0,3]],
   [4,11,[0, 2, 1, 3]],
-  [8,22,[0, 2, 1, 3]],
   [67,29,[2, 3, 4, 2]],
   [121,23,[5, 3, 1, 5]],
   [3,4837,[0,1612,3]],
@@ -26,7 +24,6 @@ my @ex = (
 my @pi = (
   [377,120,[3,7,17]],
   [3927,1250,[3,7,16,11]],
-  [62832,20000,[3,7,16,11]],
   # Best rational approximations
   [22,7,[3,7]],
   [333,106,[3,7,15]],
@@ -43,9 +40,40 @@ my @pi = (
   ["262452630335382199398","83541266890691994833",[3,7,15,1,292,1,1,1,2,1,3,1,14,2,1,1,2,2,2,2,1,84,2,1,1,15,3,13,1,4,2,6,6,99]],
 );
 
-plan tests => scalar(@ex) + scalar(@pi);
+my @notcoprime = (
+  [62832,20000,[3,7,16,11]],
+  [0,2,[0]],
+  [8,22,[0, 2, 1, 3]],
+);
+
+my @neg = (
+  [-93,37,[-3,2,18]],
+  [-312689,99532,[-4,1,6,15,1,292,1,2]],
+  [-4,11,[-1,1,1,1,3]],
+  [-4,5837,[-1,1,1458,4]],
+  [-4,11111,[-1,1,2776,1,3]],
+  [-1,11111,[-1,1,11110]],
+  [-11110,11111,[-1,11111]],
+  [-11112,11111,[-2,1,11110]],
+);
+
+plan tests => 2 * (scalar(@ex) + scalar(@pi))
+            + scalar(@notcoprime)
+            + 2 * scalar(@neg);
 
 for my $t (@ex, @pi) {
   my($n,$d,$exp) = @$t;
   is_deeply( [contfrac($n,$d)], $exp, "contfrac($n,$d) = (@$exp)" );
+  is_deeply( [from_contfrac(@$exp)], [$n,$d], "from_contfrac(@$exp) = ($n,$d)" );
+}
+
+for my $t (@notcoprime) {
+  my($n,$d,$exp) = @$t;
+  is_deeply( [contfrac($n,$d)], $exp, "contfrac($n,$d) = (@$exp)" );
+}
+
+for my $t (@neg) {
+  my($n,$d,$exp) = @$t;
+  is_deeply( [contfrac($n,$d)], $exp, "contfrac($n,$d) = (@$exp)" );
+  is_deeply( [from_contfrac(@$exp)], [$n,$d], "from_contfrac(@$exp) = ($n,$d)" );
 }

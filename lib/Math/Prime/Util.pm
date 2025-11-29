@@ -117,7 +117,7 @@ our @EXPORT_OK =
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
-      contfrac
+      contfrac from_contfrac
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot
@@ -4016,13 +4016,27 @@ There will often be multiple solutions, but only one is returned.
   # CF = (4,2,6,7)  =>  4+(1/(2+1/(6+1/7))) = 415/93
   #                     ^     ^    ^   ^
 
-Given a non-negative integer C<n> and a positive integer C<d>,
-returns a list with the continued fraction representation of
-the rational C<n / d>.
+Given an integer C<n> and a positive integer C<d>,
+returns a list with the simple continued fraction representation
+of the rational C<n / d>.
 
 This corresponds to a subset of Pari's C<contfrac> function,
 Mathematica's C<ContinuedFraction[n/d]> function,
 and Sage's C<continued_fraction> function.
+
+=head2 from_contfrac
+
+  my($N,$D) = contfrac(4,2,6,7);  # N = 415, D = 93
+
+Given an array of integers representing the simple continued fraction,
+returns the rational C<n / d> as two integers.
+
+The first input value represents the whole part, and may be zero or negative.
+All successive input values must be non-negative and non-zero.
+
+This corresponds to a subset of Pari's C<contfracpnqn> function,
+Mathematica's C<FromContinuedFraction[list]> function,
+and one value of Sage's C<convergent(n)> method.
 
 =head2 next_calkin_wilf
 

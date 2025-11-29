@@ -2893,8 +2893,11 @@ void random_factored_integer(IN SV* svn)
 void contfrac(IN SV* svnum, IN SV* svden)
   PREINIT:
     UV num, den;
+    int nstatus;
   PPCODE:
-    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+    nstatus = _validate_and_set(&num, aTHX_ svnum, IFLAG_ANY);
+    /* TODO: handle negative numerator */
+    if (nstatus == 1 && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
       UV *cf, rem;
       int i, steps = contfrac(&cf, &rem, num, den);
       EXTEND(SP, steps);
@@ -2905,6 +2908,47 @@ void contfrac(IN SV* svnum, IN SV* svden)
       DISPATCHPP();
       return;
     }
+
+void from_contfrac(...)
+  PROTOTYPE: @
+  PREINIT:
+    size_t i;
+    UV n, A0, A1, B0, B1, An, Bn;
+    int nstatus, overflow;
+  PPCODE:
+    nstatus = 1;
+    overflow = 0;
+    A0 = 1;  A1 = 0;
+    B0 = 0;  B1 = 1;
+    if (items > 0) {
+      nstatus = _validate_and_set(&n, aTHX_ ST(0), IFLAG_ANY);
+      /* TODO: handle negative n */
+      A1 = n;
+      for (i = 1; nstatus == 1 && i < (size_t) items; i++) {
+        if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS | IFLAG_NONZERO))
+          break;
+        /* check each step for overflow */
+        overflow = (UV_MAX/n < A1) || (UV_MAX/n < B1);
+        if (overflow) break;
+        An = n*A1;
+        Bn = n*B1;
+        overflow = (UV_MAX-An < A0) || (UV_MAX-Bn < B0);
+        if (overflow) break;
+        An = An+A0;
+        Bn = Bn+B0;
+        A0 = A1;  A1 = An;
+        B0 = B1;  B1 = Bn;
+      }
+      if (i < (size_t) items)  /* Covers overflow */
+        nstatus = 0;
+    }
+    if (nstatus == 1) {
+      XPUSHs(sv_2mortal(newSVuv( A1 )));
+      XPUSHs(sv_2mortal(newSVuv( B1 )));
+    } else {
+      DISPATCHPP();
+    }
+    XSRETURN(2);
 
 void next_calkin_wilf(IN SV* svnum, IN SV* svden)
   ALIAS:

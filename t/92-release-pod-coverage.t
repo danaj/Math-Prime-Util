@@ -145,7 +145,7 @@ sub mpu_public_regex {
       stirling fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
-      contfrac
+      contfrac from_contfrac
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot

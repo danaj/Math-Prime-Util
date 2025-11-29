@@ -7774,11 +7774,44 @@ sub _rational_cfrac {
   @CF;
 }
 
+  # https://kconrad.math.uconn.edu/blurbs/ugradnumthy/contfrac-neg-invert.pdf
+sub _negcfrac {
+  my(@CF) = @_;
+  my $neg0 = Mnegint($CF[0]);
+  if (@CF == 1) {
+    $CF[0] = $neg0;
+  } elsif ($CF[1] == 1) {
+    splice(@CF, 0, 3, Msubint($neg0,1), Maddint($CF[2],1));
+  } else {
+    splice(@CF, 0, 2, Msubint($neg0,1), 1, Msubint($CF[1],1));
+  }
+  @CF;
+}
+
 sub contfrac {
   my($num,$den) = @_;
-  validate_integer_nonneg($num);
+  validate_integer($num);
   validate_integer_positive($den);
-  _rational_cfrac($num,$den,1);
+
+  my @CF = _rational_cfrac(Mabsint($num),$den,1);
+  return ($num >= 0)  ?  @CF  :  _negcfrac(@CF);
+}
+
+sub from_contfrac {
+  return (0,1) unless @_;
+
+  my $b0 = shift @_;
+  validate_integer($b0);
+
+  my($A0,$A1,$B0,$B1) = (1,$b0,0,1);
+
+  while (@_) {
+    my $bi = shift @_;
+    validate_integer_positive($bi);
+    ($A0,$A1) = ($A1, Maddint(Mmulint($bi,$A1),$A0));
+    ($B0,$B1) = ($B1, Maddint(Mmulint($bi,$B1),$B0));
+  }
+  return ($A1,$B1);
 }
 
 sub next_calkin_wilf {
