@@ -2890,15 +2890,17 @@ sub _rmertens {
   my $s = Msqrtint($n);
   my $ns = int($n/($s+1));
 
-  my ($nk, $nk1) = ($n, $n >> 1);
-  my $SUM = 1 - ($nk - $nk1);
+  my ($nk, $nk1) = ($n, Mrshiftint($n,1));
+  my $SUM = Msubint(1,Msubint($nk,$nk1));
+  my @S;
   foreach my $k (2 .. $ns) {
-    ($nk, $nk1) = ($nk1, int($n/($k+1)));
-    $SUM -= ($nk <= $size) ? $Mref->[$nk]
-                           : _rmertens($nk, $Mref, $Href, $size);
-    $SUM -= $Mref->[$k] * ($nk - $nk1);
+    ($nk, $nk1) = ($nk1, Mdivint($n,$k+1));
+    push @S, ($nk <= $size) ? $Mref->[$nk]
+                            : _rmertens($nk, $Mref, $Href, $size);
+    push @S, $Mref->[$k] * ($nk - $nk1);
   }
-  $SUM -= $Mref->[$s] * (int($n/$s) - $ns)  if $s > $ns;
+  push @S, Mmulint($Mref->[$s], Mdivint($n,$s) - $ns) if $s > $ns;
+  $SUM = Msubint($SUM, Mvecsum(@S));
 
   $Href->{$n} = $SUM;
   $SUM;
@@ -2953,8 +2955,8 @@ sub sumliouville {
   for my $k (1 .. $sqrtn) {
     #my $nk = Mdivint($n, Mmulint($k,$k));
     my $nk = int($n/($k*$k));
-    return $L + $sqrtn - $k + 1 if $nk == 1;
-    $L += ($nk <= $size)  ?  $M[$nk]  :  _rmertens($nk, \@M, \%seen, $size);
+    return Mvecsum($L, $sqrtn, -$k, 1) if $nk == 1;
+    $L = Maddint($L,($nk <= $size) ? $M[$nk] : _rmertens($nk,\@M,\%seen,$size));
   }
   return $L;
 }
