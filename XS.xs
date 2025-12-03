@@ -2913,38 +2913,38 @@ void from_contfrac(...)
   PROTOTYPE: @
   PREINIT:
     size_t i;
-    UV n, A0, A1, B0, B1, An, Bn;
+    UV n, cfA0, cfA1, cfB0, cfB1, cfAn, cfBn;
     int nstatus, overflow;
   PPCODE:
     nstatus = 1;
     overflow = 0;
-    A0 = 1;  A1 = 0;
-    B0 = 0;  B1 = 1;
+    cfA0 = 1;  cfA1 = 0;
+    cfB0 = 0;  cfB1 = 1;
     if (items > 0) {
       nstatus = _validate_and_set(&n, aTHX_ ST(0), IFLAG_ANY);
       /* TODO: handle negative n */
-      A1 = n;
+      cfA1 = n;
       for (i = 1; nstatus == 1 && i < (size_t) items; i++) {
         if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS | IFLAG_NONZERO))
           break;
         /* check each step for overflow */
-        overflow = (UV_MAX/n < A1) || (UV_MAX/n < B1);
+        overflow = (UV_MAX/n < cfA1) || (UV_MAX/n < cfB1);
         if (overflow) break;
-        An = n*A1;
-        Bn = n*B1;
-        overflow = (UV_MAX-An < A0) || (UV_MAX-Bn < B0);
+        cfAn = n * cfA1;
+        cfBn = n * cfB1;
+        overflow = (UV_MAX-cfAn < cfA0) || (UV_MAX-cfBn < cfB0);
         if (overflow) break;
-        An = An+A0;
-        Bn = Bn+B0;
-        A0 = A1;  A1 = An;
-        B0 = B1;  B1 = Bn;
+        cfAn = cfAn + cfA0;
+        cfBn = cfBn + cfB0;
+        cfA0 = cfA1;  cfA1 = cfAn;
+        cfB0 = cfB1;  cfB1 = cfBn;
       }
       if (i < (size_t) items)  /* Covers overflow */
         nstatus = 0;
     }
     if (nstatus == 1) {
-      XPUSHs(sv_2mortal(newSVuv( A1 )));
-      XPUSHs(sv_2mortal(newSVuv( B1 )));
+      XPUSHs(sv_2mortal(newSVuv( cfA1 )));
+      XPUSHs(sv_2mortal(newSVuv( cfB1 )));
     } else {
       DISPATCHPP();
     }
@@ -3174,7 +3174,7 @@ void inverse_totient(IN SV* svn)
   PPCODE:
     gimme_v = GIMME_V;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
-    it_overflow = (status == 1 && gimme_v == G_ARRAY && n > UV_MAX/7.5);
+    it_overflow = (status == 1 && gimme_v == G_ARRAY && n > (double)UV_MAX/7.5);
     if (status == 1 && !it_overflow) {
       if (gimme_v == G_SCALAR) {
         XSRETURN_UV( inverse_totient_count(n) );
