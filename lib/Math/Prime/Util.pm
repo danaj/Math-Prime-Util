@@ -4663,6 +4663,8 @@ The result is identical to:
 
 but shortcuts are taken to avoid fully factoring if possible.
 
+This corresponds to Mathematica's C<SmoothIntegerQ[n]> resource function.
+
 =head2 is_rough
 
   my $is_23_rough = is_rough($n, 23);
