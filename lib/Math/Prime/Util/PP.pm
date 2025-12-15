@@ -1438,51 +1438,85 @@ sub inverse_totient {
   return wantarray ? (1,2) : 2 if $n == 1;
   return wantarray ? () : 0 if $n < 1 || ($n & 1);
 
-  $n = tobigint("$n") if !ref($n) && $n > 2**49;
-  my $do_bigint = ref($n);
-
   if (Mis_prime($n >> 1)) {   # Coleman Remark 3.3 (Thm 3.1) and Prop 6.2
-    return wantarray ? () : 0             if !Mis_prime($n+1);
-    return wantarray ? ($n+1, 2*$n+2) : 2 if $n >= 10;
+    my $np1 = Maddint($n,1);
+    return wantarray ? () : 0                      if !Mis_prime($np1);
+    return wantarray ? ($np1, Mmulint($np1,2)) : 2 if $n >= 10;
   }
 
   if (!wantarray) {
     my %r = ( 1 => 1 );
     Mfordivisors(sub { my $d = $_;
-      $d = $do_bigint->new("$d") if $do_bigint;
-      my $p = $d+1;
+      my $p = Maddint($d,1);
       if (Mis_prime($p)) {
         my($dp,@sumi,@sumv) = ($d);
-        for my $v (1 .. 1 + Mvaluation($n, $p)) {
+        for my $v (0 .. Mvaluation($n, $p)) {
           Mfordivisors(sub { my $d2 = $_;
-            if (defined $r{$d2}) { push @sumi, $d2*$dp; push @sumv, $r{$d2}; }
-          }, $n / $dp);
-          $dp *= $p;
+            if (defined $r{$d2}) { push @sumi, Mmulint($d2,$dp); push @sumv, $r{$d2}; }
+          }, Mdivint($n,$dp));
+          $dp = Mmulint($dp,$p);
         }
         $r{ $sumi[$_] } += $sumv[$_]  for 0 .. $#sumi;
       }
     }, $n);
     return (defined $r{$n}) ? $r{$n} : 0;
+
   } else {
+
+    # To save memory, we split this into two steps.
+
+    my $_verbose = getconfig()->{'verbose'};
     my %r = ( 1 => [1] );
-    Mfordivisors(sub { my $d = $_;
-      $d = $do_bigint->new("$d") if $do_bigint;
-      my $p = $d+1;
-      if (Mis_prime($p)) {
-        my($dp,$pp,@T) = ($d,$p);
-        for my $v (1 .. 1 + Mvaluation($n, $p)) {
-          Mfordivisors(sub { my $d2 = $_;
-            push @T, [ $d2*$dp, [map { $_ * $pp } @{ $r{$d2} }] ] if defined $r{$d2};
-          }, $n / $dp);
-          $dp *= $p;
-          $pp *= $p;
-        }
-        push @{$r{$_->[0]}}, @{$_->[1]} for @T;
+    my %needed = ( $n => 0 );
+    my @DIVINFO;
+
+    # 1. For each divisor from 1 .. n, track which values are needed.
+    for my $d (divisors($n)) {
+      my $p = Maddint($d,1);
+      next unless Mis_prime($p);
+      my @L;
+      for my $v (0 .. Mvaluation($n, $p)) {
+        my $pv = Mpowint($p, $v);
+        my($dp,$pp) = map { Mmulint($_,$pv) } ($d,$p);
+        Mfordivisors(sub { my $d2 = $_;
+          my $F = Mmulint($d2,$dp);
+          # In phase 2, we will look at the list in d2 to add to list in F.
+          # If F isn't needed later then we ignore it completely.
+          if (defined $needed{$F} && $needed{$F} < $d) {
+            $needed{$d2} = $d unless defined $needed{$d2};
+            push @L, [$d2,$pp,$F];
+          }
+        }, Mdivint($n, $dp));
       }
-    }, $n);
+      push @DIVINFO, [$d, @L];
+    }
+
+    print "   ... inverse_totient phase 1 complete ...\n" if $_verbose;
+    undef %needed;   # Don't need this any more.
+
+    # 2. Process the divisors in reverse order.
+    for my $dinfo (reverse @DIVINFO) {
+      my @T;
+      my($d,@L) = @$dinfo;
+      for my $dset (@L) {
+        my($d2,$pp,$F) = @$dset;
+        push @T, [$F, [map { Mmulint($pp,$_) } @{$r{$d2}}]] if defined $r{$d2};
+      }
+      push @{$r{$_->[0]}}, @{$_->[1]} for @T;
+    }
+    print "   ... inverse_totient phase 2 complete ...\n" if $_verbose;
+
+    #return (defined $r{$n}) ? Mvecsort($r{$n}) : ();
+
     return () unless defined $r{$n};
-    delete @r{ grep { $_ != $n } keys %r };  # Delete all intermediate results
-    return Mvecsort($r{$n});
+    my $rn = $r{$n};
+    undef %r;
+    if ($] < 5.026) {
+      @$rn = sort { 0+($a<=>$b) } @$rn; # don't use built-in compare
+    } else {
+      @$rn = sort { $a<=>$b } @$rn;
+    }
+    return @$rn;
   }
 }
 

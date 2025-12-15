@@ -490,8 +490,6 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   UV i, ndivisors, *divs, *tlist;
   UV *totlist = 0;
 
-  MPUassert(n <= UV_MAX/7.5, "inverse_totient_list n too large");
-
   if (n == 1) {
     New(0, totlist, 2, UV);
     totlist[0] = 1;  totlist[1] = 2;
@@ -505,15 +503,27 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   if (is_prime(n >> 1)) { /* Coleman Remark 3.3 (Thm 3.1) and Prop 6.2 */
     if (!is_prime(n+1)) {
       *ntotients = 0;
-      return totlist;
-    }
-    if (n >= 10) {
+    } else if (n >= UV_MAX/2) {  /* overflow */
+      *ntotients = UV_MAX;
+    } else if (n >= 10) {
       New(0, totlist, 2, UV);
       totlist[0] = n+1;  totlist[1] = 2*n+2;
       *ntotients = 2;
-      return totlist;
     }
+    return totlist;
   }
+
+  /* Check for possible overflow in the inner loop.
+   * Smallest 32-bit overflow is at  716636160 with 272 divisors.
+   *                                1145325184 with <= 16 divisors
+   * 64-bit overflow:  2459565884898017280 < n <= 2772864768682229760.
+   */
+  if (n >= (BITS_PER_WORD == 64 ? UVCONST(2459565884898017280) : 716636160UL)) {
+    *ntotients = UV_MAX;
+    return totlist;
+  }
+
+  /* TODO: Two-phase loop to reduce memory use. */
 
   divs = divisor_list(n, &ndivisors, n);
 
@@ -521,22 +531,20 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   setlist_addval(&setlist, 1, 1);   /* Add 1 => [1] */
 
   for (i = 0; i < ndivisors; i++) {
-    UV d = divs[i],  p = d+1;
+    UV d = divs[ndivisors - i - 1],  p = d+1;  /* Divisors in reverse order */
     if (is_prime(p)) {
       UV j,  dp = d,  pp = p,  v = valuation(n, p);
       init_setlist(&divlist, ndivisors/2);
       for (j = 0; j <= v; j++) {
         UV k, ndiv = n/dp;  /* Loop over divisors of n/dp */
-        if (dp == 1) {
-          setlist_addval(&divlist, 1, 2);   /* Add 1 => [2] */
-        } else {
-          for (k = 0; k < ndivisors && divs[k] <= ndiv; k++) {
-            UV nvals, *vals, d2 = divs[k];
-            if ((ndiv % d2) != 0) continue;
-            vals = setlist_getlist(&nvals, setlist, d2);
-            if (vals != 0)
-              setlist_addlist(&divlist, d2 * dp, nvals, vals, pp);
-          }
+        for (k = 0; k < ndivisors && divs[k] <= ndiv; k++) {
+          UV nvals, *vals, d2 = divs[k];
+          if ((ndiv % d2) != 0) continue;
+          /* For the last divisor [1], don't add intermediate values */
+          if (d == 1 && d2*dp != n) continue;
+          vals = setlist_getlist(&nvals, setlist, d2);
+          if (vals != 0)
+            setlist_addlist(&divlist, d2 * dp, nvals, vals, pp);
         }
         dp *= p;
         pp *= p;

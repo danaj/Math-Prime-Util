@@ -187,16 +187,20 @@ static void setlist_addlist(set_list_t *L, UV key, long nvals, UV* list, UV mult
       L->keylist[h].maxsize = maxsize;
     }
     vptr = L->keylist[h].vals + size;
-    for (j = 0; j < nvals; j++)
+    for (j = 0; j < nvals; j++) {
+      /* if (list[j] > UV_MAX/mult) croak("overflow in addlist mult"); */
       vptr[j] = list[j] * mult;
+    }
     L->keylist[h].size = size + nvals;
   } else {
     long maxsize = (nvals < 5) ? 12 : (nvals+1) * 2;
     New(0, L->keylist[h].vals, maxsize, UV);
     L->keylist[h].maxsize = maxsize;
     vptr = L->keylist[h].vals;
-    for (j = 0; j < nvals; j++)
+    for (j = 0; j < nvals; j++) {
+      /* if (list[j] > UV_MAX/mult) croak("overflow in addlist mult"); */
       vptr[j] = list[j] * mult;
+    }
     L->keylist[h].size = nvals;
     L->keylist[h].key = key;
     if (L->size++ > 0.65 * L->maxsize)

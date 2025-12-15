@@ -3169,26 +3169,27 @@ _pidigits(IN int digits)
 void inverse_totient(IN SV* svn)
   PREINIT:
     U32 gimme_v;
-    int status, it_overflow;
+    int status;
     UV i, n, ntotients;
   PPCODE:
     gimme_v = GIMME_V;
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
-    it_overflow = (status == 1 && gimme_v == G_ARRAY && n > (double)UV_MAX/7.5);
-    if (status == 1 && !it_overflow) {
+    if (status == 1) {
       if (gimme_v == G_SCALAR) {
         XSRETURN_UV( inverse_totient_count(n) );
       } else if (gimme_v == G_ARRAY) {
         UV* tots = inverse_totient_list(&ntotients, n);
-        EXTEND(SP, (IV)ntotients);
-        for (i = 0; i < ntotients; i++)
-          PUSHs(sv_2mortal(newSVuv( tots[i] )));
-        Safefree(tots);
+        if (ntotients != UV_MAX) {
+          EXTEND(SP, (IV)ntotients);
+          for (i = 0; i < ntotients; i++)
+            PUSHs(sv_2mortal(newSVuv( tots[i] )));
+          Safefree(tots);
+          XSRETURN(ntotients);
+        }
       }
-    } else {
-      DISPATCHPP();
-      return;
     }
+    DISPATCHPP();
+    return;
 
 void
 factor(IN SV* svn)

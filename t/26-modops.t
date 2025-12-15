@@ -14,6 +14,8 @@ my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my @invmods = (
  [ 0, 0, undef],
  [ 1, 0, undef],
+ [ 0, 1, 0],
+ [ 0, 2, undef],
  [ 1, 1, 0],
  [ 45, 59, 21],
  [  42,  2017, 1969],

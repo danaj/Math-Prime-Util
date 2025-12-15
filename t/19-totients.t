@@ -26,7 +26,7 @@ my @A002322 = (0,1,1,2,2,4,2,6,2,6,4,10,2,12,6,4,4,16,6,18,4,6,10,22,2,20,12,18,
 
 plan tests => 2 + 10 + scalar(keys %totients)
                 + 1  # Small Carmichael Lambda
-                + 12 # inverse_totient
+                + 13 # inverse_totient
                 + 3  # sumtotient
                 ;
 
@@ -74,6 +74,7 @@ is_deeply( [euler_phi(-5,5)], [0,0,0,0,0,0,1,1,2,2,4], "euler_phi -5 to 5" );
   is($tot, 198, "Totient count 0-100 = 198");
   is(0+inverse_totient(1728), 62, "inverse_totient(1728) = 62");
   is(0+inverse_totient(362880), 1138, "inverse_totient(9!) = 1138");
+  is(0+inverse_totient(3978374400), 63600, "inverse_totient(3978374400) = 63600");
 
   is_deeply( [inverse_totient(0)], [], "inverse_totient(0)" );
   is_deeply( [inverse_totient(1)], [1,2], "inverse_totient(1)" );
