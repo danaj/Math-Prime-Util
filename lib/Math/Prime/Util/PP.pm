@@ -1492,31 +1492,29 @@ sub inverse_totient {
     }
 
     print "   ... inverse_totient phase 1 complete ...\n" if $_verbose;
-    undef %needed;   # Don't need this any more.
 
     # 2. Process the divisors in reverse order.
     for my $dinfo (reverse @DIVINFO) {
-      my @T;
       my($d,@L) = @$dinfo;
+      my %todelete;
+      my @T;
+      # Multiply through by $pp
       for my $dset (@L) {
-        my($d2,$pp,$F) = @$dset;
-        push @T, [$F, [map { Mmulint($pp,$_) } @{$r{$d2}}]] if defined $r{$d2};
+        if (defined $r{$dset->[0]}) {
+          my($d2,$pp,$F) = @$dset;
+          push @T, [$F, [map { Mmulint($pp,$_) } @{$r{$d2}}]];
+          $todelete{$d2} = 1 if $needed{$d2} >= $d;
+        }
       }
+      # Delete intermediate data that isn't needed any more
+      delete $r{$_} for keys %todelete;
+      # Append the multiplied lists.
       push @{$r{$_->[0]}}, @{$_->[1]} for @T;
     }
+    undef %needed;
     print "   ... inverse_totient phase 2 complete ...\n" if $_verbose;
 
-    #return (defined $r{$n}) ? Mvecsort($r{$n}) : ();
-
-    return () unless defined $r{$n};
-    my $rn = $r{$n};
-    undef %r;
-    if ($] < 5.026) {
-      @$rn = sort { 0+($a<=>$b) } @$rn; # don't use built-in compare
-    } else {
-      @$rn = sort { $a<=>$b } @$rn;
-    }
-    return @$rn;
+    return (defined $r{$n}) ? @{Mvecsorti($r{$n})} : ();
   }
 }
 

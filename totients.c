@@ -503,14 +503,16 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   if (is_prime(n >> 1)) { /* Coleman Remark 3.3 (Thm 3.1) and Prop 6.2 */
     if (!is_prime(n+1)) {
       *ntotients = 0;
+      return totlist;
     } else if (n >= UV_MAX/2) {  /* overflow */
       *ntotients = UV_MAX;
+      return totlist;
     } else if (n >= 10) {
       New(0, totlist, 2, UV);
       totlist[0] = n+1;  totlist[1] = 2*n+2;
       *ntotients = 2;
+      return totlist;
     }
-    return totlist;
   }
 
   /* Check for possible overflow in the inner loop.
