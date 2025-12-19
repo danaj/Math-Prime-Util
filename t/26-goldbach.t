@@ -74,7 +74,10 @@ plan tests => 1+scalar(keys %bigmin)      # minimal
   is_deeply(\@got, \@exp, "minimal_goldbach_pair for small inputs");
 }
 while (my($n, $p) = each (%bigmin)) {
-  is(minimal_goldbach_pair($n),$p,"minimal_goldbach_pair($n) = $p");
+  SKIP: {
+    skip "skipping minimal_goldbach_pair($n) without EXTENDED_TESTING",1 unless $n < ~0 || $extra;
+    is(minimal_goldbach_pair($n),$p,"minimal_goldbach_pair($n) = $p");
+  }
 }
 
 ###### count
