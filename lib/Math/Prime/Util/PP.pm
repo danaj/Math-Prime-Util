@@ -1282,6 +1282,42 @@ sub is_lucky {
   }
 }
 
+sub minimal_goldbach_pair {
+  my $n = shift;
+  validate_integer_nonneg($n);
+  return undef if $n < 4;
+  return Mis_prime($n-2) ? 2 : undef  if $n & 1 || $n == 4;
+  my($p,$H)=(3,$n >> 1);
+  while ($p <= $H) {
+    return $p if Mis_prime($n-$p);
+    $p = next_prime($p);
+  }
+  undef;
+}
+sub goldbach_pair_count {
+  my $n = shift;
+  validate_integer_nonneg($n);
+  return 0 if $n < 4;
+  return Mis_prime($n-2) ? 1 : 0  if $n & 1 || $n == 4;
+  my $s = 0;
+  Mforprimes( sub {
+    $s++ if Mis_prime($n-$_);
+  }, Mrshiftint($n,1), $n-3);
+  $s;
+}
+sub goldbach_pairs {
+  my $n = shift;
+  validate_integer_nonneg($n);
+  return () if $n < 4;
+  return Mis_prime($n-2) ? (2) : ()  if $n & 1 || $n == 4;
+  my @L;
+  Mforprimes( sub {
+    push @L,$n-$_ if Mis_prime($n-$_);
+  }, Mrshiftint($n,1), $n-3);
+  reverse @L;
+}
+
+
 sub primorial {
   my $n = shift;
 

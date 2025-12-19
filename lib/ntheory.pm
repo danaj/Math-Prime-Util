@@ -405,6 +405,9 @@ Tags:
   nth_lucky_lower(n)                  fast lower bound for nth lucky number
   nth_lucky_upper(n)                  fast upper bound for nth lucky number
   nth_lucky_approx(n)                 fast approximate nth lucky number
+  minimal_goldbach_pair(n)            least prime p where n-p is also prime
+  goldbach_pair_count(n)              count of how many prime pairs sum to n
+  goldbach_pairs(n)                   array of all p where p and n-p are prime
   powerful_numbers([lo,]hi[,k])       array ref of k-powerful lo to hi
   powerful_count(n[,k])               count of k-powerful numbers <= n
   sumpowerful(n[,k])                  sum of k-powerful numbers <= n

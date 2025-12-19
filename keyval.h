@@ -1,6 +1,13 @@
 #ifndef MPU_KEYVAL_H
 #define MPU_KEYVAL_H
 
+/* This includes:
+ *   keyval_t   simple key/val type, both UV
+ *   set        a key value set, with "add" function for new=old+new
+ *   setlist    key (UV) plus dynamic array of UVs.  "append" functionality
+ */
+
+
 #include "ptypes.h"
 
 typedef struct {
@@ -233,5 +240,16 @@ static void setlist_merge(set_list_t *L, set_list_t T) {
     }
   }
 }
+
+#if 0
+static void setlist_zerolist(set_list_t *L, UV key) {
+  long i = setlist_search(*L, key);
+  if (i != -1) {
+    Safefree(L->keylist[i].vals);
+    L->keylist[i].vals = 0;
+    L->keylist[i].size = L->keylist[i].maxsize = 0;
+  }
+}
+#endif
 
 #endif

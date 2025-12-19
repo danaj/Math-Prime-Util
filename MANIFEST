@@ -44,6 +44,8 @@ entropy.h
 entropy.c
 factor.h
 factor.c
+goldbach.h
+goldbach.c
 inverse_interpolate.h
 inverse_interpolate.c
 keyval.h
@@ -236,6 +238,7 @@ t/26-digits.t
 t/26-factorial.t
 t/26-factorialmod.t
 t/26-frobeniusnum.t
+t/26-goldbach.t
 t/26-isalmostprime.t
 t/26-iscarmichael.t
 t/26-iscyclic.t

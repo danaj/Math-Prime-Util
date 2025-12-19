@@ -208,6 +208,9 @@ Revision history for Perl module Math::Prime::Util
     - farey(n,k)                      k'th entry of Farey sequence order n
     - next_farey(n,[p,q])             next order-n rational after p/q
     - farey_rank(n,[p,q])             number of F_n less than p/q
+    - minimal_goldbach_pair(n)        least prime p where n-p is also prime
+    - goldbach_pair_count(n)          count of how many prime pairs sum to n
+    - goldbach_pairs(n)               array of all p where p and n-p are prime
 
 
     [FIXES]

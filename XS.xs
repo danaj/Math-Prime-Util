@@ -48,6 +48,7 @@
 #include "powerfree.h"
 #include "powerful.h"
 #include "lucky_numbers.h"
+#include "goldbach.h"
 #include "rootmod.h"
 #include "rational.h"
 #include "real.h"
@@ -1718,6 +1719,43 @@ lucky_numbers(IN SV* svlo, IN SV* svhi = 0)
       DISPATCHPP();
     }
     return;
+
+void minimal_goldbach_pair(IN SV* svn)
+  ALIAS:
+    goldbach_pair_count = 1
+  PREINIT:
+    UV n, res;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      if (ix == 0) {
+        res = minimal_goldbach_pair(n);
+        if (res == 0) XSRETURN_UNDEF;
+      } else {
+        res = goldbach_pair_count(n);
+      }
+      XSRETURN_UV(res);
+    }
+    DISPATCHPP();
+    XSRETURN(1);
+
+void goldbach_pairs(IN SV* svn)
+  PREINIT:
+    size_t npairs, i;
+    UV     n, *L;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) == 1) {
+      if (GIMME_V != G_ARRAY)
+        XSRETURN_UV(goldbach_pair_count(n));
+      L = goldbach_pairs(&npairs, n);
+      if (L == 0) XSRETURN_EMPTY;
+      EXTEND(SP, (IV)npairs);
+      for (i = 0; i < npairs; i++)
+        PUSHs(sv_2mortal(newSVuv(L[i])));
+      Safefree(L);
+    } else {
+      DISPATCHPP();
+      return;
+    }
 
 void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
   PREINIT:

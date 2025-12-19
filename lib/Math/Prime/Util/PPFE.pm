@@ -320,6 +320,10 @@ sub entropy_bytes {
 *tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
 *fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;
 
+*goldbach_pairs = \&Math::Prime::Util::PP::goldbach_pairs;
+*goldbach_pair_count = \&Math::Prime::Util::PP::goldbach_pair_count;
+*minimal_goldbach_pair = \&Math::Prime::Util::PP::minimal_goldbach_pair;
+
 *prime_count_approx = \&Math::Prime::Util::PP::prime_count_approx;
 *prime_count_lower = \&Math::Prime::Util::PP::prime_count_lower;
 *prime_count_upper = \&Math::Prime::Util::PP::prime_count_upper;

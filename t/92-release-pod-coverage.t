@@ -112,6 +112,7 @@ sub mpu_public_regex {
       smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
       nth_lucky nth_lucky_approx nth_lucky_lower nth_lucky_upper
+      minimal_goldbach_pair goldbach_pairs goldbach_pair_count
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime

@@ -83,6 +83,7 @@ our @EXPORT_OK =
       smooth_count rough_count powersum
       lucky_count lucky_count_approx lucky_count_lower lucky_count_upper
       nth_lucky nth_lucky_approx nth_lucky_lower nth_lucky_upper
+      minimal_goldbach_pair goldbach_pairs goldbach_pair_count
       sum_primes print_primes
       random_prime random_ndigit_prime
       random_nbit_prime random_safe_prime random_strong_prime
@@ -4620,6 +4621,39 @@ The actual value will always be greater than or equal to the result.
 Given a single non-negative integer C<n>, quickly returns a
 upper bound of the C<n>-th lucky number.
 The actual value will always be less than or equal to the result.
+
+
+=head2 minimal_goldbach_pair
+
+Given a single non-negative integer C<n>, returns the smallest prime C<p>
+such that C<p + q = n> and both C<p> and C<q> are primes.
+Only the single value C<p> is returned, with C<q = n-p> and C<p E<lt>= q>.
+Both C<p> and C<q> are prime.
+
+C<undef> is returned if no such C<p> exists.  This will happen for values
+less than C<4> and for all odd C<n> where C<n != 2+q> for a prime C<q>.
+The Goldbach Conjecture famously states that a C<p> exists for
+all even C<n> greater than C<2>.
+
+This function is reasonably fast even for larger values of C<n> as it can
+terminate after the first pair is found.  On Macbook M1, average time is
+under 1 microsecond for 32-bit even inputs, under 10 microseconds for 64-bit
+even inputs, and 1 millisecond for 105 bit even inputs.
+
+=head2 goldbach_pair_count
+
+Given a single non-negative integer C<n>, returns the number of pairs of
+primes C<p> and C<q> where C<p E<lt>= q> and C<p + q = n>.
+
+If no such pairs exist, C<0> is returned.
+
+=head2 goldbach_pairs
+
+Given a single non-negative integer C<n>, returns a list containing each C<p>
+for all prime pairs C<p> and C<q> where C<p E<lt>= q> and C<p + q = n>.
+The number of elements returned is the same as L</goldbach_pair_count>.
+
+If no such pairs exist, an empty list is returned.
 
 
 =head2 is_happy
