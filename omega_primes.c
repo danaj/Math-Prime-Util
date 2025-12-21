@@ -53,16 +53,17 @@ static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo
   if (k > 1) {
     SIMPLE_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
       if ((m % p) == 0) continue;
-      for (v = m*p; v <= hi; v *= p)
-        if ((v*p) <= hi)
-          _omega_prime_gen_rec(kop, skop, nkop, k-1, lo, hi, v, p);
+      if (UV_MAX/m < p) break;
+      for (v = m*p; UV_MAX/v >= p && v*p <= hi; v *= p)
+        _omega_prime_gen_rec(kop, skop, nkop, k-1, lo, hi, v, p);
     } END_SIMPLE_FOR_EACH_PRIME
     return;
   }
 
   START_DO_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
     if ((m % p) == 0) continue;
-    for (v = m*p; v <= hi; v *= p) {
+    for (v = m; UV_MAX/v >= p && v*p <= hi; ) {
+      v *= p;
       if (v >= lo) { /* Add v to kop list */
         if (n >= lsize) {
           lsize = 1 + lsize * 1.2;
@@ -75,11 +76,8 @@ static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo
   *kop = l;  *skop = lsize;  *nkop = n;
 }
 
-UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
-  UV min, nkop, skop;
-
-  min = pn_primorial(k);
-  if (lo < min) lo = min;
+static UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
+  UV nkop, skop;
 
   if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
 
@@ -93,16 +91,20 @@ UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
 
 
 UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
-  UV i, lmax = 0, n = 0;
+  UV i, min, lmax = 0, n = 0;
   UV* l = 0;
   unsigned char *nf;
 
   if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
 
+  min = pn_primorial(k);
+  if (min == 0 || min > hi) return 0;
+  if (lo < min) lo = min;
+
   if (k == 1) return prime_power_sieve(ret, lo, hi);
 
   /* TODO: The recursive routine should compute primes like the count does */
-  if ( ((hi-lo) > 1000000000UL) || (k >= 10 && (hi-lo) > 10000000UL) )
+  if ( ((hi-lo) > 100000000UL) || (k >= 10 && (hi-lo) > 5000000UL) )
     return rec_omega_primes(ret, k, lo, hi);
 
   nf = range_nfactor_sieve(lo, hi, 0);
