@@ -78,7 +78,8 @@ WriteMakefile1(
 
     TEST_REQUIRES=> {
                       'Test::More'       => '0.96',
-                      'bignum'           => '0.22',   # 'use bigint' in tests
+                      # See issue #61 for reasons why we want 0.65 vs 0.22.
+                      'bignum'           => '0.65',
                     },
     PREREQ_PM    => {
                       'Exporter'         => '5.57',

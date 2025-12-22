@@ -334,6 +334,8 @@ static const gmp_info_t gmp_info[] = {
   /* {                "factorial", 24, 1, R_BIGINT }, */
 #if 0 /* need to objectify a return list */
   {                   "factor", 41, 0xFF, R_BIGINT },
+#endif
+#if 0 /* objectify list, and the API isn't identical */
   {             "trial_factor", 47, 0xFF, R_BIGINT },
   {              "holf_factor", 47, 0xFF, R_BIGINT },
   {            "squfof_factor", 47, 0xFF, R_BIGINT },

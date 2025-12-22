@@ -9332,35 +9332,30 @@ sub prho_factor {
     return @factors if $n < 4;
   }
 
-  my $inloop = 0;
-  my $U = 7;
-  my $V = 7;
+  my($U,$V) = (7,7);
 
-  if (ref($n)) {
-
-    $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne ref($n);
-    ($U, $V, $pa) = map { tobigint($_) } ($U,$V,$pa);
+  if (ref($n) || $n >= MPU_HALFWORD) {
 
     my $inner = 32;
     $rounds = int( ($rounds + $inner-1) / $inner );
     while ($rounds-- > 0) {
-      my($m, $oldU, $oldV, $f) = (1, $U+0, $V+0);
+      my($m, $oldU, $oldV, $f) = (1, $U, $V);
       for my $i (1 .. $inner) {
-        $U = ($U * $U + $pa) % $n;
-        $V = ($V * $V + $pa) % $n;
-        $V = ($V * $V + $pa) % $n;
-        $f = ($U > $V) ? $U-$V : $V-$U;
-        $m = ($m * $f) % $n;
+        $U = Mmuladdmod($U, $U, $pa, $n);
+        $V = Mmuladdmod($V, $V, $pa, $n);
+        $V = Mmuladdmod($V, $V, $pa, $n);
+        $f = ($U > $V) ? Msubint($U,$V) : Msubint($V,$U);
+        $m = Mmulmod($m,$f,$n);
       }
       $f = Mgcd($m,$n);
       next if $f == 1;
       if ($f == $n) {
         ($U, $V) = ($oldU, $oldV);
         for my $i (1 .. $inner) {
-          $U = ($U * $U + $pa) % $n;
-          $V = ($V * $V + $pa) % $n;
-          $V = ($V * $V + $pa) % $n;
-          $f = ($U > $V) ? $U-$V : $V-$U;
+          $U = Mmuladdmod($U, $U, $pa, $n);
+          $V = Mmuladdmod($V, $V, $pa, $n);
+          $V = Mmuladdmod($V, $V, $pa, $n);
+          $f = ($U > $V) ? Msubint($U,$V) : Msubint($V,$U);
           $f = Mgcd($f, $n);
           last if $f != 1;
         }
@@ -9369,7 +9364,7 @@ sub prho_factor {
       return _found_factor($f, $n, "prho-bigint", @factors);
     }
 
-  } elsif ($n < MPU_HALFWORD) {
+  } else {
 
     my $inner = 32;
     $rounds = int( ($rounds + $inner-1) / $inner );
@@ -9399,26 +9394,6 @@ sub prho_factor {
       return _found_factor($f, $n, "prho-32", @factors);
     }
 
-  } else {
-
-    for my $i (1 .. $rounds) {
-      if ($n <= (~0 >> 1)) {
-       $U = _mulmod($U, $U, $n);  $U += $pa;  $U -= $n if $U >= $n;
-       $V = _mulmod($V, $V, $n);  $V += $pa;  # Let the mulmod handle it
-       $V = _mulmod($V, $V, $n);  $V += $pa;  $V -= $n if $V >= $n;
-      } else {
-       $U = _mulmod($U, $U, $n);  $U = _addmod($U, $pa, $n);
-       $V = _mulmod($V, $V, $n);  $V = _addmod($V, $pa, $n);
-       $V = _mulmod($V, $V, $n);  $V = _addmod($V, $pa, $n);
-      }
-      my $f = _gcd_ui( $U-$V,  $n );
-      if ($f == $n) {
-        last if $inloop++;  # We've been here before
-      } elsif ($f != 1) {
-        return _found_factor($f, $n, "prho-64", @factors);
-      }
-    }
-
   }
   push @factors, $n;
   @factors;
@@ -9438,54 +9413,47 @@ sub pbrent_factor {
     return @factors if $n < 4;
   }
 
-  my $Xi = 2;
-  my $Xm = 2;
+  my($Xi,$Xm) = (2,2);
 
-  if (ref($n)) {
+  if (ref($n) || $n >= MPU_HALFWORD) {
 
     # Same code as the GMP version, but runs *much* slower.  Even with
     # Math::BigInt::GMP it's >200x slower.  With the default Calc backend
     # it's thousands of times slower.
-    my $inner = 32;
-    my $saveXi;
-    my $f;
-    my $r = 1;
-
-    $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne ref($n);
-    ($Xi,$Xm) = map { tobigint($_) } ($Xi,$Xm);
+    my($inner,$r,$saveXi,$f) = (32,1);
 
     while ($rounds > 0) {
       my $rleft = ($r > $rounds) ? $rounds : $r;
       while ($rleft > 0) {
         my $dorounds = ($rleft > $inner) ? $inner : $rleft;
         my $m = 1;
-        $saveXi = $Xi + 0;
+        $saveXi = Maddint($Xi,0);
         foreach my $i (1 .. $dorounds) {
-          $Xi = ($Xi * $Xi + $pa) % $n;
-          $m *= ($Xi-$Xm);
+          $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
+          $m = Mmulmod($m, ($Xi>$Xm) ? Msubint($Xi,$Xm) : Msubint($Xm,$Xi),$n);
         }
         $rleft -= $dorounds;
         $rounds -= $dorounds;
-        $f = Mgcd($m % $n,$n);
+        $f = Mgcd($m,$n);
         last unless $f == 1;
       }
       if ($f == 1) {
         $r *= 2;
-        $Xm = $Xi + 0;
+        $Xm = Maddint($Xi,0);
         next;
       }
       if ($f == $n) {  # back up to determine the factor
-        $Xi = $saveXi + 0;
+        $Xi = Maddint($saveXi,0);
         do {
-          $Xi = ($Xi * $Xi + $pa) % $n;
-          $f = Mgcd($Xm - $Xi, $n);
+          $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
+          $f = Mgcd($Xi > $Xm ? Msubint($Xi,$Xm) : Msubint($Xm,$Xi), $n);
         } while ($f != 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
       }
       return _found_factor($f, $n, "pbrent", @factors);
     }
 
-  } elsif ($n < MPU_HALFWORD) {
+  } else {
 
     # Doing the gcd batching as above works pretty well here, but it's a lot
     # of code for not much gain for general users.
@@ -9494,15 +9462,6 @@ sub pbrent_factor {
       $Xi += $pa; $Xi -= $n if $Xi >= $n;
       my $f = _gcd_ui( ($Xi>$Xm) ? $Xi-$Xm : $Xm-$Xi, $n);
       return _found_factor($f, $n, "pbrent-32",@factors) if $f != 1 && $f != $n;
-      $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
-    }
-
-  } else {
-
-    for my $i (1 .. $rounds) {
-      $Xi = _addmod( _mulmod($Xi, $Xi, $n), $pa, $n);
-      my $f = _gcd_ui( ($Xi>$Xm) ? $Xi-$Xm : $Xm-$Xi, $n);
-      return _found_factor($f, $n, "pbrent-64",@factors) if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
