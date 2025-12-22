@@ -6156,9 +6156,15 @@ the small ones.
 
   my @factors = trial_factor($n);
 
-Produces the prime factors of a positive number input.
+Produces the prime factors of a positive number input using trial division.
 The factors will be in numerical order.
 For large inputs this will be very slow.
+
+An optional second argument will indicate an upper limit for factors.
+Factors C<2>, C<3>, and C<5> are always pulled out.
+Factors larger than the second argument will not be found and hence the last
+value in the list might be composite.
+
 Like all the specific-algorithm C<*_factor> routines, this is not exported
 unless explicitly requested.
 

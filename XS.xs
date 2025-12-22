@@ -332,8 +332,18 @@ static const gmp_info_t gmp_info[] = {
 
   /* if the input is already a bigint type, we want to use that */
   /* {                "factorial", 24, 1, R_BIGINT }, */
-  /* need to objectify */
-  /* {                   "factor", 41, 0xFF, R_BIGINT }, */
+#if 0 /* need to objectify a return list */
+  {                   "factor", 41, 0xFF, R_BIGINT },
+  {             "trial_factor", 47, 0xFF, R_BIGINT },
+  {              "holf_factor", 47, 0xFF, R_BIGINT },
+  {            "squfof_factor", 47, 0xFF, R_BIGINT },
+  {              "phro_factor", 47, 0xFF, R_BIGINT },
+  {            "pplus1_factor", 47, 0xFF, R_BIGINT },
+  {            "pbrent_factor", 47, 0xFF, R_BIGINT },
+  {           "pminus1_factor", 47, 0xFF, R_BIGINT },
+  {               "ecm_factor", 47, 0xFF, R_BIGINT },
+  {              "cheb_factor", 53, 0xFF, R_BIGINT },
+#endif
 };
 
 /******************************************************************************/
@@ -3296,7 +3306,7 @@ void divisors(IN SV* svn, IN SV* svk = 0)
     }
 
 void
-trial_factor(IN UV n, ...)
+trial_factor(IN SV* svn, ...)
   ALIAS:
     fermat_factor = 1
     holf_factor = 2
@@ -3309,16 +3319,16 @@ trial_factor(IN UV n, ...)
     pminus1_factor = 9
     ecm_factor = 10
   PREINIT:
-    UV arg1, arg2;
+    UV n, arg1, arg2;
     static const UV default_arg1[] =
        {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000};
      /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1 */
   PPCODE:
-    if (n == 0)  XSRETURN_UV(0);
-    if (ix == 10) {  /* We don't have an ecm_factor, call PP. */
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS) || ix == 10) {
       DISPATCHPP();
       return;
     }
+    if (n == 0)  XSRETURN_UV(0);
     /* Must read arguments before pushing anything */
     arg1 = (items >= 2) ? my_svuv(ST(1)) : default_arg1[ix];
     arg2 = (items >= 3) ? my_svuv(ST(2)) : 0;

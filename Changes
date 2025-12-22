@@ -270,6 +270,8 @@ Revision history for Perl module Math::Prime::Util
 
     - forfactored and forsquarefree were incorrect near 64-bit boundary.
 
+    - trial_factor etc. take an SV rather than silently coerce to a UV.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - LMO prime count is 1.2-1.5x faster.
