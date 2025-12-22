@@ -11954,19 +11954,23 @@ note differences.
 Pure Perl implementations of prime number utilities that are normally
 handled with XS or GMP.  Having the Perl implementations (1) provides examples,
 (2) allows the functions to run even if XS isn't available, and (3) gives
-big number support if L<Math::Prime::Util::GMP> isn't available.  This is a
-subset of L<Math::Prime::Util>'s functionality.
+big number support if L<Math::Prime::Util::GMP> isn't available.
 
 All routines should work with native integers or multi-precision numbers.  To
-enable big numbers, use bigint or bignum:
+enable big numbers, use bigint:
 
     use bigint;
     say prime_count_approx(1000000000000000000000000)'
-    # says 18435599767347543283712
+    # says 18435599767347541878147
 
-This is still experimental, and some functions will be very slow.  The
-L<Math::Prime::Util::GMP> module has much faster versions of many of these
-functions.  Alternately, L<Math::Pari> has a lot of these types of functions.
+Or string inputs:
+
+    say prime_count_approx("1000000000000000000000000")'
+    # identical output.
+
+Some functions will be very slow.
+L<Math::Prime::Util::GMP> has much faster versions of many of these functions.
+Alternately, L<Math::Pari> has a lot of these types of functions.
 
 
 =head1 FUNCTIONS
