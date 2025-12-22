@@ -1820,7 +1820,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       list = sieve_cluster(lo, hi, nc, cl, &nprimes);
       if (list != 0) {
         done = 1;
-        EXTEND(SP, (IV)nprimes);
+        EXTEND(SP, (SSize_t)nprimes);
         for (i = 0; i < nprimes; i++)
           PUSHs(sv_2mortal(newSVuv( list[i] )));
         Safefree(list);
@@ -5190,14 +5190,14 @@ randperm(IN UV n, IN UV k = 0)
 void shuffle(...)
   PROTOTYPE: @
   PREINIT:
-    int i, j;
+    SSize_t i, j;
     void* randcxt;
     dMY_CXT;
   PPCODE:
     if (items == 0)
       XSRETURN_EMPTY;
     for (i = 0, randcxt = MY_CXT.randcxt; i < items-1; i++) {
-      j = urandomm32(randcxt, items-i);
+      j = urandomm64(randcxt, items-i);
       { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
     }
     XSRETURN(items);
@@ -6383,7 +6383,7 @@ PROTOTYPE: &@
 CODE:
 {   /* This is basically reduce from List::Util.  Try to maintain compat. */
     SV *ret = sv_newmortal();
-    int i;
+    SSize_t i;
     GV *agv,*bgv,*gv;
     HV *stash;
     SV **args = &PL_stack_base[ax];
@@ -6439,7 +6439,7 @@ PPCODE:
 {   /* This is very similar to List::Util.  Try to maintain compat. */
     int ret_true = !(ix & 2); /* return true at end of loop for none/all; false for any/notall */
     int invert   =  (ix & 1); /* invert block test for all/notall */
-    int index;
+    SSize_t index;
     GV *gv;
     HV *stash;
     SV **args = &PL_stack_base[ax];
@@ -6499,7 +6499,8 @@ void vecuniq(...)
   PROTOTYPE: @
   PREINIT:
     iset_t s;
-    int j, status, retvals;
+    int status, retvals;
+    SSize_t j;
     UV n;
     unsigned long sz;
   PPCODE:
