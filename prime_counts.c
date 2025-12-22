@@ -284,9 +284,7 @@ UV segment_prime_count(UV low, UV high)
     /* Expand sieve to sqrt(n) */
     UV endp = (high_d >= (UV_MAX/30))  ?  UV_MAX-2  :  30*high_d+29;
     UV newsize = (UV)isqrt(endp)+1;
-#if BITS_PER_WORD == 64
     if (newsize > 2642245) newsize = 2642245;  /* Limit to icbrt(2^64) */
-#endif
     release_prime_cache(cache_sieve);
     segment_size = get_prime_cache( newsize, &cache_sieve) / 30;
   }

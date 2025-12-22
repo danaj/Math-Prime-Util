@@ -1580,11 +1580,21 @@ bool is_fundamental(UV n, bool neg) {
 
 UV pillai_v(UV n) {
   UV v, fac;
-  if (n == 0) return 0;
-  for (v = 8, fac = 5040 % n; v < n-1 && fac != 0; v++) {
-    fac = (n < HALF_WORD) ? (fac*v) % n : mulmod(fac,v,n);
-    if (fac == n-1 && (n % v) != 1)
-      return v;
+  /* if (n == 0) return 0; */
+  if (n < 23 || masktab30[n % 30] == 0 || n % 7 == 0) return 0;
+  fac = 5040 % n;
+  if (n < HALF_WORD) {
+    for (v = 8; v < n-1 && fac != 0; v++) {
+      fac = (fac*v) % n;
+      if (fac == n-1 && (n % v) != 1)
+        return v;
+    }
+  } else {
+    for (v = 8; v < n-1 && fac != 0; v++) {
+      fac = mulmod(fac,v,n);
+      if (fac == n-1 && (n % v) != 1)
+        return v;
+    }
   }
   return 0;
 }

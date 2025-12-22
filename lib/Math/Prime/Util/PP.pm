@@ -3177,9 +3177,9 @@ sub is_quasi_carmichael {
 
 sub is_pillai {
   my($p) = @_;
-  return 0 if defined($p) && int($p) < 0;
-  validate_integer_nonneg($p);
-  return 0 if $p <= 2;
+  validate_integer($p);
+  return 0 if $p < 23;
+  return 0 unless $p % 2 && $p % 3 && $p % 5 && $p % 7;
 
   my $pm1 = $p-1;
   my $nfac = 5040 % $p;

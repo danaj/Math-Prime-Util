@@ -3970,9 +3970,13 @@ full count or list.
 =head2 is_pillai
 
 Given a non-negative integer C<n>, if there exists a C<v> where C<v! % n == n-1>
-and C<n % v != 1>, then C<v> is returned.  Otherwise 0.
+and C<n % v != 1>, then the least C<v> is returned.  Otherwise 0.
 
-For n prime, this is the L<OEIS series A063980|http://oeis.org/A063980>.
+For n prime, non-zero return values give
+L<OEIS series A063980|http://oeis.org/A063980>.
+The non-zero values returned produce
+L<OEIS series A063828|http://oeis.org/A063828>.
+
 
 =head2 is_polygonal
 
