@@ -2185,11 +2185,11 @@ sub powerfree_part {
   # Rather than build with k-free section, we will remove excess powers
   my $P = $n;
   for my $pe (Mfactor_exp($n)) {
-    if ($pe->[1] >= $k) {
-      $P = Mdivint($P, Mpowint($pe->[0], $pe->[1] - ($pe->[1] % $k)));
-    }
+    $P = Mdivint($P, Mpowint($pe->[0], $pe->[1] - ($pe->[1] % $k)))
+      if $pe->[1] >= $k;
   }
-  return ($negmul == 1) ? $P : -$P;
+  $P = Mnegint($P) unless $negmul == 1;
+  $P;
 }
 
 sub _T {
@@ -9220,6 +9220,7 @@ sub trial_factor {
 
 my $_holf_r;
 my @_fsublist = (
+  [ "power",      sub { _power_factor (shift) } ],
   [ "pbrent 32k", sub { pbrent_factor (shift,   32*1024, 1, 1) } ],
   [ "p-1 1M",     sub { pminus1_factor(shift, 1_000_000, undef, 1); } ],
   [ "ECM 1k",     sub { ecm_factor    (shift,     1_000,   5_000, 15) } ],
@@ -9317,6 +9318,14 @@ sub _found_factor {
 sub squfof_factor { trial_factor(@_) }
 sub lehman_factor { trial_factor(@_) }
 sub pplus1_factor { pminus1_factor(@_) }
+
+sub _power_factor {
+  my $r;
+  my $k = Mis_power($_[0],0,\$r);
+  return ($_[0]) unless $k > 1;
+  print "power found factor $r\n" if getconfig()->{'verbose'} > 0;
+  map { $r } 1..$k;
+}
 
 sub prho_factor {
   my($n, $rounds, $pa, $skipbasic) = @_;
