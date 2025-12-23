@@ -257,6 +257,7 @@ subtest 'is_sumfree_set', sub {
     [15,-14,1],[-5,8,-13,5],
     [2,1],[2,3,5],[2,3,7,9],[2,3,7,11,13],
     [-1073741824,-536870912,536870912,1073741824],
+    [qw/2149735939 922201092 418574715 4154626798 2077313399/],
   );
   is_deeply( [map { is_sumfree_set($_) } @sf], [map { 1 } 0..$#sf], "sumfree sets" );
   is_deeply( [map { is_sumfree_set($_) } @nsf], [map { 0 } 0..$#nsf], "non-sumfree sets" );

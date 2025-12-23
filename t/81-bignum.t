@@ -436,7 +436,7 @@ sub check_pcbounds {
   $percentrh = Math::BigFloat->new($percentrh);
 
   my $pcap = prime_count_approx($n);
-  is( $pcap, "$expn", "PC approx($n)" );
+  is( "$pcap", "$expn", "PC approx($n)" );
 
   my $pclo = prime_count_lower($n);
   my $pcup = prime_count_upper($n);
