@@ -325,6 +325,8 @@ Revision history for Perl module Math::Prime::Util
 
     - rootint, is_power, {next,prev}_perfect_power up to 2x faster.
 
+    - inverse_totient memory leak fixed, memory use reduced, slightly faster.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

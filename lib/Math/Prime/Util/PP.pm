@@ -8090,14 +8090,14 @@ sub znorder {
   $n = -$n if $n < 0;
   return (undef,1)[$n] if $n <= 1;
   $a = Mmodint($a, $n);
-  return if $a <= 0;
+  return undef if $a <= 0;
   return 1 if $a == 1;
 
   return reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n))
     if $Math::Prime::Util::_GMPfunc{"znorder"};
 
   # Sadly, Calc/FastCalc are horrendously slow for this function.
-  return if Mgcd($a, $n) > 1;
+  return undef if Mgcd($a, $n) > 1;
 
   # The answer is one of the divisors of phi(n) and lambda(n).
   my $lambda = Math::Prime::Util::carmichael_lambda($n);
@@ -8108,7 +8108,7 @@ sub znorder {
     foreach my $k (Mdivisors($lambda)) {
       return $k if Mpowmod($a,$k,$n) == 1;
     }
-    return;
+    return undef;
   }
 
   # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
@@ -8118,7 +8118,7 @@ sub znorder {
     my $phidiv = Mdivint($lambda, Mpowint($pi,$ei));
     my $b = Mpowmod($a, $phidiv, $n);
     while ($b != 1) {
-      return if $enum++ >= $ei;
+      return undef if $enum++ >= $ei;
       $b = Mpowmod($b, $pi, $n);
       $k = Mmulint($k, $pi);
     }
