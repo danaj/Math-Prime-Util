@@ -3628,7 +3628,7 @@ void factorialmod(IN SV* sva, IN SV* svn)
       if (n == 1) XSRETURN_UV(0);
       XSRETURN_UV( factorialmod(a, n) );
     }
-    DISPATCHPP();
+    DISPATCHPP_GMPONLYIF(astatus == 1)
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
