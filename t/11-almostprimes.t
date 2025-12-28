@@ -24,71 +24,97 @@ my @small_kaps = (
 );
 my @counts_at_1e6 = (1,78498,210035,250853,198062,124465,68963,35585,17572,8491,4016,1878,865,400,179,79,35,14,7,2,0);
 
-my @aptests = (
-  [1,46,199],
-  [2,67,206],
-  [3,48,195],
-  [4,26,204],
-);
+plan tests =>   1   # generating
+              + 1   # counting
+              + 1   # nth
+              + 1   # limits
+              + 1;  # approx
 
-plan tests =>   5   # almost_primes sieve
-              + 4   # count
-              + 10  # nth
-              + 2   # limits
-              + 2   # approx
-              + scalar(@aptests)  # approx
-                ;
+subtest 'generate almost primes', sub {
+  for my $k (1..5) {
+    my $kap = $small_kaps[$k];
+    is_deeply(almost_primes($k,1,$kap->[-1]), $kap, "small $k-almost-primes");
+  }
 
-for my $k (1..5) {
-  my $kap = $small_kaps[$k];
-  is_deeply(almost_primes($k,1,$kap->[-1]), $kap, "small $k-almost-primes");
-}
+  # TODO some special cases for k=0
 
-# TODO some special cases for k=0
+  # TODO: more testing.  Perhaps with extra or in xt
 
-# TODO: more testing.  Perhaps with extra or in xt
+  my $prefix = "1000000000000";
+  my $beg = $prefix . "00";
+  my $end = $prefix . "50";
+
+  my %res = (
+    3 => [qw/18 19 23 29 38 39 42 49/],
+    4 => [qw/01 03 07 09 12 15 22 28 33 36 41 47/],
+    5 => [qw/02 04 05 06 10 11 14 17 25 27 34 45 46/],
+  );
+
+  while (my($k,$V) = each %res) {
+    my $got = almost_primes($k, $beg, $end);
+    my $exp = [map { $prefix.$_ } @$V];
+    is_deeply($got, $exp, "almost_primes($k, 10^14 + 0, 10^14 + 50)");
+  }
+};
+
 
 ###### Test almost_prime_count
-is_deeply([map { almost_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-almost prime counts at 1000000 for k=1..20");
+subtest 'counting almost primes', sub {
+  is_deeply([map { almost_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-almost prime counts at 1000000 for k=1..20");
 
-is(almost_prime_count(17,1e9), 38537, "There are 38537 17-almost-primes <= 1,000,000,000");
+  is(almost_prime_count(17,1e9), 38537, "There are 38537 17-almost-primes <= 1,000,000,000");
 
-is_deeply([map{almost_prime_count($_,206)}1..10],[46,67,48,26,12,4,2,0,0,0],"almost_prime_count_approx n=206, k 1..10");
+  is_deeply([map{almost_prime_count($_,206)}1..10],[46,67,48,26,12,4,2,0,0,0],"almost_prime_count_approx n=206, k 1..10");
 
-is(almost_prime_count(10,1024),1,"almost_prime_count(10,1024) = 1");
+  is(almost_prime_count(10,1024),1,"almost_prime_count(10,1024) = 1");
+};
 
 ###### Test nth_almost_prime
-is(nth_almost_prime(1,2), 3, "2nd 1-almost-prime is 3");
-is(nth_almost_prime(2,34), 95, "34th 2-almost-prime is 94");
-is(nth_almost_prime(3,456), 1802, "456th 3-almost-prime is 1802");
+subtest 'nth almost prime', sub {
+  is(nth_almost_prime(1,2), 3, "2nd 1-almost-prime is 3");
+  is(nth_almost_prime(2,34), 95, "34th 2-almost-prime is 94");
+  is(nth_almost_prime(3,456), 1802, "456th 3-almost-prime is 1802");
 
-is(nth_almost_prime(2,4), 10, "4th 2-almost-prime is 10");
-is(nth_almost_prime(3,4), 20, "4th 3-almost-prime is 20");
-is(nth_almost_prime(4,4), 40, "4th 4-almost-prime is 40");
+  is(nth_almost_prime(2,4), 10, "4th 2-almost-prime is 10");
+  is(nth_almost_prime(3,4), 20, "4th 3-almost-prime is 20");
+  is(nth_almost_prime(4,4), 40, "4th 4-almost-prime is 40");
 
-SKIP: {
-  skip "The almost prime pure Perl is *very* slow",3 unless $usexs;
-  is(nth_almost_prime(4,5678), 31382, "5678th 4-almost-prime is 31382");
-  is(nth_almost_prime(5,67890), 558246, "67890th 5-almost-prime is 558246");
-  is("".nth_almost_prime(24,5555), "21678243840", "5555th 24-almost-prime is 21678243840");
-}
+  SKIP: {
+    skip "The almost prime pure Perl is *very* slow",3 unless $usexs;
+    is(nth_almost_prime(4,5678), 31382, "5678th 4-almost-prime is 31382");
+    is(nth_almost_prime(5,67890), 558246, "67890th 5-almost-prime is 558246");
+    is("".nth_almost_prime(24,5555), "21678243840", "5555th 24-almost-prime is 21678243840");
+  }
 
-is("".nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");
+  is("".nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");
+};
 
 ###### Test limits
-is( cmp_kap(3,59643,234618), 234618, "3-almost prime limits for 59643" );
-is( cmp_kap(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
+subtest 'limits', sub {
+  is( cmp_kap(3,59643,234618), 234618, "3-almost prime limits for 59643" );
+  is( cmp_kap(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
+};
 
 ###### Test approx
-is( approx_in_range(3,59643,234618), 234618, "approx 3-almost prime");
-SKIP: {
-  skip "The almost prime pure Perl has bad approximations for high k",1 unless $usexs && $use64;
-  is( approx_in_range(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
-}
-for my $aap (@aptests) {
-  my($k, $n, $count) = @$aap;
-  is( approx_in_range($k,$n,$count), $count, "small approx $k-almost prime");
-}
+subtest 'approx', sub {
+  is( approx_in_range(3,59643,234618), 234618, "approx 3-almost prime");
+  SKIP: {
+    skip "The almost prime pure Perl has bad approximations for high k",1 unless $usexs && $use64;
+    is( approx_in_range(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
+  }
+  my @aptests = (
+    [1,46,199],
+    [2,67,206],
+    [3,48,195],
+    [4,26,204],
+  );
+  for my $aap (@aptests) {
+    my($k, $n, $count) = @$aap;
+    is( approx_in_range($k,$n,$count), $count, "small approx $k-almost prime");
+  }
+};
+
+
 
 sub cmp_closeto {
   my $got = shift;

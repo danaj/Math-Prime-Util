@@ -329,6 +329,10 @@ subtest 'vecsort', sub {
 
   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsort sorts without modifying input");
 
+  my @ivd = (qw/-3937 4322 -3619 -390 2039 2123 -1614 -879 -4372 1793 4404 4229 286 -3613 2707 -4166 4025 2450 -2003 3390 4498 -3094 -4854 3441 3501 -2871 -1206 315 71 -2101 4881 -3141 10 -2545 -2825 -519 3534 -4904 -3523 -1170 -3 3 -2 2 -1 1 0/);
+  my @sivd = (qw/-4904 -4854 -4372 -4166 -3937 -3619 -3613 -3523 -3141 -3094 -2871 -2825 -2545 -2101 -2003 -1614 -1206 -1170 -879 -519 -390 -3 -2 -1 0 1 2 3 10 71 286 315 1793 2039 2123 2450 2707 3390 3441 3501 3534 4025 4229 4322 4404 4498 4881/);
+  is_deeply([vecsort(@ivd)], \@sivd, "vecsort list of negative integers");
+
   # Both of these should be "string".  XS doesn't copy for validation.
   if ($extra) {
     diag "vecsort input:   $in0_beg => $in0_end" if $in0_beg ne $in0_end;
