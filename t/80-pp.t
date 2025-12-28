@@ -526,7 +526,7 @@ subtest 'factoring', sub {
     my $ntests = scalar @composites;
     my @expfactor = map { "$_ factored correctly" } @composites;
     my @gotfactor;
-  
+
     foreach my $n (@composites) {
       my @f = factor($n);
       my $facstring = join(' * ', @f);

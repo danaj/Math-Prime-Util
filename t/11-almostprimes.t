@@ -40,20 +40,23 @@ subtest 'generate almost primes', sub {
 
   # TODO: more testing.  Perhaps with extra or in xt
 
-  my $prefix = "1000000000000";
+  my $e = (~0 < 1e14) ? 8 : 14;
+  my $prefix = '1' . '0' x ($e-2);
   my $beg = $prefix . "00";
   my $end = $prefix . "50";
-
-  my %res = (
-    3 => [qw/18 19 23 29 38 39 42 49/],
-    4 => [qw/01 03 07 09 12 15 22 28 33 36 41 47/],
-    5 => [qw/02 04 05 06 10 11 14 17 25 27 34 45 46/],
-  );
+  my %res = ($e == 8) ?
+    ( 3 => [qw/06 14 22 23 31 36 45/],
+      4 => [qw/05 10 11 12 18 24 25 28 29 30 33 38 43 46 47/],
+      5 => [qw/02 21 50/],)
+  : ( 3 => [qw/18 19 23 29 38 39 42 49/],
+      4 => [qw/01 03 07 09 12 15 22 28 33 36 41 47/],
+      5 => [qw/02 04 05 06 10 11 14 17 25 27 34 45 46/],
+    );
 
   while (my($k,$V) = each %res) {
     my $got = almost_primes($k, $beg, $end);
     my $exp = [map { $prefix.$_ } @$V];
-    is_deeply($got, $exp, "almost_primes($k, 10^14 + 0, 10^14 + 50)");
+    is_deeply($got, $exp, "almost_primes($k, 10^$e + 0, 10^$e + 50)");
   }
 };
 
