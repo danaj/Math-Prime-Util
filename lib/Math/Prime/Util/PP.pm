@@ -653,8 +653,13 @@ sub _sieve_segment {
     my $p2 = $p*$p;
 
     if ($p2 < $beg) {  # Make p2 the next odd multiple of p >= beg
-      my $f = Mcdivint($beg,$p);
-      $p2 = Mmulint($p, $f + (1-($f&1)));
+      if ($beg < 2**49) {
+        my $f = int(($beg+$p-1)/$p);
+        $p2 = $p * ($f + (1-($f&1)));
+      } else {
+        my $f = Mcdivint($beg,$p);
+        $p2 = Mmulint($p, $f + (1-($f&1)));
+      }
     }
 
     # Large bases and small segments often don't hit the segment at all.
