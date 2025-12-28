@@ -7759,6 +7759,7 @@ sub factorial {
     }
     return reftyped($_[0], $r)    if defined $r;
   }
+  # maybe roll our own: https://oeis.org/A000142/a000142.pdf
   my $r = Math::BigInt->new($n)->bfac();
   $r = _bigint_to_int($r) if $r <= INTMAX;
   $r;
@@ -7772,7 +7773,7 @@ sub factorialmod {
   return (undef,0)[$m] if $m <= 1;
 
   return reftyped($_[1], Math::Prime::Util::GMP::factorialmod($n,$m))
-    if $Math::Prime::Util::_GMPfunc{"factorialmod"};
+    if $Math::Prime::Util::_GMPfunc{"factorialmod"} && $n < ~0;
 
   return 0 if $n >= $m || $m == 1;
 
@@ -10590,10 +10591,27 @@ sub LambertW {
   #   my $e = exp($w);
   #   my $f = $w * $e - $x;
   #   $w -= $f / ($w*$e+$e - ($w+2)*$f/(2*$w+2));
+  #
+  # Also see https://arxiv.org/pdf/2008.06122
+
+  if (!$xacc) {
+    my $eps = 1.054e-8;  # sqrt(double eps)
+    for (1 .. 200) {
+      last if $w == 0;
+      my $w1 = $w + 1;
+      my $zn = log($x/$w) - $w;
+      my $qn = $w1 * 2 * ($w1+(2*$zn/3));
+      my $en = ($zn/$w1) * ($qn-$zn)/($qn-$zn*2);
+      my $wen = $w * $en;
+      $w += $wen;
+      last if abs($en) < $eps;
+    }
+    return $w;
+  }
 
   # Fritsch converges quadratically, so tolerance could be 4x smaller.  Use 2x.
-  my $tol = ($xacc) ? 10**(-int(1+$xacc/2)) : 1e-16;
-  $w->accuracy($xacc+10) if $xacc;
+  my $tol = 10**(-int(1+$xacc/2));
+  $w->accuracy($xacc+15);
   for (1 .. 200) {
     last if $w == 0;
     my $w1 = $w + 1;
@@ -10604,8 +10622,7 @@ sub LambertW {
     $w += $wen;
     last if abs($wen) < $tol;
   }
-  $w->accuracy($xacc) if $xacc;
-
+  $w->accuracy($xacc);
   $w;
 }
 
