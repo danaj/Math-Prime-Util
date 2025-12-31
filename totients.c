@@ -54,13 +54,22 @@ UV totient(UV n) {
 UV* range_totient(UV lo, UV hi) {
   UV i, count = hi-lo+1, *totients;
 
-  if (hi < lo) croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
-  New(0, totients, count, UV);
+  if (hi < lo || count == 0 || count > ((SSize_t)-1))
+    croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
+
+  if (hi < 16) {
+    static const uint8_t small_totients[] = {0,1,1,2,2,4,2,6,4,6,4,10,4,12,6,8};
+    New(0, totients, count, UV);
+    for (i = 0; i < count; i++)
+      totients[i] = small_totients[lo+i];
+    return totients;
+  }
 
   if (lo > 0) {  /* With a non-zero start, use our ranged factoring */
 
     factor_range_context_t fctx;
     fctx = factor_range_init(lo, hi, 0);
+    New(0, totients, count, UV);
     for (i = 0; i < count; i++) {
       uint32_t nfactors = factor_range_next(&fctx);
       totients[i] = _totient_fac(nfactors, fctx.factors);
@@ -69,26 +78,16 @@ UV* range_totient(UV lo, UV hi) {
 
   } else {  /* start at zero */
 
-    static const uint8_t small_totients[] = {0,1,1,2,2,4,2,6,4,6,4,10,4,12,6,8};
-    uint32_t sqrthi, nprimes, *prime, j;
+    uint32_t j, *prime;
+    uint32_t sqrthi = isqrt(hi);
+    uint32_t nprimes = 0;
 
-    if (hi < sizeof small_totients/sizeof *small_totients) {
-      for (i = 0; i <= hi; i++)
-        totients[i] = small_totients[i];
-      return totients;
-    }
-
-    if (hi == UV_MAX) {  /* Ensure we don't have any overflow issues */
-      totients[--count] = totient(UV_MAX);
-      hi--;
-    }
+    if (hi == UV_MAX)
+      croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
 
     /* prime[] will hold primes from 3 to sqrthi */
-    sqrthi = isqrt(hi);
     New(0, prime, max_nprimes(sqrthi), uint32_t);
-    nprimes = 0;
-
-    memset(totients, 0, count * sizeof(UV));
+    Newz(0, totients, count, UV);
     totients[1] = 1;
 
     for (i = 1; i <= hi/2; i += 2) {
@@ -525,8 +524,6 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
     return totlist;
   }
 
-  /* TODO: Two-phase loop to reduce memory use. */
-
   divs = divisor_list(n, &ndivisors, n);
 
   init_setlist(&setlist, 2*ndivisors);
@@ -556,6 +553,7 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
     }
   }
   Safefree(divs);
+
   tlist = setlist_getlist(ntotients, setlist, n);
   if (tlist != 0 && *ntotients > 0) {
     New(0, totlist, *ntotients, UV);

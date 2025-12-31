@@ -147,6 +147,13 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #  define SvREFCNT_dec_NN(sv)    SvREFCNT_dec(sv)
 #endif
 
+#if PERL_VERSION_LT(5,20,0)
+#  define EXTEND_TYPE int
+#else
+#  define EXTEND_TYPE SSize_t
+#endif
+#define MAX_EXTEND ((EXTEND_TYPE)-1)
+
 /******************************************************************************/
 /******************************************************************************/
 
@@ -715,7 +722,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
       Safefree(arr); \
       XSRETURN_UV(alen_); \
     } \
-    EXTEND(SP,(long)alen_); \
+    EXTEND(SP,(EXTEND_TYPE)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
       ST(k_) = sv_2mortal(NEWSVINT(sign,arr[k_])); \
     Safefree(arr); \
@@ -1760,7 +1767,7 @@ void goldbach_pairs(IN SV* svn)
         XSRETURN_UV(goldbach_pair_count(n));
       L = goldbach_pairs(&npairs, n);
       if (L == 0) XSRETURN_EMPTY;
-      EXTEND(SP, (IV)npairs);
+      EXTEND(SP, (EXTEND_TYPE)npairs);
       for (i = 0; i < npairs; i++)
         PUSHs(sv_2mortal(newSVuv(L[i])));
       Safefree(L);
@@ -1832,7 +1839,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       list = sieve_cluster(lo, hi, nc, cl, &nprimes);
       if (list != 0) {
         done = 1;
-        EXTEND(SP, (SSize_t)nprimes);
+        EXTEND(SP, (EXTEND_TYPE)nprimes);
         for (i = 0; i < nprimes; i++)
           PUSHs(sv_2mortal(newSVuv( list[i] )));
         Safefree(list);
@@ -2950,7 +2957,7 @@ void contfrac(IN SV* svnum, IN SV* svden)
     if (nstatus == 1 && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
       UV *cf, rem;
       int i, steps = contfrac(&cf, &rem, num, den);
-      EXTEND(SP, steps);
+      EXTEND(SP, (EXTEND_TYPE)steps);
       for (i = 0; i < steps; i++)
         PUSHs(sv_2mortal(newSVuv( cf[i] )));
       Safefree(cf);
@@ -3096,7 +3103,7 @@ void farey(IN SV* svn, IN SV* svk = 0)
           uint32_t *num, *den;
           UV i, len = farey_array(n, &num, &den);
           if (len > 0) {
-            EXTEND(SP, (IV)len);
+            EXTEND(SP, (EXTEND_TYPE)len);
             for (i = 0; i < len; i++)
               PUSH_2ELEM_AREF(num[i], den[i]);
             Safefree(num);
@@ -3230,7 +3237,7 @@ void inverse_totient(IN SV* svn)
       } else if (gimme_v == G_ARRAY) {
         UV* tots = inverse_totient_list(&ntotients, n);
         if (ntotients != UV_MAX) {
-          EXTEND(SP, (IV)ntotients);
+          EXTEND(SP, (EXTEND_TYPE)ntotients);
           for (i = 0; i < ntotients; i++)
             PUSHs(sv_2mortal(newSVuv( tots[i] )));
           Safefree(tots);
@@ -3259,14 +3266,14 @@ factor(IN SV* svn)
         uint32_t nfactors = factor(n, factors);
         if (gimme_v == G_SCALAR)
           XSRETURN_UV(nfactors);
-        EXTEND(SP, nfactors);
+        EXTEND(SP, (EXTEND_TYPE)nfactors);
         for (i = 0; i < nfactors; i++)
           PUSHs(sv_2mortal(newSVuv( factors[i] )));
       } else {
         factored_t nf = factorint(n);
         if (gimme_v == G_SCALAR)
           XSRETURN_UV(nf.nfactors);
-        EXTEND(SP, nf.nfactors);
+        EXTEND(SP, (EXTEND_TYPE)nf.nfactors);
         for (i = 0; i < nf.nfactors; i++)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
@@ -3300,7 +3307,7 @@ void divisors(IN SV* svn, IN SV* svk = 0)
       if (GIMME_V == G_SCALAR) {
         PUSHs(sv_2mortal(newSVuv( ndivisors )));
       } else {
-        EXTEND(SP, (IV)ndivisors);
+        EXTEND(SP, (EXTEND_TYPE)ndivisors);
         for (i = 0; i < ndivisors; i++)
           PUSHs(sv_2mortal(newSVuv( divs[i] )));
       }
@@ -3358,7 +3365,7 @@ trial_factor(IN SV* svn, ...)
         default: if (items < 3) arg2 = 10*arg1;
                  nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
       }
-      EXTEND(SP, nfactors);
+      EXTEND(SP, (EXTEND_TYPE)nfactors);
       for (i = 0; i < nfactors; i++)
         PUSHs(sv_2mortal(newSVuv( factors[i] )));
     }
@@ -3677,7 +3684,7 @@ void allsqrtmod(IN SV* sva, IN SV* svn)
         if (GIMME_V != G_ARRAY) {
           PUSHs(sv_2mortal(newSVuv(numr)));
         } else {
-          EXTEND(SP, (IV)numr);
+          EXTEND(SP, (EXTEND_TYPE)numr);
           for (i = 0; i < numr; i++)
             PUSHs(sv_2mortal(newSVuv(roots[i])));
         }
@@ -3705,7 +3712,7 @@ void allrootmod(IN SV* sva, IN SV* svg, IN SV* svn)
         if (GIMME_V != G_ARRAY) {
           PUSHs(sv_2mortal(newSVuv(numr)));
         } else {
-          EXTEND(SP, (IV)numr);
+          EXTEND(SP, (EXTEND_TYPE)numr);
           for (i = 0; i < numr; i++)
             PUSHs(sv_2mortal(newSVuv(roots[i])));
         }
@@ -4249,14 +4256,27 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
   PPCODE:
     mask = (ix == 1 && items == 1)  ?  IFLAG_ABS  :  IFLAG_ANY;
     lostatus = _validate_and_set(&lo, aTHX_ svlo, mask);
-    histatus = (svhi == 0) || _validate_and_set(&hi, aTHX_ svhi, IFLAG_ANY);
     if (svhi == 0 && lostatus != 0) {
       if (ix == 0) XSRETURN_UV( (lostatus == -1) ? 0 : totient(lo) );
       else         RETURN_NPARITY( moebius(lo) );
-    } else if (items == 2 && lostatus == 1 && histatus == 1) {
-      if (lo <= hi) {
-        UV i, count = hi - lo + 1;
-        EXTEND(SP, (IV)count);
+    }
+    histatus = (svhi == 0) ? 0 : _validate_and_set(&hi, aTHX_ svhi, IFLAG_ANY);
+    /* - If range is larger than MAX_EXTEND, reduce it to fit.
+     *   Arguably we should croak as invalid input.
+     * - If range includes UV_MAX, pull it off and handle separately.
+     *   This makes count never underflow (e.g. lo=0,hi=max, hi-lo+1 => 0)
+     *   It also simplifies loop overflow logic in the range function.
+     */
+    if (lostatus == 1 && histatus == 1) {
+      UV i, count;
+      int appendmax = (hi == UV_MAX);
+      if (lo > hi)  XSRETURN(0);
+
+      if (appendmax) hi--;
+      if ((hi-lo+1) > MAX_EXTEND)  hi = lo + MAX_EXTEND - 1;
+      count = hi-lo+1;
+      if (count > 0) {
+        EXTEND(SP, (EXTEND_TYPE)count);
         if (ix == 0) {
           UV arrlo = (lo < 100) ?  0 : lo;
           UV *totients = range_totient(arrlo, hi);
@@ -4269,6 +4289,15 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
           for (i = 0; i < count; i++)
             PUSH_NPARITY(mu[i]);
           Safefree(mu);
+        }
+      }
+      if (appendmax) {
+        EXTEND(SP, 1);
+        if (ix == 0) {
+          PUSHs(sv_2mortal(newSVuv(totient(UV_MAX))));
+        } else {
+          dMY_CXT;
+          PUSH_NPARITY(-1);  /* moebius of 2^32-1, 2^64-1, 2^128-1 => -1 */
         }
       }
     } else {
@@ -5145,7 +5174,7 @@ numtoperm(IN UV n, IN SV* svk)
     if (n < 32 && _validate_and_set(&k, aTHX_ svk, IFLAG_ABS) == 1) {
       if (num_to_perm(k, n, S)) {
         dMY_CXT;
-        EXTEND(SP, (IV)n);
+        EXTEND(SP, (EXTEND_TYPE)n);
         for (i = 0; i < (int)n; i++)
           PUSH_NPARITY( S[i] );
         XSRETURN(n);
@@ -5192,7 +5221,7 @@ randperm(IN UV n, IN UV k = 0)
     if (k == 0) XSRETURN_EMPTY;
     New(0, S, k, UV);
     randperm(MY_CXT.randcxt, n, k, S);
-    EXTEND(SP, (IV)k);
+    EXTEND(SP, (EXTEND_TYPE)k);
     for (i = 0; i < k; i++) {
       if (n < 2*CINTS)  PUSH_NPARITY(S[i]);
       else              PUSHs(sv_2mortal(newSVuv(S[i])));
@@ -5364,7 +5393,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       IV len = to_digit_array(digits, n, base, length);
       if (len >= 0) {
         dMY_CXT;
-        EXTEND(SP, len);
+        EXTEND(SP, (EXTEND_TYPE)len);
         for (i = 0; i < len; i++)
           PUSH_NPARITY( digits[len-i-1] );
         XSRETURN(len);
@@ -5390,7 +5419,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       if (len == 1 && str[0] == '0') XSRETURN(0);
       {
         dMY_CXT;
-        EXTEND(SP, (IV)len);
+        EXTEND(SP, (EXTEND_TYPE)len);
         for (i = 0; i < (int)len; i++)
           PUSH_NPARITY(str[i]-'0');
       }
@@ -6036,7 +6065,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
           if (i <= k) continue;
         }
 
-        PUSHMARK(SP); EXTEND(SP, (IV)k);
+        PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)k);
         for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
         PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
         CHECK_FORCOUNT;
@@ -6123,7 +6152,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
         _comb_init(cm, k, ix == 2);
         while (1) {
           if (ix < 2 || k != 1) {
-            PUSHMARK(SP); EXTEND(SP, ((IV)k));
+            PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)k);
             for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
             PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           }
@@ -6202,7 +6231,7 @@ forsetproduct (SV* block, ...)
     else
 #endif
     do {
-      PUSHMARK(SP); EXTEND(SP, narrays);
+      PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)narrays);
       for (i = 0; i < narrays; i++) { PUSHs(arout[i]); }
       PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       CHECK_FORCOUNT;
@@ -6298,7 +6327,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       CHECK_FORCOUNT;
       nfactors = factor_range_next(&fctx);
       if (nfactors > 0) {
-        PUSHMARK(SP); EXTEND(SP, nfactors);
+        PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)nfactors);
         sv_setuv(svarg, fctx.n);
         factors = fctx.factors;
         for (i = 0; i < nfactors; i++) {
@@ -6616,7 +6645,7 @@ void vecfreq(...)
     } else {
       int sign = IARR_TYPE_NEG ? -1 : 1;
       dMY_CXT;
-      EXTEND(SP, (SSize_t)len*2);
+      EXTEND(SP, (EXTEND_TYPE)len*2);
       retlen = 0;
       count = 1;
       for (i = 1; i < len; i++) {

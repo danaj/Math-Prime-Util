@@ -2885,9 +2885,8 @@ sub moebius_range {
   }
   if ($hi > 2**32) {
     my @mu;
-    while ($lo <= $hi) {
-      push @mu, moebius($lo++);
-    }
+    ($lo,$hi) = (tobigint($lo),tobigint($hi)) if $hi > 2**49;
+    push @mu, moebius($lo++)  while $lo <= $hi;
     return @mu;
   }
   my @mu = map { 1 } $lo .. $hi;
