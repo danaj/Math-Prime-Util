@@ -163,6 +163,7 @@ our $_BIGINT;
 *Mforprimes = \&Math::Prime::Util::forprimes;
 *MLi = \&Math::Prime::Util::LogarithmicIntegral;
 *Mprime_omega = \&Math::Prime::Util::prime_omega;
+*Mnth_prime_upper = \&Math::Prime::Util::nth_prime_upper;
 
 if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53) {
   *Saddint = \&Math::Prime::Util::GMP::addint;
@@ -994,7 +995,7 @@ sub semi_primes {
 sub _n_ramanujan_primes {
   my($n) = @_;
   return [] if $n <= 0;
-  my $max = Math::Prime::Util::nth_prime_upper(int(48/19*$n)+1);
+  my $max = Mnth_prime_upper(int(48/19*$n)+1);
   my @L = (2, (0) x $n-1);
   my $s = 1;
   for (my $k = 7; $k <= $max; $k += 2) {
@@ -1226,6 +1227,7 @@ sub lucky_count_lower {
 
 sub nth_lucky {
   my $n = shift;
+  validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
   my $k = $n-1;
   my $ln = lucky_numbers($n);
@@ -1572,9 +1574,8 @@ sub euler_phi_range {
   return @totients if $hi < $lo;
 
   if ($hi > 2**30 || $hi-$lo < 100) {
-    while ($lo <= $hi) {
-      push @totients, euler_phi($lo++);
-    }
+    ($lo,$hi) = (tobigint($lo),tobigint($hi)) if $hi > 2**49;
+    push @totients, euler_phi($lo++)  while $lo <= $hi;
   } else {
     my @tot = (0 .. $hi);
     foreach my $i (2 .. $hi) {
@@ -1638,22 +1639,19 @@ sub sumtotient {
 
 sub prime_bigomega {
   my($n) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return scalar(Mfactor($n));
 }
 sub prime_omega {
   my($n) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return scalar(Mfactor_exp($n));
 }
 
 sub moebius {
   return moebius_range(@_) if scalar @_ > 1;
   my($n) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return ($n == 1) ? 1 : 0  if $n <= 1;
   return 0 if ($n >= 49) && (!($n % 4) || !($n % 9) || !($n % 25) || !($n%49) );
   my @factors = Mfactor($n);
@@ -1679,20 +1677,17 @@ sub is_even {
 
 sub is_divisible {
   my($n,$d) = @_;
-  validate_integer($n);
-  validate_integer($d);
+  validate_integer_abs($n);
+  validate_integer_abs($d);
   return 0+($n==0) if $d == 0;
-  $n = -$n if $n < 0;
-  $d = -$d if $d < 0;
   return 0+(($n % $d) == 0);
 }
 sub is_congruent {
   my($n,$c,$d) = @_;
   validate_integer($n);
   validate_integer($c);
-  validate_integer($d);
+  validate_integer_abs($d);
   if ($d != 0) {
-    $d = -$d if $d < 0;
     $n = Mmodint($n,$d) if $n < 0 || $n >= $d;
     $c = Mmodint($c,$d) if $c < 0 || $c >= $d;
   }
@@ -1701,8 +1696,7 @@ sub is_congruent {
 
 sub is_smooth {
   my($n, $k) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   validate_integer_nonneg($k);
 
   return 1 if $n <= 1;
@@ -1727,8 +1721,7 @@ sub is_smooth {
 }
 sub is_rough {
   my($n, $k) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   validate_integer_nonneg($k);
 
   return 0+($k == 0) if $n == 0;
@@ -1904,6 +1897,7 @@ sub nth_powerful {
   $hi;
 }
 
+# Not currently used
 sub _genpowerful {
   my($m, $r, $n, $k, $arr) = @_;
   if ($r < $k) { push @$arr, $m; return; }
@@ -2000,8 +1994,7 @@ sub powerful_numbers {
 
 sub is_powerfree {
   my($n, $k) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 
@@ -2026,8 +2019,7 @@ sub is_powerfree {
 
 sub powerfree_count {
   my($n, $k) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 
@@ -2176,9 +2168,8 @@ sub powerfree_sum {
 
 sub powerfree_part {
   my($n, $k) = @_;
-  validate_integer($n);
   my $negmul = ($n < 0) ? -1 : 1;
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 
@@ -2208,8 +2199,7 @@ sub _fprod {
 
 sub powerfree_part_sum {
   my($n, $k) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 
@@ -2504,7 +2494,7 @@ sub prime_power_count_approx {
 
 sub _simple_nth_prime_power_upper {
   my $n = shift;
-  Math::Prime::Util::nth_prime_upper($n);
+  Mnth_prime_upper($n);
 }
 sub _simple_nth_prime_power_lower {
   my $n = shift;
@@ -3220,7 +3210,8 @@ my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
    : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
-  return 0 if $n <= 0;
+  validate_integer_nonneg($n);
+  return 0 if $n == 0;
 
   if (defined $k && ref($k) eq 'CODE') {
     my $sum = $n-$n;
@@ -3308,12 +3299,14 @@ sub _tablephi {
 
 sub legendre_phi {
   my ($x, $a, $primes) = @_;
+  validate_integer_nonneg($x);
+  validate_integer_nonneg($a);
   if ($#_s3 == -1) {
     @_s3 = (0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7,8);
     @_s4 = (0,1,1,1,1,1,1,1,1,1,1,2,2,3,3,3,3,4,4,5,5,5,5,6,6,6,6,6,6,7,7,8,8,8,8,8,8,9,9,9,9,10,10,11,11,11,11,12,12,12,12,12,12,13,13,13,13,13,13,14,14,15,15,15,15,15,15,16,16,16,16,17,17,18,18,18,18,18,18,19,19,19,19,20,20,20,20,20,20,21,21,21,21,21,21,21,21,22,22,22,22,23,23,24,24,24,24,25,25,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,29,29,29,29,30,30,30,30,30,30,31,31,32,32,32,32,33,33,33,33,33,33,34,34,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,38,38,39,39,39,39,40,40,40,40,40,40,41,41,42,42,42,42,42,42,43,43,43,43,44,44,45,45,45,45,46,46,47,47,47,47,47,47,47,47,47,47,48);
   }
   return _tablephi($x,$a) if $a <= 6;
-  $primes = Mprimes(Math::Prime::Util::nth_prime_upper($a+1)) unless defined $primes;
+  $primes = Mprimes(Mnth_prime_upper($a+1)) unless defined $primes;
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
 
   my $sum = 0;
@@ -3606,6 +3599,7 @@ sub inverse_li {
 
   $t;
 }
+# Not currently used
 sub _inverse_R {
   my($n) = @_;
   validate_integer_nonneg($n);
@@ -4360,7 +4354,7 @@ sub nth_almost_prime_upper {
   my($k, $n) = @_;
   return 0 if $n == 0;
   return (($n == 1) ? 1 : 0) if $k == 0;
-  return Math::Prime::Util::nth_prime_upper($n) if $k == 1;
+  return Mnth_prime_upper($n) if $k == 1;
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
 
   my $r = _kap_reduce_nth($k,$n);
@@ -4611,7 +4605,7 @@ sub nth_omega_prime {
 sub nth_ramanujan_prime_upper {
   my $n = shift;
   return (0,2,11)[$n] if $n <= 2;
-  my $nth = nth_prime_upper(Mmulint($n,3));
+  my $nth = Mnth_prime_upper(Mmulint($n,3));
   return $nth if $n < 10000;
   return Mdivint(Mmulint(177,$nth),256) if $n < 1000000;
   return Mdivint(Mmulint(175,$nth),256) if $n < 1e10;
@@ -5696,8 +5690,7 @@ sub _sqrtmod_composite {
 sub sqrtmod {
   my($a,$n) = @_;
   validate_integer($a);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return (undef,0)[$n] if $n <= 1;
   #return Mmodint(Msqrtint($a),$n) if _is_perfect_square($a);
   $a = Mmodint($a,$n);
@@ -5764,8 +5757,7 @@ sub _allsqrtmodfact {
 sub allsqrtmod {
   my($A,$n) = @_;
   validate_integer($A);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return $n ? (0) : () if $n <= 1;
   $A = Mmodint($A,$n);
   Mvecsort(  _allsqrtmodfact($A, $n, [ Mfactor_exp($n) ])  );
@@ -6061,8 +6053,7 @@ sub rootmod {
   my($a,$k,$n) = @_;
   validate_integer($a);
   validate_integer($k);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return (undef,0)[$n] if $n <= 1;
   $a = Mmodint($a,$n);
 
@@ -6239,8 +6230,7 @@ sub allrootmod {
   my($A,$k,$n) = @_;
   validate_integer($A);
   validate_integer($k);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
 
   return () if $n == 0;
   $A = Mmodint($A,$n);
@@ -6666,6 +6656,7 @@ sub is_square {
 
 sub is_prime_power {
   my ($n, $refp) = @_;
+  validate_integer($n);
   croak("is_prime_power second argument not a scalar reference") if defined($refp) && !ref($refp);
   return 0 if $n <= 1;
 
@@ -6682,10 +6673,8 @@ sub is_prime_power {
 
 sub is_gaussian_prime {
   my($a,$b) = @_;
-  validate_integer($a);
-  validate_integer($b);
-  $a = -$a if $a < 0;
-  $b = -$b if $b < 0;
+  validate_integer_abs($a);
+  validate_integer_abs($b);
   return ((($b % 4) == 3) ? Mis_prime($b) : 0) if $a == 0;
   return ((($a % 4) == 3) ? Mis_prime($a) : 0) if $b == 0;
   Mis_prime( Maddint( Mmulint($a,$a), Mmulint($b,$b) ) );
@@ -6693,6 +6682,8 @@ sub is_gaussian_prime {
 
 sub is_polygonal {
   my ($n, $k, $refp) = @_;
+  validate_integer($n);
+  validate_integer_nonneg($k);
   croak("is_polygonal third argument not a scalar reference") if defined($refp) && !ref($refp);
   croak("is_polygonal: k must be >= 3") if $k < 3;
   return 0 if $n < 0;
@@ -6733,8 +6724,7 @@ sub is_polygonal {
 
 sub is_sum_of_squares {
   my($n, $k) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 
@@ -6907,12 +6897,11 @@ sub is_perfect_number {
 sub valuation {
   my($n, $k) = @_;
   # The validation in PP is 2x more time than our actual work.
-  validate_integer($n);
+  validate_integer_abs($n);
   validate_integer_positive($k);
   croak "valuation: k must be > 1" if $k <= 1;
 
   return if $k < 2;
-  $n = -$n if $n < 0;
   return (undef,0)[$n] if $n <= 1;
   my $v = 0;
   if ($k == 2) { # Accelerate power of 2
@@ -6970,12 +6959,11 @@ sub _splitdigits {
 
 sub todigits {
   my($n,$base,$len) = @_;
-  validate_integer($n);
+  validate_integer_abs($n);
   $base = 10 unless defined $base;
   $len = -1 unless defined $len;
   die "Invalid base: $base" if $base < 2;
   return if $n == 0;
-  $n = -$n if $n < 0;
   _splitdigits($n, $base, $len);
 }
 
@@ -7593,8 +7581,7 @@ sub kronecker {
 sub is_qr {
   my($a, $n) = @_;
   validate_integer($a);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
 
   # return (defined Math::Prime::Util::sqrtmod($a,$n)) ? 1 : 0;
 
@@ -7703,8 +7690,7 @@ sub binomialmod {
   my($n,$k,$m) = @_;
   validate_integer($n);
   validate_integer($k);
-  validate_integer($m);
-  $m = -$m if $m < 0;
+  validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
   return reftyped($_[2], _gmpcall("binomialmod",$n,$k,$m))
@@ -7773,8 +7759,7 @@ sub factorial {
 sub factorialmod {
   my($n,$m) = @_;
   validate_integer($n);
-  validate_integer($m);
-  $m = -$m if $m < 0;
+  validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
   return reftyped($_[1], Math::Prime::Util::GMP::factorialmod($n,$m))
@@ -8050,10 +8035,9 @@ sub _is_perfect_square {
 sub is_primitive_root {
   my($a, $n) = @_;
   validate_integer($a);
-  validate_integer($n);
+  validate_integer_abs($n);
 
   if ($n <= 4) {
-    $n = -$n if $n < 0;  # Ignore sign of n
     return (undef,1)[$n] if $n <= 1;
     return ($a == $n-1)  if $n <= 4;
   }
@@ -8092,8 +8076,7 @@ sub is_primitive_root {
 
 sub znorder {
   my($a, $n) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return (undef,1)[$n] if $n <= 1;
   $a = Mmodint($a, $n);
   return undef if $a <= 0;
@@ -8203,8 +8186,7 @@ sub znlog {
   my($a, $g, $n) = @_;
   validate_integer($a);
   validate_integer($g);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return (undef,0,1)[$n] if $n <= 1;
   $a = Mmodint($a, $n);
   $g = Mmodint($g, $n);
@@ -8230,8 +8212,7 @@ sub znlog {
 
 sub znprimroot {
   my($n) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return (undef,0,1,2,3)[$n] if $n <= 4;
   return if $n % 4 == 0;
 
@@ -8263,8 +8244,7 @@ sub znprimroot {
 
 sub qnr {
   my($n) = @_;
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return (undef,1,2)[$n] if $n <= 2;
 
   return 2 if Mkronecker(2,$n) == -1;
@@ -8404,8 +8384,7 @@ sub lucasuvmod {
   validate_integer($P);
   validate_integer($Q);
   validate_integer_nonneg($k);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return if $n == 0;
   return (0,0) if $n == 1;
   return (0, Mmodint(2,$n)) if $k == 0;
@@ -8558,8 +8537,7 @@ sub lucasvmod {
   validate_integer($P);
   validate_integer($Q);
   validate_integer_nonneg($k);
-  validate_integer($n);
-  $n = -$n if $n < 0;
+  validate_integer_abs($n);
   return if $n == 0;
 
   return (lucasuvmod($P, $Q, $k, $n))[1] if $Q != 1;
@@ -9997,9 +9975,8 @@ sub divisors {
 ################################################################################
 
 
-sub chebyshev_theta {
+sub _chebyshev_theta {
   my($n,$low) = @_;
-  $low = 2 unless defined $low;
   my($sum,$high) = (0.0, 0);
   while ($low <= $n) {
     $high = $low + 1e6;
@@ -10009,11 +9986,17 @@ sub chebyshev_theta {
   }
   $sum;
 }
+sub chebyshev_theta {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  _chebyshev_theta($n,2);
+}
 
 sub chebyshev_psi {
   my($n) = @_;
+  validate_integer_nonneg($n);
   return 0 if $n <= 1;
-  my ($sum, $logn, $sqrtn) = (0.0, log($n), int(sqrt($n)));
+  my ($sum, $logn, $sqrtn) = (0.0, log($n), Msqrtint($n));
 
   # Sum the log of prime powers first
   for my $p (@{Mprimes($sqrtn)}) {
@@ -10021,13 +10004,14 @@ sub chebyshev_psi {
     $sum += $logp * int($logn/$logp+1e-15);
   }
   # The rest all have exponent 1: add them in using the segmenting theta code
-  $sum += chebyshev_theta($n, $sqrtn+1);
+  $sum += _chebyshev_theta($n, $sqrtn+1);
 
   $sum;
 }
 
 sub hclassno {
   my $n = shift;
+  validate_integer($n);
 
   return -1 if $n == 0;
   return 0 if $n < 0 || ($n % 4) == 1 || ($n % 4) == 2;
@@ -10036,7 +10020,7 @@ sub hclassno {
   my ($h, $square, $b, $b2) = (0, 0, $n & 1, ($n+1) >> 2);
 
   if ($b == 0) {
-    my $lim = int(sqrt($b2));
+    my $lim = Msqrtint($b2);
     if (_is_perfect_square($b2)) {
       $square = 1;
       $lim--;
@@ -10047,7 +10031,7 @@ sub hclassno {
   }
   while ($b2 * 3 < $n) {
     $h++ unless $b2 % $b;
-    my $lim = int(sqrt($b2));
+    my $lim = Msqrtint($b2);
     if (_is_perfect_square($b2)) {
       $h++;
       $lim--;
@@ -10116,6 +10100,7 @@ sub _taupower {
 
 sub ramanujan_tau {
   my $n = shift;
+  validate_integer_nonneg($n);
   return 0 if $n <= 0;
 
   # Use GMP if we have no XS or if size is small

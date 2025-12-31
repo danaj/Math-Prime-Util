@@ -157,8 +157,10 @@ sub entropy_bytes {
 *is_omega_prime = \&Math::Prime::Util::PP::is_omega_prime;
 *is_totient = \&Math::Prime::Util::PP::is_totient;
 *is_square = \&Math::Prime::Util::PP::is_square;
+*is_prime_power = \&Math::Prime::Util::PP::is_prime_power;
 *is_lucky = \&Math::Prime::Util::PP::is_lucky;
 *is_gaussian_prime = \&Math::Prime::Util::PP::is_gaussian_prime;
+*is_polygonal = \&Math::Prime::Util::PP::is_polygonal;
 *is_smooth = \&Math::Prime::Util::PP::is_smooth;
 *is_rough = \&Math::Prime::Util::PP::is_rough;
 *is_perfect_power = \&Math::Prime::Util::PP::is_perfect_power;
@@ -218,6 +220,7 @@ sub entropy_bytes {
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
+*divisor_sum = \&Math::Prime::Util::PP::divisor_sum;
 *sumtotient = \&Math::Prime::Util::PP::sumtotient;
 *valuation = \&Math::Prime::Util::PP::valuation;
 *chinese = \&Math::Prime::Util::PP::chinese;
@@ -234,6 +237,12 @@ sub entropy_bytes {
 *fubini = \&Math::Prime::Util::PP::fubini;
 *falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
 *rising_factorial = \&Math::Prime::Util::PP::rising_factorial;
+
+*chebyshev_theta = \&Math::Prime::Util::PP::chebyshev_theta;
+*chebyshev_psi = \&Math::Prime::Util::PP::chebyshev_psi;
+*hclassno = \&Math::Prime::Util::PP::hclassno;
+*ramanujan_tau = \&Math::Prime::Util::PP::ramanujan_tau;
+*legendre_phi = \&Math::Prime::Util::PP::legendre_phi;
 
 *contfrac = \&Math::Prime::Util::PP::contfrac;
 *from_contfrac = \&Math::Prime::Util::PP::from_contfrac;
@@ -348,7 +357,7 @@ sub entropy_bytes {
 *nth_perfect_power_approx = \&Math::Prime::Util::PP::nth_perfect_power_approx;
 *nth_perfect_power_lower = \&Math::Prime::Util::PP::nth_perfect_power_lower;
 *nth_perfect_power_upper = \&Math::Prime::Util::PP::nth_perfect_power_upper;
-#*nth_lucky = \&Math::Prime::Util::PP::nth_lucky;
+*nth_lucky = \&Math::Prime::Util::PP::nth_lucky;
 *nth_lucky_approx = \&Math::Prime::Util::PP::nth_lucky_approx;
 *nth_lucky_lower = \&Math::Prime::Util::PP::nth_lucky_lower;
 *nth_lucky_upper = \&Math::Prime::Util::PP::nth_lucky_upper;
@@ -423,13 +432,6 @@ sub exp_mangoldt {
   return 1 if $n <= 1;
   return Math::Prime::Util::PP::exp_mangoldt($n);
 }
-sub hclassno {
-  my($n) = @_;
-  _validate_integer($n);
-  return 0 if $n < 0;
-  return Math::Prime::Util::PP::hclassno($n);
-}
-
 
 sub almost_prime_count_lower {
   my($k,$n) = @_;
@@ -512,11 +514,6 @@ sub nth_ramanujan_prime_approx {
   my($n) = @_;
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_ramanujan_prime_approx($n);
-}
-sub nth_lucky {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_lucky($n);
 }
 sub smooth_count {
   my($n, $k) = @_;
@@ -609,8 +606,6 @@ sub lucas_sequence {
   _validate_integer($vp);
   _validate_integer($vq);
   _validate_integer_nonneg($k);
-  $vp = -$vp if $vp < 0;
-  $vq = -$vq if $vq < 0;
   return Math::Prime::Util::PP::lucas_sequence(@_);
 }
 sub lucasu {
@@ -619,8 +614,6 @@ sub lucasu {
   _validate_integer($vp);
   _validate_integer($vq);
   _validate_integer_nonneg($k);
-  $vp = -$vp if $vp < 0;
-  $vq = -$vq if $vq < 0;
   return Math::Prime::Util::PP::lucasu($P,$Q,$k);
 }
 sub lucasv {
@@ -629,8 +622,6 @@ sub lucasv {
   _validate_integer($vp);
   _validate_integer($vq);
   _validate_integer_nonneg($k);
-  $vp = -$vp if $vp < 0;
-  $vq = -$vq if $vq < 0;
   return Math::Prime::Util::PP::lucasv($P,$Q,$k);
 }
 sub lucasuv {
@@ -646,8 +637,6 @@ sub kronecker {
   my ($va, $vb) = ($a, $b);
   _validate_integer($va);
   _validate_integer($vb);
-  $vb = -$va if $va < 0;
-  $vb = -$vb if $vb < 0;
   return Math::Prime::Util::PP::kronecker(@_);
 }
 
@@ -663,13 +652,6 @@ sub stirling {
   _validate_integer_nonneg($k);
   _validate_integer_nonneg($type) if defined $type;
   return Math::Prime::Util::PP::stirling($n, $k, $type);
-}
-
-sub divisor_sum {
-  my($n, $k) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($k) if defined $k && ref($k) ne 'CODE';
-  return Math::Prime::Util::PP::divisor_sum($n, $k);
 }
 
 sub gcd {
@@ -763,43 +745,10 @@ sub mulsubmod {
   return Math::Prime::Util::PP::mulsubmod($a,$b,$c, $n);
 }
 
-sub legendre_phi {
-  my($x, $a) = @_;
-  _validate_integer_nonneg($x);
-  _validate_integer_nonneg($a);
-  return Math::Prime::Util::PP::legendre_phi($x, $a);
-}
 
-sub chebyshev_theta {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::chebyshev_theta($n);
-}
-sub chebyshev_psi {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::chebyshev_psi($n);
-}
-sub ramanujan_tau {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::ramanujan_tau($n);
-}
-sub is_prime_power {
-  my($n, $refp) = @_;
-  _validate_integer($n);
-  return Math::Prime::Util::PP::is_prime_power($n, $refp);
-}
-sub is_polygonal {
-  my($n, $s, $refp) = @_;
-  _validate_integer($n);
-  _validate_integer_nonneg($s);
-  return Math::Prime::Util::PP::is_polygonal($n, $s, $refp);
-}
 sub is_sum_of_squares {
   my($n, $k) = @_;
-  _validate_integer($n);
-  $n = -$n if $n < 0;
+  _validate_integer_abs($n);
   if (!defined $k) { $k = 2; } else { _validate_integer_nonneg($k); }
   return Math::Prime::Util::PP::is_sum_of_squares($n, $k);
 }
