@@ -2888,13 +2888,13 @@ sub moebius_range {
       return (reverse(moebius_range(1,-$lo)), moebius_range(0,$hi));
     }
   }
+  my @mu;
   if ($hi > 2**32) {
-    my @mu;
     ($lo,$hi) = (tobigint($lo),tobigint($hi)) if $hi > 2**49;
     push @mu, moebius($lo++)  while $lo <= $hi;
     return @mu;
   }
-  my @mu = map { 1 } $lo .. $hi;
+  for (my $i = $lo; $i <= $hi; $i++) { push @mu, 1; }
   $mu[0] = 0 if $lo == 0;
   my($p, $sqrtn) = (2, Msqrtint($hi));
   while ($p <= $sqrtn) {
@@ -2912,7 +2912,7 @@ sub moebius_range {
     }
     $p = Mnext_prime($p);
   }
-  foreach my $i ($lo .. $hi) {
+  for (my $i = $lo; $i <= $hi; $i++) {
     my $m = $mu[$i-$lo];
     $m *= -1 if abs($m) != $i;
     $mu[$i-$lo] = ($m>0) - ($m<0);
