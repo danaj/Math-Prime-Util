@@ -266,9 +266,14 @@ sub _validate_integer {
      $_[0] = "$_[0]";
      return _validate_integer($_[0]);
   } else {
-    croak "Parameter '$n' must be an integer"
-      if ($refn =~ /^Math::Big(Int|Float)$/ && !$n->is_int());
-    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
+    if ($refn =~ /^Math::Big(Int|Float)$/) {
+      croak "Parameter '$n' must be an integer" unless $n->is_int();
+      my $bits = length($n->as_bin) - 2;
+      $_[0] = _bigint_to_int($_[0])
+        if $bits <= MPU_MAXBITS || ($bits == MPU_MAXBITS+1 && $n == INTMIN);
+    } else {
+      $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
+    }
   }
   $_[0]->upgrade(undef) if ref($_[0]) eq 'Math::BigInt' && $_[0]->upgrade();
   1;
@@ -6274,8 +6279,10 @@ sub allrootmod {
 
 sub _modabsint {
   my($a, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
   if ($n < INTMAX && $a < INTMAX && $a > INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $a %= $n if $a >= $n;
@@ -6288,8 +6295,10 @@ sub _modabsint {
 
 sub addmod {
   my($a, $b, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
   if ($n <= INTMAX && $a <= INTMAX && $b <= INTMAX && $a >= INTMIN && $b >= INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
@@ -6312,8 +6321,10 @@ sub addmod {
 }
 sub submod {
   my($a, $b, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
   if ($n <= INTMAX && $a <= INTMAX && $b <= INTMAX && $a >= INTMIN && $b >= INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
@@ -6330,10 +6341,16 @@ sub submod {
 
 sub mulmod {
   my($a, $b, $n) = @_;
-  # ABS(n)
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  # Handle n = 0, n = 1
-  return (undef,0)[$n] if $n <= 1;
+  #if ($n <= 1) { # ABS(n) and handle mod 0 | mod 1.
+  #  if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+  #  return (undef,0)[$n] if $n <= 1;
+  #}
+  if ($n <= 1) {
+    return (undef,0)[$n] if $n >= 0;
+    $n = tobigint($n) if $n <= INTMIN && !ref($n);
+    $n = -$n;
+    return 0 if $n == 1;
+  }
 
   # If n is a native int, we can reduce a and b then do everything native
   if ($n < INTMAX) {
@@ -6387,8 +6404,10 @@ sub _bi_powmod {
 
 sub powmod {
   my($a, $b, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
   return ($b > 0) ? 0 : 1  if $a == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
@@ -6414,8 +6433,10 @@ sub powmod {
 
 sub muladdmod {
   my($a, $b, $c, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
 
   if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
                    && $a>=INTMIN && $b>=INTMIN && $c>=INTMIN) {
@@ -6436,8 +6457,10 @@ sub muladdmod {
 }
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
 
   if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
                    && $a>=INTMIN && $b>=INTMIN && $c>=INTMIN) {
@@ -6461,8 +6484,10 @@ sub mulsubmod {
 
 sub invmod {
   my($a,$n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
   return if $a == 0;
 
   if ($n < INTMAX) {  # Fast all native math
@@ -6504,8 +6529,10 @@ sub invmod {
 
 sub divmod {
   my($a, $b, $n) = @_;
-  do { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; } if $n < 0;
-  return (undef,0)[$n] if $n <= 1;
+  if ($n <= 1) {
+    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    return (undef,0)[$n] if $n <= 1;
+  }
 
   my $invb = Minvmod($b,$n);
   return undef unless defined $invb;
@@ -9422,7 +9449,7 @@ sub pbrent_factor {
         $saveXi = Maddint($Xi,0);
         foreach my $i (1 .. $dorounds) {
           $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
-          $m = Mmulmod($m, ($Xi>$Xm) ? Msubint($Xi,$Xm) : Msubint($Xm,$Xi),$n);
+          $m = Mmulmod($m, $Xi > $Xm ? $Xi-$Xm : $Xm-$Xi,$n);
         }
         $rleft -= $dorounds;
         $rounds -= $dorounds;
@@ -9438,7 +9465,7 @@ sub pbrent_factor {
         $Xi = Maddint($saveXi,0);
         do {
           $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
-          $f = Mgcd($Xi > $Xm ? Msubint($Xi,$Xm) : Msubint($Xm,$Xi), $n);
+          $f = Mgcd($Xi > $Xm ? $Xi-$Xm : $Xm-$Xi, $n);
         } while ($f != 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
       }
@@ -9661,7 +9688,7 @@ sub holf_factor {
       $s = Maddint($s,1);
       my $m = Msubint(Mmulint($s,$s),$ni);
       if (Mis_power($m, 2, \my $f)) {
-        $f = Mgcd($n, $s > $f ? Msubint($s,$f) : Msubint($f,$s));
+        $f = Mgcd($n, $s > $f ? $s-$f : $f-$s);
         return _found_factor($f, $n, "HOLF ($i rounds)", @factors);
       }
     }
