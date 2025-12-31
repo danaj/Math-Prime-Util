@@ -622,12 +622,14 @@ sub check_pcbounds {
       $pcap <= $pcup_rh && $pcup_rh <= $pcup,
       "prime count bounds for $n are in the right order");
 
-  my $pcapf = Math::BigFloat->new($pcap);
+  my $pcapf   = Math::BigFloat->new($pcap);
+  my $pcuprhf = Math::BigFloat->new($pcup_rh);
+  my $pcupf   = Math::BigFloat->new($pcup);
 #diag "" . ($pcapf - $pclo_rh)/($pcapf) . "  " . $percentrh/100.0 . "";
   cmp_ok( ($pcapf - $pclo_rh)/$pcapf, '<=', $percentrh , "PC lower with RH");
-  cmp_ok( ($pcup_rh - $pcapf)/$pcapf, '<=', $percentrh , "PC upper with RH");
+  cmp_ok( ($pcuprhf - $pcapf)/$pcapf, '<=', $percentrh , "PC upper with RH");
   cmp_ok( ($pcapf - $pclo)/$pcapf,    '<=', $percent   , "PC lower");
-  cmp_ok( ($pcup - $pcapf)/$pcapf,    '<=', $percent   , "PC upper");
+  cmp_ok( ($pcupf - $pcapf)/$pcapf,   '<=', $percent   , "PC upper");
 }
 
 ###############################################################################

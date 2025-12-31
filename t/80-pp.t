@@ -265,6 +265,7 @@ plan tests => 2 +  # require_ok
               1 +  # nth_prime
               1 +  # twin primes
               1 +  # pseudoprimes
+              1 +  # other prime related
               1 +  # real functions
               1 +  # factoring
               1 +  # AKS primality
@@ -478,6 +479,35 @@ subtest 'pseudoprime tests', sub {
   is(is_perrin_pseudoprime(517697641), 1, "517697641 is a Perrin pseudoprime");
   is(is_frobenius_pseudoprime(517697641), 0, "517697641 is not a Frobenius pseudoprime");
   }
+
+  is(is_euler_pseudoprime(703, 3), 1, "703 is a base 3 Euler pseudoprime");
+  is(is_euler_plumb_pseudoprime(3277), 1, "3277 is a Euler-Plumb pseudoprime");
+  is(is_frobenius_khashin_pseudoprime(517697659),1,"517697659 is prime via Frobenius-Khashin test");
+};
+
+###############################################################################
+
+subtest 'other prime related', sub {
+  is(semiprime_count(12000,123456),25459,"semiprime_count(12000, 123456)");
+  cmp_closeto( semiprime_count_approx("100294967494"), "14000000000", 4000000, "semiprime_count_approx(100294967494) in range" );
+
+  is(nth_semiprime(1400),5137,"nth_semiprime(1400) = 5137");
+  cmp_closeto( nth_semiprime_approx("14000000000"), "100294967494", 120000000, "nth_emiprime_approx(14000000000) in range" );
+
+  # omega_primes
+  # almost_prime_count
+  # omega_prime_count
+  # ramanujan_prime_count
+
+  # nth_almost_prime for interesting k
+  # nth_almost_prime_approx upper lower
+  # nth_omega_prime
+  # nth_ramanujan_prime_approx upper lower
+  # ramanujan_prime_count_approx upper lower
+
+  # sum_primes
+
+  # nth_twin_prime_approx
 };
 
 ###############################################################################
@@ -688,6 +718,17 @@ subtest 'other is * prime', sub {
 
   ok(  is_delicate_prime(294001), "294001 is a delicate prime" );
   ok(  is_delicate_prime(862789,16), "862789 is a delicate prime in base 16" );
+
+  ok(  is_chen_prime(167), "is_chen_prime" );
+  is(next_chen_prime(167), 179, "next_chen_prime" );
+
+  { my(@got,@exp);
+    for my $d ([1,143,0],[1,11,1], [2,313,0],[2,209,1], [3,513,0],[3,1331,1], [4,1331,0],[4,14641,1]) {
+      push @got, is_almost_prime($d->[0], $d->[1]);
+      push @exp, $d->[2];
+    }
+    is_deeply(\@got, \@exp, "is_almost_prime");
+  }
 };
 
 subtest 'primality proofs', sub {
@@ -838,7 +879,7 @@ subtest 'misc number theory functions', sub {
 
 subtest 'more misc ntheory functions', sub {
   ok( is_totient(381554124), "381554124 is a totient");
-  ok(!is_totient(1073024875), "1073024875 is not a semiprime");
+  ok(!is_totient(1073024875), "1073024875 is not a totient");
 
   ok(!is_carmichael(5049), "5049 is not a Carmichael number");
   ok(!is_carmichael(2792834247), "2792834247 is not a Carmichael number");
@@ -867,6 +908,21 @@ subtest 'more misc ntheory functions', sub {
   is(is_happy(514,16,3), 3, "514 is a happy number in base 16 with exponent 3");
 
   is(ramanujan_sum(12,36), 4, "ramanujan_sum(12,36) = 4");
+
+  is(is_power(16926659444736),17,"is_power(6^17) = 17");
+  {my $r; is_power(16926659444736,0,\$r); is($r,6,"is_power(6^17,0,r) => r=6");}
+
+  is(is_prime_power("11398895185373143"),19,"is_prime_power(7^19) = 19");
+  {my $r; is_prime_power("11398895185373143",\$r); is($r,7,"is_prime_power(7^19,0,r) => r=7");}
+
+  is(is_square(603729), 1, "603729 is a square");
+
+  is_deeply( [map { is_sum_of_squares($_) } (-10 .. 10, 437)],
+             [1,1,1,0,0,1,1,0,1,1,1,1,1,0,1,1,0,0,1,1,1,0],
+             "is_sum_of_squares (k=2) for -10 .. 10, 437" );
+
+  ok( is_polygonal(6,3), "6 is a 3-polygonal number" );
+  ok( is_polygonal(9,4), "9 is a 4-polygonal number" );
 };
 
 subtest 'vector (list) functions', sub {
@@ -917,12 +973,9 @@ subtest 'vector (list) functions', sub {
 #  _inverse_R
 #  prime_count_lower
 #  prime_count_upper
-#  semiprime_count
 #  ramanujan_prime_count
 #  twin_prime_count_approx
-#  semiprime_count_approx
 #  nth_twin_prime_approx
-#  nth_semiprime_approx
 #  nth_ramanujan_prime_upper
 #  nth_ramanujan_prime_lower
 #  nth_ramanujan_prime_approx
@@ -933,10 +986,6 @@ subtest 'vector (list) functions', sub {
 #  print_primes
 #  chinese
 #  sumdigits
-#  is_power
-#  is_square
-#  is_prime_power
-#  is_polygonal
 #  hammingweight
 #  todigitstring / _splitdigits
 #  sqrtint
@@ -944,9 +993,6 @@ subtest 'vector (list) functions', sub {
 #  logint
 #  harmfrac
 #  harmreal
-#  is_euler_pseudoprime
-#  is_euler_plumb_pseudoprime
-#  is_frobenius_khashin_pseudoprime
 #  is_perrin_pseudoprime (restrict == 1, restrict == 2)
 #  is_catalan_pseudoprime
 #  is_mersenne_prime
