@@ -56,7 +56,7 @@ static UV _bs_count(UV n, UV const* const primes, UV lastidx)
 UV semiprime_count(UV n)
 {
   UV pc = 0, sum = 0, sqrtn = prev_prime(isqrt(n)+1);
-  UV xbeg = 0, xend = 0, xlim = 0, xoff = 0, xsize, *xarr = 0;
+  UV xbeg = 0, xend = 0, xlim = 0, xoff = 0, xsize = 0, *xarr = 0;
   UV const xmax = 200000000UL;
 
   if (n > 1000000) { /* Upfront work to speed up the many small calls */

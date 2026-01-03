@@ -176,7 +176,7 @@ static int _is_congruent_number_filter1(const factored_t nf) {
 
   UV p,  q,  r,  s;   /* Four odd factors in mod 8 order */
   UV p8, q8, r8, s8;  /* values mod 8 */
-  UV fac[MPU_MAX_DFACTORS];  /* The odd factors, in mod 8 order */
+  UV fac[MPU_MAX_DFACTORS] = {0};  /* The odd factors, in mod 8 order */
   uint32_t nfac = 0;
 
   MPUassert(n >= 13, "n too small in icn_filter");

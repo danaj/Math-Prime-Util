@@ -152,7 +152,7 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #else
 #  define EXTEND_TYPE SSize_t
 #endif
-#define MAX_EXTEND ((EXTEND_TYPE)-1)
+#define MAX_EXTEND ((Size_t)((EXTEND_TYPE)-1))
 
 /******************************************************************************/
 /******************************************************************************/
@@ -692,7 +692,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 
 #define RETURN_128(hi,lo) \
   do { char str_[40]; \
-       int slen_ = to_string_128(str_, hi, lo); \
+       uint32_t slen_ = to_string_128(str_, hi, lo); \
        ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str_,slen_)) ); \
        XSRETURN(1); } while(0)
 
@@ -717,7 +717,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 
 #define RETURN_LIST_VALS(in_alen,arr,sign)   /* Return array values */ \
   { \
-    unsigned long k_, alen_ = in_alen; \
+    size_t k_, alen_ = in_alen; \
     if (GIMME_V == G_SCALAR) { \
       Safefree(arr); \
       XSRETURN_UV(alen_); \
@@ -732,7 +732,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 #define RETURN_LIST_REF(in_alen,arr,sign)   /* Return array values as ref */ \
   { \
     AV* av_; \
-    unsigned long k_, alen_ = in_alen; \
+    size_t k_, alen_ = in_alen; \
     CREATE_AV(av_); \
     av_extend(av_, (SSize_t)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
@@ -1655,8 +1655,8 @@ void almost_primes(IN UV k, IN SV* svlo, IN SV* svhi = 0)
     AV* av;
     UV lo = 1, hi, i, n, *S;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 2 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
+        (items >= 3 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
       CREATE_AV(av);
       S = 0;
       if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
@@ -1940,7 +1940,7 @@ is_perrin_pseudoprime(IN SV* svn, IN UV k = 0)
     int status, ret;
     UV n;
   PPCODE:
-    if (k < 0) croak("is_perrin_pseudoprime: expected non-negative k");
+    /* k is a UV, so always positive. */
     /*  ix = 0    k = 0 - 3       n below 2 returns 0 for all k
      *  ix = 1    k = 0 - 256     n below 2 returns 0 for all k
      *  ix = 2    k = 0 - 2^32    n below 2 returns 0 for all k
@@ -3144,15 +3144,20 @@ void next_farey(IN SV* svn, IN SV* svfrac)
         if (ix == 0) XSRETURN_UNDEF;
         else         XSRETURN_UV(farey_length(n) - (p64 == q64));
       }
-      p = p64;  q = q64;
-      if (p != p64 || q != q64)
-        status = 0;  /* We only do 32-bit here */
-      if (status != 0 && ix == 1)
-        XSRETURN_UV(farey_rank(n, p, q));
-      if (status != 0 && ix == 0) {
-        if (next_farey(n, &p, &q)) {
-          PUSH_2ELEM_AREF(p, q);
-          XSRETURN(1);
+      if (status != 0) {
+        p = p64;  q = q64;
+        if (p != p64 || q != q64)
+          status = 0;  /* We only do 32-bit here */
+      }
+      if (status != 0) {
+        if (ix == 1)
+          XSRETURN_UV(farey_rank(n, p, q));
+        else {
+          if (next_farey(n, &p, &q)) {
+            PUSH_2ELEM_AREF(p, q);
+            XSRETURN(1);
+          }
+          /* Possibly drop through */
         }
       }
     }
@@ -4690,7 +4695,7 @@ void setunion(IN SV* sva, IN SV* svb)
     btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
 
     if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
-      UV *r;
+      UV *r = 0;
       size_t rlen = 0, ia = 0, ib = 0;
       int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
 

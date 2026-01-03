@@ -48,7 +48,7 @@
 #define PHIC  6U  /* phi(x,a) with a <= PHIC can go to tablephi */
 
 #define PHIS 15U  /* phi(x,a) with a <= PHIS can go to phi_small */
-#define PHIS_XMIN (_snth[PHIS+1]-1)   /* nth_prime(PHIS+1)-1 */
+#define PHIS_XMIN (_snth[PHIS+1]-1U)   /* nth_prime(PHIS+1)-1 */
 
 #define PHIR 20U  /* phi(x,a) with a <= PHIR is faster with phi_recurse_small */
 

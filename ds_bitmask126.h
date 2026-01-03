@@ -43,9 +43,9 @@ static unsigned char _bm_bit[63] = {
 static uint32_t _nth_bit_set(uint32_t n, uint32_t word) {
   const uint32_t  pop2  =  word                - (word >> 1 & 0x55555555u);
   const uint32_t  pop4  = (pop2 & 0x33333333u) + (pop2 >> 2 & 0x33333333u);
-  const uint32_t  pop8  =  pop4  + (pop4  >>  4) & 0x0f0f0f0fu;
-  const uint32_t  pop16 =  pop8  + (pop8  >>  8) & 0x00ff00ffu;
-  const uint32_t  pop32 =  pop16 + (pop16 >> 16) & 0x000000ffu;
+  const uint32_t  pop8  =  (pop4  + (pop4  >>  4)) & 0x0f0f0f0fu;
+  const uint32_t  pop16 =  (pop8  + (pop8  >>  8)) & 0x00ff00ffu;
+  const uint32_t  pop32 =  (pop16 + (pop16 >> 16)) & 0x000000ffu;
   uint32_t        temp, rank = 0;
 
   if (n++ >= pop32)  return 32;

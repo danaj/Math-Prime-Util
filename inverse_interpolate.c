@@ -66,6 +66,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
     /* They don't know what hi might be, so estimate something. */
     rlo = MPU_CALLBACK(lo);
     if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
+    rhi = UV_MAX; /* this should always be replaced below */
     while (hi == 0) {
       double estf = (double)n/(double)rlo - 0.004;
       if      (estf <= 1.004) estf = 1.004;

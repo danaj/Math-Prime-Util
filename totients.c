@@ -54,7 +54,7 @@ UV totient(UV n) {
 UV* range_totient(UV lo, UV hi) {
   UV i, count = hi-lo+1, *totients;
 
-  if (hi < lo || count == 0 || count > ((SSize_t)-1))
+  if (hi < lo || count == 0 || count > (Size_t)((SSize_t)-1))
     croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
 
   if (hi < 16) {

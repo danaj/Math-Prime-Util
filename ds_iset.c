@@ -42,7 +42,7 @@ iset_t iset_create(size_t init_size) {
   int bits = 4;
   const int maxsizebits = 8 * sizeof(size_t);
 
-  set.size = set.contains_zero = set.type = 0;
+  set.size = 0;  set.contains_zero = 0;  set.type = 0;
 
   while (bits < maxsizebits-1 && ((1UL << bits) * FILL_RATIO + 1) < init_size)
     bits++;
@@ -53,7 +53,7 @@ iset_t iset_create(size_t init_size) {
 }
 
 void iset_destroy(iset_t *set) {
-  set->maxsize = set->size = set->contains_zero = set->type = 0;
+  set->maxsize = 0;  set->size = 0;  set->contains_zero = 0;  set->type = 0;
   Safefree(set->arr);
   set->arr = 0;
 }
