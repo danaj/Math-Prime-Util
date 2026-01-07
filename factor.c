@@ -820,22 +820,14 @@ int pbrent_factor(UV n, UV *factors, UV rounds, UV a)
 /* Pollard's Rho. */
 int prho_factor(UV n, UV *factors, UV rounds)
 {
-  UV a, f, i, m, oldU, oldV;
+  UV f, i, m, oldU, oldV;
   const UV inner = 64;
   UV U = 7;
   UV V = 7;
+  UV a = 1;
   int fails = 3;
 
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in prho_factor");
-
-  /* We could just as well say a = 1 */
-  switch (n%8) {
-    case 1:  a = 1; break;
-    case 3:  a = 2; break;
-    case 5:  a = 3; break;
-    case 7:  a = 5; break;
-    default: a = 7; break;
-  }
 
   rounds = (rounds + inner - 1) / inner;
 
@@ -865,7 +857,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
       if (fails-- <= 0) break;
       U = addmod(U,2,n);
       V = U;
-      a++;
+      a += 2;
       continue;
     }
     return found_factor(n, f, factors);
