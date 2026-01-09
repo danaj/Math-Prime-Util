@@ -1039,6 +1039,7 @@ sub is_ramanujan_prime {
 
 sub nth_ramanujan_prime {
   my($n) = @_;
+  validate_integer_nonneg($n);
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   my $L = _n_ramanujan_primes($n);
   return $L->[$n-1];
@@ -4119,17 +4120,42 @@ sub almost_prime_count_approx {
   return Math::Prime::Util::semiprime_count_approx($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
 
-  if ($k <= 4) {
-    my $lo = Math::Prime::Util::almost_prime_count_lower($k, $n);
-    my $hi = Math::Prime::Util::almost_prime_count_upper($k, $n);
-    return $lo + (($hi - $lo) >> 1);
-  } else {
-    my $est = 0.5 + _almost_prime_count_asymptotic($k,$n);
-    # Alternately:
-    # my $est = Math::Prime::Util::prime_count_approx($n);
-    # my $loglogn = log(log(0.0 + "$n"));
-    # for my $i (1 .. $k-1) { $est *= ($loglogn/$i); }
-    return Mtoint($est);
+  my $lo = Math::Prime::Util::almost_prime_count_lower($k, $n);
+  my $hi = Math::Prime::Util::almost_prime_count_upper($k, $n);
+
+  if ($k == 3) {
+    my $x  = 0.0 + "$n";
+    my $l1 = log($x);
+    my $l2 = log($l1);
+    my($a,$s) = (1.0,2.0);
+    if    ($x <=      638) { $s = 1.554688; $a = 0.865814; }
+    elsif ($x <=     1544) { $s = 1.050000; $a = 0.822256; }
+    elsif ($x <=     1927) { $s = 0.625000; $a = 0.791747; }
+    elsif ($x <=   486586) { $s = 2.865611; $a = 1.004090; }
+    elsif ($x <=  1913680) { $s = 2.790963; $a = 0.999618; }
+    elsif ($x <= 22347532) { $s = 2.719238; $a = 0.995635; }
+    elsif ($x <= 2.95e8)   { $s = 2.584473; $a = 0.988802; }
+    elsif ($x <= 4.20e9)   { $s = 2.457108; $a = 0.983098; }
+    elsif ($x <= 7.07e10)  { $s = 2.352818; $a = 0.978931; }
+    elsif ($x <= 1.36e12)  { $s = 2.269745; $a = 0.975953; }
+    elsif ($x <= 4.1e13)   { $s = 2.203002; $a = 0.973796; }
+    elsif ($x <= 9.2e14)   { $s = 2.148463; $a = 0.972213; }
+    else                   { $s = 2.119279; $a = 0.971438; }
+    my $est = 0.5*$a*$x*(($l2+0.26153)*($l2+0.26153)) / ($l1+$s) + 0.5;
+    return $est < $lo ? $lo : $est > $hi ? $hi : Mtoint($est);
+  }
+
+  {
+    my $mult = 0.5;
+    if ($n < 2**32 && $k < 13) {
+      $mult = 0.9;
+    } elsif ($k > 11) {
+      $mult = 0.20;
+    } else {
+      $mult = 0.76;
+    }
+    my $est = $lo + ($hi - $lo) * $mult;
+    return Mtoint($est+0.5);
   }
 }
 
@@ -4234,6 +4260,7 @@ sub _almost_prime_nth_asymptotic {
 
 sub almost_prime_count_lower {
   my($k, $n) = @_;
+  validate_integer_nonneg($k);
   validate_integer_nonneg($n);
 
   return 0 if ($n >> $k) == 0;
@@ -4247,28 +4274,63 @@ sub almost_prime_count_lower {
   my $loglogx = log($logx);
   my $logplus = $loglogx + 0.26153;
 
+  my @lower20 = (0,0, 0.8197, 0.8418, 0.5242, 0.5154,0.3053,0.1901,0.1253,0.0892,0.06551,0.05082,0.04101);
+  my @lower32 = (0,0, 1.004,  0.7383, 0.6828, 0.5939,0.3594,0.2222,0.1438,0.09754,0.06981,0.05245,0.04151, 0.03461,0.03006,0.02709,0.02553,0.02502,0.02552,0.02697,0.02945);
+  my @lower64 = (0,0,1.011,0.8093,0.7484,0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.0422, 0.0331,0.0270,0.0232,0.0208,0.0194,0.0190,0.0193,0.0203, 0.0222,0.0252,0.0295,0.0356,0.0444,0.0570,0.0753,0.102,0.14,0.20,0.297,0.44,0.68,1.07,1.71,2.8,4.7,8.0,13.89,23.98);
+  # TODO: These are likely still too high
+  my @lower   = (0,0, 1.011,  0.8093, 0.7484, 0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.0422, 0.0331,0.0270,0.0232,0.0208,0.0194,0.0190,0.0193,0.0203, 0.0222,0.0252,0.0295,0.0356,
+ 0.040, 0.051, 0.068, 0.090, 0.12, 0.18, 0.26, 0.36);
+
+  my $multl;
+  if    ($n <=    1048575) { $multl = $lower20[$k]; }
+  elsif ($n <= 4294967295) { $multl = $lower32[$k]; }
+  elsif (($n >> 64) == 0)  { $multl = $lower64[$k]; }
+  else {
+    #if ($k<=32&&defined $lower[$k]) { print "using k $k mult $lower[$k]\n"; }
+    push @lower, 1.5 * $lower[$#lower] until defined $lower[$k];
+    $multl = $lower[$k];
+  }
+
   if ($k == 2) {
     if ($x <= 1e12) {
-      $bound = 0.7716 * $x * ($loglogx + 0.261536) / $logx;
+      $bound = $x * ($loglogx + 0.261536) / $logx;
     } else {
       # Bayless Theorem 5.2
       $bound = ($x * ($loglogx+0.1769)/$logx) * (1 + 0.4232/$logx);
+      $multl = 1;
     }
   } elsif ($k == 3) {
-    # Kinlaw Theorem 1 (with multiplier = 1 -- using 1.04 is not proven)
+    # Kinlaw Theorem 1, using custom multipliers for 64-bit n
     $bound = $x * $loglogx * $loglogx / (2*$logx);
-    $bound *= ($x <= 500194) ? 0.8418 : ($x <= 3184393786) ? 1.0000 : 1.04;
+    if ($n < 638) {
+      $multl = 0.8418;
+    } elsif ($n < 1927) {
+      my $dist = ($x - 638) / (1926 - 638);
+      $multl = (1.0-$dist) * 0.8939  +  $dist * 0.9233;
+    } elsif ($n < 500194) {
+      my $dist = ($x - 1927) / (500194 - 1927);
+      $multl = (1.0-$dist) * 0.9233  +  $dist * 1.000;
+    } elsif ($n <= 3184393786) {
+      my $dist = ($x - 500194) / (3184393786 - 500194);
+      $multl = (1.0-$dist) * 1.0000  +  $dist * 1.039;
+    } else {
+      $multl = ($n >> 64) == 0 ? 1.0004 : 1.0;
+    }
   } elsif ($k == 4) {
-    $bound = 0.4999 * $x * $logplus*$logplus*$logplus / (6*$logx);
+    $bound = $x * $logplus*$logplus*$logplus / (6*$logx);
+    $multl = 0.4999 if ($n >> 64) != 0;
   } else {
-    # TODO this is not correct!
-    $bound = 0.8 * _almost_prime_count_asymptotic($k,$n);
+    $bound = $x / $logx;
+    $logplus = $loglogx + (log("$k") * log(log("$k")) - 0.504377);
+    $bound *= $logplus/$_ for 1 .. $k-1;
   }
+  $bound *= $multl;
   $bound = 1 if $bound < 1;  # We would have returned zero earlier
   Mtoint($bound)
 }
 sub almost_prime_count_upper {
   my($k, $n) = @_;
+  validate_integer_nonneg($k);
   validate_integer_nonneg($n);
 
   return 0 if ($n >> $k) == 0;
@@ -4285,51 +4347,70 @@ sub almost_prime_count_upper {
   my $loglogx = log($logx);
   my $logplus = $loglogx + 0.26153;
 
+  my @upper20 = (0,0, 1.006,0.7385,0.6830,0.5940,0.3596,0.2227,0.1439, 0.09785,0.07016,0.05303,0.04202);
+  my @upper32 = (0,0, 1.013,0.8094,0.7485, 0.6467,0.3984,0.2464,0.1572,0.1049,0.07364,0.05452,0.04266, 0.03542,0.03082,0.02798,0.02642,0.02585,0.02615,0.02808,0.03054);
+  my @upper64 = (0,0, 1.028, 1.028, 1.3043,
+  0.72208, 0.46609, 0.29340,0.18571,0.12063,0.0815,0.0575,0.0427,
+  0.03490, 0.03007, 0.02710, 0.02554, 0.02504, 0.02554, 0.02699, 0.02954,
+  0.03294, 0.03779, 0.04453, 0.05393, 0.06703, 0.08543, 0.1117, 0.1494,
+  0.205,0.287,0.410,
+  0.60,0.90,1.36,2.12,3.35,5.38,8.83,14.75,25.07);
+
+  # TODO: These bounds are likely to not be accurate for large inputs
+
+  my $multu;
+  if    ($n <=    1048575) { $multu = $upper20[$k]; }
+  elsif ($n <= 4294967295) { $multu = $upper32[$k]; }
+  else {
+    push @upper64, 2.1 * $upper64[$#upper64] until defined $upper64[$k];
+    $multu = $upper64[$k];
+  }
+
   if ($k == 2) {
     # Bayless Corollary 5.1
     $bound = 1.028 * $x * ($loglogx + 0.261536) / $logx;
   } elsif ($k == 3) {
     # Bayless Theorem 5.3
     $bound = $x * ($logplus * $logplus + 1.055852) / (2*$logx);
-    $bound *= ($x < 2**20) ? 0.7385 : ($x < 2**32) ? 0.8095 : 1.028;
+    $multu = 0.8711 if $n > 4294967295 && ($n >> 64) == 0;
   } elsif ($k == 4) {
-    # Bayless Theorem 5.4
-    if ($x <= 1e12) {
-      $bound = $x * $logplus*$logplus*$logplus / (6*$logx);
-      $bound *= ($x < 2**20) ? 0.6830 : ($x < 2**32) ? 0.7486 : 1.3043;
-    } else {
-      $bound = 1.028 * $x * $logplus*$logplus*$logplus / (6*$logx)
-             + 1.028 * 0.511977 * $x * (log(log($x/4)) + 0.261536) / $logx;
+    # Bayless Theorem 5.4 part 1, multu = 1.3043
+    $bound = $x * $logplus*$logplus*$logplus / (6*$logx);
+    if ($x >= 1e12) {  # part 2
+      $bound += + 0.511977 * $x * (log(log($x/4)) + 0.261536) / $logx;
+      $multu = 1.028;
+    }
+    if (($n >> 64) == 0) {
+      $multu = 0.780  if $n > 4294967295;
+      $multu = 0.6921 if $x > 1e12;
     }
   } else {
     # We could use Bayless (2018) Theorem 3.5:
-    #   # First we have Pi_k(x) -- the upper bound for the square free kaps.
+    #  # First we have Pi_k(x) -- the upper bound for the square free kaps.
     #   $bound = 1.028 * $x / $logx;
     #   $bound *= ($logplus/$_) for 1..$k-1;
-    #   # Second, turn into Tau_k(x) using the paragraph before Theorem 5.4.
+    #  # Second, turn into Tau_k(x) using the paragraph before Theorem 5.4.
     #   my $sigmalim = Msqrtint(Mdivint($n, Mpowint(2,$k-2)));
     #   my $ix = Math::BigInt->new("$x");
     #   Mforprimes( sub {
     #     $bound += almost_prime_count_upper($k-2, Mdivint($ix,Mmulint($_,$_)));
     #   }, 2, $sigmalim);
-    # This is incredibly slow.
+    #  # This is incredibly slow. )
+    #
+    # Or use theorem 1 from:
+    #   Erdős & Sárközy, "On the number of prime factors of integers", 1980.
+    #
+    # Or Hildebrand & Tenenbaum 1988:
+    #   https://www.researchgate.net/publication/38333551_On_the_number_of_prime_factors_of_an_integer
+    # Section 1 has lots of info.  Corollary 2 (page 476) is what we want.
 
-    # Erdős and Sárközy, "On the number of prime factors of integers", 1980.
-    # Theorem 1 gives us an upper bound for all k and all x >= 3.
-    # The constant here is empirical and not proven.
-    # Sadly this bound will be quite high.
-
-    do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
-    my $temp = Math::BigFloat->new("$n");
-    $bound = Math::BigFloat->new("0.00061")->bmul($temp);
-    $temp->blog;
-    $bound->bmul($temp);
-    $temp = Math::BigFloat->new($k)->bpow(4);
-    $bound->bmul($temp);
-    $temp = Math::BigFloat->new(2)->bpow($k);
-    $bound->bdiv($temp);
-    return $bound->bceil->as_int();
+    $bound = $x / $logx;
+    $logplus = $loglogx + (log("$k") * log(log("$k")) - 0.504377);
+    $bound *= $logplus/$_ for 1 .. $k-1;
   }
+
+  $bound *= $multu;
+  $bound = 1 if $bound < 1;  # We would have returned zero earlier
   Mtoint($bound + 1)
 }
 
@@ -4608,37 +4689,57 @@ sub nth_omega_prime {
 
 sub nth_ramanujan_prime_upper {
   my $n = shift;
+  validate_integer_nonneg($n);
   return (0,2,11)[$n] if $n <= 2;
+
+  if ($n < 50) {
+    return Mnth_prime_upper(int(2.6*$n)) if $n <= 20;
+    return 33+((310*Mnth_prime_upper(2*$n))>>8);
+  }
+
+  #my $nth = Math::Prime::Util::nth_prime(Mmulint($n,3));
   my $nth = Mnth_prime_upper(Mmulint($n,3));
-  return $nth if $n < 10000;
-  return Mdivint(Mmulint(177,$nth),256) if $n < 1000000;
-  return Mdivint(Mmulint(175,$nth),256) if $n < 1e10;
-  Mdivint(Mmulint(133,$nth),256);
+
+  # TODO: Ideally these would all be adjusted to make smooth transitions.
+
+  return  115+((727*$nth) >> 10) if $n < 647;
+
+  return  271+((358*$nth) >>  9) if $n <      16000;
+  return 9450+((350*$nth) >>  9) if $n <    1200000;
+  return 5000+((349*$nth) >>  9) if $n <    7000000;
+  return      ((348*$nth) >>  9) if $n <   90000000;
+  return      ((347*$nth) >>  9) if $n < 3100000000;
+
+  Mrshiftint(Mmulint(346,$nth),9);
 }
 sub nth_ramanujan_prime_lower {
   my $n = shift;
+  validate_integer_nonneg($n);
   return (0,2,11)[$n] if $n <= 2;
-  my $nth = nth_prime_lower(Mmulint($n,2));
+  my $nth = Math::Prime::Util::nth_prime_lower(Mmulint($n,2));
   return Mdivint(Mmulint(275,$nth),256) if $n < 10000;
   return Mdivint(Mmulint(262,$nth),256) if $n < 1e10;
   $nth;
 }
 sub nth_ramanujan_prime_approx {
   my $n = shift;
+  validate_integer_nonneg($n);
   return (0,2,11)[$n] if $n <= 2;
   my($lo,$hi) = (nth_ramanujan_prime_lower($n),nth_ramanujan_prime_upper($n));
   $lo + (($hi-$lo)>>1);
 }
 sub ramanujan_prime_count_upper {
   my $n = shift;
+  validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
-  my $lo = int(prime_count_lower($n) / 3);
-  my $hi = prime_count_upper($n) >> 1;
+  my $lo = Mdivint(prime_count_lower($n),3);
+  my $hi = Mrshiftint(prime_count_upper($n),1);
   1+_binary_search($n, $lo, $hi,
                    sub{Math::Prime::Util::nth_ramanujan_prime_lower(shift)});
 }
 sub ramanujan_prime_count_lower {
   my $n = shift;
+  validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
   my $lo = int(prime_count_lower($n) / 3);
   my $hi = prime_count_upper($n) >> 1;
@@ -4647,6 +4748,7 @@ sub ramanujan_prime_count_lower {
 }
 sub ramanujan_prime_count_approx {
   my $n = shift;
+  validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
   #$n = _upgrade_to_float($n) if ref($n) || $n > 2e16;
   my $lo = ramanujan_prime_count_lower($n);

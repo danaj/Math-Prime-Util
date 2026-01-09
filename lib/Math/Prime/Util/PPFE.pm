@@ -369,6 +369,16 @@ sub entropy_bytes {
 *nth_semiprime = \&Math::Prime::Util::PP::nth_semiprime;
 
 *almost_prime_count_approx = \&Math::Prime::Util::PP::almost_prime_count_approx;
+*almost_prime_count_lower  = \&Math::Prime::Util::PP::almost_prime_count_lower;
+*almost_prime_count_upper  = \&Math::Prime::Util::PP::almost_prime_count_upper;
+
+*ramanujan_prime_count_approx= \&Math::Prime::Util::PP::ramanujan_prime_count_approx;
+*ramanujan_prime_count_lower = \&Math::Prime::Util::PP::ramanujan_prime_count_lower;
+*ramanujan_prime_count_upper = \&Math::Prime::Util::PP::ramanujan_prime_count_upper;
+*nth_ramanujan_prime       =\&Math::Prime::Util::PP::nth_ramanujan_prime;
+*nth_ramanujan_prime_lower =\&Math::Prime::Util::PP::nth_ramanujan_prime_lower;
+*nth_ramanujan_prime_upper =\&Math::Prime::Util::PP::nth_ramanujan_prime_upper;
+*nth_ramanujan_prime_approx=\&Math::Prime::Util::PP::nth_ramanujan_prime_approx;
 
 *factor = \&Math::Prime::Util::PP::factor;
 *factor_exp = \&Math::Prime::Util::PP::factor_exp;
@@ -433,33 +443,6 @@ sub exp_mangoldt {
   return Math::Prime::Util::PP::exp_mangoldt($n);
 }
 
-sub almost_prime_count_lower {
-  my($k,$n) = @_;
-  _validate_integer_nonneg($k);
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::almost_prime_count_lower($k,$n);
-}
-sub almost_prime_count_upper {
-  my($k,$n) = @_;
-  _validate_integer_nonneg($k);
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::almost_prime_count_upper($k,$n);
-}
-sub ramanujan_prime_count_lower {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::ramanujan_prime_count_lower($n);
-}
-sub ramanujan_prime_count_upper {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::ramanujan_prime_count_upper($n);
-}
-sub ramanujan_prime_count_approx {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::ramanujan_prime_count_approx($n);
-}
 sub nth_twin_prime {
   my($n) = @_;
   _validate_integer_nonneg($n);
@@ -494,26 +477,6 @@ sub nth_omega_prime {
   _validate_integer_nonneg($k);
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_omega_prime($k,$n);
-}
-sub nth_ramanujan_prime {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_ramanujan_prime($n);
-}
-sub nth_ramanujan_prime_lower {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_ramanujan_prime_lower($n);
-}
-sub nth_ramanujan_prime_upper {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_ramanujan_prime_upper($n);
-}
-sub nth_ramanujan_prime_approx {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::nth_ramanujan_prime_approx($n);
 }
 sub smooth_count {
   my($n, $k) = @_;

@@ -1703,16 +1703,21 @@ with LMO prime counts to get quite reasonable speeds.
 
 A fast approximation of the C<k>-almost-prime count of C<n>.
 
+The current implementation for C<n> greater than 64-bit is not well tested..
+
 =head2 almost_prime_count_lower
 
 Quickly returns a lower bound for the C<k>-almost-prime count of C<n>.
 The actual count will be greater than or equal to this result.
+
+The current implementation for C<n> greater than 64-bit is not well tested..
 
 =head2 almost_prime_count_upper
 
 Quickly returns an upper bound for the C<k>-almost-prime count of C<n>.
 The actual count will be less than or equal to this result.
 
+The current implementation for C<n> greater than 64-bit is not well tested..
 
 
 =head2 omega_primes
