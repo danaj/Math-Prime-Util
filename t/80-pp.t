@@ -265,6 +265,9 @@ plan tests => 2 +  # require_ok
               1 +  # nth_prime
               1 +  # twin primes
               1 +  # pseudoprimes
+              1 +  # omega_primes
+              1 +  # almost_primes
+              1 +  # ramanujan_primes
               1 +  # other prime related
               1 +  # real functions
               1 +  # factoring
@@ -291,19 +294,45 @@ require_ok 'Math::Prime::Util::PrimalityProving';
 $_ = 'this should not change';
 
 subtest 'arithmetic ops', sub {
-  is_deeply([map { signint($_) } (-7,-1,0,1,7)], [-1,-1,0,1,1], "signint");
-  is_deeply([cmpint(-2,0), cmpint(0,2), cmpint(2,2), cmpint(-7,-7), cmpint(-8,-9)], [-1,-1,0,0,1], "cmpint");
 
+  is(addint(677,24),701,"addint");
+  is(subint(677,24),653,"subint");
+  is(add1int(677),678,"add1int");
+  is(sub1int(677),676,"sub1int");
+  is(mulint(677,24),16248,"mulint");
+  is("".powint(677,24),"85926683248715705094727267680997536840479271741501353165435057377441","powint");
+  is(divint(677,24),28,"divint");
+  is(cdivint(677,24),29,"cdivint");
+  is(modint(677,24),5,"modint");
+  is_deeply([divrem(677,24)],[28,5],"divrem");
+  is_deeply([fdivrem(677,24)],[28,5],"fdivrem");
+  is_deeply([cdivrem(677,24)],[29,-19],"cdivrem");
+  is_deeply([fdivrem(677,24)],[28,5],"tdivrem");
+  is(lshiftint(677,3),5416,"lshiftint");
+  is(rshiftint(677,3),84,"rshiftint");
+  is(rashiftint(677,3),84,"rashiftint");
+  is(absint(-677),677,"absint");
+  is(negint(677),-677,"negint");
+  is_deeply([cmpint(-2,0), cmpint(0,2), cmpint(2,2), cmpint(-7,-7), cmpint(-8,-9)], [-1,-1,0,0,1], "cmpint");
+  is_deeply([map { signint($_) } (-7,-1,0,1,7)], [-1,-1,0,1,1], "signint");
+
+  is(sqrtint(677),26,"sqrtint");
+  is(rootint(677,3),8,"rootint");
+  is(logint(677,2),9,"logint");
+
+  is(negmod(24,9),3,"negmod");
   is(addmod(24,17,9),5,"addmod");
   is(submod(24,170,9),7,"submod");
   is(mulmod(24,170,9),3,"mulmod");
-  is(powmod(24,170,11),1,"powmod");
-  is(divmod(24,29,11),5,"divmod");
   is(muladdmod(24,170,37,91),22,"muladdmod");
   is(mulsubmod(24,170,37,91),39,"mulsubmod");
+  is(powmod(24,170,11),1,"powmod");
+  is(divmod(24,29,11),5,"divmod");
 
   is(sqrtmod(124,137),undef,"sqrtmod(124,137) = undef");
   is(sqrtmod(11,137),55,"sqrtmod(11,137) = 55");
+  is(rootmod(577,3,137),95,"rootmod");
+  is_deeply([allrootmod(581,5,151)],[34,42,43,62,121],"allrootmod");
 };
 
 subtest 'primality', sub {
@@ -487,23 +516,113 @@ subtest 'pseudoprime tests', sub {
 
 ###############################################################################
 
+subtest 'omega primes', sub {
+  # omega primes(k), where n is divisible by exactly k primes
+  # with multiplicity, meaning these are numbers with prime_omega(n) == k
+  is_deeply(omega_primes(1,20),[2,3,4,5,7,8,9,11,13,16,17,19],"omega_primes(1,20)");
+  is_deeply(omega_primes(2,20),[6,10,12,14,15,18,20],"omega_primes(2,20)");
+  is_deeply(omega_primes(3,100),[30,42,60,66,70,78,84,90],"omega_primes(3,100)");
+  is_deeply(omega_primes(4,500),[210,330,390,420,462],"omega_primes(4,500)");
+
+  my @n6 = (8,18,78,510,4620);
+  is_deeply([map { nth_omega_prime($_,6) } 1..5],\@n6,"nth_omega_prime(k,6)");
+  is_deeply([map { omega_prime_count($_,$n6[$_-1]-1) } 1..5],[5,5,5,5,5],"omega_prime_count(k,n)");
+
+  my @fn7 = (10000019, 10000000, 10000005, 10000002, 10000012, 10000080, 10002930, 11741730, 223092870);
+  is_deeply( [map { is_omega_prime($_+1,$fn7[$_]) } 0..$#fn7],
+             [(1) x scalar(@fn7)],
+             "is_omega_prime (true)" );
+  is_deeply( [map { is_omega_prime($_+1,$fn7[$_]+6) } 0..$#fn7],
+             [(0) x scalar(@fn7)],
+             "is_omega_prime (false)" );
+  # random numbers with the result we want
+  is_deeply([map { prime_omega($_) } (2,3777,893828,392580,451902,8111460,16265634,9699690,917896980,1084183870770)],[1..10],"prime_omega(n)");
+};
+
+subtest 'almost primes', sub {
+  # almost primes(k), where n has exactly k prime factors
+  # no multiplicity, meaning these are numbers with prime_bigomega(n) == k
+
+  is_deeply(almost_primes(1,20),[2,3,5,7,11,13,17,19],"almost_primes(1,20)");
+  is_deeply(almost_primes(2,20),[4,6,9,10,14,15],"almost_primes(2,20)");
+  is_deeply(almost_primes(3,20),[8,12,18,20],"almost_primes(3,20)");
+  is_deeply(almost_primes(4,60),[16,24,36,40,54,56,60],"almost_primes(4,60)");
+
+  my @n12 = (37,34,52,100,200,400,800,1600,3200,6400,12800,25600);
+  is_deeply([map { nth_almost_prime($_,12) } 1..12],\@n12,"nth_almost_prime(k,12)");
+  is_deeply([map { almost_prime_count($_,$n12[$_-1]-1) } 1..12],[(11) x 12],"almost_prime_count(k,n)");
+
+  my @isa = (10000019,10000001,10000005,10000002,10000004,10000008,10000016,10000096,10000032,10000080,10000128,10000896);
+  is_deeply( [map { is_almost_prime($_,$isa[$_-1]) } 1..12],
+             [(1) x scalar(@isa)],
+             "is_almost_prime (true)" );
+  is_deeply( [map { is_almost_prime($_,$isa[$_-1]+10) } 1..12],
+             [(0) x scalar(@isa)],
+             "is_almost_prime (false)" );
+
+  is_deeply([map { prime_bigomega($_) } (2,299021,382353,437943,787216,1004848,765264,333882,508640,175872)],[1..10],"prime_bigomega(n)");
+
+  cmp_closeto( almost_prime_count_approx(3,10000),2569, 40, "almost_prime_count_approx(3,10000) in range" );
+  # These approximations could be better
+  cmp_closeto( almost_prime_count_approx(5,10000), 963, 100, "almost_prime_count_approx(5,10000) in range" );
+  cmp_closeto( almost_prime_count_approx(7,"1000000000000"), "62981797962", "10000000000", "almost_prime_count_approx(7,1000000000000) in range" );
+
+  {
+     my($k,$n,$c) = (4,10000000,47997635);
+     my $lo = nth_almost_prime_lower($k,$n);
+     my $hi = nth_almost_prime_upper($k,$n);
+     my $ap = nth_almost_prime_approx($k,$n);
+     my $tol = int(0.1 * $c);
+     cmp_closeto( $ap, $c, $tol, "nth_almost_prime_approx($k,$n)");
+     ok($lo <= $c && $lo+$tol >= $c, "nth_almost_prime_lower($k,$n)");
+     ok($hi >= $c && $hi-$tol <= $c, "nth_almost_prime_upper($k,$n)");
+     ok($ap >= $lo && $ap <= $hi, "nth_almost_prime_approx inside lo/hi bounds");
+   }
+};
+
+###############################################################################
+
+subtest 'Ramanujan primes', sub {
+  is_deeply( ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
+
+  {
+    my($n,$c) = (8840,500);
+    my $lo = ramanujan_prime_count_lower($n);
+    my $hi = ramanujan_prime_count_upper($n);
+    my $ap = ramanujan_prime_count_approx($n);
+    my $tol = int($c*.05);
+
+    is(ramanujan_prime_count($n),$c,"ramanujan_prime_count($n) = $c");
+    ok($lo <= $c && $lo+$tol >= $c, "ramanujan_prime_count_lower($n)");
+    ok($hi >= $c && $hi-$tol <= $c, "ramanujan_prime_count_upper($n)");
+    cmp_closeto($ap, $c, $tol, "ramanujan_prime_count_approx($n)");
+  }
+
+  is(nth_ramanujan_prime(28),311,"nth_ramanujan_prime(28) = 311");
+
+  {
+    my($n,$c,$np1) = (1088761,39999);
+    my $lo = nth_ramanujan_prime_lower($c);
+    my $hi = nth_ramanujan_prime_upper($c);
+    my $ap = nth_ramanujan_prime_approx($c);
+    my $tol = int($n*.05);
+
+    #is(nth_ramanujan_prime($c),$n,"nth_ramanujan_prime($c) = $n");
+    diag "lo $lo  n $n  tol $tol";
+    ok($lo <= $n && $lo+$tol >= $n, "nth_ramanujan_prime_lower($c)");
+    ok($hi >= $n && $hi-$tol <= $n, "nth_ramanujan_prime_upper($c)");
+    cmp_closeto($ap, $n, $tol, "nth_ramanujan_prime_approx($c)");
+  }
+};
+
+###############################################################################
+
 subtest 'other prime related', sub {
   is(semiprime_count(12000,123456),25459,"semiprime_count(12000, 123456)");
   cmp_closeto( semiprime_count_approx("100294967494"), "14000000000", 4000000, "semiprime_count_approx(100294967494) in range" );
 
   is(nth_semiprime(1400),5137,"nth_semiprime(1400) = 5137");
   cmp_closeto( nth_semiprime_approx("14000000000"), "100294967494", 120000000, "nth_emiprime_approx(14000000000) in range" );
-
-  # omega_primes
-  # almost_prime_count
-  # omega_prime_count
-  # ramanujan_prime_count
-
-  # nth_almost_prime for interesting k
-  # nth_almost_prime_approx upper lower
-  # nth_omega_prime
-  # nth_ramanujan_prime_approx upper lower
-  # ramanujan_prime_count_approx upper lower
 
   # sum_primes
 
@@ -716,6 +835,9 @@ subtest 'other is * prime', sub {
   ok(  is_semiprime(1110000001), "1110000001 is a semiprime" );
   ok( !is_semiprime(1110000201), "1110000201 is not a semiprime" );
 
+  ok(  is_ramanujan_prime(41), "41 is a Ramanujan prime");
+  ok( !is_ramanujan_prime(43), "43 is not a Ramanujan prime");
+
   ok(  is_delicate_prime(294001), "294001 is a delicate prime" );
   ok(  is_delicate_prime(862789,16), "862789 is a delicate prime in base 16" );
 
@@ -821,11 +943,6 @@ subtest 'misc number theory functions', sub {
   while (my($n, $isp) = each (%ipp)) {
     is( is_prob_prime($n), $isp, "is_prob_prime($n) should be $isp" );
   }
-
-  is(is_ramanujan_prime(41),1,"41 is a Ramanujan prime");
-  is(is_ramanujan_prime(43),0,"43 is not a Ramanujan prime");
-  is(nth_ramanujan_prime(28),311,"R_n(28) = 311");
-  is_deeply( Math::Prime::Util::PP::ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
 
   is(inverse_totient(42), 4, "inverse totient 42 count");
   is_deeply([inverse_totient(42)], [43,49,86,98], "inverse totient 42 list");
@@ -973,24 +1090,14 @@ subtest 'vector (list) functions', sub {
 #  _inverse_R
 #  prime_count_lower
 #  prime_count_upper
-#  ramanujan_prime_count
 #  twin_prime_count_approx
 #  nth_twin_prime_approx
-#  nth_ramanujan_prime_upper
-#  nth_ramanujan_prime_lower
-#  nth_ramanujan_prime_approx
-#  ramanujan_prime_count_upper
-#  ramanujan_prime_count_lower
-#  ramanujan_prime_count_approx
 #  sum_primes
 #  print_primes
 #  chinese
 #  sumdigits
 #  hammingweight
 #  todigitstring / _splitdigits
-#  sqrtint
-#  rootint
-#  logint
 #  harmfrac
 #  harmreal
 #  is_perrin_pseudoprime (restrict == 1, restrict == 2)
@@ -1025,6 +1132,7 @@ subtest 'vector (list) functions', sub {
 #  random_shawe_taylor_prime
 #  miller_rabin_random
 #  random_factored_integer
+#  forsemiprimes
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
 

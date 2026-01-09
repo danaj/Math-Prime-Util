@@ -28,7 +28,7 @@ plan tests =>   5   # omega_primes sieve
 
 for my $k (1..5) {
   my $kop = $small_kops[$k];
-  is_deeply(omega_primes($k,1,$kop->[-1]), $kop, "small $k-omega-primes");
+  is_deeply(omega_primes($k,$kop->[-1]), $kop, "small $k-omega-primes");
 }
 
 ###### omega_prime_count

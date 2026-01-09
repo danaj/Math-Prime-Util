@@ -33,7 +33,7 @@ plan tests =>   1   # generating
 subtest 'generate almost primes', sub {
   for my $k (1..5) {
     my $kap = $small_kaps[$k];
-    is_deeply(almost_primes($k,1,$kap->[-1]), $kap, "small $k-almost-primes");
+    is_deeply(almost_primes($k,$kap->[-1]), $kap, "small $k-almost-primes");
   }
 
   # TODO some special cases for k=0
@@ -100,11 +100,11 @@ subtest 'limits', sub {
 
 ###### Test approx
 subtest 'approx', sub {
-  is( approx_in_range(3,59643,234618), 234618, "approx 3-almost prime");
-  SKIP: {
-    skip "The almost prime pure Perl has bad approximations for high k",1 unless $usexs && $use64;
-    is( approx_in_range(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
-  }
+  is(approx_in_range(3,59643,234618), 234618, "approx 59643-th 3-almost prime)");
+  is(approx_in_range(32,12,"26843545600"), "26843545600", "approx 12-th 32-almost prime");
+  is(approx_in_range(63,2011,"4742290407621132288000"), "4742290407621132288000", "approx 2011-th 63-almost prime");
+  is(approx_in_range(150,4557,"1546066063123731041156388276406165606486610280448"), "1546066063123731041156388276406165606486610280448", "approx 4557-th 150-almost prime (49 digits)");
+
   my @aptests = (
     [1,46,199],
     [2,67,206],
