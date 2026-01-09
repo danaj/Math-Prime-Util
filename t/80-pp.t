@@ -608,7 +608,6 @@ subtest 'Ramanujan primes', sub {
     my $tol = int($n*.05);
 
     #is(nth_ramanujan_prime($c),$n,"nth_ramanujan_prime($c) = $n");
-    diag "lo $lo  n $n  tol $tol";
     ok($lo <= $n && $lo+$tol >= $n, "nth_ramanujan_prime_lower($c)");
     ok($hi >= $n && $hi-$tol <= $n, "nth_ramanujan_prime_upper($c)");
     cmp_closeto($ap, $n, $tol, "nth_ramanujan_prime_approx($c)");

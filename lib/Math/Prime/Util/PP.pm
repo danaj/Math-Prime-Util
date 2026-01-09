@@ -4285,11 +4285,11 @@ sub almost_prime_count_lower {
  0.040, 0.051, 0.068, 0.090, 0.12, 0.18, 0.26, 0.36);
 
   my $multl;
+  my $isn64bit = Mrshiftint($n,64) == 0;
   if    ($n <=    1048575) { $multl = $lower20[$k]; }
   elsif ($n <= 4294967295) { $multl = $lower32[$k]; }
-  elsif (($n >> 64) == 0)  { $multl = $lower64[$k]; }
+  elsif ($isn64bit)        { $multl = $lower64[$k]; }
   else {
-    #if ($k<=32&&defined $lower[$k]) { print "using k $k mult $lower[$k]\n"; }
     push @lower, 1.5 * $lower[$#lower] until defined $lower[$k];
     $multl = $lower[$k];
   }
@@ -4317,11 +4317,11 @@ sub almost_prime_count_lower {
       my $dist = ($x - 500194) / (3184393786 - 500194);
       $multl = (1.0-$dist) * 1.0000  +  $dist * 1.039;
     } else {
-      $multl = ($n >> 64) == 0 ? 1.0004 : 1.0;
+      $multl = $isn64bit ? 1.0004 : 1.0;
     }
   } elsif ($k == 4) {
     $bound = $x * $logplus*$logplus*$logplus / (6*$logx);
-    $multl = 0.4999 if ($n >> 64) != 0;
+    $multl = 0.4999 if !$isn64bit;
   } else {
     $bound = $x / $logx;
     $logplus = $loglogx + (log("$k") * log(log("$k")) - 0.504377);
@@ -4362,6 +4362,7 @@ sub almost_prime_count_upper {
   # TODO: These bounds are likely to not be accurate for large inputs
 
   my $multu;
+  my $isn64bit = Mrshiftint($n,64) == 0;
   if    ($n <=    1048575) { $multu = $upper20[$k]; }
   elsif ($n <= 4294967295) { $multu = $upper32[$k]; }
   else {
@@ -4375,7 +4376,7 @@ sub almost_prime_count_upper {
   } elsif ($k == 3) {
     # Bayless Theorem 5.3
     $bound = $x * ($logplus * $logplus + 1.055852) / (2*$logx);
-    $multu = 0.8711 if $n > 4294967295 && ($n >> 64) == 0;
+    $multu = 0.8711 if $n > 4294967295 && $isn64bit;
   } elsif ($k == 4) {
     # Bayless Theorem 5.4 part 1, multu = 1.3043
     $bound = $x * $logplus*$logplus*$logplus / (6*$logx);
@@ -4383,7 +4384,7 @@ sub almost_prime_count_upper {
       $bound += + 0.511977 * $x * (log(log($x/4)) + 0.261536) / $logx;
       $multu = 1.028;
     }
-    if (($n >> 64) == 0) {
+    if ($isn64bit) {
       $multu = 0.780  if $n > 4294967295;
       $multu = 0.6921 if $x > 1e12;
     }
