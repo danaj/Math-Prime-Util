@@ -4154,8 +4154,11 @@ sub almost_prime_count_approx {
     } else {
       $mult = 0.76;
     }
-    my $est = $lo + ($hi - $lo) * $mult;
-    return Mtoint($est+0.5);
+    return Mtoint($lo + ($hi - $lo) * $mult + 0.5) unless ref($lo) || ref($hi);
+
+    my $imult = int($mult * (1<<16));
+    my $est = Maddint( Mlshiftint($lo,16), Mmulint(Msubint($hi,$lo),$imult) );
+    return Mrshiftint($est,16);
   }
 }
 
