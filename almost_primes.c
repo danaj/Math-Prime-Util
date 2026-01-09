@@ -575,15 +575,27 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
     boundu = x * (logplus*logplus + 1.055852) / (2*logx);
     /* Kinlaw (2019) Theorem 1 (with 1.000) */
     boundl = x * loglogx * loglogx / (2*logx);
-    multl = (x <=      500194)  ?  0.8418
-          : (x <= 3184393786U)  ?  1.0000
-          :                        1.04;
+    if (n < 638) {
+      multl = 0.8418;
+    } else if (n <= 1926) {
+      double weight = (x - 638L) / (double)(1926 - 638);
+      multl = (1L-weight) * 0.8939  +  weight * 0.9233;
+    } else if (n <= 500194) {
+      double weight = (x - 1927L) / (double)(500194 - 1927);
+      multl = (1L-weight) * 0.9233  +  weight * 1.000;
+    } else if (n <= 3184393786U) {
+      double weight = (x - 500194L) / (double)(3184393786U - 500194U);
+      multl = (1L-weight) * 1.0000  +  weight * 1.039;
+    } else { /* TODO blend down to this */
+      multl = 1.0004;
+    }
     /* Bayless (2018) Theorem 5.3 proves that multu=1.028 is a correct bound
      * for all x >= 10^12.  However it is not a tight bound for the range
      * 2^32 to 2^64.  We tighten it a lot for the reduced range.
      */
     if (n > 4294967295U)  multu = 0.8711;
   } else if (k == 4) {
+    /* Bayless doesn't discuss a lower bound for k=4. */
     /* Bayless Theorem 5.4 part 1 (with multu = 1.3043) */
     boundl = boundu = x * logplus*logplus*logplus / (6*logx);
     /* Bayless Theorem 5.4 part 2 */
