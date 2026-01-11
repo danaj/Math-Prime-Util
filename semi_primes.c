@@ -322,14 +322,14 @@ UV semiprime_count_approx(UV n) {
   * BN = vector(20,n,B(n-1,500));
   * C(n) = { n!*(sum(i=0,n,BN[i+1]/i!) - sum(i=1,n,1/i)) }
   */
-        -9011500984.0L,
-        -191744069149.0L,
-        -4487573459711.0L,
-        -114472069580580.0L,
-        -3158610502077136.0L,
-        -93682567786528912.0L,
-        -2970838770257639696.0L,
-        -100274471240063911725.0L };   /* ~ C_18 */
+        -9011500983.75L,
+        -191744069149.4L,
+        -4487573459710.5L,
+        -114472069580579.8L,
+        -3158610502077135.6L,
+        -93682567786528911.9L,
+        -2970838770257639695.3L,
+        -100274471240063911725.1L };   /* ~ C_18 */
     /* We will use C[0] to C[L-1].  Hence L must be 19 or less. */
     static const double CROSS[15] =
      {     632, 9385, 136411, 4610076, 66358000, 440590000, 2557200000, 53032001000.0, 1151076796431.0L, 20416501389724.0L,
@@ -372,8 +372,8 @@ UV nth_semiprime_approx(UV n) {
 
   if (n < NSEMIPRIMELIST)
     return _semiprimelist[n];
-  if (n > MPU_MAX_SEMI_PRIME_IDX)
-    return 0;
+  if (n >= MPU_MAX_SEMI_PRIME_IDX)
+    return n == MPU_MAX_SEMI_PRIME_IDX  ?  MPU_MAX_SEMI_PRIME  :  0;
 
   /* Piecewise with blending.  Hacky and maybe overkill.  It makes a good
    * estimator by itself, but our count approximation is even better, so we
@@ -429,6 +429,8 @@ UV nth_semiprime(UV n)
 
   if (n < NSEMIPRIMELIST)
     return _semiprimelist[n];
+  if (n >= MPU_MAX_SEMI_PRIME_IDX)
+    return n == MPU_MAX_SEMI_PRIME_IDX  ?  MPU_MAX_SEMI_PRIME  :  0;
 
   guess = nth_semiprime_approx(n);    /* Initial guess */
   sptol = 16*icbrt(n);                /* Guess until within this many SPs */

@@ -3557,7 +3557,14 @@ sub nth_prime_lower {
   # Axler 2017 Corollary 1.4
   my $lower = $n * ($flogn + $flog2n-1.0 + (($flog2n-2.00)/$flogn) - (($flog2n*$flog2n - 6*$flog2n + 11.508)/(2*$flogn*$flogn)) );
 
-  Mtoint($lower + 0.999999999);
+  my $plower = Mtoint($lower + 0.999999999);
+  # We clamp to the max UV representable.
+  if (MPU_32BIT) {
+    $plower = 4294967291 if $n >= 203280221 && $plower < 4294967291;
+  } else {
+    $plower = 18446744073709551557 if $n >= 425656284035217743 && $plower < 18446744073709551557;
+  }
+  $plower;
 }
 
 sub inverse_li_nv {
@@ -4266,6 +4273,7 @@ sub almost_prime_count_lower {
   validate_integer_nonneg($k);
   validate_integer_nonneg($n);
 
+
   return 0 if ($n >> $k) == 0;
   ($k, $n) = _kap_reduce_count($k, $n);
   return ($n >= 1) if $k == 0;
@@ -4281,8 +4289,8 @@ sub almost_prime_count_lower {
   my @lower32 = (0,0, 1.004,  0.7383, 0.6828, 0.5939,0.3594,0.2222,0.1438,0.09754,0.06981,0.05245,0.04151, 0.03461,0.03006,0.02709,0.02553,0.02502,0.02552,0.02697,0.02945);
   my @lower64 = (0,0,1.011,0.8093,0.7484,0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.0422, 0.0331,0.0270,0.0232,0.0208,0.0194,0.0190,0.0193,0.0203, 0.0222,0.0252,0.0295,0.0356,0.0444,0.0570,0.0753,0.102,0.14,0.20,0.297,0.44,0.68,1.07,1.71,2.8,4.7,8.0,13.89,23.98);
   # TODO: These are likely still too high
-  my @lower   = (0,0, 1.011,  0.8093, 0.7484, 0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.0422, 0.0331,0.0270,0.0232,0.0208,0.0194,0.0190,0.0193,0.0203, 0.0222,0.0252,0.0295,0.0356,
- 0.040, 0.051, 0.068, 0.090, 0.12, 0.18, 0.26, 0.36);
+  my @lower   = (0,0, 1.011,  0.8093, 0.7484, 0.6465,0.3982,0.2463,0.1571,0.1048,0.07363,0.0545,0.0422, 0.0331,0.0270,0.0232,0.0208,0.0194,0.0190,0.0193,0.0203, 0.0222,0.0252,0.0295,
+ 0.032, 0.040, 0.051, 0.068, 0.090, 0.12, 0.18, 0.26, 0.355);
 
   my $multl;
   my $isn64bit = Mrshiftint($n,64) == 0;
@@ -4441,7 +4449,7 @@ sub _fast_small_nth_almost_prime {
 
 sub nth_almost_prime_upper {
   my($k, $n) = @_;
-  return 0 if $n == 0;
+  return undef if $n == 0;
   return (($n == 1) ? 1 : 0) if $k == 0;
   return Mnth_prime_upper($n) if $k == 1;
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
@@ -4449,16 +4457,16 @@ sub nth_almost_prime_upper {
   my $r = _kap_reduce_nth($k,$n);
   if ($r > 0) {
     my $nth = Math::Prime::Util::nth_almost_prime_upper($k-$r, $n);
-    return Mmulint($nth, Mpowint(2,$r));
+    return Mlshiftint($nth, $r);
   }
 
-  my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
+  my $lo = Mlshiftint(5,$k);   # $k >= 1, $n >= 8
   my $hi = Mtoint(1 + _almost_prime_nth_asymptotic($k, $n));
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_lower($k, $hi);
   while ($rhi < $n) {
-    $lo = $hi+1;
-    $hi = $hi + int(1.02 * ($hi/$rhi) * ($n - $rhi)) + 100;
+    $lo = Maddint($hi,1);
+    $hi = Mvecsum($hi, int(1.02 * ("$hi"/"$rhi") * ("$n"-"$rhi")), 100);
     $rhi = almost_prime_count_lower($k, $hi);
   }
   while ($lo < $hi) {
@@ -4470,7 +4478,7 @@ sub nth_almost_prime_upper {
 }
 sub nth_almost_prime_lower {
   my($k, $n) = @_;
-  return 0 if $n == 0;
+  return undef if $n == 0;
   return (($n == 1) ? 1 : 0) if $k == 0;
   return Math::Prime::Util::nth_prime_lower($n) if $k == 1;
   return _fast_small_nth_almost_prime($k,$n) if $n < 8;
@@ -4478,16 +4486,16 @@ sub nth_almost_prime_lower {
   my $r = _kap_reduce_nth($k,$n);
   if ($r > 0) {
     my $nth = Math::Prime::Util::nth_almost_prime_lower($k-$r, $n);
-    return Mmulint($nth, Mpowint(2,$r));
+    return Mlshiftint($nth, $r);
   }
 
-  my $lo = 5 * (1 << $k);   # $k >= 1, $n >= 8
+  my $lo = Mlshiftint(5,$k);   # $k >= 1, $n >= 8
   my $hi = Mtoint(1 + _almost_prime_nth_asymptotic($k, $n));
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_upper($k, $hi);
   while ($rhi < $n) {
-    $lo = $hi+1;
-    $hi = $hi + int(1.02 * ($hi/$rhi) * ($n - $rhi)) + 100;
+    $lo = Maddint($hi,1);
+    $hi = Mvecsum($hi, int(1.02 * ("$hi"/"$rhi") * ("$n"-"$rhi")), 100);
     $rhi = almost_prime_count_upper($k, $hi);
   }
   while ($lo < $hi) {
@@ -4501,7 +4509,7 @@ sub nth_almost_prime_lower {
 sub nth_almost_prime_approx {
   my($k, $n) = @_;
   return undef if $n == 0;
-  return 1 << $k if $n == 1;
+  return Mlshiftint(1,$k) if $n == 1;
   return undef if $k == 0;  # n==1 already returned
   return Math::Prime::Util::nth_prime_approx($n) if $k == 1;
   return Math::Prime::Util::nth_semiprime_approx($n) if $k == 2;
@@ -4654,7 +4662,7 @@ sub _inverse_interpolate {
 sub nth_almost_prime {
   my($k, $n) = @_;
   return undef if $n == 0;
-  return 1 << $k if $n == 1;
+  return Mlshiftint(1,$k) if $n == 1;
   return undef if $k == 0;  # n==1 already returned
   return Math::Prime::Util::nth_prime($n) if $k == 1;
   return Math::Prime::Util::nth_semiprime($n) if $k == 2;
@@ -4947,8 +4955,13 @@ sub powint {
     return ($b == 0) ? 1 : 0 if $a == 0;
     return 1 if $a == 1;
     return ($b % 2) ? -1 : 1 if $a == -1;
-    return 1 << $b if $a == 2 && $b < MPU_MAXBITS;
-    return 1 << (2*$b) if $a == 4 && $b < MPU_MAXBITS/2;
+    if ($a == 2) {
+      return ($b < MPU_MAXBITS)  ?  1<<$b  :  Mlshiftint(1,$b);
+    }
+    if ($a == 4) {
+      return 1 << (2*$b) if $b < MPU_MAXBITS/2;
+      return Mlshiftint(1,2*$b) if $b < 4000000000;
+    }
   }
 
   return 1 if $b == 0;

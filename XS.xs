@@ -3490,7 +3490,7 @@ void nth_almost_prime(IN SV* svk, IN SV* svn)
           case 2: ret = nth_almost_prime_lower(k, n); break;
           case 3: ret = nth_almost_prime_upper(k, n); break;
         }
-        XSRETURN_UV(ret);
+        if (ret != 0) XSRETURN_UV(ret);
       }
     }
     DISPATCHPP();

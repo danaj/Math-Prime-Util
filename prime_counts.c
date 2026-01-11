@@ -477,6 +477,8 @@ UV nth_prime_upper(UV n)
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
+  if (n >= MPU_MAX_PRIME_IDX)
+    return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
   fn     = (long double) n;
   flogn  = logl(n);
@@ -537,10 +539,13 @@ UV nth_prime_upper(UV n)
 /* The nth prime will be greater than or equal to this number */
 UV nth_prime_lower(UV n)
 {
-  double fn, flogn, flog2n, lower;
+  double fn, flogn, flog2n;
+  UV plower;
 
   if (n < NPRIMES_SMALL)
     return primes_small[n];
+  if (n >= MPU_MAX_PRIME_IDX)
+    return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
   fn     = (double) n;
   flogn  = log(n);
@@ -560,10 +565,10 @@ UV nth_prime_lower(UV n)
 
   { /* Axler 2017 http://arxiv.org/pdf/1706.03651.pdf Corollary 1.4 */
     double b1 = (n < 56000000)  ?  11.200  :  11.50800000002;
-    lower = fn * (flogn + flog2n-1.0 + ((flog2n-2.00)/flogn) - ((flog2n*flog2n-6*flog2n+b1)/(2*flogn*flogn)));
+    double lower = fn * (flogn + flog2n-1.0 + ((flog2n-2.00)/flogn) - ((flog2n*flog2n-6*flog2n+b1)/(2*flogn*flogn)));
+    plower = (UV) ceill(lower);
   }
-
-  return (UV) ceill(lower);
+  return plower < MPU_MAX_PRIME ? plower : MPU_MAX_PRIME;
 }
 
 UV nth_prime_approx(UV n)
@@ -581,6 +586,8 @@ UV nth_prime(UV n)
   /* If very small, return the table entry */
   if (n < NPRIMES_SMALL)
     return primes_small[n];
+  if (n >= MPU_MAX_PRIME_IDX)
+    return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
   /* Determine a bound on the nth prime.  We know it comes before this. */
   upper_limit = nth_prime_upper(n);

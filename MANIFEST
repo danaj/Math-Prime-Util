@@ -300,6 +300,7 @@ t/94-weaken.t
 t/97-synopsis.t
 xt/A003459.pl
 xt/allrootmod.pl
+xt/almost-primes-big.pl
 xt/binomialmod.pl
 xt/check-bigint.pl
 xt/check-nth-bounds.pl

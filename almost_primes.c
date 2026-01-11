@@ -331,54 +331,64 @@ static UV apca(UV mid, UV k) { return almost_prime_count_approx(k, mid); }
 static UV apce(UV mid, UV k) { return almost_prime_count(k, mid); }
 
 UV nth_almost_prime_upper(uint32_t k, UV n) {
-  UV r, max, lo;
+  UV r, maxc, maxn, lo, up;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
   if (k == 1) return nth_prime_upper(n);
   if (n < 8) return _fast_small_nth_almost_prime(k, n);
 
-  max = max_almost_prime_count(k);
-  if (n > max) return 0;
+  maxn = max_nth_almost_prime(k);
+  maxc = max_almost_prime_count(k);
+  if (n >= maxc) return n == maxc  ?  maxn  :  0;
+
   r = reduce_nth_factor(k,n);
-  if (r > 0)  return nth_almost_prime_upper(k-r, n) << r;
+  if (r > 0) {
+    UV redup = nth_almost_prime_upper(k-r, n);
+    if (redup > maxn || ((redup<<r)>>r) != redup)
+      return maxn;
+    return redup << r;
+  }
 
   /* We start out with the literal min and max because we have NO idea. */
-  lo = 5 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
+  lo = UVCONST(5) << k;  /* For k >= 1 and n >= 8 */
 
-  return inverse_interpolate_k(lo, 0, n, k, &apcl, 0);
+  up = inverse_interpolate_k(lo, 0, n, k, &apcl, 0);
+  return up > maxn  ?  maxn  :  up;
 }
 
 UV nth_almost_prime_lower(uint32_t k, UV n) {
-  UV r, max, lo;
+  UV r, maxc, lo;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
   if (k == 1) return nth_prime_lower(n);
   if (n < 8) return _fast_small_nth_almost_prime(k, n);
 
-  max = max_almost_prime_count(k);
-  if (n > max) return 0;
+  maxc = max_almost_prime_count(k);
+  if (n >= maxc) return n == maxc  ?  max_nth_almost_prime(k)  :  0;
+
   r = reduce_nth_factor(k,n);
   if (r > 0)  return nth_almost_prime_lower(k-r, n) << r;
 
   /* We start out with the literal min and max because we have NO idea. */
   /*  \_/ note 3 instead of 5!  TODO:  apcu is not tight enough, so reduce */
-  lo = 3 * (UVCONST(1) << k);  /* For k >= 1 and n >= 8 */
+  lo = UVCONST(3) << k;  /* For k >= 1 and n >= 8 */
 
   return inverse_interpolate_k(lo, 0, n, k, &apcu, 0);
 }
 
 UV nth_almost_prime_approx(uint32_t k, UV n) {
-  UV max, lo;
+  UV maxc, lo;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
   if (k == 1) return nth_prime_approx(n);
   if (k == 2) return nth_semiprime_approx(n);
 
-  max = max_almost_prime_count(k);
-  if (n > max) return 0;
+  maxc = max_almost_prime_count(k);
+  if (n >= maxc) return n == maxc  ?  max_nth_almost_prime(k)  :  0;
+
   /* We could reduce but really no reason to do it */
 
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
@@ -396,14 +406,15 @@ static UV   _cb_cnt4(UV n) { return almost_prime_count(4,n); }
 static bool _cb_is4(UV n)  { return is_almost_prime(4,n); }
 
 UV nth_almost_prime(uint32_t k, UV n) {
-  UV r, lo, hi;
+  UV r, lo, hi, maxc;
 
   if (n == 0) return 0;
   if (k == 0) return (n == 1) ? 1 : 0;
   if (k == 1) return nth_prime(n);
   if (k == 2) return nth_semiprime(n);
 
-  if (n > max_almost_prime_count(k)) return 0;
+  maxc = max_almost_prime_count(k);
+  if (n >= maxc) return n == maxc  ?  max_nth_almost_prime(k)  :  0;
 
   /* For k >= 3 and small n we can answer this quickly. */
   if (n < 8) return _fast_small_nth_almost_prime(k,n);
