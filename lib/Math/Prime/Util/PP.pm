@@ -4709,20 +4709,22 @@ sub nth_ramanujan_prime_upper {
     return 33+((310*Mnth_prime_upper(2*$n))>>8);
   }
 
-  #my $nth = Math::Prime::Util::nth_prime(Mmulint($n,3));
   my $nth = Mnth_prime_upper(Mmulint($n,3));
-
-  # TODO: Ideally these would all be adjusted to make smooth transitions.
 
   return  115+((727*$nth) >> 10) if $n < 647;
 
-  return  271+((358*$nth) >>  9) if $n <      16000;
-  return 9450+((350*$nth) >>  9) if $n <    1200000;
-  return 5000+((349*$nth) >>  9) if $n <    7000000;
-  return      ((348*$nth) >>  9) if $n <   90000000;
-  return      ((347*$nth) >>  9) if $n < 3100000000;
+  # TODO: Ideally these would all be adjusted to make smooth transitions.
 
-  Mrshiftint(Mmulint(346,$nth),9);
+  my($add,$mul) = $n <      16000 ? ( 271,358)
+                : $n <    1200000 ? (9450,350)
+                : $n <    7000000 ? (5000,349)
+                : $n <   90000000 ? (   0,348)
+                : $n < 3100000000 ? (   0,347)
+                :                   (   0,346);
+
+  my $ret = Mrshiftint(Mmulint($mul,$nth),9);
+  $ret = Maddint($ret,$add) if $add != 0;
+  $ret;
 }
 sub nth_ramanujan_prime_lower {
   my $n = shift;
