@@ -56,7 +56,7 @@ my %suml = (
 if (!$usexs) {
   %suml = map { $_ => $suml{$_} } grep { $_ < 10000000 } keys %suml;
 }
-delete $suml{"10097286319"} unless $extra;
+delete $suml{"10097286319"} unless $extra && $use64;
 
 plan tests => scalar(@liouville_pos) + scalar(@liouville_neg) + 1 + scalar(keys %suml);
 

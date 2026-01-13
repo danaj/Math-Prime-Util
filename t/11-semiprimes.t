@@ -71,7 +71,7 @@ plan tests => 2
             + scalar(keys %range_counts)
             + scalar(keys %big_counts)
             + scalar(keys %big_semis)
-            + (($extra && $usexs) ? 1 : 0);
+            + 1;
 
 is_deeply( semi_primes($small_semis[-1]), \@small_semis, "semi_primes($small_semis[-1])" );
 
@@ -114,7 +114,8 @@ while (my($n, $nth) = each (%big_semis)) {
   cmp_closeto( nth_semiprime_approx($n), $nth, 0.001 * abs($nth), "nth_semiprime_approx($n) ~ $nth");
 }
 
-if ($extra && $usexs) {
+SKIP: {
+  skip "skip large PP nth_semiprime",1 unless $extra && $usexs && Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
   # More than one interpolation needed
   is( nth_semiprime(12479400000), 89102597117, "nth_semiprime(12479400000) = 89102597117" );
 }

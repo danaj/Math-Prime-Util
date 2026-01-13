@@ -6,7 +6,8 @@ use Test::More;
 use Math::Prime::Util qw/factorialmod factorial/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $usexs  = Math::Prime::Util::prime_get_config->{'xs'};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
 plan tests => 4;
 
@@ -23,6 +24,6 @@ SKIP: {
 }
 
 SKIP: {
-  skip "large value without EXTENDED_TESTING",1 unless $extra;
+  skip "large value without EXTENDED_TESTING on 64-bit",1 unless $extra && $use64;
   is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
 }

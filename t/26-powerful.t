@@ -13,7 +13,7 @@ my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 plan tests => 2+4+10+4+2+1       # is_powerful
             + 10 + 2*$extra      # powerful_count
             + 4                  # nth_powerful
-            + 8                  # sumpowerful
+            + 9                  # sumpowerful
             + 10;                # powerful_numbers
 
 {
@@ -85,13 +85,17 @@ is_deeply( [map { powerful_count($_,3) } 0..20],
 # Rather slow in PP
 if ($extra) {
   my @exp = (4,14,54,185,619,2027,6553,21044,67231,214122,680330,2158391,6840384,21663503);
-  my @got = map { powerful_count(10**$_) } 1..14;
-  is_deeply(\@got, \@exp, "2-powerful_count 10^1, 10^2, ..., 10^14");
+  if (!$use64) { pop @exp; pop @exp; }
+  my $fin = scalar @exp;
+  my @got = map { powerful_count(10**$_) } 1..$fin;
+  is_deeply(\@got, \@exp, "2-powerful_count 10^1, 10^2, ..., 10^$fin");
 }
 if ($extra) {
   my @exp = (1, 1, 4, 10, 16, 26, 46, 77, 129, 204, 318, 495, 761, 1172, 1799, 2740, 4128, 6200, 9224, 13671, 20205, 29764);
-  my @got = map { powerful_count("1".("0"x$_),7) } 1..22;
-  is_deeply(\@got, \@exp, "7-powerful_count 10^1, 10^2, ..., 10^22");
+  if (!$use64) { pop @exp; pop @exp; pop @exp; pop @exp; }
+  my $fin = scalar @exp;
+  my @got = map { powerful_count("1".("0"x$_),7) } 1..$fin;
+  is_deeply(\@got, \@exp, "7-powerful_count 10^1, 10^2, ..., 10^$fin");
 }
 
 ###### nth_powerful
@@ -118,12 +122,16 @@ is_deeply( [map { sumpowerful(17411,$_) } 0..16],
 
 is( "".sumpowerful("1234567890123456",1), "762078937661941480719405753696", "sumpowerful(1234567890123456,1) = (n*(n+1))/2" );
 SKIP: {
-  skip "Skipping sumpowerful(1234567890123456,2)",1 unless $extra;
+  skip "Skipping sumpowerful(1234567890,2)",1 unless $extra;
+  is( "".sumpowerful("1234567890",2), "30929622318668", "sumpowerful(1234567890,2)" );
+}
+SKIP: {
+  skip "Skipping sumpowerful(1234567890123456,2)",1 unless $extra && $use64;
   is( "".sumpowerful("1234567890123456",2), "31374760178828970927228", "sumpowerful(1234567890123456,2)" );
 }
 
 SKIP: {
-  skip "Skip sumpowerful 2147516495,k) for k=1..33", 1 unless $extra || $usexs;
+  skip "Skip sumpowerful 2147516495,k) for k=1..33", 1 unless $extra || ($usexs && $use64);
   is_deeply( [map { sumpowerful("2147516495",$_) } 1..33],
              [qw/2305913549222300760 71073461134258 2727672189281 542650082891 192623487712 91172645015 57240053947 37822907405 26438551880 19617088953 13157238054 7502933431 7258257269 6035951629 6031152276 6016770601 5973658344 5844387109 5456704476 4293918721 4292870145 4290772993 4286578689 4278190081 4261412865 4227858433 4160749569 4026531841 3758096385 3221225473 2147483649 1 1/],
             "sumpowerful(2147516495,k) for 1 <= k <= 33" );
