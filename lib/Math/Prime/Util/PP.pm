@@ -8981,11 +8981,31 @@ sub is_perrin_pseudoprime {
   0;
 }
 
+# Aebi and Cairns (2008)
+sub _catgamma {
+  my $n = shift;
+
+  # Ideally we would use Prop 6 to reduce this.
+
+  # Section 5 rephrases theorem 2 into the middle binomial.
+  my $m = Mrshiftint(Msubint($n,1),1);
+  my $r = Math::Prime::Util::binomialmod(Mlshiftint($m,1), $m, $n);
+  return ($m & 1) ? $n-$r : $r;
+}
 sub is_catalan_pseudoprime {
   my($n) = @_;
   return 0+($n >= 2) if $n < 4;
-  my $m = ($n-1)>>1;
-  return (Mbinomial($m<<1,$m) % $n) == (($m&1) ? $n-1 : 1) ? 1 : 0;
+
+  # Aebi and Cairns (2008), Proposition 3 for semiprimes with 1 small prime
+  if ($n > 169 && $n & 1) {
+    my $mod = Mmodint($n,15015);
+    if ($mod% 3==0){my($p,$q)=( 3,Mdivint($n, 3)); return 0 if Mmodint(  -2,$q) != 1 && Mis_prime($q); }
+    if ($mod% 5==0){my($p,$q)=( 5,Mdivint($n, 5)); return 0 if Mmodint(   6,$q) != 1 && Mis_prime($q); }
+    if ($mod% 7==0){my($p,$q)=( 7,Mdivint($n, 7)); return 0 if Mmodint( -20,$q) != 1 && Mis_prime($q); }
+    if ($mod%11==0){my($p,$q)=(11,Mdivint($n,11)); return 0 if Mmodint(-252,$q) != 1 && Mis_prime($q); }
+    if ($mod%13==0){my($p,$q)=(13,Mdivint($n,13)); return 0 if Mmodint( 924,$q) != 1 && Mis_prime($q); }
+  }
+  return _catgamma($n) == 1 ? 1 : 0;
 }
 
 sub is_frobenius_pseudoprime {

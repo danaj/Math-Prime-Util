@@ -495,14 +495,21 @@ subtest 'pseudoprime tests', sub {
     skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
     is( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
   }
-  #is( is_perrin_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Perrin pseudoprime" );
   is(is_perrin_pseudoprime(517697641), 1, "517697641 is a Perrin pseudoprime");
+  is(is_perrin_pseudoprime(102690901,3), 1, "102690901 is a Perrin pseudoprime (Grantham)");
   is(is_frobenius_pseudoprime(517697641), 0, "517697641 is not a Frobenius pseudoprime");
   }
 
   is(is_euler_pseudoprime(703, 3), 1, "703 is a base 3 Euler pseudoprime");
   is(is_euler_plumb_pseudoprime(3277), 1, "3277 is a Euler-Plumb pseudoprime");
   is(is_frobenius_khashin_pseudoprime(517697659),1,"517697659 is prime via Frobenius-Khashin test");
+  is(is_catalan_pseudoprime(17), 1, "is_catalan_pseudoprime(17) true");
+  is(is_catalan_pseudoprime(15127), 0, "is_catalan_pseudoprime(15127) false");
+  SKIP: {
+    # Maybe if we make a faster binomialmod
+    skip "Skipping PP Catalan pseudoprime test without EXTENDED_TESTING", 1 unless $extra;
+    is(is_catalan_pseudoprime(5907), 1, "5907 is a Catalan pseudoprime");
+  }
 };
 
 ###############################################################################
@@ -875,6 +882,9 @@ subtest 'other is * prime', sub {
   ok(  is_chen_prime(167), "is_chen_prime" );
   is(next_chen_prime(167), 179, "next_chen_prime" );
 
+  ok(  is_mersenne_prime(107), "2^107-1 is a Mersenne prime");
+  ok( !is_mersenne_prime(113), "2^113-1 is not a Mersenne prime");
+
   { my(@got,@exp);
     for my $d ([1,143,0],[1,11,1], [2,313,0],[2,209,1], [3,513,0],[3,1331,1], [4,1331,0],[4,14641,1]) {
       push @got, is_almost_prime($d->[0], $d->[1]);
@@ -1240,6 +1250,12 @@ subtest 'Goldbach', sub {
   is_deeply([map { scalar goldbach_pairs($_) } (180,175,177)], [14,1,0], "scalar goldbach_pairs returns count");
 };
 
+# Not here:
+#  is_provable_prime
+#  is_provable_prime_with_cert
+#  prime_certificate
+#  verify_prime
+
 # TODO:
 #  divisor_sum
 #  inverse_li
@@ -1253,10 +1269,6 @@ subtest 'Goldbach', sub {
 #  todigitstring / _splitdigits
 #  harmfrac
 #  harmreal
-#  is_perrin_pseudoprime (restrict == 1, restrict == 2)
-#  is_catalan_pseudoprime
-#  is_mersenne_prime
-#  is_aks_prime (_poly_mod_mul, etc)
 #  factorialmod
 #  binomialmod
 #  is_primitive_root
