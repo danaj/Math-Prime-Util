@@ -444,6 +444,19 @@ subtest 'nth_prime', sub {
   }
   my $ntha = nth_prime_approx(1287248);
   ok( $ntha >= 20274907 && $ntha <= 20284058, "nth_prime_approx(1287248) in range" );
+
+  {
+    my($n,$c) = (15460811,998491);
+    my $lo = nth_prime_lower($c);
+    my $hi = nth_prime_upper($c);
+    my $ap = nth_prime_approx($c);
+    my $tol = int($n*.02);
+
+    ok($lo <= $n && $lo+$tol >= $n, "nth_prime_lower($c)");
+    ok($hi >= $n && $hi-$tol <= $n, "nth_prime_upper($c)");
+    cmp_closeto($ap, $n, $tol, "nth_prime_approx($c)");
+  }
+
 };
 
 ###############################################################################
@@ -491,6 +504,10 @@ subtest 'pseudoprime tests', sub {
   is( is_strong_pseudoprime( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
   is( is_strong_pseudoprime( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
   is( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
+
+  ok(is_bpsw_prime(2179),"is_bpsw_prime small prime");
+  ok(!is_bpsw_prime("168790877523676911809192454171451"),"is_bpsw_prime large composite");
+
   SKIP: {
     skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
     is( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
@@ -510,6 +527,8 @@ subtest 'pseudoprime tests', sub {
     skip "Skipping PP Catalan pseudoprime test without EXTENDED_TESTING", 1 unless $extra;
     is(is_catalan_pseudoprime(5907), 1, "5907 is a Catalan pseudoprime");
   }
+
+  is( miller_rabin_random(4294967281, 20), "0", "Miller-Rabin random 40 on composite" );
 };
 
 ###############################################################################
@@ -994,7 +1013,6 @@ subtest 'misc number theory functions', sub {
   is( "".primorial(118), "31610054640417607788145206291543662493274686990", "primorial(118)" );
   is( pn_primorial(7), 510510, "pn_primorial(7)" );
   is( partitions(74), 7089500, "partitions(74)" );
-  is( miller_rabin_random(4294967281, 20), "0", "Miller-Rabin random 40 on composite" );
 
   { my @t;
     forprimes(sub {push @t,$_}, 2387234,2387303);
@@ -1257,6 +1275,11 @@ subtest 'Goldbach', sub {
 #  verify_prime
 
 # TODO:
+#
+#  twin_primes(beg,end)
+#  semi_primes(beg,end)
+#  sieve_prime_cluster
+#
 #  divisor_sum
 #  inverse_li
 #  _inverse_R
@@ -1295,7 +1318,6 @@ subtest 'Goldbach', sub {
 #  random_strong_prime
 #  random_maurer_prime
 #  random_shawe_taylor_prime
-#  miller_rabin_random
 #  random_factored_integer
 #  forsemiprimes
 
