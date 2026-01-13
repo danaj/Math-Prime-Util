@@ -55,7 +55,7 @@ if ($usegmp || $extra) {  # in each case, p-1 is very easy to factor
 
 plan tests => 0
                 + scalar(keys %primroots) + 1  # znprimroot
-                + scalar(keys %primroots) + 4  # is_primitive_root
+                + scalar(keys %primroots) + 6  # is_primitive_root
                 + 7                            # qnr
                 + 9                            # is_qr
                 ;
@@ -80,6 +80,8 @@ is(is_primitive_root(2,0), undef, "is_primitive_root(2,0) => undef");
 is(is_primitive_root(19,191), 1, "19 is a primitive root mod 191");
 is(is_primitive_root(13,191), 0, "13 is not a primitive root mod 191");
 is(is_primitive_root(35,982), 0, "35 is not a primitive root mod 982");
+is(is_primitive_root(74513,2), 1, "74513 is a primitive root mod 2");
+is(is_primitive_root(74513,3), 1, "74513 is a primitive root mod 3");
 
 ###### qnr
 is(qnr(0), undef, "qnr(0) returns undef");
