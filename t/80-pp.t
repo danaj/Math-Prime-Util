@@ -240,19 +240,6 @@ my %rzvals = (
            80   =>  8.27180612553034e-25,
           180   =>  6.52530446799852e-55,
 );
-my %ipp = (
-  5 => 2,
-  10 => 0,
-  49 => 0,
-  347 => 2,
-  697 => 0,
-  7080233 => 2,
-  7080249 => 0,
-  17471059 => 2,
-  17471061 => 0,
-  36010357 => 2,
-  36010359 => 0,
-);
 
 plan tests => 2 +  # require_ok
               1 +  # arithmetic
@@ -267,6 +254,7 @@ plan tests => 2 +  # require_ok
               1 +  # pseudoprimes
               1 +  # omega_primes
               1 +  # almost_primes
+              1 +  # prime powers
               1 +  # ramanujan_primes
               1 +  # other prime related
               1 +  # real functions
@@ -277,7 +265,10 @@ plan tests => 2 +  # require_ok
               1 +  # primality proofs
               1 +  # misc ntheory
               1 +  # more misc ntheory
-              1 +  # vec* functions
+              1 +  # set functions
+              1 +  # vector (list) functions
+              1 +  # rationals
+              1 +  # Goldbach
               1;   # $_ is ok
 
 use Math::Prime::Util qw/:all/;
@@ -582,6 +573,45 @@ subtest 'almost primes', sub {
 
 ###############################################################################
 
+subtest 'prime powers', sub {
+  is_deeply([map {$_-100500} @{prime_powers(100500,101000)}],
+            [qw/1 11 17 19 23 37 47 49 59 91 109 113 121 149 169 173 193 199 203 233 241 247 269 287 299 301 311 323 329 347 353 407 413 427 431 437 443 457 481 487 499/],
+            "prime_powers(100500,101000)");
+  is(next_prime_power(13579), 13591, "next_prime_power");
+  is(next_prime_power(13591), 13597, "next_prime_power");
+  is(prev_prime_power(13579), 13577, "prev_prime_power");
+  is(prev_prime_power(13577), 13567, "prev_prime_power");
+
+  {
+    my($n,$c) = (389954,33234);
+    my $lo = prime_power_count_lower($n);
+    my $hi = prime_power_count_upper($n);
+    my $ap = prime_power_count_approx($n);
+    my $tol = int($c*.05);
+
+    is(prime_power_count($n),$c,"prime_power_count($n) = $c");
+    ok($lo <= $c && $lo+$tol >= $c, "prime_power_count_lower($n)");
+    ok($hi >= $c && $hi-$tol <= $c, "prime_power_count_upper($n)");
+    cmp_closeto($ap, $c, $tol, "prime_power_count_approx($n)");
+  }
+
+  is(nth_prime_power(5123),49033,"nth_prime_power(5123) = 49033");
+  {
+    my($n,$c) = (15460801,999154);
+    my $lo = nth_prime_power_lower($c);
+    my $hi = nth_prime_power_upper($c);
+    my $ap = nth_prime_power_approx($c);
+    my $tol = int($n*.05);
+
+    ok($lo <= $n && $lo+$tol >= $n, "nth_prime_power_lower($c)");
+    ok($hi >= $n && $hi-$tol <= $n, "nth_prime_power_upper($c)");
+    cmp_closeto($ap, $n, $tol, "nth_prime_power_approx($c)");
+  }
+
+};
+
+###############################################################################
+
 subtest 'Ramanujan primes', sub {
   is_deeply( ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
 
@@ -601,7 +631,7 @@ subtest 'Ramanujan primes', sub {
   is(nth_ramanujan_prime(28),311,"nth_ramanujan_prime(28) = 311");
 
   {
-    my($n,$c,$np1) = (1088761,39999);
+    my($n,$c) = (1088761,39999);
     my $lo = nth_ramanujan_prime_lower($c);
     my $hi = nth_ramanujan_prime_upper($c);
     my $ap = nth_ramanujan_prime_approx($c);
@@ -829,10 +859,12 @@ subtest 'is_gaussian_prime', sub {
   ok( !is_gaussian_prime(20571,150592260), "20571+150592260i is not a Gaussian Prime" );
 };
 
-# TODO: add is_almost_prime etc. here
 subtest 'other is * prime', sub {
   ok(  is_semiprime(1110000001), "1110000001 is a semiprime" );
   ok( !is_semiprime(1110000201), "1110000201 is not a semiprime" );
+
+  is(is_prime_power("11398895185373143"),19,"is_prime_power(7^19) = 19");
+  {my $r; is_prime_power("11398895185373143",\$r); is($r,7,"is_prime_power(7^19,0,r) => r=7");}
 
   ok(  is_ramanujan_prime(41), "41 is a Ramanujan prime");
   ok( !is_ramanujan_prime(43), "43 is not a Ramanujan prime");
@@ -850,6 +882,12 @@ subtest 'other is * prime', sub {
     }
     is_deeply(\@got, \@exp, "is_almost_prime");
   }
+
+  my @ipp_2 = (5,347,7080233,17471059,36010357);
+  my @ipp_0 = (10,49,697,7080249,17471061,36010359);
+  is_deeply([map{is_prob_prime($_)}@ipp_2], [map{2}@ipp_2], "is_prob_prime(p)");
+  is_deeply([map{is_prob_prime($_)}@ipp_0], [map{0}@ipp_0], "is_prob_prime(c)");
+
 };
 
 subtest 'primality proofs', sub {
@@ -939,10 +977,6 @@ subtest 'misc number theory functions', sub {
   cmp_closeto( chebyshev_theta(7001), 6929.27483821865062, 0.006929, "chebyshev_theta(7001) =~ 6929.2748");
   cmp_closeto( chebyshev_psi(6588), 6597.07452996633704, 0.006597, "chebyshev_psi(6588) =~ 6597.07453");
 
-  while (my($n, $isp) = each (%ipp)) {
-    is( is_prob_prime($n), $isp, "is_prob_prime($n) should be $isp" );
-  }
-
   is(inverse_totient(42), 4, "inverse totient 42 count");
   is_deeply([inverse_totient(42)], [43,49,86,98], "inverse totient 42 list");
 
@@ -991,6 +1025,21 @@ subtest 'misc number theory functions', sub {
 
   is( gcd(-30,-90,90), 30, "gcd(-30,-90,90) = 30" );
   is( lcm(11926,78001,2211), 2790719778, "lcm(11926,78001,2211) = 2790719778" );
+
+  is(sum_primes(14400),11297213,"sum_primes(14400)");
+  is(mertens(5443),9,"mertens(5443)");
+  is(sumtotient(5443),9008408,"sumtotient(5443)");
+  is(sumliouville(5443),-21,"sumliouville(5443)");
+  is_deeply([map {sumpowerful(5443,$_)} 1..8],[14815846,262303,66879,30528,14445,11045,10252,7937],"sumpowerful");
+  is_deeply([map {powerfree_sum(5443,$_)} 1..8],[1,8999622,12322494,13687065,14286122,14561514,14693701,14756710],"powerfree_sum");
+  is_deeply([map {powersum(5443,$_)} 1..8],[qw/14815846 53766705134 219509292695716 955919057077963010 4336287761695106589076 20232498884989465784893754 96368654823259273645222916236 466295787313885438803232358983490/],"powersum");
+
+  is(sumdigits("0b10101110101"),7,"sumdigits with binary string");
+  is(sumdigits(5443),16,"sumdigits with integer");
+  is(sumdigits("4def",16),46,"sumdigits with hex");
+  is(sumdigits("x4ldef",36),100,"sumdigits with base 36");
+
+  is(hammingweight(5443),6,"hammingweight");
 };
 
 subtest 'more misc ntheory functions', sub {
@@ -1028,9 +1077,6 @@ subtest 'more misc ntheory functions', sub {
   is(is_power(16926659444736),17,"is_power(6^17) = 17");
   {my $r; is_power(16926659444736,0,\$r); is($r,6,"is_power(6^17,0,r) => r=6");}
 
-  is(is_prime_power("11398895185373143"),19,"is_prime_power(7^19) = 19");
-  {my $r; is_prime_power("11398895185373143",\$r); is($r,7,"is_prime_power(7^19,0,r) => r=7");}
-
   is(is_square(603729), 1, "603729 is a square");
 
   is_deeply( [map { is_sum_of_squares($_) } (-10 .. 10, 437)],
@@ -1039,6 +1085,81 @@ subtest 'more misc ntheory functions', sub {
 
   ok( is_polygonal(6,3), "6 is a 3-polygonal number" );
   ok( is_polygonal(9,4), "9 is a 4-polygonal number" );
+};
+
+subtest 'set functions', sub {
+  my @OS = (-5,0,1,2,8,17,20);
+  is_deeply([toset([-5,17,2,8,2,0,20,1,2])],\@OS,"toset");
+  { my @S = @OS;  my $r = setinsert(\@S,1);
+    is_deeply([$r,@S],[0,-5,0,1,2,8,17,20],"setinsert one element already in set");
+  }
+  { my @S = @OS;  my $r = setinsert(\@S,3);
+    is_deeply([$r,@S],[1,-5,0,1,2,3,8,17,20],"setinsert one element not in set");
+  }
+  { my @S = @OS;  my $r = setinsert(\@S,[1,3,18,21]);
+    is_deeply([$r,@S],[3,-5,0,1,2,3,8,17,18,20,21],"setinsert 4 elements, one in set");
+  }
+  { my @S = @OS;  my $r = setremove(\@S,4);
+    is_deeply([$r,@S],[0,-5,0,1,2,8,17,20],"setremove 1 element not in set");
+  }
+  { my @S = @OS;  my $r = setremove(\@S,1);
+    is_deeply([$r,@S],[1,-5,0,2,8,17,20],"setremove 1 element in set");
+  }
+  { my @S = @OS;  my $r = setremove(\@S,[1,2,3]);
+    is_deeply([$r,@S],[2,-5,0,8,17,20],"setremove 2 elements in set");
+  }
+  { my @S = @OS;  my $r = setinvert(\@S,1);
+    is_deeply([$r,@S],[-1,-5,0,2,8,17,20],"setinvert");
+  }
+  { my @S = @OS;  my $r = setinvert(\@S,3);
+    is_deeply([$r,@S],[1,-5,0,1,2,3,8,17,20],"setinvert");
+  }
+  { my @S = @OS;  my $r = setinvert(\@S,[2,3]);
+    is_deeply([$r,@S],[0,-5,0,1,3,8,17,20],"setinvert");
+  }
+  is(setcontains(\@OS,3),0,"setcontains one not found");
+  is(setcontains(\@OS,1),1,"setcontains one found");
+  is(setcontains(\@OS,[-1,8]),0,"setcontains subset not found");
+  is(setcontains(\@OS,[-5,0,8]),1,"setcontains subset found");
+  is(setcontainsany(\@OS,[-1,7]),0,"setcontainsany not found");
+  is(setcontainsany(\@OS,[-1,8]),1,"setcontainsany found");
+
+  is(setcontains(primes(500),353),1,"setcontains with primes");
+
+  is_deeply([setbinop { $a * $b } [1,2,3],[2,3,4]],[2,3,4,6,8,9,12],"setbinop");
+  is_deeply([sumset([-1,0,1])], [-2,-1,0,1,2], "sumset");
+
+  {
+    my @A = (1,2,3,4);
+    my @B = (3,4,5,6);
+    is_deeply([setunion(\@A,\@B)],[1,2,3,4,5,6],"setunion");
+    is_deeply([setintersect(\@A,\@B)],[3,4],"setintersect");
+    is_deeply([setminus(\@A,\@B)],[1,2],"setminus");
+    is_deeply([setminus(\@B,\@A)],[5,6],"setminus");
+    is_deeply([setdelta(\@A,\@B)],[1,2,5,6],"setdelta");
+
+    is(is_sidon_set(\@A),0,"is_sidon_set (false)");
+    is(is_sidon_set([1,2,4,8,16,29,58]),1,"is_sidon_set (true)");
+    is(is_sidon_set([0,1,4,6]),1,"is_sidon_set (true)");
+    is(is_sumfree_set(\@B),0,"is_sumfree_set (false)");
+    is(is_sumfree_set([2,3,15]),1,"is_sumfree_set (true)");
+
+    is(set_is_disjoint(\@A,\@B),0,"set_is_disjoint");
+    is(set_is_disjoint(\@A,[6,7]),1,"set_is_disjoint");
+    is(set_is_equal(\@A,\@B),0,"set_is_equal");
+    is(set_is_equal(\@A,\@A),1,"set_is_equal");
+    is(set_is_subset(\@A,[5,6]),0,"set_is_subset");
+    is(set_is_subset(\@A,[3,4]),1,"set_is_subset");
+    is(set_is_proper_subset(\@A,[2,3,4]),1,"set_is_proper_subset");
+    is(set_is_proper_subset(\@A,[1,2,3,4]),0,"set_is_proper_subset");
+    is(set_is_superset(\@A,\@B),0,"set_is_superset");
+    is(set_is_superset(\@A,[1..8]),1,"set_is_superset");
+    is(set_is_proper_superset(\@A,[1..8]),1,"set_is_proper_superset");
+    is(set_is_superset(\@A,\@A),1,"set_is_superset");
+    is(set_is_proper_superset(\@A,\@A),0,"set_is_proper_superset");
+    is(set_is_proper_intersection(\@A,\@A),0,"set_is_proper_intersection");
+    is(set_is_proper_intersection(\@A,\@B),1,"set_is_proper_intersection");
+  }
 };
 
 subtest 'vector (list) functions', sub {
@@ -1083,6 +1204,42 @@ subtest 'vector (list) functions', sub {
   is(scalar @{[vecsample(4,[8..11])]}, 4, "vecsample returns all items with exact k");
 };
 
+subtest 'rationals', sub {
+  is_deeply([contfrac(25999,17791)],[1,2,5,1,31,1,2,1,4,2],"contfrac");
+  is_deeply([from_contfrac(1,2,5,1,31,1,2,1,4,2)],[25999,17791],"from_contfrac");
+
+  # Both the Perl and Python code on Rosettacode (Jan 2026) is wrong for these.
+
+  is(calkin_wilf_n(1249,9469), 10000000, "calkin_wilf_n(1249,9469) = 10000000");
+  is_deeply([nth_calkin_wilf(10000000)],[1249,9469],"nth_calkin_wilf(10000000)");
+
+  is_deeply([next_calkin_wilf(25999,17791)],[17791,27374],"next_calkin_wilf");
+  is("".calkin_wilf_n(25999,17791), "834529325481721", "calkin_wilf_n(25999,17791)");
+  is_deeply([nth_calkin_wilf("834529325481721")],[25999,17791],"nth_calkin_wilf(834529325481721)");
+
+  is(stern_brocot_n(1249,9469), 8434828, "stern_brocot_n(1249,9469) = 8434828");
+  is_deeply([nth_stern_brocot(8434828)],[1249,9469],"nth_stern_brocot(1249,9469)");
+  is_deeply([next_stern_brocot(1249,9469)],[1409,10682],"next_stern_brocot");
+  is(stern_brocot_n(1409,10682), 8434829, "stern_brocot_n(1409,10682)");
+
+  is(nth_stern_diatomic(10000000), 1249, "nth_stern_diatomic");
+
+  is_deeply([farey(6)],[[0,1],[1,6],[1,5],[1,4],[1,3],[2,5],[1,2],[3,5],[2,3],[3,4],[4,5],[5,6],[1,1]],"farey(6)");
+  is_deeply(farey(144,146),[3,125],"farey(144,146)");
+  is(scalar farey(1445), 635141, "scalar farey(1445) = 635141");
+  is_deeply(next_farey(188,[3,5]),[113,188],"next_farey");
+  is_deeply([farey_rank(188,[3,5]),farey_rank(188,[113,188])],[6478,6479],"farey_rank");
+};
+
+subtest 'Goldbach', sub {
+  is(minimal_goldbach_pair(258),7,"minimal_goldbach_pair");
+  is(goldbach_pair_count(4620),190,"goldbach_pair_count");
+  is_deeply([goldbach_pairs(180)],[7,13,17,23,29,31,41,43,53,67,71,73,79,83],"goldbach_pairs");
+  is_deeply([goldbach_pairs(175)],[2],"goldbach_pairs for odd n where n-2 is prime");
+  is_deeply([goldbach_pairs(177)],[],"goldbach_pairs for odd n where n-2 is not prime");
+  is_deeply([map { scalar goldbach_pairs($_) } (180,175,177)], [14,1,0], "scalar goldbach_pairs returns count");
+};
+
 # TODO:
 #  divisor_sum
 #  inverse_li
@@ -1091,11 +1248,8 @@ subtest 'vector (list) functions', sub {
 #  prime_count_upper
 #  twin_prime_count_approx
 #  nth_twin_prime_approx
-#  sum_primes
 #  print_primes
 #  chinese
-#  sumdigits
-#  hammingweight
 #  todigitstring / _splitdigits
 #  harmfrac
 #  harmreal

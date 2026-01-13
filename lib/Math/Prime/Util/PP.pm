@@ -1320,6 +1320,7 @@ sub goldbach_pair_count {
 }
 sub goldbach_pairs {
   my $n = shift;
+  return goldbach_pair_count($n) unless wantarray;
   validate_integer_nonneg($n);
   return () if $n < 4;
   return Mis_prime($n-2) ? (2) : ()  if $n & 1 || $n == 4;
