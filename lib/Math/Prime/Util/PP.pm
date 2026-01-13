@@ -8185,11 +8185,9 @@ sub is_primitive_root {
   validate_integer($a);
   validate_integer_abs($n);
 
-  if ($n <= 4) {
-    return (undef,1)[$n] if $n <= 1;
-    return ($a == $n-1)  if $n <= 4;
-  }
-  $a = Mmodint($a, $n)   if $a < 0 || $a >= $n;
+  return (undef,1)[$n] if $n <= 1;
+  $a = Mmodint($a, $n) if $a < 0 || $a >= $n;
+  return 0+($a == $n-1) if $n <= 4;
   return 0 if $a <= 1;
 
   return Math::Prime::Util::GMP::is_primitive_root($a,$n)
@@ -9146,46 +9144,87 @@ sub _test_anr {
   1;
 }
 
+sub _log_gamma {
+  my $x = shift;
+  my @lanczos = (0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7);
+  my($base,$sum) = ($x+7.5, 0);
+  $sum += $lanczos[$_] / ($x + $_)  for (8,7,6,5,4,3,2,1);
+  $sum += $lanczos[0];
+  return 0.91893853320467274178 + log($sum/$x) + (($x+0.5)*log($base)-$base);
+}
+sub _log_binomial {
+  my($n,$k) = @_;
+  return _log_gamma($n+1) - _log_gamma($k+1) - _log_gamma($n-$k+1);
+}
+sub _log_bern41_binomial {
+  my($r,$d,$i,$j,$s) = @_;
+  return _log_binomial( 2*$s,    $i)
+       + _log_binomial( $d,      $i)
+       + _log_binomial( 2*$s-$i, $j)
+       + _log_binomial( $r-2-$d, $j);
+}
+sub _bern41_acceptable {
+  my($n,$r,$s) = @_;
+  my $scmp = int(sqrt(($r-1)/3.0) + 0.99999) * log($n);
+  my $d = int(0.5 * ($r-1));
+  my $i = int(0.475 * ($r-1));
+  my $j = $i;
+  $d = $r-2 if $d > $r-2;
+  $i = $d if $i > $d;
+  $j = $r-2-$d if $j > ($r-2-$d);
+  return _log_bern41_binomial($r,$d,$i,$j,$s) >= $scmp;
+}
+
 sub is_aks_prime {
   my $n = shift;
+  _validate_integer($n);
   return 0 if $n < 2 || Mis_power($n);
+  return 1 if $n == 2;
 
-  my($log2n, $limit);
-  if ($n > 2**48) {
-    do { require Math::BigFloat; Math::BigFloat->import(); }
-      if !defined $Math::BigFloat::VERSION;
-    # limit = floor( log2(n) * log2(n) ).  o_r(n) must be larger than this
-    my $floatn = Math::BigFloat->new("$n");
-    #my $sqrtn = _bigint_to_int($floatn->copy->bsqrt->bfloor);
-    # The following line seems to trigger a memory leak in Math::BigFloat::blog
-    # (the part where $MBI is copied to $int) if $n is a Math::BigInt::GMP.
-    $log2n = $floatn->copy->blog(2);
-    $limit = _bigint_to_int( ($log2n * $log2n)->bfloor );
-  } else {
-    $log2n = log($n)/log(2) + 0.0001;      # Error on large side.
-    $limit = int( $log2n*$log2n + 0.0001 );
+  if ($n > 11) {
+    for (2,3,5,7,11) { return 0 if Mis_divisible($n,$_) }
   }
 
-  my $r = Mnext_prime($limit);
-  foreach my $f (@{Mprimes(0,$r-1)}) {
-    return 1 if $f == $n;
-    return 0 if !($n % $f);
+  my($starta, $s);
+  my $_verbose = getconfig()->{'verbose'};
+
+  my $log2n = log($n)/log(2) + 0.0001;      # Error on large side.
+  my $r0    = ($log2n > 32 ? 0.010 : 0.003) * $log2n * $log2n;
+  my $rmult =  $log2n > 32 ? 6     : 30;
+
+  my $r = Mnext_prime($r0 < 2 ? 2 : Mtoint($r0));
+  while (   !Math::Prime::Util::is_primitive_root($n,$r)
+         || !_bern41_acceptable($n,$r,$rmult * ($r-1))) {
+    $r = next_prime($r);
   }
 
-  while ($r < $n) {
-    return 0 if !($n % $r);
-    #return 1 if $r >= $sqrtn;
-    last if Mznorder($n, $r) > $limit;  # Note the arguments!
-    $r = Mnext_prime($r);
+  {
+    my $bi = 1;
+    my $bj = $rmult * ($r-1);
+    while ($bi < $bj) {
+      $s = $bi + (($bj-$bi) >> 1);
+      if (!_bern41_acceptable($n, $r, $s)) { $bi = $s+1; }
+      else                                 { $bj = $s; }
+    }
+    $s = $bj;
+    croak "AKS: internal error bad s" unless _bern41_acceptable($n, $r, $s);
+    # S will range from 2 to s+1
+    $starta = 2;
+    $s = $s+1;
   }
-
-  return 1 if $r >= $n;
-
-  # Since r is a prime, phi(r) = r-1
-  my $rlimit = (ref($log2n) eq 'Math::BigFloat')
-             ? _bigint_to_int( Math::BigFloat->new("$r")->bdec()
-                                           ->bsqrt->bmul($log2n)->bfloor)
-             : int( (sqrt(($r-1)) * $log2n) + 0.001 );
+  my $slim = $s * ($s-1);
+  print "# aks trial to $slim\n" if $_verbose >= 2;
+  {
+    my @f = trial_factor($n, $slim);
+    return 0 if @f >= 2;
+  }
+  return 1 if Mmulint($slim,$slim) >= $n;
+  # Check b^(n-1) = 1 mod n for b in [2..s]
+  for my $a (2 .. $s) {
+    return 0 if Mpowmod($a, $n-1, $n) != 1;
+  }
 
   if ($n < (MPU_HALFWORD-1) ) {
     $n = _bigint_to_int($n) if ref($n);
@@ -9193,10 +9232,9 @@ sub is_aks_prime {
     $n = tobigint($n);
   }
 
-  my $_verbose = getconfig()->{'verbose'};
-  print "# aks r = $r  s = $rlimit\n" if $_verbose;
+  print "# aks r = $r  s = $s\n" if $_verbose;
   local $| = 1 if $_verbose > 1;
-  for (my $a = 1; $a <= $rlimit; $a++) {
+  for (my $a = $starta; $a <= $s; $a++) {
     return 0 unless _test_anr($a, $n, $r);
     print "." if $_verbose > 1;
   }
