@@ -7775,7 +7775,8 @@ sub binomial {
 
   # 1. Try GMP
   return reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k))
-    if $Math::Prime::Util::_GMPfunc{"binomial"};
+    if $Math::Prime::Util::_GMPfunc{"binomial"} &&
+       ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296));
 
   # 2. Exit early for known 0 cases, and adjust k to be positive.
   if ($n >= 0) {  return 0 if $k < 0 || $k > $n;  }

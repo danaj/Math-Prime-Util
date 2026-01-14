@@ -4414,7 +4414,7 @@ void binomial(IN SV* svn, IN SV* svk)
         if (ret != 0) XSRETURN_UV(ret);
       }
     }
-    DISPATCHPP();
+    DISPATCHPP_GMPONLYIF(nstatus == 1 && kstatus != 0);
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
