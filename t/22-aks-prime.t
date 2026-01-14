@@ -56,5 +56,13 @@ if ($extra) {
   is(is_aks_prime(101), 1, "is_aks_prime(101)=1");
   is(is_aks_prime(15481), 0, "is_aks_prime(15481)=0");
   is(is_aks_prime(12109), 1, "is_aks_prime(12109)=1");
-  is(is_aks_prime(536891893), 1, "is_aks_prime(536891893)=1");
+  SKIP: {
+    skip "Skipping 29-bit prime in PP",1 unless $usexs;
+    # 0.006 s   XS 64-bit
+    # 0.08  s   XS 32-bit
+    # 0.02  s   GMP
+    # 0.8   s   64-bit PP
+    # 7m 50 s   32-bit PP (ouch)
+    is(is_aks_prime(536891893), 1, "is_aks_prime(536891893)=1");
+  }
 }
