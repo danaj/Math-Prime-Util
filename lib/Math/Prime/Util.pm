@@ -215,6 +215,14 @@ BEGIN {
       Math::Prime::Util::GMP::seed_csprng(256, random_bytes(256));
     }
   }
+
+  # Alias PP and GMP if requested.  Very convenient but a big hammer.
+  if (defined $ENV{MPU_DEVNAMES} && $ENV{MPU_DEVNAMES} == 1) {
+    no strict 'refs';  ## no critic(strict)
+    *MPU:: = \*Math::Prime::Util::;
+    *PP:: = \*Math::Prime::Util::PP:: if eval { require Math::Prime::Util::PP; Math::Prime::Util::PP->import(); 1; };
+    *GMP:: = \*Math::Prime::Util::GMP:: if $_Config{'gmp'};
+  }
 }
 
 croak "Perl and XS don't agree on bit size"
@@ -966,7 +974,7 @@ systems that have different support.
 
 =head2 MPU_NO_XS
 
-If set to C<1> then everything is run in pure Perl.  No C functions
+If set to C<1>, everything is run in pure Perl.  No C functions
 are loaded or used, as XSLoader is not even called.  All top-level
 XS functions are replaced by a pure Perl layer (the PPFE.pm module
 that supplies a "Pure Perl Front End").
@@ -979,11 +987,26 @@ module operates normally.
 
 =head2 MPU_NO_GMP
 
-If set to C<1> then the L<Math::Prime::Util::GMP> backend is not
+If set to C<1>, the L<Math::Prime::Util::GMP> backend is not
 loaded, and operation will be exactly as if it was not installed.
 
 If this variable is not set or set to anything other than C<1>, the
 module operates normally.
+
+=head2 MPU_DEVNAMES
+
+If set to C<1>, the PP package will be loaded on startup rather than
+on demand, and the package aliases C<MPU>, C<PP>, C<GMP> will be used
+for the main, Perl, and GMP packages respectively.
+Normally you wouldn't want this for both agressive namespace pollution as
+well as performance (there is often no need to load the huge PP module).
+But it is convenient if one wants to call the different paths explitly.
+
+Regarding performance, on a 2020 Macbook M1, normal startup time is
+about 10ms.  With this option set it becomes 45ms.
+This is the reason the PP code is only loaded if needed.
+For many purposes this amount of time is trivial, but slower computers
+or more time critical short applications will care.
 
 
 =head1 BIGNUM SUPPORT
