@@ -111,6 +111,10 @@ plan tests => 2 +  # require_ok
               1 +  # primality proofs
               1 +  # misc ntheory
               1 +  # more misc ntheory
+              1 +  # Lucky numbers
+              1 +  # perfect powers
+              1 +  # powerful
+              1 +  # powerfree
               1 +  # set functions
               1 +  # vector (list) functions
               1 +  # rationals
@@ -712,7 +716,6 @@ subtest 'real (float) functions', sub {
 };
 
 ###############################################################################
-
 subtest 'factoring', sub {
   #foreach my $n (@primes) {
   #  my @f = factor($n);
@@ -1054,8 +1057,6 @@ subtest 'misc number theory functions', sub {
   is(mertens(5443),9,"mertens(5443)");
   is(sumtotient(5443),9008408,"sumtotient(5443)");
   is(sumliouville(5443),-21,"sumliouville(5443)");
-  is_deeply([map {sumpowerful(5443,$_)} 1..8],[14815846,262303,66879,30528,14445,11045,10252,7937],"sumpowerful");
-  is_deeply([map {powerfree_sum(5443,$_)} 1..8],[1,8999622,12322494,13687065,14286122,14561514,14693701,14756710],"powerfree_sum");
   is_deeply([map {powersum(5443,$_)} 1..8],[qw/14815846 53766705134 219509292695716 955919057077963010 4336287761695106589076 20232498884989465784893754 96368654823259273645222916236 466295787313885438803232358983490/],"powersum");
 
   is(sumdigits("0b10101110101"),7,"sumdigits with binary string");
@@ -1064,6 +1065,11 @@ subtest 'misc number theory functions', sub {
   is(sumdigits("x4ldef",36),100,"sumdigits with base 36");
 
   is(hammingweight(5443),6,"hammingweight");
+
+  is_deeply([kronecker(18,106),kronecker(19,106),kronecker(11,106)],[0,1,-1],"kronecker");
+  is_deeply([[cornacchia(17,131)],[cornacchia(2,131)],[cornacchia(2,136)]],[[undef],[9,5],[8,6]],"cornacchia");
+  is(hclassno(320),168,"hclassno");
+  is_deeply([ramanujan_tau(81),ramanujan_tau(41),ramanujan_tau(44)],[1665188361,308120442,-786948864],"ramanujan_tau");
 };
 
 subtest 'more misc ntheory functions', sub {
@@ -1109,8 +1115,143 @@ subtest 'more misc ntheory functions', sub {
 
   ok( is_polygonal(6,3), "6 is a 3-polygonal number" );
   ok( is_polygonal(9,4), "9 is a 4-polygonal number" );
+
+  ok(!is_odd(576),"is_odd(576)");
+  ok( is_odd(577),"is_odd(577)");
+  ok( is_even(576),"is_even(576)");
+  ok(!is_even(577),"is_even(577)");
+  ok(!is_divisible(30,7),"is_divisible(30,7)");
+  ok( is_divisible(30,5),"is_divisible(30,5)");
+  ok(!is_congruent(100007,176,177),"is_congruent(100007,176,177)");
+  ok( is_congruent(100007,2,177),"is_congruent(100007,2,177)");
+
+  ok(!is_square_free(331483),"is_square_free(331483)");
+  ok( is_square_free(370481),"is_square_free(370481)");
+  ok(!is_primitive_root(3,1777),"is_primitive_root(3,1777)");
+  ok( is_primitive_root(5,1777),"is_primitive_root(5,1777)");
+  ok(!is_perfect_number(2048),"is_perfect_number(2048)");
+  ok( is_perfect_number(8128),"is_perfect_number(8128)");
+
+  is(fromdigits([1,1,0,1],2), 13, "fromdigits binary");
+  is(fromdigits([0,1,1,0,1],16), 4353, "fromdigits base 16");
+  is_deeply([todigits(77)], [7,7], "todigits 77");
+  is_deeply([todigits(77,2)], [1,0,0,1,1,0,1], "todigits 77 base 2");
+  is(todigitstring(-143,16), "8f", "todigitstring base 16");
+
+  is(tozeckendorf(1025),"100000010000101","tozeckendorf");
+  is(fromzeckendorf("100000010000101"),1025,"fromzeckendorf");
+
+  ok(!is_qr(177,10256), "177 is not a quadratic residue mod 10256");
+  ok( is_qr(180,10256), "180 is a quadratic residue mod 10256");
+  is(qnr(10271),7,"qnr(10271) = 7");
+
+  is(chinese([14,643], [254,419], [87,733]), 87041638, "chinese");
+  is_deeply([chinese2([14,643], [254,419], [87,733])], [87041638,197482661], "chinese2");
+
+  is(frobenius_number(5,13,29),37,"frobenius_number");
+
+  is("".factorial(53),"4274883284060025564298013753389399649690343788366813724672000000000000","factorial(53)");
+  is(factorialmod(53,177),30,"factorialmod(53,177)");
+  is(factorialmod(830,1777),1771,"factorialmod(830,1777)")  if $extra;
+
+  is(subfactorial(15),481066515734,"subfactorial(15)");
+
+  is(binomialmod(53,7,177),152,"binomialmod");
+
+  is(falling_factorial(17,5),742560,"falling_factorial");
+  is(rising_factorial(17,5),2441880,"rising_factorial");
+
+#  is_smooth
+#  is_rough
+#  smooth_count
+#  rough_count
 };
 
+
+subtest 'Lucky numbers', sub {
+  ok(!is_lucky(1772),"1772 is not a lucky number");
+  ok( is_lucky(1771),"1771 is a lucky number");
+
+  is_deeply(lucky_numbers(600,700), [map {600+$_}1,13,15,19,21,31,39,43,45,51,55,73,79,85,93,99], "lucky numbers between 600 and 700");
+
+  {
+    my($n,$c) = (8840,1004);
+    my $lo = lucky_count_lower($n);
+    my $hi = lucky_count_upper($n);
+    my $ap = lucky_count_approx($n);
+    my $tol = int($c*.05);
+
+    is(lucky_count($n),$c,"lucky_count($n) = $c");
+    ok($lo <= $c && $lo+$tol >= $c, "lucky_count_lower($n)");
+    ok($hi >= $c && $hi-$tol <= $c, "lucky_count_upper($n)");
+    cmp_closeto($ap, $c, $tol, "lucky_count_approx($n)");
+  }
+
+  is(nth_lucky(28),129,"nth_lucky(28) = 129");
+
+  {
+    my($n,$c) = (18605821,1088761);
+    my $lo = nth_lucky_lower($c);
+    my $hi = nth_lucky_upper($c);
+    my $ap = nth_lucky_approx($c);
+    my $tol = int($n*.05);
+
+    ok($lo <= $n && $lo+$tol >= $n, "nth_lucky_lower($c) $lo <= $n");
+    ok($hi >= $n && $hi-$tol <= $n, "nth_lucky_upper($c) $hi >= $n");
+    cmp_closeto($ap, $n, $tol, "nth_lucky_approx($c) $ap =~ $n");
+  }
+};
+
+
+subtest 'perfect powers', sub {
+  is(is_perfect_power(19487172),0,"19487172 is not a perfect power");
+  is(is_perfect_power(19487171),1,"19487171 is a perfect power");
+  is(next_perfect_power(161051),161604,"next_perfect_power(5^7) = 402^2");
+  is(prev_perfect_power(161051),160801,"prev_perfect_power(5^7) = 401^2");
+
+  is(perfect_power_count(123456),404,"perfect_power_count(123456) = 404");
+  is(perfect_power_count(123456,234567),148,"perfect_power_count(123456,234567) = 148");
+  ok(perfect_power_count_lower("9999999999900000000000000") <= 3162493192548,"perfect_power_count_lower");
+  ok(perfect_power_count_upper("9999999999900000000000000") >= 3162493192548,"perfect_power_count_upper");
+  cmp_closeto(perfect_power_count_approx("9999999999900000000000000"),3162493192548,1000,"perfect_power_count_approx");
+
+  is("".nth_perfect_power(1234567890),"1521310467887050801","nth_perfect_power");
+  ok(nth_perfect_power_lower(1234567) <= 1495530880561,"nth_perfect_power_lower");
+  ok(nth_perfect_power_upper(1234567) >= 1495530880561,"nth_perfect_power_lower");
+  cmp_closeto(nth_perfect_power_approx(1234567),1495530880561,10000000,"nth_perfect_power_approx");
+};
+
+subtest 'powerful', sub {
+  is(is_powerful(260),0,"260 is not a powerful number");
+  is(is_powerful(243),1,"243 is a powerful number");
+  is_deeply(powerful_numbers(10500,11000),[10584,10609,10648,10800,10816,10952,10976],"powerful_numbers(10500,11000)");
+  is(powerful_count(1234567),2255,"powerful_count");
+  is(nth_powerful(1000),253472,"nth_powerful");
+
+  is_deeply([map {sumpowerful(5443,$_)} 1..8],[14815846,262303,66879,30528,14445,11045,10252,7937],"sumpowerful");
+};
+
+subtest 'powerfree', sub {
+  is(is_powerfree(1000),0,"1000 is not powerfree");
+  is(is_powerfree(1001),1,"1001 is powerfree");
+
+  is(powerfree_count(10500),6385,"powerfree_count");
+  is(nth_powerfree(10500),17266,"nth_powerfree");
+
+  is(powerfree_part(100040),25010,"powerfree_part(100040) = 25010");
+  is(powerfree_part(100040,3),12505,"powerfree_part(100040,3) = 12505");
+  is(squarefree_kernel(100040),25010,"squarefree_kernel(100040) = 25010");
+
+  is(powerfree_part(10004),2501,"powerfree_part(10040) = 2501");
+  is(squarefree_kernel(10004),5002,"squarefree_kernel(10004) = 5002");
+
+  is_deeply([map {powerfree_sum(5443,$_)} 1..8],[1,8999622,12322494,13687065,14286122,14561514,14693701,14756710],"powerfree_sum");
+  is(powerfree_part_sum(100040),3292589515,"powerfree_part_sum(100040)");
+  is(powerfree_part_sum(100040,3),4234954627,"powerfree_part_sum(100040,3)");
+  is(powerfree_part_sum(100040,4),4642253940,"powerfree_part_sum(100040,4)");
+};
+
+###############################################################################
 subtest 'set functions', sub {
   my @OS = (-5,0,1,2,8,17,20);
   is_deeply([toset([-5,17,2,8,2,0,20,1,2])],\@OS,"toset");
@@ -1186,6 +1327,7 @@ subtest 'set functions', sub {
   }
 };
 
+###############################################################################
 subtest 'vector (list) functions', sub {
   is(vecsum(15, 30, 45), 90, "vecsum(15,30,45)");
   is("".vecsum(4294966296,4294965296,4294964296), "12884895888", "vecsum(2^32-1000,2^32-2000,2^32-3000)");
@@ -1235,6 +1377,7 @@ subtest 'vector (list) functions', sub {
   is(scalar @{[vecsample(4,[8..11])]}, 4, "vecsample returns all items with exact k");
 };
 
+###############################################################################
 subtest 'rationals', sub {
   is_deeply([contfrac(25999,17791)],[1,2,5,1,31,1,2,1,4,2],"contfrac");
   is_deeply([from_contfrac(1,2,5,1,31,1,2,1,4,2)],[25999,17791],"from_contfrac");
@@ -1262,6 +1405,7 @@ subtest 'rationals', sub {
   is_deeply([farey_rank(188,[3,5]),farey_rank(188,[113,188])],[6478,6479],"farey_rank");
 };
 
+###############################################################################
 subtest 'Goldbach', sub {
   is(minimal_goldbach_pair(258),7,"minimal_goldbach_pair");
   is(goldbach_pair_count(4620),190,"goldbach_pair_count");
@@ -1307,44 +1451,13 @@ subtest 'Goldbach', sub {
 #  random_semiprime
 
 # TODO#
-#  todigits
-#  todigitstring / _splitdigits
-#  fromdigits
-#  tozeckendorf
-#  fromzeckendorf
-#  is_odd
-#  is_even
-#  is_divisible
-#  is_congruent
-#  is_qr
-#  is_perfect_power
-#  is_square_free
-#  is_powerfree
-#  is_primitive_root
-#  is_perfect_number
-#  is_smooth
-#  is_rough
-#  is_powerful
-#  chinese
-#  chinese2
-#  frobenius_number
-#  factorial
-#  factorialmod
-#  subfactorial
-#  binomialmod
-#  falling_factorial
-#  rising_factorial
-#  kronecker
-#  cornacchia
-#  qnr
-#  hclassno
-#  ramanujan_tau (_taup, _tauprime, _taupower)
 #  lucasu
 #  lucasv
 #  lucasumod
 #  lucasvmod
 #  lucasuvmod
 #  pisano_period
+#
 #  bernreal
 #  harmfrac
 #  harmreal
@@ -1352,28 +1465,6 @@ subtest 'Goldbach', sub {
 #  numtoperm
 #  permtonum
 #  randperm
-#  powerful_numbers
-#  powerful_count
-#  nth_powerful
-#  next_perfect_power
-#  prev_perfect_power
-#  perfect_power_count(n)
-#  perfect_power_count(beg,end)
-#  perfect_power_count_lower(n)
-#  perfect_power_count_upper(n)
-#  perfect_power_count_approx(n)
-#  nth_perfect_power(n)
-#  nth_perfect_power_lower(n)
-#  nth_perfect_power_upper(n)
-#  nth_perfect_power_approx(n)
-#  smooth_count
-#  rough_count
-#  powerfree_count
-#  nth_powerfree
-#  powerfree_sum (done)
-#  powerfree_part
-#  powerfree_part_sum
-#  squarefree_kernel
 
 # forsemiprimes {...} [start,] end    loop over semiprimes in range
 # foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range
@@ -1386,18 +1477,6 @@ subtest 'Goldbach', sub {
 # prime_iterator                      returns a simple prime iterator
 # prime_iterator_object               returns a prime iterator object
 # lastfor                             stop iteration of for.... loop
-
-#  is_lucky
-#  lucky_numbers
-#  lucky_count(n)
-#  lucky_count(beg,end)
-#  lucky_count_lower(n)
-#  lucky_count_upper(n)
-#  lucky_count_approx(n)
-#  nth_lucky(n)
-#  nth_lucky_lower(n)
-#  nth_lucky_upper(n)
-#  nth_lucky_approx(n)
 
 # TODO:
 #
