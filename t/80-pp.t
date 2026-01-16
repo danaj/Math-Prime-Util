@@ -85,161 +85,6 @@ foreach my $ppref (values %pseudoprimes) {
   @composites = sort {$a<=>$b} keys %uniq;
 }
 
-my %small_single = (
-    0   => [],
-    1   => [],
-    2   => [2],
-    3   => [2, 3],
-    4   => [2, 3],
-    5   => [2, 3, 5],
-    6   => [2, 3, 5],
-    7   => [2, 3, 5, 7],
-    11  => [2, 3, 5, 7, 11],
-    18  => [2, 3, 5, 7, 11, 13, 17],
-    19  => [2, 3, 5, 7, 11, 13, 17, 19],
-    20  => [2, 3, 5, 7, 11, 13, 17, 19],
-);
-
-my %small_range = (
-  "3 to 9" => [3,5,7],
-  "2 to 20" => [2,3,5,7,11,13,17,19],
-  "30 to 70" => [31,37,41,43,47,53,59,61,67],
-  "70 to 30" => [],
-  "20 to 2" => [],
-  "1 to 1" => [],
-  "2 to 2" => [2],
-  "3 to 3" => [3],
-  "2 to 3" => [2,3],
-  "2 to 5" => [2,3,5],
-  "3 to 6" => [3,5],
-  "3 to 7" => [3,5,7],
-  "4 to 8" => [5,7],
-  "2010733 to 2010881" => [2010733,2010881],
-  "2010734 to 2010880" => [],
-  "3088 to 3164" => [3089,3109,3119,3121,3137,3163],
-  "3089 to 3163" => [3089,3109,3119,3121,3137,3163],
-  "3090 to 3162" => [3109,3119,3121,3137],
-  "3842610773 to 3842611109" => [3842610773,3842611109],
-  "3842610774 to 3842611108" => [],
-);
-
-my %primegaps = (
- 19609 => 52,
- 360653 => 96,
- 2010733 => 148,
-);
-
-my %pivals32 = (
-                   1 => 0,
-                  10 => 4,
-                 100 => 25,
-                1000 => 168,
-               10000 => 1229,
-              100000 => 9592,
-             1000000 => 78498,
-            10000000 => 664579,
-           100000000 => 5761455,
-          1000000000 => 50847534,
-               60067 => 6062,
-               65535 => 6542,
-            16777215 => 1077871,
-          2147483647 => 105097565,
-          4294967295 => 203280221,
-);
-my %pivals_small = map { $_ => $pivals32{$_} }
-                   grep {$_ <= 80000}
-                   keys %pivals32;
-
-my %pi_intervals = (
-  "1e9 +2**14"  => 785,
-  "17 to 13"    => 0,
-  "3 to 17"     => 6,
-  "4 to 17"     => 5,
-  "4 to 16"     => 4,
-  "191912783 +248" => 2,
-  "191912784 +247" => 1,
-  "191912783 +247" => 1,
-  "191912784 +246" => 0,
-);
-my %extra_pi_intervals = (
-  "868396 to 9478505" => 563275,
-  "1118105 to 9961674" => 575195,
-  "24689 to 7973249" => 535368,
-);
-# Add extra intervals to pi_intervals if we're doing release testing
-@pi_intervals{keys %extra_pi_intervals} = values %extra_pi_intervals if $extra;
-
-# Remove any entries where the high value is too large for us
-# ikegami++ for the delete from a hash slice idea
-delete @pi_intervals{ grep { (parse_range($_))[1] > ~0 } keys %pi_intervals };
-
-my %nthprimes32 = (
-                  1 => 2,
-                 10 => 29,
-                100 => 541,
-               1000 => 7919,
-              10000 => 104729,
-             100000 => 1299709,
-            1000000 => 15485863,
-           10000000 => 179424673,
-          100000000 => 2038074743,
-);
-my %nthprimes_small = map { $_ => $nthprimes32{$_} }
-                      grep { $extra ? ($_ <= 2_000_000) : ($_ <= 5_000) }
-                      keys %nthprimes32;
-
-my %eivals = (
-         -10 =>  -0.00000415696892968532438,
-        -0.5 =>  -0.55977359477616,
-        -0.1 =>  -1.8229239584193906660809,
-      -0.001 =>  -6.33153936413615,
-    -0.00001 => -10.9357198000436956,
- -0.00000001 => -17.843465089050832587,
- 0.693147180559945 => 1.0451637801174927848446,           # log2
-         1   =>  1.8951178163559367554665,
-         1.5 =>  3.3012854491297978379574,
-         2   =>  4.9542343560018901633795,
-         5   =>  40.185275355803177455091,
-         10  =>  2492.2289762418777591384,
-         12  =>  14959.532666397528852292,
-         20  =>  25615652.664056588820481,
-         40  =>  6039718263611241.5783592,
-         41  =>  16006649143245041.110700,
-);
-my %livals = (
-              0 =>  0,
-           1.01 => -4.0229586739299358695031,
-              2 =>  1.0451637801174927848446,
-             10 =>  6.1655995047872979375230,
-             24 =>  11.200315795232698830550,
-           1000 =>  177.60965799015222668764,
-         100000 =>  9629.8090010507982050343,
-      100000000 =>  5762209.3754480314675691,
-     4294967295 =>  203284081.95454158906409,
-    10000000000 =>  455055614.58662307560953,
-   100000000000 =>  4118066400.6216115150394,
-);
-my %rvals = (
-           1.01 =>  1.0060697180622924796117,
-              2 =>  1.5410090161871318832885,
-             10 =>  4.5645831410050902398658,
-           1000 =>  168.35944628116734806491,
-        1000000 =>  78527.399429127704858870,
-       10000000 =>  664667.44756474776798535,
-     4294967295 =>  203280697.51326064541983,
-    10000000000 =>  455050683.30684692446315,
-18446744073709551615 => 4.25656284014012122706963685602e17,
-);
-my %rzvals = (
-            2   =>  0.6449340668482264364724151666,
-            2.5 =>  0.3414872572509171797567696934,
-            4.5 =>  0.0547075107614542640229672890,
-            7   =>  0.0083492773819228268397975498,
-            8.5 =>  0.0028592508824156277133439825,
-           20.6 =>  0.0000006293391573578212882457,
-           80   =>  8.27180612553034e-25,
-          180   =>  6.52530446799852e-55,
-);
 
 plan tests => 2 +  # require_ok
               1 +  # arithmetic
@@ -250,13 +95,14 @@ plan tests => 2 +  # require_ok
               1 +  # next_prime, prev_prime
               1 +  # prime_count
               1 +  # nth_prime
-              1 +  # twin primes
               1 +  # pseudoprimes
               1 +  # omega_primes
               1 +  # almost_primes
               1 +  # prime powers
+              1 +  # twin primes
+              1 +  # semi primes
               1 +  # ramanujan_primes
-              1 +  # other prime related
+#              1 +  # other prime related
               1 +  # real functions
               1 +  # factoring
               1 +  # AKS primality
@@ -298,7 +144,7 @@ subtest 'arithmetic ops', sub {
   is_deeply([divrem(677,24)],[28,5],"divrem");
   is_deeply([fdivrem(677,24)],[28,5],"fdivrem");
   is_deeply([cdivrem(677,24)],[29,-19],"cdivrem");
-  is_deeply([fdivrem(677,24)],[28,5],"tdivrem");
+  is_deeply([tdivrem(677,24)],[28,5],"tdivrem");
   is(lshiftint(677,3),5416,"lshiftint");
   is(rshiftint(677,3),84,"rshiftint");
   is(rashiftint(677,3),84,"rashiftint");
@@ -320,9 +166,14 @@ subtest 'arithmetic ops', sub {
   is(powmod(24,170,11),1,"powmod");
   is(divmod(24,29,11),5,"divmod");
 
+  is(invmod(45,59), 21, "invmod(45,59)");
+  is(invmod(14,28474), undef, "invmod(14,28474)");
+  is(invmod(42,-2017), 1969, "invmod(42,-2017)");
+
   is(sqrtmod(124,137),undef,"sqrtmod(124,137) = undef");
   is(sqrtmod(11,137),55,"sqrtmod(11,137) = 55");
   is(rootmod(577,3,137),95,"rootmod");
+  is_deeply([allsqrtmod(4,13791)],[2,4595,9196,13789],"allsqrtmod");
   is_deeply([allrootmod(581,5,151)],[34,42,43,62,121],"allrootmod");
 };
 
@@ -352,13 +203,45 @@ subtest 'primes', sub {
   is_deeply( primes(1069), \@small_primes, "Primes between 0 and 1069" );
   is_deeply( primes(1070), \@small_primes, "Primes between 0 and 1070" );
   is_deeply( primes(1086), \@small_primes, "Primes between 0 and 1086" );
-  while (my($high, $expect) = each (%small_single)) {
-    is_deeply(primes($high),$expect,"primes($high) should return [@{$expect}]");
+
+  my @small_single = (
+    [0,[]], [1,[]], [2,[2]], [3,[2,3]], [4,[2,3]], [5,[2,3,5]], [6,[2,3,5]],
+    [7,[2,3,5,7]], [11,[2,3,5,7,11]],
+    [18,[2,3,5,7,11,13,17]],
+    [19,[2,3,5,7,11,13,17,19]],
+    [20,[2,3,5,7,11,13,17,19]]
+  );
+  foreach my $cinfo (@small_single) {
+    my($n,$L) = @$cinfo;
+    is_deeply(primes($n),$L,"primes($n) should return [@{$L}]");
   }
 
-  while (my($range, $expect) = each (%small_range)) {
-    my($low,$high) = $range =~ /(\d+) to (\d+)/;
-    is_deeply( primes($low, $high), $expect, "primes($low,$high) should return [@{$expect}]");
+  my @small_range = (
+    ["3 to 9",[3,5,7]],
+    ["2 to 20",[2,3,5,7,11,13,17,19]],
+    ["30 to 70",[31,37,41,43,47,53,59,61,67]],
+    ["70 to 30",[]],
+    ["20 to 2",[]],
+    ["1 to 1",[]],
+    ["2 to 2",[2]],
+    ["3 to 3",[3]],
+    ["2 to 3",[2,3]],
+    ["2 to 5",[2,3,5]],
+    ["3 to 6",[3,5]],
+    ["3 to 7",[3,5,7]],
+    ["4 to 8",[5,7]],
+    ["2010733 to 2010881",[2010733,2010881]],
+    ["2010734 to 2010880",[]],
+    ["3088 to 3164",[3089,3109,3119,3121,3137,3163]],
+    ["3089 to 3163",[3089,3109,3119,3121,3137,3163]],
+    ["3090 to 3162",[3109,3119,3121,3137]],
+    ["3842610773 to 3842611109",[3842610773,3842611109]],
+    ["3842610774 to 3842611108",[]],
+  );
+  foreach my $cinfo (@small_range) {
+    my($rangestr, $L) = @$cinfo;
+    my($lo,$hi) = $rangestr =~ /(\d+) to (\d+)/;
+    is_deeply(primes($lo,$hi),$L,"primes($lo,$hi) should return [@{$L}]");
   }
 };
 
@@ -372,7 +255,8 @@ subtest 'sieve range', sub {
 ###############################################################################
 
 subtest 'next and prev prime', sub {
-  while (my($base, $range) = each (%primegaps)) {
+  foreach my $gap ([19609,52], [360653,96], [2010733,148]) {
+    my($base,$range)=@$gap;
     is(next_prime($base), $base+$range, "next prime of $base is $base+$range");
     is(prev_prime($base+$range), $base, "prev prime of $base+$range is $base");
   }
@@ -409,13 +293,30 @@ subtest 'next and prev prime', sub {
 ###############################################################################
 
 subtest 'prime_count', sub {
-  while (my($n, $pin) = each (%pivals_small)) {
-    is( prime_count($n), $pin, "Pi($n) = $pin" );
+  my @pivals = ([1,0],[10,4],[100,25],[1000,168],[10000,1229],[60067,6062],[65535,6542]);
+  push @pivals, [100000,9592] if $extra;
+  for my $pv (@pivals) {
+    my($n,$count) = @$pv;
+    is(prime_count($n), $count, "prime_count($n) = $count" );
   }
 
-  while (my($range, $expect) = each (%pi_intervals)) {
-    my($low,$high) = parse_range($range);
-    is( prime_count($low,$high), $expect, "prime_count($range) = $expect");
+  my @piintervals = (
+    ["1e9 +2**14", 785],
+    ["17 to 13", 0],
+    ["3 to 17", 6],
+    ["4 to 17", 5],
+    ["4 to 16", 4],
+    ["191912783 +248", 2],
+    ["191912784 +247", 1],
+    ["191912783 +247", 1],
+    ["191912784 +246", 0],
+  );
+  push @piintervals, ["868396 to 9478505",563275], ["1118105 to 9961674",575195], ["24689 to 7973249",535368] if $extra;
+
+  for my $pi (@piintervals) {
+    my($rangestr, $count) = @$pi;
+    my($lo,$hi) = parse_range($rangestr);
+    is(prime_count($lo,$hi), $count, "prime_count($rangestr) = $count");
   }
 
   # These are small enough they should be exact.
@@ -434,16 +335,25 @@ subtest 'prime_count', sub {
 ###############################################################################
 
 subtest 'nth_prime', sub {
-  while (my($n, $pin) = each (%pivals_small)) {
-    my $next = $pin+1;
-    cmp_ok( $pin ? nth_prime($pin) : 0, '<=', $n, "nth_prime($pin) <= $n");
-    cmp_ok( nth_prime($next), '>=', $n, "nth_prime($next) >= $n");
+  is(nth_prime(0),undef,"nth_prime(0) returns undef");
+  my @nthvals = ([1,2],[4,7],[25,97],[168,997],[1229,9973],[6062,60041],[6542,65521]);
+  push @nthvals, [9592,99991] if $extra;
+  for my $nv (@nthvals) {
+    my($n,$nth) = @$nv;
+    is(nth_prime($n),$nth,"nth_prime($n) = $nth");
   }
-  while (my($n, $nth) = each (%nthprimes_small)) {
+
+  my @nthprimes32=(2,29,541,7919,104729,1299709,15485863,179424673,2038074743);
+  for my $i (0..$#nthprimes32) {
+    my($n, $nth) = (10**$i, $nthprimes32[$i]);
+    last if $n > ($extra ? 2000000 : 5000);
     is( nth_prime($n), $nth, "nth_prime($n) = $nth" );
   }
-  my $ntha = nth_prime_approx(1287248);
-  ok( $ntha >= 20274907 && $ntha <= 20284058, "nth_prime_approx(1287248) in range" );
+
+  {
+    my $ntha = nth_prime_approx(1287248);
+    ok( $ntha >= 20274907 && $ntha <= 20284058, "nth_prime_approx(1287248) in range" );
+  }
 
   {
     my($n,$c) = (15460811,998491);
@@ -456,18 +366,6 @@ subtest 'nth_prime', sub {
     ok($hi >= $n && $hi-$tol <= $n, "nth_prime_upper($c)");
     cmp_closeto($ap, $n, $tol, "nth_prime_approx($c)");
   }
-
-};
-
-###############################################################################
-
-subtest 'twin primes', sub {
-  is( twin_prime_count(4321), 114, "twin_prime_count(4321)" );
-  cmp_closeto( twin_prime_count_approx(Math::BigInt->new("4123456784123")), "6950213327", 14937 * 2, "twin_prime_count_approx(4123456784123)" );
-  if ($extra) {
-    cmp_closeto( twin_prime_count_approx(Math::BigInt->new("412345678412345678412345678")), "149939117920176008847283", 1e11, "twin_prime_count_approx(412345678412345678412345678)" );
-  }
-  is( nth_twin_prime(249), 13217, "nth_twin_prime(249)" );
 };
 
 ###############################################################################
@@ -585,6 +483,31 @@ subtest 'almost primes', sub {
   cmp_closeto( almost_prime_count_approx(7,"1000000000000"), "62981797962", "10000000000", "almost_prime_count_approx(7,1000000000000) in range" );
 
   {
+    my($k,$n,$c) = (3,389954,98699);
+    my $lo = almost_prime_count_lower($k,$n);
+    my $hi = almost_prime_count_upper($k,$n);
+    my $ap = almost_prime_count_approx($k,$n);
+    my $tol = int($c*.05);
+
+    is(almost_prime_count($k,$n),$c,"almost_prime_count($k,$n) = $c");
+    ok($lo <= $c && $lo+$tol >= $c, "almost_prime_count_lower($k,$n)");
+    ok($hi >= $c && $hi-$tol <= $c, "almost_prime_count_upper($k,$n)");
+    cmp_closeto($ap, $c, $tol, "almost_prime_count_approx($k,$n)");
+  }
+  {
+    my($k,$n,$c) = (7,489954,16527);
+    my $lo = almost_prime_count_lower($k,$n);
+    my $hi = almost_prime_count_upper($k,$n);
+    my $ap = almost_prime_count_approx($k,$n);
+    my $tol = int($c*.15);
+
+    is(almost_prime_count($k,$n),$c,"almost_prime_count($k,$n) = $c");
+    ok($lo <= $c && $lo+$tol >= $c, "almost_prime_count_lower($k,$n)");
+    ok($hi >= $c && $hi-$tol <= $c, "almost_prime_count_upper($k,$n)");
+    cmp_closeto($ap, $c, $tol, "almost_prime_count_approx($k,$n)");
+  }
+
+  {
      my($k,$n,$c) = (4,10000000,47997635);
      my $lo = nth_almost_prime_lower($k,$n);
      my $hi = nth_almost_prime_upper($k,$n);
@@ -633,11 +556,38 @@ subtest 'prime powers', sub {
     ok($hi >= $n && $hi-$tol <= $n, "nth_prime_power_upper($c)");
     cmp_closeto($ap, $n, $tol, "nth_prime_power_approx($c)");
   }
-
 };
 
 ###############################################################################
+subtest 'Twin primes', sub {
+  is_deeply([map {$_-100500} @{twin_primes(100500,101500)}],
+            [qw/17 47 299 611 617 659 707 779/],
+            "twin_primes(100500,101500)");
 
+  is(twin_prime_count(4321), 114, "twin_prime_count(4321)");
+  is(twin_prime_count(5000,5500), 8, "twin_prime_count(5000,5500)");
+
+  cmp_closeto(twin_prime_count_approx("4123456784123"), "6950213327", 14937 * 2, "twin_prime_count_approx(4123456784123)");
+  cmp_closeto("".twin_prime_count_approx("412345678412345678412345678"), "149939117920176008847283", 1e11, "twin_prime_count_approx(412345678412345678412345678)")  if $extra;
+
+  is(nth_twin_prime(249), 13217, "nth_twin_prime(249)");
+  cmp_closeto("".nth_twin_prime_approx("1234567890"), "637769466671", 50000000, "nth_twin_prime_approx(1234567890)");
+};
+
+###############################################################################
+subtest 'Semi primes', sub {
+  is_deeply([map {$_-101500} @{semi_primes(101500,101600)}],
+            [qw/6 9 21 34 39 46 51 53 54 57 67 71 78 79 89 93 97/],
+            "semi_primes(101500,101600)");
+
+  is(semiprime_count(12000,123456),25459,"semiprime_count(12000, 123456)");
+  cmp_closeto( semiprime_count_approx("100294967494"), "14000000000", 4000000, "semiprime_count_approx(100294967494) in range" );
+
+  is(nth_semiprime(1400),5137,"nth_semiprime(1400) = 5137");
+  cmp_closeto( nth_semiprime_approx("14000000000"), "100294967494", 120000000, "nth_emiprime_approx(14000000000) in range" );
+};
+
+###############################################################################
 subtest 'Ramanujan primes', sub {
   is_deeply( ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
 
@@ -672,33 +622,81 @@ subtest 'Ramanujan primes', sub {
 
 ###############################################################################
 
-subtest 'other prime related', sub {
-  is(semiprime_count(12000,123456),25459,"semiprime_count(12000, 123456)");
-  cmp_closeto( semiprime_count_approx("100294967494"), "14000000000", 4000000, "semiprime_count_approx(100294967494) in range" );
-
-  is(nth_semiprime(1400),5137,"nth_semiprime(1400) = 5137");
-  cmp_closeto( nth_semiprime_approx("14000000000"), "100294967494", 120000000, "nth_emiprime_approx(14000000000) in range" );
-
-  # sum_primes
-
-  # nth_twin_prime_approx
-};
+#subtest 'other prime related', sub {
+#  is(sum_primes(4321),1179453,"sum_primes(4321) = 1179453");
+#};
 
 ###############################################################################
 
 subtest 'real (float) functions', sub {
+  my %eivals = (
+           -10 =>  -0.00000415696892968532438,
+          -0.5 =>  -0.55977359477616,
+          -0.1 =>  -1.8229239584193906660809,
+        -0.001 =>  -6.33153936413615,
+      -0.00001 => -10.9357198000436956,
+   -0.00000001 => -17.843465089050832587,
+   0.693147180559945 => 1.0451637801174927848446,           # log2
+           1   =>  1.8951178163559367554665,
+           1.5 =>  3.3012854491297978379574,
+           2   =>  4.9542343560018901633795,
+           5   =>  40.185275355803177455091,
+           10  =>  2492.2289762418777591384,
+           12  =>  14959.532666397528852292,
+           20  =>  25615652.664056588820481,
+           40  =>  6039718263611241.5783592,
+           41  =>  16006649143245041.110700,
+  );
   while (my($n, $ein) = each (%eivals)) {
     cmp_closeto( ExponentialIntegral($n), $ein, 0.00000001 * abs($ein), "Ei($n) ~= $ein");
   }
+
+  my %livals = (
+                0 =>  0,
+             1.01 => -4.0229586739299358695031,
+                2 =>  1.0451637801174927848446,
+               10 =>  6.1655995047872979375230,
+               24 =>  11.200315795232698830550,
+             1000 =>  177.60965799015222668764,
+           100000 =>  9629.8090010507982050343,
+        100000000 =>  5762209.3754480314675691,
+       4294967295 =>  203284081.95454158906409,
+      10000000000 =>  455055614.58662307560953,
+     100000000000 =>  4118066400.6216115150394,
+  );
   while (my($n, $lin) = each (%livals)) {
     cmp_closeto( LogarithmicIntegral($n), $lin, 0.00000001 * abs($lin), "li($n) ~= $lin");
   }
+
+  my %rvals = (
+             1.01 =>  1.0060697180622924796117,
+                2 =>  1.5410090161871318832885,
+               10 =>  4.5645831410050902398658,
+             1000 =>  168.35944628116734806491,
+          1000000 =>  78527.399429127704858870,
+         10000000 =>  664667.44756474776798535,
+       4294967295 =>  203280697.51326064541983,
+      10000000000 =>  455050683.30684692446315,
+  18446744073709551615 => 4.25656284014012122706963685602e17,
+  );
   while (my($n, $rin) = each (%rvals)) {
     cmp_closeto( RiemannR($n), $rin, 0.00000001 * abs($rin), "R($n) ~= $rin");
   }
+
+  my %rzvals = (
+              2   =>  0.6449340668482264364724151666,
+              2.5 =>  0.3414872572509171797567696934,
+              4.5 =>  0.0547075107614542640229672890,
+              7   =>  0.0083492773819228268397975498,
+              8.5 =>  0.0028592508824156277133439825,
+             20.6 =>  0.0000006293391573578212882457,
+             80   =>  8.27180612553034e-25,
+            180   =>  6.52530446799852e-55,
+  );
   while (my($n, $zin) = each (%rzvals)) {
     cmp_closeto( RiemannZeta($n), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
   }
+
   cmp_closeto( LambertW(6588), 6.86636957140619, 0.000000001, "LambertW(6588)");
   if ($extra) {
     my ($n, $zin);
@@ -751,6 +749,13 @@ subtest 'factoring', sub {
     }
     is_deeply(\@gotfactor,\@expfactor,"test factoring for $ntests composites");
   }
+
+  is_deeply([factor_exp(9147600)],[[2,4],[3,3],[5,2],[7,1],[11,2]],"factor_exp");
+
+  is(join(" ",divisors(252)),"1 2 3 4 6 7 9 12 14 18 21 28 36 42 63 84 126 252","divisors");
+  is(divisor_sum(252),728,"divisor_sum(252)");
+  is(join(" ",map{divisor_sum(1254,$_)}(0..7)),"16 2880 2208200 2302655040 2659995565256 3210983462174400 3954705863524605800 4916556716966553418560","divisor_sum(1254, {0..7})");
+  is(znlog(5678, 5, 10007), 8620, "znlog(5678, 5, 10007)");
 
   # The PP factor code does small trials, then loops doing 64k rounds of HOLF
   # if the composite is less than a half word, followed by 64k rounds each of
@@ -971,8 +976,6 @@ subtest 'misc number theory functions', sub {
   is(znorder(7,35), undef, "znorder(7,35) = undef");
   is(znorder(67,999999749), 30612237, "znorder(67,999999749) = 30612237");
 
-  is(znlog(5678, 5, 10007), 8620, "znlog(5678, 5, 10007)");
-
   is(binomial(35,16), 4059928950, "binomial(35,16)");
   is("".binomial(228,12), "30689926618143230620", "binomial(228,12)");
   is(binomial(-23,-26), -2300, "binomial(-23,-26) should be -2300");
@@ -992,17 +995,6 @@ subtest 'misc number theory functions', sub {
   is( valuation(1879048192,2), 28, "valuation(1879048192,2)");
   is( valuation(96552,6), 3, "valuation(96552,6)");
 
-  is(invmod(45,59), 21, "invmod(45,59)");
-  is(invmod(14,28474), undef, "invmod(14,28474)");
-  is(invmod(42,-2017), 1969, "invmod(42,-2017)");
-
-  is(vecsum(15, 30, 45), 90, "vecsum(15,30,45)");
-  is("".vecsum(4294966296,4294965296,4294964296), "12884895888", "vecsum(2^32-1000,2^32-2000,2^32-3000)");
-  is(vecprod(15, 30, 45), 20250, "vecprod(15,30,45)");
-  is("".vecprod(4294966296,4294965296,4294964296), "79228051833847139970490254336", "vecprod(2^32-1000,2^32-2000,2^32-3000)");
-  is(vecmin(4294966296,4294965296,4294964296), 4294964296, "vecmin(2^32-1000,2^32-2000,2^32-3000)");
-  is(vecmax(4294966296,4294965296,4294964296), 4294966296, "vecmax(2^32-1000,2^32-2000,2^32-3000)");
-
   cmp_closeto( chebyshev_theta(7001), 6929.27483821865062, 0.006929, "chebyshev_theta(7001) =~ 6929.2748");
   cmp_closeto( chebyshev_psi(6588), 6597.07452996633704, 0.006597, "chebyshev_psi(6588) =~ 6597.07453");
 
@@ -1013,6 +1005,10 @@ subtest 'misc number theory functions', sub {
   is( "".primorial(118), "31610054640417607788145206291543662493274686990", "primorial(118)" );
   is( pn_primorial(7), 510510, "pn_primorial(7)" );
   is( partitions(74), 7089500, "partitions(74)" );
+
+  is(legendre_phi(54321,5),11287,"legendre_phi(54321,5) = 11287");
+  is(inverse_li(13579),146261,"inverse_li");
+  cmp_closeto(inverse_li_nv(135790),1808203.25662372,1e-4,"inverse_li_nv");
 
   { my @t;
     forprimes(sub {push @t,$_}, 2387234,2387303);
@@ -1191,6 +1187,13 @@ subtest 'set functions', sub {
 };
 
 subtest 'vector (list) functions', sub {
+  is(vecsum(15, 30, 45), 90, "vecsum(15,30,45)");
+  is("".vecsum(4294966296,4294965296,4294964296), "12884895888", "vecsum(2^32-1000,2^32-2000,2^32-3000)");
+  is(vecprod(15, 30, 45), 20250, "vecprod(15,30,45)");
+  is("".vecprod(4294966296,4294965296,4294964296), "79228051833847139970490254336", "vecprod(2^32-1000,2^32-2000,2^32-3000)");
+  is(vecmin(4294966296,4294965296,4294964296), 4294964296, "vecmin(2^32-1000,2^32-2000,2^32-3000)");
+  is(vecmax(4294966296,4294965296,4294964296), 4294966296, "vecmax(2^32-1000,2^32-2000,2^32-3000)");
+
   is(vecmin(2,-2,7,-1,5,-3,400,0),-3,"vecmin");
   is(vecmax(2,-2,7,-1,5,-3,400,0),400,"vecmax");
   is(vecsum(2,-2,7,-1,5,-3,400,0),408,"vecsum");
@@ -1273,52 +1276,141 @@ subtest 'Goldbach', sub {
 #  is_provable_prime_with_cert
 #  prime_certificate
 #  verify_prime
-
-# TODO:
 #
-#  twin_primes(beg,end)
-#  semi_primes(beg,end)
-#  sieve_prime_cluster
+#  prime_precalc
+#  prime_memfree
+#  prime_get_config
+#  prime_set_config
 #
-#  divisor_sum
-#  inverse_li
-#  _inverse_R
-#  prime_count_lower
-#  prime_count_upper
-#  twin_prime_count_approx
-#  nth_twin_prime_approx
 #  print_primes
-#  chinese
+#
+#  irand
+#  irand64
+#  drand
+#  random_bytes
+#  entropy_bytes
+#  urandomb
+#  urandomm
+#  csrand
+#  rand
+#  random_factored_integer
+#
+#  random_prime
+#  random_ndigit_prime
+#  random_nbit_prime
+#  random_safe_prime
+#  random_strong_prime
+#  random_proven_prime
+#  random_maurer_prime
+#  random_shawe_taylor_prime
+#  random_unrestricted_semiprime
+#  random_semiprime
+
+# TODO#
+#  todigits
 #  todigitstring / _splitdigits
-#  harmfrac
-#  harmreal
-#  factorialmod
-#  binomialmod
+#  fromdigits
+#  tozeckendorf
+#  fromzeckendorf
+#  is_odd
+#  is_even
+#  is_divisible
+#  is_congruent
+#  is_qr
+#  is_perfect_power
+#  is_square_free
+#  is_powerfree
 #  is_primitive_root
-#  znorder bigint
-#  non-GMP lucas_sequence
-#  lucas_u
-#  lucas_v
-#  pminus1_factor stage 2
-#  ecm_factor no GMP
-#  divisors
+#  is_perfect_number
+#  is_smooth
+#  is_rough
+#  is_powerful
+#  chinese
+#  chinese2
+#  frobenius_number
+#  factorial
+#  factorialmod
+#  subfactorial
+#  binomialmod
+#  falling_factorial
+#  rising_factorial
+#  kronecker
+#  cornacchia
+#  qnr
 #  hclassno
 #  ramanujan_tau (_taup, _tauprime, _taupower)
-#  LogarithmicIntegral ...
-#  RiemannR no GMP
-#  LambertW no GMP
-#  forcompositions with hash
+#  lucasu
+#  lucasv
+#  lucasumod
+#  lucasvmod
+#  lucasuvmod
+#  pisano_period
+#  bernreal
+#  harmfrac
+#  harmreal
+#  fubini
 #  numtoperm
 #  permtonum
 #  randperm
-#  urandomb
-#  urandomm
-#  random_ndigit_prime
-#  random_safe_prime
-#  random_strong_prime
-#  random_maurer_prime
-#  random_shawe_taylor_prime
-#  random_factored_integer
+#  powerful_numbers
+#  powerful_count
+#  nth_powerful
+#  next_perfect_power
+#  prev_perfect_power
+#  perfect_power_count(n)
+#  perfect_power_count(beg,end)
+#  perfect_power_count_lower(n)
+#  perfect_power_count_upper(n)
+#  perfect_power_count_approx(n)
+#  nth_perfect_power(n)
+#  nth_perfect_power_lower(n)
+#  nth_perfect_power_upper(n)
+#  nth_perfect_power_approx(n)
+#  smooth_count
+#  rough_count
+#  powerfree_count
+#  nth_powerfree
+#  powerfree_sum (done)
+#  powerfree_part
+#  powerfree_part_sum
+#  squarefree_kernel
+
+# forsemiprimes {...} [start,] end    loop over semiprimes in range
+# foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range
+# forsquarefree {...} [start,] end    loop with factors of square-free n
+# forsquarefreeint {...} [start,] end loop over square-free n
+# forcomp { ... } n [,{...}]          loop over integer compositions
+# formultiperm { ... } \@n            loop over multiset permutations
+# forderange { ... } n                loop over derangements
+# forsetproduct { ... } \@a[,...]     loop over Cartesian product of lists
+# prime_iterator                      returns a simple prime iterator
+# prime_iterator_object               returns a prime iterator object
+# lastfor                             stop iteration of for.... loop
+
+#  is_lucky
+#  lucky_numbers
+#  lucky_count(n)
+#  lucky_count(beg,end)
+#  lucky_count_lower(n)
+#  lucky_count_upper(n)
+#  lucky_count_approx(n)
+#  nth_lucky(n)
+#  nth_lucky_lower(n)
+#  nth_lucky_upper(n)
+#  nth_lucky_approx(n)
+
+# TODO:
+#
+#  sieve_prime_cluster
+#
+#  _inverse_R
+#  znorder bigint
+#  non-GMP lucas_sequence
+#  pminus1_factor stage 2
+#  ecm_factor no GMP
+#  RiemannR no GMP
+#  LambertW no GMP
+#  forcompositions with hash
 #  forsemiprimes
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
