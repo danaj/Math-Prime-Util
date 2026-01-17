@@ -1070,6 +1070,13 @@ subtest 'misc number theory functions', sub {
   is_deeply([[cornacchia(17,131)],[cornacchia(2,131)],[cornacchia(2,136)]],[[undef],[9,5],[8,6]],"cornacchia");
   is(hclassno(320),168,"hclassno");
   is_deeply([ramanujan_tau(81),ramanujan_tau(41),ramanujan_tau(44)],[1665188361,308120442,-786948864],"ramanujan_tau");
+
+  is(lucasu(6,1,14),9228778026,"lucasu");
+  is(lucasv(6,1,14),52205852194,"lucasv");
+  is(lucasumod(1,-1,281,17779),5050,"lucasumod");
+  is(lucasvmod(1,-1,281,17779),8665,"lucasvmod");
+  is_deeply([lucasuvmod(1,-1,2811,17779)],[6323,16441],"lucasuvmod");
+  is(pisano_period(1777),3556,"pisano_period");
 };
 
 subtest 'more misc ntheory functions', sub {
@@ -1451,12 +1458,6 @@ subtest 'Goldbach', sub {
 #  random_semiprime
 
 # TODO#
-#  lucasu
-#  lucasv
-#  lucasumod
-#  lucasvmod
-#  lucasuvmod
-#  pisano_period
 #
 #  bernreal
 #  harmfrac
