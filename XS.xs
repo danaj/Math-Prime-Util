@@ -3797,14 +3797,21 @@ is_omega_prime(IN SV* svk, IN SV* svn)
     DISPATCHPP();
     XSRETURN(1);
 
-void is_divisible(IN SV* svn, IN SV* svd)
+void is_divisible(IN SV* svn, IN SV* svd, ...)
   PREINIT:
-    UV n, d;
+    UV n, d, ret;
+    size_t i;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
         _validate_and_set(&d, aTHX_ svd, IFLAG_ABS)) {
-      if (d == 0) RETURN_NPARITY(n == 0);
-      RETURN_NPARITY( (n % d) == 0 );
+      int status = 1;
+      ret = (d==0 && n==0) || n % d == 0;
+      for (i = 2; i < (size_t)items && !ret; i++) {
+        if ((status = _validate_and_set(&d, aTHX_ ST(i), IFLAG_ABS)) != 1)
+          break;
+        ret = (d==0 && n==0) || n % d == 0;
+      }
+      if (status == 1) RETURN_NPARITY(ret);
     }
     DISPATCHPP();
     XSRETURN(1);

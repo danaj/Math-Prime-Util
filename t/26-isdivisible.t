@@ -28,6 +28,10 @@ my @divt = (
   ["3689348813882916864", "6442450944", 1],
   ["68056473384187692688985572671611731968", "27670116110564327424", 1],
   ["408338840305126156152360180103379943424", "27670116110564327424", 0],
+  # Our additional single divisor tests
+  # Check UV n with negative d larger than IV
+  ["10223372036854775807","-10223372036854775807", 1],
+  ["36472996418050588672","33171997",1],
 );
 my @congt = (
   [0,0,0,1],     # strict equality mod 0
@@ -44,7 +48,7 @@ my @congt = (
   ["78706108047827420225", "-39353054023913710111", "59029581035870565168", 1],
 );
 
-plan tests => 1 + 9*5 + 1 + scalar(@divt)   # is_divisible
+plan tests => 1 + 9*5 + scalar(@divt) + 2   # is_divisible
             + 5 + 2 + scalar(@congt);       # is_congruent
 
 my $ntests = $extra && $use64 ? 10000 : $extra ? 1000 : 100;
@@ -75,13 +79,13 @@ for my $d (1 .. 9) {
              "is_divisible(-x,-$d) for 32-bit x" );
 }
 
-is( is_divisible("36472996418050588672","33171997"), 1, "36472996418050588672 is divisible by 33171997" );
-
 foreach my $r (@divt) {
   my($n, $d, $exp) = @$r;
   is(is_divisible($n,$d), $exp, "is_divisible($n,$d) = $exp");
 }
 
+is(is_divisible("26000117000117",2,3,5,7,11),0,"is_divisible(26000117000117,2,3,5,7,11)");
+is(is_divisible("26000117000117",2,3,5,7,11,13),1,"is_divisible(26000117000117,2,3,5,7,11,13)");
 
 ###### is_congruent
 

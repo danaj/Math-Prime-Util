@@ -1683,11 +1683,14 @@ sub is_even {
 }
 
 sub is_divisible {
-  my($n,$d) = @_;
+  my($n,@d) = @_;
   validate_integer_abs($n);
-  validate_integer_abs($d);
-  return 0+($n==0) if $d == 0;
-  return 0+(($n % $d) == 0);
+  for my $d (@d) {
+    validate_integer_abs($d);
+    if ($d == 0) { return 1 if $n == 0; }
+    else         { return 1 if $n % $d == 0; }
+  }
+  0;
 }
 sub is_congruent {
   my($n,$c,$d) = @_;
@@ -12275,7 +12278,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012-2025 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2026 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
