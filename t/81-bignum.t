@@ -49,8 +49,7 @@ if ($broken64) {
 }
 
 # Using GMP makes these tests run about 2x faster on some machines
-#use bigint try => 'GMP,GMPz,LTM,Pari'; #  <-------- large numbers ahead!  > 2^64
-use bigint;
+use bigint try => 'GMP,GMPz,LTM,Pari'; #  <-------- large numbers ahead!  > 2^64
 use Math::BigFloat;
 
 use Math::Prime::Util qw/

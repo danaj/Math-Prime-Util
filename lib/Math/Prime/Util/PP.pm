@@ -9064,7 +9064,7 @@ sub is_mersenne_prime {
 
   # Use the known Mersenne primes
   return 1 if exists $_mersenne_primes{$p};
-  return 0 if $p < 74340751; # GIMPS has tested and verified all below
+  return 0 if $p < 79711549; # GIMPS has tested and verified all below
   # Past this we do a generic Mersenne prime test
 
   return 1 if $p == 2;
@@ -9160,6 +9160,7 @@ sub _log_gamma {
 }
 sub _log_binomial {
   my($n,$k) = @_;
+  return 0 if $n < $k;
   return _log_gamma($n+1) - _log_gamma($k+1) - _log_gamma($n-$k+1);
 }
 sub _log_bern41_binomial {
@@ -9188,7 +9189,7 @@ sub is_aks_prime {
   return 1 if $n == 2;
 
   if ($n > 11) {
-    for (2,3,5,7,11) { return 0 if Mis_divisible($n,$_) }
+    return 0 if Mis_divisible($n,2,3,5,7,11);
   }
 
   my($starta, $s);

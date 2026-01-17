@@ -88,6 +88,7 @@ static double log_gamma(double x)
 #if IMPL_BERN41
 static double log_binomial(UV n, UV k)
 {
+  if (n < k) return 0;
   return log_gamma(n+1) - log_gamma(k+1) - log_gamma(n-k+1);
 }
 static double log_bern41_binomial(UV r, UV d, UV i, UV j, UV s)
