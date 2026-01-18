@@ -456,6 +456,10 @@ subtest 'omega primes', sub {
              "is_omega_prime (false)" );
   # random numbers with the result we want
   is_deeply([map { prime_omega($_) } (2,3777,893828,392580,451902,8111460,16265634,9699690,917896980,1084183870770)],[1..10],"prime_omega(n)");
+
+  is_deeply(omega_primes(10,"6469693230","9469693230"),
+            [qw/6469693230 6915878970 8254436190 8720021310 9146807670/],
+            "omega_primes(10,6469693230,9469693230)") if $extra;
 };
 
 subtest 'almost primes', sub {
@@ -956,7 +960,8 @@ subtest 'misc number theory functions', sub {
   is( liouville(444456), 1, "liouville(444456)" );
   is( liouville(562894), -1, "liouville(562894)" );
 
-  is( mertens(4219), -13, "mertens(4219)" );
+  is( mertens(219), 4, "mertens(219)" );
+  is( mertens(24219), -67, "mertens(24219)" );
 
   is_deeply( [euler_phi(1513,1537)],
              [qw/1408 756 800 756 1440 440 1260 576 936 760 1522 504 1200 648 1016 760 1380 384 1530 764 864 696 1224 512 1456/],
@@ -986,12 +991,20 @@ subtest 'misc number theory functions', sub {
   is(stirling(12,4,2), '611501', "S(12,4)" );
   is(stirling(12,4,1), '105258076', "s(12,4)" );
 
-  is_deeply( [bernfrac(0)], [1,1], "bernfrac(0)" );
-  is_deeply( [bernfrac(1)], [1,2], "bernfrac(1)" );
-  is_deeply( [bernfrac(2)], [1,6], "bernfrac(2)" );
-  is_deeply( [bernfrac(3)], [0,1], "bernfrac(3)" );
-  is_deeply( [bernfrac(12)], [-691,2730], "bernfrac(12)" );
-  is_deeply( [bernfrac(13)], [0,1], "bernfrac(12)" );
+  is(join(" ",map{fubini($_)}0..6,18),"1 1 3 13 75 541 4683 3385534663256845323","fubini(n) for n in {0..6,18}");
+
+  is_deeply([numtoperm(11,33967658)],[9,3,6,4,7,1,10,0,5,2,8],"numtoperm");
+  is(permtonum([9,3,6,4,7,1,10,0,5,2,8]),33967658,"permtonum");
+
+  is_deeply([map{[bernfrac($_)]}(0,1,2,3,12,13)],
+            [[1,1],[1,2],[1,6],[0,1],[-691,2730],[0,1]],
+            "bernfrac");
+  cmp_closeto(bernreal(18),54.971177944862155,1e-5,"bernreal");
+
+  is_deeply([map{[harmfrac($_)]}(0,1,2,3,12,13)],
+            [[0,1],[1,1],[3,2],[11,6],[86021,27720],[1145993,360360]],
+            "harmfrac");
+  cmp_closeto(harmreal(18),3.49510807819631349,1e-5,"harmreal");
 
   is_deeply( [gcdext(23948236,3498248)], [2263, -15492, 52], "gcdext(23948236,3498248)" );
 
@@ -1054,6 +1067,8 @@ subtest 'misc number theory functions', sub {
   is( lcm(11926,78001,2211), 2790719778, "lcm(11926,78001,2211) = 2790719778" );
 
   is(sum_primes(14400),11297213,"sum_primes(14400)");
+  is(sum_primes(2100000),"156999759090","sum_primes(2100000)") if $extra;
+
   is(mertens(5443),9,"mertens(5443)");
   is(sumtotient(5443),9008408,"sumtotient(5443)");
   is(sumliouville(5443),-21,"sumliouville(5443)");
@@ -1168,10 +1183,18 @@ subtest 'more misc ntheory functions', sub {
   is(falling_factorial(17,5),742560,"falling_factorial");
   is(rising_factorial(17,5),2441880,"rising_factorial");
 
-#  is_smooth
-#  is_rough
-#  smooth_count
-#  rough_count
+  # "A k-rough number, as defined by Finch in 2001 and 2003, is a positive
+  #  integer whose prime factors are all greater than or equal to k."
+  ok( is_rough("62000279000279",31),"is_rough(31*n,31) = 1");
+  ok(!is_rough("62000279000279",32),"is_rough(31*n,32) = 0");
+  # "[An n-smooth number] is an integer whose prime factors are all
+  #  less than or equal to n."
+  ok( is_smooth(1291677,50),"is_smooth(1291677,50) = 1");
+  ok( is_smooth(1291677,43),"is_smooth(1291677,43) = 1");
+  ok(!is_smooth(1291677,42),"is_smooth(1291677,42) = 0");
+
+  is(smooth_count(1291677,43),32842,"smooth_count");
+  is(rough_count(1291677,43),187389,"rough_count");
 };
 
 
@@ -1229,10 +1252,13 @@ subtest 'perfect powers', sub {
 };
 
 subtest 'powerful', sub {
-  is(is_powerful(260),0,"260 is not a powerful number");
-  is(is_powerful(243),1,"243 is a powerful number");
+  ok(!is_powerful(260),"260 is not a powerful number");
+  ok( is_powerful(243),"243 is a powerful number");
+  ok( is_powerful("2011901648110693",3),"157^3 * 151^4 is a 3-powerful number");
+
   is_deeply(powerful_numbers(10500,11000),[10584,10609,10648,10800,10816,10952,10976],"powerful_numbers(10500,11000)");
-  is(powerful_count(1234567),2255,"powerful_count");
+  is(powerful_count(1234567),2255,"powerful_count(1234567)");
+  is(powerful_count(1234567,3),329,"powerful_count(1234567,3)");
   is(nth_powerful(1000),253472,"nth_powerful");
 
   is_deeply([map {sumpowerful(5443,$_)} 1..8],[14815846,262303,66879,30528,14445,11045,10252,7937],"sumpowerful");
@@ -1256,6 +1282,10 @@ subtest 'powerfree', sub {
   is(powerfree_part_sum(100040),3292589515,"powerfree_part_sum(100040)");
   is(powerfree_part_sum(100040,3),4234954627,"powerfree_part_sum(100040,3)");
   is(powerfree_part_sum(100040,4),4642253940,"powerfree_part_sum(100040,4)");
+
+  is(powerfree_count(27000000,3),22461494,"powerfree_count(27000000,3)");
+  is("".powerfree_count("27000000000000",3),"22461499059723","powerfree_count(30000^3,3)");
+  is("".powerfree_count("100000000000000000000",15),"99996941269930456119","powerfree_count(10^20,15)");
 };
 
 ###############################################################################
@@ -1365,6 +1395,7 @@ subtest 'vector (list) functions', sub {
   is(vecfirst(sub{$_>6},(3,6,-7,17,7,8,9)),17,"vecfirst");
   is(vecfirstidx(sub{$_>6},(3,6,-7,17,7,8,9)),3,"vecfirstidx");
   is_deeply([vecuniq(1,1,3,2,4,0,4,0,3,1)],[1,3,2,4,0],"vecuniq");
+  is_deeply([vecsingleton(1,1,3,2,4,0,4,0,3,1)],[2],"vecsingleton");
   {
     my @L = (-1,14,4,-4,2,2,3,4,3,4,4,1);
     my %got = vecfreq(@L);
@@ -1445,6 +1476,7 @@ subtest 'Goldbach', sub {
 #  csrand
 #  rand
 #  random_factored_integer
+#  randperm
 #
 #  random_prime
 #  random_ndigit_prime
@@ -1457,15 +1489,6 @@ subtest 'Goldbach', sub {
 #  random_unrestricted_semiprime
 #  random_semiprime
 
-# TODO#
-#
-#  bernreal
-#  harmfrac
-#  harmreal
-#  fubini
-#  numtoperm
-#  permtonum
-#  randperm
 
 # forsemiprimes {...} [start,] end    loop over semiprimes in range
 # foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range
@@ -1487,9 +1510,6 @@ subtest 'Goldbach', sub {
 #  znorder bigint
 #  non-GMP lucas_sequence
 #  pminus1_factor stage 2
-#  ecm_factor no GMP
-#  RiemannR no GMP
-#  LambertW no GMP
 #  forcompositions with hash
 #  forsemiprimes
 

@@ -6557,7 +6557,7 @@ void vecuniq(...)
     UV n;
     unsigned long sz;
   PPCODE:
-    retvals = (GIMME_V != G_SCALAR);
+    retvals = (GIMME_V != G_SCALAR && GIMME_V != G_VOID);
     s = iset_create((size_t)items);
     for (status = 1, j = 0; j < items; j++) {
       status = _validate_and_set(&n, aTHX_ ST(j), IFLAG_ANY);
@@ -6631,10 +6631,10 @@ void vecfreq(...)
     itype = IARR_TYPE_ANY;
     for (i = 0; i < len && itype != IARR_TYPE_BAD && SVNUMTEST(ST(i)); i++) {
       IV n = SvIVX(ST(i));
-      if (n < 0)
-        itype |= IARR_TYPE_NEG;
-      else if (SvIsUV(ST(i)))
-        itype |= IARR_TYPE_POS;
+      if (n < 0) {
+        if (SvIsUV(ST(i)))  itype |= IARR_TYPE_POS;
+        else                itype |= IARR_TYPE_NEG;
+      }
       L[i] = n;
     }
     if (i < len || itype == IARR_TYPE_BAD) {
@@ -6671,5 +6671,56 @@ void vecfreq(...)
       PUSH_NPARITY((int)count);                  /* val */
       retlen += 2;
     }
+    Safefree(L);
+    XSRETURN(retlen);
+
+void vecsingleton(...)
+  PROTOTYPE: @
+  PREINIT:
+    int itype;
+    size_t len, i, retlen, count;
+    UV *L;
+    iset_t seen, dups;
+  PPCODE:
+    if (items == 0) {
+      if (GIMME_V == G_SCALAR) XSRETURN_UV(0);
+      else                     XSRETURN_EMPTY;
+    }
+    /* Try to read native integers.  Bail to PP if something else. */
+    len = (size_t) items;
+    New(0, L, len, UV);
+    seen = iset_create(len);
+    dups = iset_create(len>>1);
+    itype = IARR_TYPE_ANY;
+    for (i = 0; i < len && itype != IARR_TYPE_BAD && SVNUMTEST(ST(i)); i++) {
+      IV n = SvIVX(ST(i));
+      int sign = 1;
+      if (n < 0) {
+        if (SvIsUV(ST(i)))    itype |= IARR_TYPE_POS;
+        else                { itype |= IARR_TYPE_NEG;  sign = -1; }
+      }
+      L[i] = n;
+      if (!iset_add(&seen, n, sign))
+        iset_add(&dups, n, sign);
+    }
+    iset_destroy(&seen);
+    if (i < len || itype == IARR_TYPE_BAD || iset_is_invalid(seen)) {
+      iset_destroy(&dups);
+      Safefree(L);
+      DISPATCHPP();
+      return;
+    }
+    if (GIMME_V != G_ARRAY) {
+      for (i = 0, count = 0; i < len; i++)
+        if (!iset_contains(dups, L[i]))
+          count++;
+      ST(0) = sv_2mortal(newSVuv(count));
+      retlen = 1;
+    } else {
+      for (i = 0, retlen = 0; i < len; i++)
+        if (!iset_contains(dups, L[i]))
+          ST(retlen++) = ST(i);
+    }
+    iset_destroy(&dups);
     Safefree(L);
     XSRETURN(retlen);

@@ -101,7 +101,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsorti vecfreq
+      vecsort vecsorti vecfreq vecsingleton
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setcontainsany setinsert setremove setinvert
@@ -2627,7 +2627,7 @@ example, it is hard to overstate just how impractically slow it is in
 practice.  It is not used for any purpose in non-theoretical work, as it is
 literally B<millions> of times slower than other algorithms.  From R.P.
 Brent, 2010:  "AKS is not a practical algorithm.  ECPP is much faster."
-We have ECPP, and indeed it is much faster.
+This module also has ECPP, and indeed it is much faster.
 
 This implementation uses theorem 4.1 from Bernstein (2003).  It runs
 substantially faster than the original, v6 revised paper with Lenstra
@@ -3378,6 +3378,16 @@ This is identical to L<List::MoreUtils::frequency>.  It is typically faster
 when given only native integers.
 
 This is very similar to the Pari/GP function C<matreduce> for vectors.
+
+=head2 vecsingleton
+
+  my @solo = vecsingleton(1,4,17,1,17,-8);  # (4,-8)
+
+Given an array of items, returns an array with all entries removed that
+appear more than once in the list.  The original ordering is preserved.
+
+This is identical to L<List::MoreUtils::singleton>.  When given only native
+integers, it is typically 2 to 10x faster.
 
 =head2 vecsort
 
@@ -5197,8 +5207,8 @@ C<k> will be interpreted as mod C<n!>.
 
 This will match iteration number C<k> (zero based) of L</forperm>.
 
-This corresponds to Pari's C<numtoperm(n,k)> function, though Pari
-uses an implementation specific ordering rather than lexicographic.
+This corresponds to Pari's C<numtoperm(n,k)> function (Pari 2.6 and
+later use the same lexicographic ordering).
 
 =head2 permtonum
 
@@ -5212,8 +5222,8 @@ C<n> must be present.
 This will match iteration number C<k> (zero based) of L</forperm>.
 The result will be between C<0> and C<n!-1>.
 
-This corresponds to Pari's C<permtonum(n)> function, though Pari
-uses an implementation specific ordering rather than lexicographic.
+This corresponds to Pari's C<permtonum(n)> function (Pari 2.6 and
+later use the same lexicographic ordering).
 
 =head2 randperm
 

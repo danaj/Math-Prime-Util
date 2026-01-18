@@ -9,6 +9,7 @@ use Math::Prime::Util qw/vecreduce
                          vecmin vecmax
                          vecsum vecprod factorial
                          vecuniq
+                         vecsingleton
                          vecfreq
                          vecsort vecsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
@@ -126,6 +127,7 @@ plan tests => 1    # vecmin
             + 1    # vecfirst
             + 1    # vecfirstidx
             + 1    # vecuniq
+            + 1    # vecsingleton
             + 1    # vecfreq
             + 1    # vecsort
             + 0;
@@ -248,7 +250,7 @@ subtest 'vecfirstidx', sub {
 
 ###### vecuniq
 subtest 'vecuniq', sub {
-  my @t = map { (1 .. 10) } 0 .. 1;
+  my @t = (1..10,1..10);
   my @u = vecuniq @t;
   is_deeply(\@u, [1 .. 10], "vecuniq simple 1..10");
   my $u = vecuniq @t;
@@ -262,6 +264,23 @@ subtest 'vecuniq', sub {
   is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
   is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
   is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
+};
+
+###### vecsingleton
+subtest 'vecsingleton', sub {
+  my @t = (15,1..10,4,1..10,-2);
+  my @u = vecsingleton @t;
+  is_deeply(\@u, [15,-2], "vecsingleton simple");
+  my $u = vecsingleton @t;
+  is(2,$u,"vecsingleton scalar count correct");
+
+  is_deeply([vecsingleton()], [], "vecsingleton with empty input returns empty");
+  is_deeply([vecsingleton(0)], [0], "vecsingleton with one input returns it");
+  is_deeply([vecsingleton(0,"18446744073709551615",0,4294967295,-1,4294967295)], ["18446744073709551615",-1], "vecsingleton with 64-bit inputs");
+  is_deeply([vecsingleton("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775807")], ["-9223372036854775808","-9223372036854775807"], "vecsingleton with signed 64-bit inputs");
+
+  is_deeply([vecsingleton('a','b','',undef,'b','c','')],['a',undef,'c'],"vecsingleton with strings and one undef");
+  is_deeply([vecsingleton('a','b','',undef,'b','c',undef)],['a','','c'],"vecsingleton with strings and two undefs");
 };
 
 ###### vecfreq
@@ -307,6 +326,8 @@ subtest 'vecfreq', sub {
     is_deeply(\%f, \%e, "vecfreq mixed with undef");
     is($seen_undef, 2, "vecfreq counts two undefs");
   }
+
+  is(scalar(vecfreq(-1,~0)),2,"vecfreq doesn't confuse -1 and ~0");
 };
 
 ###### vecsort

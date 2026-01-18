@@ -11454,6 +11454,16 @@ sub vecfreq {
   return (%count, (\$k => $countundef));
 }
 
+sub vecsingleton {
+  my %count = ();
+  my ($countundef,$k) = (0);
+  # Filter later duplicates during the count stage for a ~10% speedup.
+  # Idea from List::MoreUtil.
+  return grep { (defined $_ ? $count{$k=$_} : $countundef) == 1 }
+         grep { ! (defined $_ ? $count{$k = $_}++ : $countundef++) }
+         @_;
+}
+
 # SET/VEC generic.
 
 sub setunion {
