@@ -11891,11 +11891,11 @@ sub urandomm {
   return 0 if $n <= 1;
   my $r;
   if ($n <= 4294967295) {
-    my $rmax = int(4294967295 / $n) * $n;
-    do { $r = Math::Prime::Util::irand() } while $r >= $rmax;
+    my $rmin = (4294967295 - ($n-1)) % $n;
+    do { $r = Math::Prime::Util::irand(); } while $r < $rmin;
   } elsif (!ref($n)) {
-    my $rmax = int(~0 / $n) * $n;
-    do { $r = Math::Prime::Util::irand64() } while $r >= $rmax;
+    my $rmin = (~0 - ($n-1)) % $n;
+    do { $r = Math::Prime::Util::irand64(); } while $r < $rmin;
   } else {
     # TODO: verify and try to optimize this
     my $bytes = 1 + length(todigitstring($n,16));
