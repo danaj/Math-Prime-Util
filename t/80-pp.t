@@ -1284,7 +1284,9 @@ subtest 'powerfree', sub {
   is(powerfree_part_sum(100040,4),4642253940,"powerfree_part_sum(100040,4)");
 
   is(powerfree_count(27000000,3),22461494,"powerfree_count(27000000,3)");
-  is("".powerfree_count("27000000000000",3),"22461499059723","powerfree_count(30000^3,3)");
+  is(powerfree_count(400040001,2),243195224,"powerfree_count(400040001,2)");
+  is(powerfree_count("10000000000",6),9829525925,"powerfree_count(10000000000,6)");
+  #is("".powerfree_count("27000000000000",3),"22461499059723","powerfree_count(30000^3,3)");
   is("".powerfree_count("100000000000000000000",15),"99996941269930456119","powerfree_count(10^20,15)");
 };
 
