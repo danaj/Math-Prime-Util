@@ -383,6 +383,7 @@ sub entropy_bytes {
 
 *factor = \&Math::Prime::Util::PP::factor;
 *factor_exp = \&Math::Prime::Util::PP::factor_exp;
+*trial_factor = \&Math::Prime::Util::PP::trial_factor;
 *prho_factor = \&Math::Prime::Util::PP::prho_factor;
 *pbrent_factor = \&Math::Prime::Util::PP::pbrent_factor;
 *ecm_factor = \&Math::Prime::Util::PP::ecm_factor;
@@ -738,13 +739,6 @@ sub harmfrac {
   my($n) = @_;
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::harmfrac($n);
-}
-
-sub trial_factor {
-  my($n, $limit) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($limit) if defined $limit;
-  return Math::Prime::Util::PP::trial_factor($n, $limit);
 }
 
 #############################################################################

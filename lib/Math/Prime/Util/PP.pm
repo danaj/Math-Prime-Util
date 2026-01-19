@@ -731,9 +731,10 @@ sub primes {
   return [grep { $_ >= $low && $_ <= $high } @_primes_small]
     if $high <= $_primes_small[-1];
 
-  return [ map { reftyped($_[0],$_) }
-           Math::Prime::Util::GMP::sieve_primes($low, $high, 0) ]
-    if $Math::Prime::Util::_GMPfunc{"sieve_primes"} && $Math::Prime::Util::GMP::VERSION >= 0.34;
+  if ($Math::Prime::Util::_GMPfunc{"sieve_primes"} && $Math::Prime::Util::GMP::VERSION >= 0.34) {
+    my @pr = Math::Prime::Util::GMP::sieve_primes($low, $high, 0);
+    return ref($high) ? [maybetobigintall(@pr)] : \@pr;
+  }
 
   # At some point even the pretty-fast pure perl sieve is going to be a
   # dog, and we should move to trials.  This is typical with a small range
@@ -974,8 +975,7 @@ sub twin_primes {
   } else {
     @tp = sieve_prime_cluster($low, $high, 2);
   }
-  @tp = map { reftyped($_[0],$_) } @tp;
-  \@tp;
+  return ref($high) ? [maybetobigintall(@tp)] : \@tp;
 }
 
 sub semi_primes {
@@ -1735,17 +1735,17 @@ sub is_rough {
   validate_integer_nonneg($k);
 
   return 0+($k == 0) if $n == 0;
-  return 1 if $n == 1;
-  return 1 if $k <= 1;
+  return 1 if $n == 1 || $k <= 1;
+  return 0 if $k > $n;
   return 0+($n >= 1) if $k == 2;
-
-  if ($k < 10000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
-    my @f = Math::Prime::Util::GMP::trial_factor($n, $k);
-    return 0 + ($f[0] >= $k);
-  }
 
   return _gmpcall("is_rough",$n,$k)
     if $Math::Prime::Util::_GMPfunc{"is_rough"};
+
+  if ($k < 10000) {
+    my @f = Math::Prime::Util::trial_factor($n, $k-1);
+    return 0 + ($f[0] >= $k);
+  }
 
   return (Mvecnone(sub { $_ < $k }, Mfactor($n))) ? 1 : 0;
 }
@@ -7845,8 +7845,14 @@ sub binomialmod {
   validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
+  # Best if we have it.
   return reftyped($_[2], _gmpcall("binomialmod",$n,$k,$m))
     if $Math::Prime::Util::_GMPfunc{"binomialmod"};
+
+  # Avoid the possible enormously slow bigint creation.
+  if ($Math::Prime::Util::_GMPfunc{"binomial"} && $Math::Prime::Util::_GMPfunc{"modint"}) {
+    return reftyped($_[2], Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
+  }
 
   return 1 if $k == 0 || $k == $n;
   return 0 if $n >= 0 && ($k < 0 || $k > $n);
@@ -8985,29 +8991,48 @@ sub is_perrin_pseudoprime {
 
 # Aebi and Cairns (2008)
 sub _catgamma {
-  my $n = shift;
+  my($n,$mod) = @_;
 
-  # Ideally we would use Prop 6 to reduce this.
-
-  # Section 5 rephrases theorem 2 into the middle binomial.
-  my $m = Mrshiftint(Msubint($n,1),1);
-  my $r = Math::Prime::Util::binomialmod(Mlshiftint($m,1), $m, $n);
-  return ($m & 1) ? $n-$r : $r;
+  # Theorem 6, allowing us to possibly reduce n
+  if ($mod < $n) {
+    my $NP = Mdivint($n,$mod);
+    if ($NP & 1) {  # odd
+      return $mod*$NP == $n  ?  _catgamma($NP,$mod)  :  0;
+    } else {
+      return Mmulmod(_catgamma($NP+1,$mod),_catgamma($n-$mod*$NP,$mod),$mod);
+    }
+  }
+  # Section 5 rephrases Theorem 2 into the middle binomial.
+  my $N = Msubint($n,1);
+  my $m = Mrshiftint($N,1);
+  my $r = Math::Prime::Util::binomialmod($N, $m, $mod);
+  return ($m & 1) ? $mod-$r : $r;
+}
+sub _catvtest {
+  my($n,$p) = @_;
+  while ($n = int($n/$p)) { return 1 if $n % 2; }
+  0;
 }
 sub is_catalan_pseudoprime {
   my($n) = @_;
   return 0+($n >= 2) if $n < 4;
+  return 0 unless $n & 1;
 
-  # Aebi and Cairns (2008), Proposition 3 for semiprimes with 1 small prime
-  if ($n > 169 && $n & 1) {
-    my $mod = Mmodint($n,15015);
-    if ($mod% 3==0){my($p,$q)=( 3,Mdivint($n, 3)); return 0 if Mmodint(  -2,$q) != 1 && Mis_prime($q); }
-    if ($mod% 5==0){my($p,$q)=( 5,Mdivint($n, 5)); return 0 if Mmodint(   6,$q) != 1 && Mis_prime($q); }
-    if ($mod% 7==0){my($p,$q)=( 7,Mdivint($n, 7)); return 0 if Mmodint( -20,$q) != 1 && Mis_prime($q); }
-    if ($mod%11==0){my($p,$q)=(11,Mdivint($n,11)); return 0 if Mmodint(-252,$q) != 1 && Mis_prime($q); }
-    if ($mod%13==0){my($p,$q)=(13,Mdivint($n,13)); return 0 if Mmodint( 924,$q) != 1 && Mis_prime($q); }
+  {
+    my @f = Math::Prime::Util::trial_factor($n, 10000);
+    if (@f == 2 && is_prime($f[1]) && $f[0] != $f[1]) {
+      my($p,$q) = ($f[0],$f[1]);  # two primes, q > p
+      return 0 if 2*$p+1 >= $q; # by Theorem 6(a)
+      # Proposition 3 (semiprimes)
+      return 0 unless _catgamma($q,$p) == 1 && _catgamma($p,$q) == 1;
+    }
+    if (is_prime($f[-1])) {  # fully factored
+      for my $F (vecuniq(@f)) {
+        return 0 if _catvtest($n-1,$F);
+      }
+    }
   }
-  return _catgamma($n) == 1 ? 1 : 0;
+  return _catgamma($n,$n) == 1 ? 1 : 0;
 }
 
 sub is_frobenius_pseudoprime {
@@ -9287,16 +9312,22 @@ sub _basic_factor {
 
 sub trial_factor {
   my($n, $limit) = @_;
+  _validate_integer_nonneg($n);
+  _validate_integer_nonneg($limit) if defined $limit;
+
+  return ($n==1) ? () : ($n)  if $n < 4;
+
+  if ($Math::Prime::Util::_GMPfunc{"trial_factor"}) {
+    my @f = defined $limit ? Math::Prime::Util::GMP::trial_factor($n,$limit)
+                           : Math::Prime::Util::GMP::trial_factor($n);
+    return ref($_[0]) ? maybetobigintall(@f) : @f;
+  }
 
   my @factors;
   # Don't use _basic_factor here -- they want a trial forced.
 
   # For 32-bit n, we can simplify things a lot.
   if ($n <= 4294967295) {
-    if ($n < 4) {
-      @factors = ($n == 1) ? () : ($n);
-      return @factors;
-    }
     my $sqrtn = int(sqrt($n));
     $limit = $sqrtn if !defined $limit || $limit > $sqrtn;
 
@@ -9445,10 +9476,7 @@ sub factor {
 
   if ($Math::Prime::Util::_GMPfunc{"factor"}) {
     my @factors = Math::Prime::Util::GMP::factor($n);
-    if (ref($_[0])) {
-      @factors = map { reftyped($_[0], $_) } @factors
-    }
-    return @factors;
+    return ref($_[0]) ? maybetobigintall(@factors) : @factors;
   }
 
   $n = Maddint($n,0) if ref($n);  # Ensure we have a copy
@@ -9500,7 +9528,8 @@ sub _found_factor {
   } else {
     my $f2 = Mdivint($n,$f);
     croak "internal error in $what" unless Mmulint($f,$f2) == $n;
-    push @factors, vecsort($f,$f2);
+    ($f,$f2) = ($f2,$f) if $f > $f2;
+    push @factors, $f, $f2;
     # MPU::GMP prints this type of message if verbose, so do the same.
     print "$what found factor $f\n" if getconfig()->{'verbose'} > 0;
   }
