@@ -179,7 +179,7 @@ for my $base (sort keys %pseudoprimes) {
     $text = "Unrestricted Perrin pseudoprimes";
   } elsif ($base eq 'catalan') {
     @fails = grep { !is_catalan_pseudoprime($_) } @c;
-    $text = "Catalan pseudoprimes";
+    $text = "Catalan pseudoprimes [@c]";
   } elsif ($base eq 'frobenius') {
     @fails = grep { !is_frobenius_pseudoprime($_,1,-1) } @c;
     $text = "Frobenius(1,-1) pseudoprimes";
