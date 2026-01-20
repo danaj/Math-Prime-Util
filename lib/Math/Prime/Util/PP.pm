@@ -106,6 +106,7 @@ our $_BIGINT;
 *Mgcdext = \&Math::Prime::Util::gcdext;
 *Mfactor = \&Math::Prime::Util::factor;
 *Mfactor_exp = \&Math::Prime::Util::factor_exp;
+*Mtrial_factor = \&Math::Prime::Util::trial_factor;
 *Mdivisors = \&Math::Prime::Util::divisors;
 *Mdivisor_sum = \&Math::Prime::Util::divisor_sum;
 *Mis_prime = \&Math::Prime::Util::is_prime;
@@ -1713,19 +1714,19 @@ sub is_smooth {
   return 0 if $k <= 1;
   return 1 if $n <= $k;
 
-  if ($k <= 10000000 && $Math::Prime::Util::_GMPfunc{"trial_factor"}) {
+  return Math::Prime::Util::GMP::is_smooth($n,$k)
+    if $Math::Prime::Util::_GMPfunc{"is_smooth"};
+
+  if ($k <= 10000000) {
     my @f;
     while (1) {
-      @f = Math::Prime::Util::GMP::trial_factor($n, $k);
+      @f = Mtrial_factor($n, $k);
       last if scalar(@f) <= 1;
       return 0 if $f[-2] > $k;
       $n = $f[-1];
     }
     return 0 + ($f[0] <= $k);
   }
-
-  return _gmpcall("is_smooth",$n,$k)
-    if $Math::Prime::Util::_GMPfunc{"is_smooth"};
 
   return (Mvecnone(sub { $_ > $k }, Mfactor($n))) ? 1 : 0;
 }
@@ -1739,11 +1740,11 @@ sub is_rough {
   return 0 if $k > $n;
   return 0+($n >= 1) if $k == 2;
 
-  return _gmpcall("is_rough",$n,$k)
+  return Math::Prime::Util::GMP::is_rough($n,$k)
     if $Math::Prime::Util::_GMPfunc{"is_rough"};
 
   if ($k < 10000) {
-    my @f = Math::Prime::Util::trial_factor($n, $k-1);
+    my @f = Mtrial_factor($n, $k-1);
     return 0 + ($f[0] >= $k);
   }
 
@@ -9019,7 +9020,7 @@ sub is_catalan_pseudoprime {
   return 0 unless $n & 1;
 
   {
-    my @f = Math::Prime::Util::trial_factor($n, 10000);
+    my @f = Mtrial_factor($n, 10000);
     if (@f == 2 && is_prime($f[1]) && $f[0] != $f[1]) {
       my($p,$q) = ($f[0],$f[1]);  # two primes, q > p
       return 0 if 2*$p+1 >= $q; # by Theorem 6(a)
@@ -9247,7 +9248,7 @@ sub is_aks_prime {
   my $slim = $s * ($s-1);
   print "# aks trial to $slim\n" if $_verbose >= 2;
   {
-    my @f = trial_factor($n, $slim);
+    my @f = Mtrial_factor($n, $slim);
     return 0 if @f >= 2;
   }
   return 1 if Mmulint($slim,$slim) >= $n;
@@ -9485,7 +9486,7 @@ sub factor {
   # For native integers, we could save a little time by doing hardcoded trials
   # by 2-29 here.  Skipping it.
 
-  push @factors, trial_factor($n, $lim);
+  push @factors, Mtrial_factor($n, $lim);
   return @factors if $factors[-1] < $lim*$lim;
   $n = pop(@factors);
 
@@ -9510,7 +9511,7 @@ sub factor {
         push @nstack, @ftry;
       } else {
         #warn "trial factor $n\n";
-        push @factors, trial_factor($n);
+        push @factors, Mtrial_factor($n);
         #print "  trial into ", join(",",@factors), "\n";
         $n = 1;
         last;
@@ -9539,8 +9540,8 @@ sub _found_factor {
 ################################################################################
 
 # TODO:
-sub squfof_factor { trial_factor(@_) }
-sub lehman_factor { trial_factor(@_) }
+sub squfof_factor { Mtrial_factor(@_) }
+sub lehman_factor { Mtrial_factor(@_) }
 sub pplus1_factor { pminus1_factor(@_) }
 
 sub _power_factor {
