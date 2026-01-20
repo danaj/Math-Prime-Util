@@ -830,6 +830,15 @@ sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   }
   $a;
 }
+sub vecslide (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, @v) = @_;
+
+  my $caller = caller();
+  no strict 'refs'; ## no critic(strict)
+  local(*{$caller.'::a'}) = \my $a;
+  local(*{$caller.'::b'}) = \my $b;
+  return map { $a = $v[$_-1];  $b = $v[$_];  $sub->(); } 1..$#v;
+}
 
 sub vecany (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;

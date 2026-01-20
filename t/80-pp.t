@@ -1415,6 +1415,8 @@ subtest 'vector (list) functions', sub {
     is("@t128","@d128", "shuffled outputs are the same elements as input");
   }
   is(scalar @{[vecsample(4,[8..11])]}, 4, "vecsample returns all items with exact k");
+
+  is_deeply([vecslide {$a+$b} 1..5],[3,5,7,9],"vecslide {\$a+\$b} 1..5");
 };
 
 ###############################################################################

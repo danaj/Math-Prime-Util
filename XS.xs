@@ -134,6 +134,10 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #  define FIX_MULTICALL_REFCOUNT
 #endif
 
+/* Perl globals we use for setting a and b inside the called block */
+#define plAgv PL_firstgv
+#define plBgv PL_secondgv
+
 #ifndef CvISXSUB
 #  define CvISXSUB(cv) CvXSUB(cv)
 #endif
@@ -6477,6 +6481,70 @@ CODE:
     }
     ST(0) = ret;
     XSRETURN(1);
+}
+
+void
+vecslide(SV* block, ...)
+PROTOTYPE: &@
+CODE:
+{   /* Similar to slide from List::MoreUtils. */
+    SSize_t i;
+    GV *gv;
+    HV *stash;
+    SV **args = &PL_stack_base[ax];
+    CV *subcv;
+    SV **retsvarr;  /* Store results */
+
+    SETSUBREF(subcv, block);
+    if (items <= 2) XSRETURN_EMPTY;
+
+    New(0, retsvarr, items-2, SV*);
+
+    SAVEGENERICSV(plAgv);
+    SAVEGENERICSV(plBgv);
+    plAgv = MUTABLE_GV(SvREFCNT_inc(gv_fetchpvs("a",GV_ADD|GV_NOTQUAL,SVt_PV)));
+    plBgv = MUTABLE_GV(SvREFCNT_inc(gv_fetchpvs("b",GV_ADD|GV_NOTQUAL,SVt_PV)));
+    save_gp(plAgv, 0);
+    save_gp(plBgv, 0);
+    GvINTRO_off(plAgv);
+    GvINTRO_off(plBgv);
+    SAVEGENERICSV(GvSV(plAgv));  SvREFCNT_inc(GvSV(plAgv));
+    SAVEGENERICSV(GvSV(plBgv));  SvREFCNT_inc(GvSV(plBgv));
+#ifdef dMULTICALL
+    if (!CvISXSUB(subcv)) {
+      dMULTICALL;
+      I32 gimme = G_SCALAR;
+      PUSH_MULTICALL(subcv);
+      for (i = 1; i < items-1; i++) {
+        SV *olda = GvSV(plAgv), *oldb = GvSV(plBgv);
+        GvSV(plAgv) = SvREFCNT_inc_simple_NN(args[i]);
+        GvSV(plBgv) = SvREFCNT_inc_simple_NN(args[i+1]);
+        SvREFCNT_dec(olda);  SvREFCNT_dec(oldb);
+        MULTICALL;
+        retsvarr[i-1] = newSVsv(*PL_stack_sp);
+      }
+      FIX_MULTICALL_REFCOUNT;
+      POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (i = 1; i < items-1; i++) {
+        SV *olda, *oldb;
+        dSP;
+        olda = GvSV(plAgv); oldb = GvSV(plBgv);
+        GvSV(plAgv) = SvREFCNT_inc_simple_NN(args[i]);
+        GvSV(plBgv) = SvREFCNT_inc_simple_NN(args[i+1]);
+        SvREFCNT_dec(olda);  SvREFCNT_dec(oldb);
+        PUSHMARK(SP);
+        call_sv((SV*)subcv, G_SCALAR);
+        retsvarr[i-1] = newSVsv(*PL_stack_sp);
+      }
+    }
+    for (i = 0; i < items-2; i++)
+      { ST(i) = sv_2mortal(retsvarr[i]);  retsvarr[i]=0; }
+    Safefree(retsvarr);
+    XSRETURN(items-2);
 }
 
 void

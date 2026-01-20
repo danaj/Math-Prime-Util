@@ -168,6 +168,7 @@ Revision history for Perl module Math::Prime::Util
     - vecuniq(...)                    remove duplicates from list of integers
     - vecfreq(...)                    return hash of item => count from list
     - vecsingleton(...)               remove all items that aren't unique
+    - vecslide { ... } @list          calls block for each pair in list
     - vecsort(@L)                     numerically sort integer list
     - vecsorti(\@L)                   in-place numeric sort a list ref
     - vecsample(k,@list)              return k random elements of list

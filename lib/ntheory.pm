@@ -224,6 +224,7 @@ Tags:
   vecmex(@list)                       return least non-neg value not in list
   vecpmex(@list)                      return least positive value not in list
   vecsample(k,@list)                  return k random elements of list
+  vecslide { ... } @list              calls block for each pair in list
 
   toset(\@A)                          convert to unique sorted integer list
   setinsert(\@A,$v)                   insert integer v into integer set A

@@ -130,7 +130,7 @@ sub mpu_public_regex {
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsorti vecfreq vecsingleton
+      vecsort vecsorti vecfreq vecsingleton vecslide
       setbinop sumset setunion setintersect setminus setdelta toset
       setcontains setcontainsany setinsert setremove setinvert
       is_sidon_set is_sumfree_set
@@ -177,7 +177,7 @@ sub mpu_PPM_regex {
       Mfactorial Mfordivisors Mforprimes Mgcd Mlcm Mgcdext Mznorder
       Mfalling_factorial
       Mkronecker Mmoebius Mtotient Mstirling
-      Mnext_prime Mprev_prime Mprime_count
+      Mnext_prime Mprev_prime Mprime_count Mnth_prime_upper
       Mprimorial Mpn_primorial Mprime_omega
       MLi Mpowersum
       Murandomb Murandomm Mvaluation

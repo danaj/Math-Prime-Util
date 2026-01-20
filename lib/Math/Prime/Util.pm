@@ -101,7 +101,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsorti vecfreq vecsingleton
+      vecsort vecsorti vecfreq vecsingleton vecslide
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setcontainsany setinsert setremove setinvert
@@ -998,12 +998,12 @@ module operates normally.
 If set to C<1>, the PP package will be loaded on startup rather than
 on demand, and the package aliases C<MPU>, C<PP>, C<GMP> will be used
 for the main, Perl, and GMP packages respectively.
-Normally you wouldn't want this for both agressive namespace pollution as
+Normally you wouldn't want this for both aggressive namespace pollution as
 well as performance (there is often no need to load the huge PP module).
-But it is convenient if one wants to call the different paths explitly.
+But it is convenient if one wants to call the different paths explicitly.
 
 Regarding performance, on a 2020 Macbook M1, normal startup time is
-about 10ms.  With this option set it becomes 45ms.
+about 10 milliseconds.  With this option set it becomes 45 milliseconds.
 This is the reason the PP code is only loaded if needed.
 For many purposes this amount of time is trivial, but slower computers
 or more time critical short applications will care.
@@ -3481,6 +3481,26 @@ of the set complement.  Repeated values are allowed in the list.
 
 C<vecpmex>() = 1.
 C<vecpmex>(1,2,...,I<w>) = I<w>+1.
+
+
+=head2 vecslide
+
+  @pairsum = vecslide {$a+$b} 1..5;  # returns (1+2,2+3,3+4,4+5)
+
+  say for vecslide { "$a->[0] $b->[1]" }
+      (["hello","world"], ["goodbye","friends"], ["love","hate"]);
+  # hello friends
+  # goodbye hate
+
+
+Given a code block and a list, calls the code block for each pair
+in the list, setting the local C<$a> and C<$b> to the values in
+each pair.
+
+There is no restriction of what the list contains, as seen in the
+second example.
+
+This is identical to L<List::MoreUtils::slide>.
 
 
 =head2 toset
