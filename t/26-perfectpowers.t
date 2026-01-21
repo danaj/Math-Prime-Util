@@ -12,6 +12,8 @@ use Math::Prime::Util qw/is_perfect_power
 
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 
 my @A069623 = (1, 1, 1, 2, 2, 2, 2, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12);
@@ -112,9 +114,12 @@ is_deeply( [map { nth_perfect_power($_) } 1 .. scalar(@A001597)],
 is_deeply( [map { nth_perfect_power($_) } 67224..67229],
            [qw/4294574089 4294705156 4294836225 4294967296 4295098369 4295229444/],
            "nth perfect powers with results around 2^32" );
-is_deeply( [map { nth_perfect_power($_) } 4297615579,4297615580,4297615581,4297615582],
-           [qw/18446744047939747849 18446744056529682436 18446744065119617025 18446744073709551616/],
-           "nth perfect powers with results around 2^64" );
+SKIP: {
+  skip "ranges around 2^64 only on 64-bit",1 unless $use64;
+  is_deeply( [map { nth_perfect_power($_) } 4297615579,4297615580,4297615581,4297615582],
+             [qw/18446744047939747849 18446744056529682436 18446744065119617025 18446744073709551616/],
+             "nth perfect powers with results around 2^64" );
+}
 
 ######  approx and bounds for count and nth
 

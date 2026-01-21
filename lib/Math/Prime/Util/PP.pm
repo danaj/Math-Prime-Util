@@ -1743,7 +1743,7 @@ sub is_rough {
   return Math::Prime::Util::GMP::is_rough($n,$k)
     if $Math::Prime::Util::_GMPfunc{"is_rough"};
 
-  if ($k < 10000) {
+  if ($k < 50000) {
     my @f = Mtrial_factor($n, $k-1);
     return 0 + ($f[0] >= $k);
   }

@@ -11,7 +11,8 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          random_proven_prime
                          random_semiprime random_unrestricted_semiprime
                          random_safe_prime random_strong_prime
-                         factor is_prime is_semiprime is_smooth prime_set_config/;
+                         factor is_prime is_semiprime is_smooth logint
+                         prime_set_config/;
 
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
@@ -82,11 +83,11 @@ plan tests => 13+1+1+1+1
               + (2 * scalar (keys %ranges))
               + (2 * scalar @random_to)
               + (1 * scalar @random_ndigit_tests)
-              + (4 * scalar @random_nbit_tests)
+              + (2 * scalar @random_nbit_tests)
               + 4
               + 7+14 # random_semiprime
               + 11   # random_safe_prime
-              + 4    # random_strong_prime
+              + 1+6  # random_strong_prime
               + 0;
 
 my $infinity = 20**20**20;
@@ -172,11 +173,12 @@ foreach my $digits ( @random_ndigit_tests ) {
 
 foreach my $bits ( @random_nbit_tests ) {
   check_bits( random_nbit_prime($bits), $bits, "nbit" );
-  check_bits( random_maurer_prime($bits), $bits, "Maurer" );
-  SKIP: {
-    skip "random Shawe-Taylor prime generation requires Digest::SHA",1 unless $do_st;
-    check_bits( random_shawe_taylor_prime($bits), $bits, "Shawe-Taylor" );
-  }
+  # These are handled in t/23-random-certs.t
+  #check_bits( random_maurer_prime($bits), $bits, "Maurer" );
+  #SKIP: {
+  #  skip "random Shawe-Taylor prime generation requires Digest::SHA",1 unless $do_st;
+  #  check_bits( random_shawe_taylor_prime($bits), $bits, "Shawe-Taylor" );
+  #}
   check_bits( random_proven_prime($bits), $bits, "proven" );
 }
 
@@ -190,17 +192,13 @@ prime_set_config(nobigint=>0);
 {
   my $n = random_nbit_prime(80);
   ok( ref($n) =~ /^Math::/, "random 80-bit prime returns a BigInt" );
-  ok(    $n >= Math::BigInt->new(2)->bpow(79)
-      && $n <= Math::BigInt->new(2)->bpow(80),
-      "random 80-bit prime '$n' is in range" );
+  ok( 1+logint($n,2) == 80, "random 80-bit prime '$n' is in range" );
 }
 SKIP: {
   skip "Skipping 30-digit random prime with broken 64-bit Perl", 2 if $broken64;
   my $n = random_ndigit_prime(30);
   ok( ref($n) =~ /^Math::/, "random 30-digit prime returns a BigInt" );
-  ok(    $n >= Math::BigInt->new(10)->bpow(29)
-      && $n <= Math::BigInt->new(10)->bpow(30),
-      "random 30-digit prime '$n' is in range" );
+  ok( 1+logint($n,10) == 30, "random 30-digit prime '$n' is in range" );
 }
 
 ###### semiprimes
@@ -217,14 +215,12 @@ SKIP: {
   }
   $n = random_semiprime(26);
   ok($n >= 33554432 && $n < 67108864 && scalar(factor($n)) == 2, "random_semiprime(26) is a 26-bit semiprime");
-  my $min = Math::BigInt->new(2)->bpow(81-1);
-  my $max = Math::BigInt->new(2)->bpow(81)->bdec;
   $n = random_semiprime(81);
-  ok($n >= $min && $n <= $max, "random_semiprime(81) is 81 bits");
+  ok( 1+logint($n,2) == 81, "random_semiprime(81) is 81 bits");
   SKIP: {
     skip "Skipping 81-bit semiprime with broken 64-bit Perl", 1 if $broken64;
     $n = random_unrestricted_semiprime(81);
-    ok($n >= $min && $n <= $max, "random_unrestricted_semiprime(81) is 81 bits");
+    ok( 1+logint($n,2) == 81, "random_unrestricted_semiprime(81) is 81 bits");
   }
 }
 
@@ -246,25 +242,17 @@ for my $bits (3 .. 10, 48, 70) {
 
 ###### Strong primes
 ok(!eval { random_strong_prime(127); }, "random_strong_prime(127) is invalid");
-SKIP: {
-  skip "skipping random_string_prime(n) without GMP", 3 unless $usegmp;
-  for my $bits (128, 247, 512) {
+for my $bits (128, 247, 512) {
+  SKIP: {
+    skip "skipping random_strong_prime($bits) without GMP", 2 unless $usegmp;
     my $p = random_strong_prime($bits);
-    ok ( is_nbit($p, $bits) && is_prime($p) && !is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),
-         "random_strong_prime($bits) is in range and not obviously weak");
+    ok(is_nbit($p, $bits) && is_prime($p), "random_strong_prime($bits) is a prime with $bits bits");
+    ok (!is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),
+        "random_strong_prime($bits) isn't obviously weak");
   }
 }
 
 sub is_nbit {
   my($n, $bits) = @_;
-  my($min,$max);
-  use Math::BigInt;
-  if (($bits <= $maxbits) && (ref($n) ne 'Math::BigInt')) {
-    $min = 1 << ($bits-1);
-    $max = ~0 >> ($maxbits - $bits);
-  } else {
-    $min = Math::BigInt->new(2)->bpow($bits-1);
-    $max = Math::BigInt->new(2)->bpow($bits)->bdec;
-  }
-  return ($n >= $min && $n <= $max);
+  return 1+logint($n,2) == $bits ? 1 : 0;
 }
