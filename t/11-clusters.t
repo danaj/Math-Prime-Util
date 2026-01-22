@@ -3,8 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/sieve_prime_cluster is_prime primes twin_primes addint subint/;
-use Math::BigInt try => "GMP,Pari";
+use Math::Prime::Util qw/sieve_prime_cluster is_prime primes twin_primes addint subint powint/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -16,7 +15,6 @@ my @tests = (
 );
 
 my @patterns = (
-  [0,2],
   [0,2,6],
   [0,4,6],
   [0,2,6,8],
@@ -31,11 +29,11 @@ my @high_check = (
   [ "999999217031", 'A022006', [2,6,8,12] ],
   [ "999998356957", 'A022007', [4,6,10,12] ],
   [ "999961920817", 'A022008', [4,6,10,12,16] ],
-  [ "9999956467211", 'A022009', [2,6,8,12,18,20] ],
-  [ "9996858589169", 'A022010', [2,8,12,14,18,20] ],
-  [ "99996813484481", 'A022010', [2,6,8,12,18,20,26] ],
 );
 my @high_check2 = (
+  [ "9999956467211", 'A022009', [2,6,8,12,18,20] ],
+  [ "9996858589169", 'A022010', [2,8,12,14,18,20] ],
+  [ "99996813484481", 'A022011', [2,6,8,12,18,20,26] ],
   [ "99997194198047", 'A022012', [2,6,12,14,20,24,26] ],
   [ "99996215495153", 'A022013', [6,8,14,18,20,24,26] ],
   [ "999897629673401", 'A022545', [2,6,8,12,18,20,26,30] ],
@@ -56,7 +54,7 @@ push @high_check, @high_check2 if $extra;
 #[4,6,10,16,18,24,28,30,34,40,46,48,54,58,60,66);   # A257375
 #[6,12,16,18,22,28,30,36,40,42,46,48);   # A214947
 
-plan tests => scalar(@tests) + 2 + 2 * scalar(@patterns) + scalar(@high_check);
+plan tests => scalar(@tests) + 2 + 2 + 2 * scalar(@patterns) + scalar(@high_check);
 
 for my $t (@tests) {
   my($what, $tuple, $range, $expect) = @$t;
@@ -68,44 +66,66 @@ for my $t (@tests) {
 is_deeply( [sieve_prime_cluster(1,1e10,2,4)], [3], "Inadmissible pattern (0,2,4) finds (3,5,7)");
 is_deeply( [sieve_prime_cluster(1,1e10,2,8,14,26)], [3,5], "Inadmissible pattern (0,2,8,14,26) finds (3,5,11,17,29) and (5,7,13,19,31)");
 
-my($small, $large);  # Will hold primes and twin primes in two ranges
+my @pcache;  # holds primes in two ranges
+
 my($sbeg,$send) = (0, 100000);
 $send += 1000000 if $extra;
-$small = [ primes($sbeg,$send), twin_primes($sbeg,$send) ];
+$pcache[0] = primes($sbeg,$send+256);
 
-my $mbeg = Math::BigInt->new(10)**21;
+my $mbeg = powint(10,21);
 my $mend = $mbeg + 10000 + int(rand(100000));
 $mend += 100000 if $extra;
 if ($usegmp) {
-  $large = [ primes($mbeg,$mend), twin_primes($mbeg,$mend) ];
+  $pcache[1] = primes($mbeg,$mend+256);
 } else {
   # Without GMP and using the Calc backend, this is just painful slow
-  $mend = $mbeg + 10000;
-  $large = [
-    [map { $mbeg+$_ } (qw/117 193 213 217 289 327 367 373 399 409 411 427 433 447 471 553 609 723 733 951 1063 1081 1213 1237 1311 1383 1411 1417 1459 1521 1573 1581 1687 1731 1749 1867 1897 2001 2011 2041 2049 2203 2209 2257 2259 2307 2317 2343 2349 2583 2611 2673 2701 2713 2719 2761 2803 2823 2961 3007 3021 3271 3289 3327 3331 3369 3399 3423 3483 3657 3759 3777 3861 3897 3973 3999 4011 4017 4039 4063 4081 4119 4123 4197 4231 4297 4353 4359 4381 4437 4521 4581 4591 4671 4743 4749 4791 4813 4851 4891 4897 4977 5203 5277 5317 5371 5427 5437 5499 5577 5683 5719 5751 5763 5913 5959 6003 6009 6103 6247 6297 6309 6493 6531 6727 6747 6759 6781 6783 6853 6871 6883 6993 7039 7059 7069 7147 7231 7269 7413 7467 7471 7509 7527 7639 7681 7689 7711 7741 7761 7887 8011 8071 8143 8173 8187 8221 8223 8283 8299 8343 8407 8467 8497 8587 8623 8761 8799 8973 9069 9111 9121 9159 9183 9187 9211 9217 9271 9333 9349 9369 9477 9501 9723 9847 9861 9961 9999/)],
-    [map { $mbeg+$_ } (qw/409 2257 6781 8221/)],
-  ];
+  $mend = $mbeg + 5000;
+  $pcache[1] = [map { $mbeg+$_ } (qw/117 193 213 217 289 327 367 373 399 409 411 427 433 447 471 553 609 723 733 951 1063 1081 1213 1237 1311 1383 1411 1417 1459 1521 1573 1581 1687 1731 1749 1867 1897 2001 2011 2041 2049 2203 2209 2257 2259 2307 2317 2343 2349 2583 2611 2673 2701 2713 2719 2761 2803 2823 2961 3007 3021 3271 3289 3327 3331 3369 3399 3423 3483 3657 3759 3777 3861 3897 3973 3999 4011 4017 4039 4063 4081 4119 4123 4197 4231 4297 4353 4359 4381 4437 4521 4581 4591 4671 4743 4749 4791 4813 4851 4891 4897 4977 5203 5277 5317 5371 5427 5437 5499 5577 5683 5719 5751 5763 5913 5959 6003 6009 6103 6247 6297 6309 6493 6531 6727 6747 6759 6781 6783 6853 6871 6883 6993 7039 7059 7069 7147 7231 7269 7413 7467 7471 7509 7527 7639 7681 7689 7711 7741 7761 7887 8011 8071 8143 8173 8187 8221 8223 8283 8299 8343 8407 8467 8497 8587 8623 8761 8799 8973 9069 9111 9121 9159 9183 9187 9211 9217 9271 9333 9349 9369 9477 9501 9723 9847 9861 9961 9999/)];
 }
 
+###### twin primes native
+{
+  my $beg = 0;
+  my $end = $extra ? $send : 20000;
+  my @sieve = sieve_prime_cluster($beg,$end,2);
+  my @tuple = ktuple($beg,$end,$pcache[0],2);
+  my $num = scalar(@tuple);
+  is_deeply( \@sieve, \@tuple, "Pattern [2] $num in range $beg .. $end");
+}
+
+###### twin primes bigint
+{
+  my $beg = $mbeg;
+  my $end = $extra ? $mend : $mbeg + 1000;
+  my @sieve = sieve_prime_cluster($beg,$end,2);
+  my @tuple = ktuple($beg,$end,$pcache[1],2);
+  my $num = scalar(@tuple);
+  is_deeply( \@sieve, \@tuple, "Pattern [2] $num in range $beg .. $end");
+}
+
+###### extended patterns native
 for my $pat (@patterns) {
   my @pat = @$pat;
   shift @pat if $pat[0] == 0;
   my @sieve = sieve_prime_cluster($sbeg,$send,@pat);
-  my @tuple = ktuple($sbeg,$send,$small,@pat);
+  my @tuple = ktuple($sbeg,$send,$pcache[0],@pat);
   my $num = scalar(@tuple);
 
   is_deeply( \@sieve, \@tuple, "Pattern [@pat] $num in range $sbeg .. $send");
 }
+
+###### extended patterns bigint
 for my $pat (@patterns) {
   my @pat = @$pat;
   shift @pat if $pat[0] == 0;
   my @sieve = sieve_prime_cluster($mbeg,$mend,@pat);
-  my @tuple = ktuple($mbeg,$mend,$large,@pat);
+  my @tuple = ktuple($mbeg,$mend,$pcache[1],@pat);
   my $num = scalar(@tuple);
 
   is_deeply( \@sieve, \@tuple, "Pattern [@pat] $num in range $mbeg .. $mend");
 }
 
+####### target a small window around known large clusters
 for my $test (@high_check) {
   my($n,$name,$cl) = @$test;
   my $window = ($usexs && $usegmp) ? 1000000 : 1000;
@@ -114,31 +134,13 @@ for my $test (@high_check) {
 }
 
 sub ktuple {
-  my($beg, $end, $prset, @pat) = @_;
-  my $patstr = join(" ",@pat);
+  my($beg, $end, $pcache, @pat) = @_;
 
-  if ($beg eq "1000000000000000000000" && $end eq "1000000000000000010000") {
-    return () if $patstr =~ /^(2 6 8 12 18 20|2 8 12 14 18 20|4 6 10 12 16|4 6 10 12|2 6 8 12|2 6 8|4 6|2 6)$/;
-    return (qw/1000000000000000000409 1000000000000000002257 1000000000000000006781 1000000000000000008221/) if $patstr eq '2';
+  my @p = grep { $_ >= $beg && $_ <= $end } @$pcache;
+  my %prhash = map { $_ => 1; } @$pcache;
+
+  foreach my $c (@pat) {
+    @p = grep { $prhash{$_+$c} } @p;
   }
-  if ($beg == 0 && $end == 100000) {
-    return (11) if $patstr eq '2 6 8 12 18 20';
-    return (5639,88799) if $patstr eq '2 8 12 14 18 20';
-    return (7,97,16057,19417,43777) if $patstr eq '4 6 10 12 16';
-    return (7,97,1867,3457,5647,15727,16057,19417,43777,79687,88807) if $patstr eq '4 6 10 12';
-    return (5,11,101,1481,16061,19421,21011,22271,43781,55331) if $patstr eq '2 6 8 12';
-  }
-  my @p;
-  if (@pat && $pat[0] == 2) {
-    @p = @{$prset->[1]};
-    shift @pat;
-  } else {
-    @p = @{$prset->[0]};
-  }
-  for my $c (@pat) {
-    @p = grep { is_prime($_+$c) } @p;
-  }
-  shift @p while @p && $p[0] < $beg;
-  pop @p while @p && $p[-1] > $end;
   @p;
 }
