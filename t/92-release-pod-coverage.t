@@ -173,7 +173,7 @@ sub mpu_PPM_regex {
       Mlshiftint Mrshiftint
       Maddmod Msubmod Mmulmod Mrootmod Mdivmod Mpowmod Minvmod
       Mmuladdmod Mmulsubmod
-      Mbinomial Mchinese Mfactor Mfactor_exp Mdivisors
+      Mbinomial Mchinese Mfactor Mfactor_exp Mtrial_factor Mdivisors
       Mfactorial Mfordivisors Mforprimes Mgcd Mlcm Mgcdext Mznorder
       Mfalling_factorial
       Mkronecker Mmoebius Mtotient Mstirling
