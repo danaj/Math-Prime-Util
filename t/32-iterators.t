@@ -263,8 +263,8 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
 
   # Validation for the Math::NumSeq compatiblity stuff
   $it->rewind;
-  do { $it->next } for 1..200;
-  is( $it->tell_i(), 201, "iterator object tell_i");
+  do { $it->next } for 1..100;
+  is( $it->tell_i(), 101, "iterator object tell_i");
   is( $it->i_start, 1, "iterator object i_start = 1");
   like( $it->description, qr/prime numbers/, "iterator object description");
   is( $it->values_min, 2, "iterator object values_min = 2");
@@ -450,35 +450,74 @@ for my $k (1 .. 10) {
 
 ###### Bigint range
 subtest 'for<...> with bigint ranges', sub {
-  my @r;
+  my(@r,$E,%d,$a1,$a2);
+  if ($use64) {
+    $E = 66;
+    $d{primes} = [166,199,169];
+    $d{semi} = [98,99,99];
+    $d{almost} = [30,32,31];
+    $d{comp} = [1506,1508,1506,1508];
+    $d{oddcomp} = [1506,1511,1509,1511];
+    $d{sf} = [26,29,27,[7,13,19,223,2683,16981,4200451],29,[3,31,379,"2093425718354419"]];
+    $d{sfint} = [26,29,27,29];
+    $d{factored} = [29,30,29,[qw/3 31 379 2093425718354419/],30,[qw/2 17 1129 1922236656459079/]];
+  } else {
+    $E = 36;
+    $d{primes} = [11,71,31];
+    $d{semi} = [710,711,711];
+    $d{almost} = [246,248,247];
+    $d{comp} = [2166,2168,2166,2168];
+    $d{oddcomp} = [1800,1805,1803,1805];
+    $d{sf} = [305,308,306,[2,79,3617,120247]];
+    $d{sfint} = [636,639,637];
+    $d{factored} = [170,171,170,[2,3,3,19,89,2257687],171,[17,149,1033,26263]];
+  }
 
-  @r=(); forprimes { push @r,$_ } plus_2_66(166),plus_2_66(199);
-  is_deeply(\@r, [qw/73786976294838206633/], "forprimes {} 2^66+166, 2^66+199");
-
-  @r=(); forsemiprimes { push @r,$_ } plus_2_66(98),plus_2_66(99);
-  is_deeply(\@r, [qw/73786976294838206563/], "forsemiprimes {} 2^66+98, 2^66+99");
-
-  @r=(); foralmostprimes { push @r,$_ } 3, plus_2_66(30),plus_2_66(32);
-  is_deeply(\@r, [qw/73786976294838206495/], "foralmostprimes {} 3, 2^66+30, 2^66+32");
-
-  @r=(); forcomposites { push @r,$_ } plus_2_66(1506),plus_2_66(1508);
-  is_deeply(\@r, [qw/73786976294838207970 73786976294838207972/], "forcomposites {} 2^66+1506, 2^66+1508");
-
-  @r=(); foroddcomposites { push @r,$_ } plus_2_66(1506),plus_2_66(1511);
-  is_deeply(\@r, [qw/73786976294838207973 73786976294838207975/], "foroddcomposites {} 2^66+1506, 2^66+1511");
-
-  @r=(); forsquarefree { push @r,[$_,[@_]] } plus_2_66(26),plus_2_66(29);
-  is_deeply(\@r, [ ["73786976294838206491",[qw/7 13 19 223 2683 16981 4200451/]],["73786976294838206493",[qw/3 31 379 2093425718354419/]] ], "forsquarefree {} 2^66+26, 2^66+29");
-
-  @r=(); forsquarefreeint { push @r,$_ } plus_2_66(26),plus_2_66(29);
-  is_deeply(\@r, [qw/73786976294838206491 73786976294838206493/], "forsquarefreeint {} 2^66+26, 2^66+29");
-
-  @r=(); forfactored { push @r,[$_,[@_]] } "73786976294838206493","73786976294838206494";
-  is_deeply(\@r, [ ["73786976294838206493",[qw/3 31 379 2093425718354419/]],["73786976294838206494",[qw/2 17 1129 1922236656459079/]] ], "forfactored { } 2^66+29, 2^66+30");
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{primes});
+    forprimes { push @r,$_ } $arg1, $arg2;
+    is_deeply(\@r, \@res, "forprimes {} 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{semi});
+    forsemiprimes { push @r,$_ } $arg1, $arg2;
+    is_deeply(\@r, \@res, "forsemiprimes {} 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{almost});
+    foralmostprimes { push @r,$_ } 3, $arg1, $arg2;
+    is_deeply(\@r, \@res, "foralmostprimes {} 3, 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{comp});
+    forcomposites { push @r,$_ } $arg1, $arg2;
+    is_deeply(\@r, \@res, "forcomposites {} 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{oddcomp});
+    foroddcomposites { push @r,$_ } $arg1, $arg2;
+    is_deeply(\@r, \@res, "foroddcomposites {} 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{sf});
+    forsquarefree { push @r,$_,[@_] } $arg1, $arg2;
+    is_deeply(\@r, \@res, "forsquarefree {} 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{sfint});
+    forsquarefreeint { push @r,$_ } $arg1, $arg2;
+    is_deeply(\@r, \@res, "forsquarefreeint {} 2^$E+$a1, 2^$E+$a2");
+  }
+  { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{factored});
+    forfactored { push @r,$_,[@_] } $arg1, $arg2;
+    is_deeply(\@r, \@res, "forfactored {} 2^$E+$a1, 2^$E+$a2");
+  }
 
   @r=(); fordivisors { push @r,$_ } "73786976294838225404";
   is_deeply(\@r, [qw/1 2 4 137 274 548 134647766961383623 269295533922767246 538591067845534492 18446744073709556351 36893488147419112702 73786976294838225404/], "fordivisors {} 2^66+18940");
 };
+
+sub split_d {
+  my($E,$arr) = @_;
+  my $a1 = $arr->[0];
+  my $a2 = $arr->[1];
+  return ($a1,$a2,map { ref($_) ? $_ : (1<<$E) + $_  } @$arr) if $E < 48;
+  return ($a1,$a2,map { ref($_) ? $_ : plus_2_66($_) } @$arr) if $E == 66;
+  die "unsupported test exponent $E";
+}
 
 sub plus_2_66 { # add n to 2^66 (73786976294838206464)
   my $add = shift;
