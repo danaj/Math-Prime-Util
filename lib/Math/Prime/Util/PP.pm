@@ -820,7 +820,7 @@ sub sieve_prime_cluster {
     croak "sieve_prime_cluster: values must be even" if $cl[$i] & 1;
     croak "sieve_prime_cluster: values must be increasing" if $cl[$i] <= $cl[$i-1];
   }
-  my($p,$sievelim,@p) = (17, 2000);
+  my($p,$sievelim,@p) = (17, 3000);
   if (defined $_BIGINT && (ref($lo) || ref($hi))) {
     ($lo,$hi) = map {tobigint($_)} ($lo,$hi) if ref($lo) ne $_BIGINT || ref($hi) ne $_BIGINT;
   }
@@ -864,10 +864,12 @@ sub sieve_prime_cluster {
 
   # Prepare table for more sieving.
   my @mprimes = @{Mprimes( $p+1, $sievelim)};
-  my @vprem;
-  for my $p (@mprimes) {
+  my(@lorem,@vprem);
+  for my $pidx (0..$#mprimes) {
+    my $p = $mprimes[$pidx];
+    $lorem[$pidx] = _bigint_to_int($lo % $p);
     for my $c (@cl) {
-      $vprem[$p]->[ ($p-($c%$p)) % $p ] = 1;
+      $vprem[$pidx]->[ ($p-($c%$p)) % $p ] = 1;
     }
   }
 
@@ -884,9 +886,10 @@ sub sieve_prime_cluster {
     }
 
     # Sieve more values using native math
-    foreach my $p (@mprimes) {
-      my $rem = _bigint_to_int( $lo % $p );
-      @racc = grep { !$vprem[$p]->[ ($rem+$_) % $p ] } @racc;
+    for my $pidx (0 .. $#mprimes) {
+      my $p = $mprimes[$pidx];
+      my $rem = $lorem[$pidx];
+      @racc = grep { !$vprem[$pidx]->[ ($rem+$_) % $p ] } @racc;
       last unless scalar(@racc);
     }
 
@@ -905,7 +908,7 @@ sub sieve_prime_cluster {
         my($good, $p) = (1, $lo + $r);
         for my $c (@cl) {
           $nummr++;
-          if (!Math::Prime::Util::is_strong_pseudoprime($p+$c,2)) { $good = 0; last; }
+          if (!_miller_rabin_2($p+$c)) { $good = 0; last; }
         }
         next unless $good;
         for my $c (@cl) {
@@ -917,6 +920,9 @@ sub sieve_prime_cluster {
     }
 
     $lo += $pr;
+    if ($lo <= $hi) { # update native remainders
+      $lorem[$_] = ($lorem[$_] + $pr) % $mprimes[$_] for 0..$#mprimes;
+    }
   }
   print "cluster sieve ran $nummr MR and $numlucas Lucas tests\n" if $_verbose;
   @p;
@@ -7578,7 +7584,7 @@ sub _miller_rabin_2 {
       $s = Mvaluation($nm1,2);
       $d = Mrshiftint($nm1,$s);
     }
-    my $x = Mpowmod(2,$d,$n);
+    my $x = _bi_powmod(2,$d,$n);
     return 1 if $x == 1 || $x == $nm1;
     foreach my $r (1 .. $s-1) {
       $x = Mmulmod($x,$x,$n);
