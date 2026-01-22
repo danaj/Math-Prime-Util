@@ -2,6 +2,11 @@
 use strict;
 use warnings;
 
+# Performance note for the bigint for... tests
+#
+# On 64-bit, wthout GMP or a good Math::BigInt backend, these are relative slow:
+#    forprimes, forcomposites, foroddcomposites
+
 use Test::More;
 use Math::Prime::Util qw/primes prev_prime next_prime
                          forprimes forcomposites foroddcomposites fordivisors
@@ -446,27 +451,26 @@ for my $k (1 .. 10) {
 ###### Bigint range
 subtest 'for<...> with bigint ranges', sub {
   my @r;
-  my @X = map { plus_2_66($_) } 0..100;
 
-  @r=(); forprimes { push @r,$_ } $X[0],$X[10];
-  is_deeply(\@r, [qw/73786976294838206473/], "forprimes {} 2^66, 2^66+10");
+  @r=(); forprimes { push @r,$_ } plus_2_66(166),plus_2_66(199);
+  is_deeply(\@r, [qw/73786976294838206633/], "forprimes {} 2^66+166, 2^66+199");
 
-  @r=(); forsemiprimes { push @r,$_ } $X[98], $X[99];
+  @r=(); forsemiprimes { push @r,$_ } plus_2_66(98),plus_2_66(99);
   is_deeply(\@r, [qw/73786976294838206563/], "forsemiprimes {} 2^66+98, 2^66+99");
 
-  @r=(); foralmostprimes { push @r,$_ } 3, $X[30], $X[32];
+  @r=(); foralmostprimes { push @r,$_ } 3, plus_2_66(30),plus_2_66(32);
   is_deeply(\@r, [qw/73786976294838206495/], "foralmostprimes {} 3, 2^66+30, 2^66+32");
 
-  @r=(); forcomposites { push @r,$_ } $X[8], $X[10];
-  is_deeply(\@r, [qw/73786976294838206472 73786976294838206474/], "forcomposites {} 2^66+8, 2^66+10");
+  @r=(); forcomposites { push @r,$_ } plus_2_66(1506),plus_2_66(1508);
+  is_deeply(\@r, [qw/73786976294838207970 73786976294838207972/], "forcomposites {} 2^66+1506, 2^66+1508");
 
-  @r=(); foroddcomposites { push @r,$_ } $X[8], $X[13];
-  is_deeply(\@r, [qw/73786976294838206475 73786976294838206477/], "foroddcomposites {} 2^66+8, 2^66+13");
+  @r=(); foroddcomposites { push @r,$_ } plus_2_66(1506),plus_2_66(1511);
+  is_deeply(\@r, [qw/73786976294838207973 73786976294838207975/], "foroddcomposites {} 2^66+1506, 2^66+1511");
 
-  @r=(); forsquarefree { push @r,[$_,[@_]] } $X[26], $X[29];
+  @r=(); forsquarefree { push @r,[$_,[@_]] } plus_2_66(26),plus_2_66(29);
   is_deeply(\@r, [ ["73786976294838206491",[qw/7 13 19 223 2683 16981 4200451/]],["73786976294838206493",[qw/3 31 379 2093425718354419/]] ], "forsquarefree {} 2^66+26, 2^66+29");
 
-  @r=(); forsquarefreeint { push @r,$_ } $X[26], $X[29];
+  @r=(); forsquarefreeint { push @r,$_ } plus_2_66(26),plus_2_66(29);
   is_deeply(\@r, [qw/73786976294838206491 73786976294838206493/], "forsquarefreeint {} 2^66+26, 2^66+29");
 
   @r=(); forfactored { push @r,[$_,[@_]] } "73786976294838206493","73786976294838206494";
