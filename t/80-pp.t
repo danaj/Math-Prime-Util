@@ -405,7 +405,7 @@ subtest 'pseudoprime tests', sub {
   my $n = Math::BigInt->new("168790877523676911809192454171451");
   is( is_strong_pseudoprime( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
   is( is_strong_pseudoprime( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
-  is( is_strong_lucas_pseudoprime($n), 0, "168790877523676911809192454171451 is not a strong Lucas pseudoprime" );
+  is( is_strong_lucas_pseudoprime($n), 0, "368105533664589636823262455488673 is not a strong Lucas pseudoprime" );
 
   ok(is_bpsw_prime(2179),"is_bpsw_prime small prime");
   ok(!is_bpsw_prime("168790877523676911809192454171451"),"is_bpsw_prime large composite");

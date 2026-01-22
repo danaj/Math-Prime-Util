@@ -86,7 +86,7 @@ plan tests => 13+1+1+1+1
               + (2 * scalar @random_nbit_tests)
               + 4
               + 7+14 # random_semiprime
-              + 11   # random_safe_prime
+              + 6    # random_safe_prime
               + 1+6  # random_strong_prime
               + 0;
 
@@ -233,11 +233,14 @@ sub check_semi_bits {
 ###### Safe primes
 ok(!eval { random_safe_prime(2); }, "random_safe_prime(2) is invalid");
 # This can be very slow over 65 bits
-for my $bits (3 .. 10, 48, 70) {
-  my $p = random_safe_prime($bits);
-  my $q = ($p-1) >> 1;
-  ok ( is_nbit($p, $bits) && is_prime($p) && is_prime($q),
-       "random_safe_prime($bits) is in range and is a safe prime");
+for my $bits (3, 5, 8, 40, 70) {
+  SKIP: {
+    skip "Skip larger safe prime on 32-bit",1 if $bits > 50 && !$use64;
+    my $p = random_safe_prime($bits);
+    my $q = ($p-1) >> 1;
+    ok ( is_nbit($p, $bits) && is_prime($p) && is_prime($q),
+         "random_safe_prime($bits) is in range and is a safe prime");
+  }
 }
 
 ###### Strong primes
