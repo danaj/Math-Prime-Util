@@ -448,10 +448,10 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
 
   if (ref($n)) {
-    # Check div by 7,11,13
-    return 0 unless $n % 7  &&  $n % 11  &&  $n % 13;
-    # Check div by 17,19,...,97
-    return 0 unless Mgcd($n,'76775489974875738420016721522869') == 1;
+    # Check div by 7,11,13,17,19
+    return 0 unless $n % 7 && $n % 11 && $n % 13 && $n % 17 && $n % 19;
+    # Check div by 23,29,...,109
+    return 0 unless Mgcd($n,'28839581143093741777136811781826822267') == 1;
     return 0 unless _miller_rabin_2($n);
     if (Mcmpint($n,"18446744073709551615") <= 0) {
       return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
@@ -6560,12 +6560,13 @@ sub powmod {
 sub muladdmod {
   my($a, $b, $c, $n) = @_;
   if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    $n = Mnegint($n) if $n < 0;
     return (undef,0)[$n] if $n <= 1;
   }
 
-  if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
-                   && $a>=INTMIN && $b>=INTMIN && $c>=INTMIN) {
+  if (!ref($n) && $n <= INTMAX
+               && $a <= INTMAX && $b <= INTMAX && $c <= INTMAX
+               && $a >= INTMIN && $b >= INTMIN && $c >= INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     $c = $n - ((-$c) % $n) if $c < 0;
@@ -6584,12 +6585,13 @@ sub muladdmod {
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
   if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
+    $n = Mnegint($n) if $n < 0;
     return (undef,0)[$n] if $n <= 1;
   }
 
-  if ($n <= INTMAX && $a<=INTMAX && $b<=INTMAX && $c<=INTMAX
-                   && $a>=INTMIN && $b>=INTMIN && $c>=INTMIN) {
+  if (!ref($n) && $n <= INTMAX
+               && $a <= INTMAX && $b <= INTMAX && $c <= INTMAX
+               && $a >= INTMIN && $b >= INTMIN && $c >= INTMIN) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     $c = $n - ((-$c) % $n) if $c < 0;

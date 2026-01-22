@@ -35,87 +35,106 @@ print "\nbasic  ";
 $rnat = sqrtint(77777777);
 $rbig = sqrtint($x * $x + 31);
 die "sqrtint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 8819 && $rbig == $x;
+die "sqrtint native" unless checkv($rnat,8819);
+die "sqrtint bigint" unless checkv($rbig,$x);
 print ".";
 
 $rnat = addint(15, 31);
 $rbig = addint($x, 31);
 die "addint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 46 && $rbig == $x+31;
+die "addint native" unless checkv($rnat,46);
+die "addint bigint" unless checkv($rbig,$x+31);
 print ".";
 
 $rnat = subint(15, 31);
 $rbig = subint($x, 31);
-die "subint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == -16 && $rbig == $x-31;
+die "subint native" unless checkv($rnat,-16);
+die "subint bigint" unless checkv($rbig,$x-31);
 print ".";
 
 $rnat = add1int(15);
 $rbig = add1int($x);
-die "add1int" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 16 && $rbig == $x+1;
+die "add1int native" unless checkv($rnat,16);
+die "add1int bigint" unless checkv($rbig,$x+1);
 print ".";
 
 $rnat = sub1int(15);
 $rbig = sub1int($x);
 die "sub1int" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 14 && $rbig == $x-1;
+die "sub1int native" unless checkv($rnat,14);
+die "sub1int bigint" unless checkv($rbig,$x-1);
 print ".";
 
 $rnat = mulint(15, 31);
 $rbig = mulint($x, 31);
-die "mulint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 465 && $rbig == $x*31;
+die "mulint native" unless checkv($rnat,465);
+die "mulint bigint" unless checkv($rbig,$x*31);
 print ".";
 
 $rnat = divint(310, 15);
 $rbig = divint($x, 31);
-die "divint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 20 && $rbig == $class->new("38083600668303590433");
+die "divint native" unless checkv($rnat,20);
+die "divint bigint" unless checkv($rbig,"38083600668303590433");
 print ".";
 
 $rnat = cdivint(310, 15);
 $rbig = cdivint($x, 31);
-die "divint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 21 && $rbig == $class->new("38083600668303590434");
+die "cdivint native" unless checkv($rnat,21);
+die "cdivint bigint" unless checkv($rbig,"38083600668303590434");
 print ".";
 
 $rnat = modint(310, 15);
-die "modint" unless !ref($rnat) && $rnat == 10;
+die "modint native" unless checkv($rnat,10);
 $rnat = modint($x, 31);
-die "modint" unless !ref($rnat) && $rnat == 1;
+die "modint native" unless checkv($rnat,1);
 $rbig = modint($y,$x);
-die "modint" unless ref($rbig) eq $class && $rbig == $class->new("297440975187654227929");;
+die "modint bigint" unless checkv($rbig,"297440975187654227929");
 print ".";
 
 $rnat = powint(310, 3);
 $rbig = powint(317, 31);
-die "powint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 29791000 && $rbig == $class->new("341064979770708619981328007297127930890658843588985670937159050598503087466133");
+die "powint native" unless checkv($rnat,29791000);
+die "powint bigint" unless checkv($rbig,"341064979770708619981328007297127930890658843588985670937159050598503087466133");
 print ".";
 
 $rnat = absint(-10001);
 $rbig = absint(-$x);
-die "absint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 10001 && $rbig == $x;
+die "absint native" unless checkv($rnat,10001);
+die "absint bigint" unless checkv($rbig,$x);
 print ".";
 
 $rnat = negint(10001);
 $rbig = negint($x);
 die "negint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == -10001 && $rbig == -$x;
+die "negint native" unless checkv($rnat,-10001);
+die "negint bigint" unless checkv($rbig,-$x);
 print ".";
 
 $rnat = lshiftint(10001);
 $rbig = lshiftint($x);
-die "lshiftint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 20002 && $rbig == 2*$x;
+die "lshiftint native" unless checkv($rnat,20002);
+die "lshiftint bigint" unless checkv($rbig,2*$x);
 print ".";
 
 $rnat = rshiftint($x,66);
 $rbig = rshiftint($x,3);
-die "rshiftint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 16 && $rbig == $class->new("147573952589676412928");
+die "rshiftint native" unless checkv($rnat,16);
+die "rshiftint bigint" unless checkv($rbig,"147573952589676412928");
 print ".";
 
 $rnat = rashiftint(-$y,82);
 $rbig = rashiftint(-$y,20);
-die "rashiftint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == -517640426 && $rbig == $class->new("-2387195115082971192660877215");
+die "rashiftint native" unless checkv($rnat,-517640426);
+die "rashiftint bigint" unless checkv($rbig,"-2387195115082971192660877215");
 print ".";
 
 $rnat = logint($y, 4);
-die "logint" unless !ref($rnat) && $rnat == 55;
+die "logint" unless checkv($rnat,55);
 
 $rnat = rootint($y,4);
 $rbig = rootint($y*$y*$y-1,3);
-die "rootint" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 223677323 && $rbig == $y-1;
+die "rootint native" unless checkv($rnat,223677323);
+die "rootint bigint" unless checkv($rbig,$y-1);
 print ".";
 
 ################################################################################
@@ -124,70 +143,78 @@ print "\nmodint ";
 
 $rnat = addmod(15, 31, 17);
 $rbig = addmod($x, $y, $z);
-die "addmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 12 && $rbig == $class->new("867780633942779001401200");
+die "addmod native" unless checkv($rnat,12);
+die "addmod bigint" unless checkv($rbig,"867780633942779001401200");
 print ".";
 
 $rnat = submod(15, 31, 17);
 $rbig = submod($x, $y, $z);
-die "submod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 1 && $rbig == $class->new("1103562254793219302126504849");
+die "submod native" unless checkv($rnat,1);
+die "submod bigint" unless checkv($rbig,"1103562254793219302126504849");
 print ".";
 
 $rnat = mulmod(15, 31, 17);
 $rbig = mulmod($x, $y, $z);
-die "mulmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 6 && $rbig == $class->new("749232057443429182743012873");
+die "mulmod native" unless checkv($rnat,6);
+die "mulmod bigint" unless checkv($rbig,"749232057443429182743012873");
 print ".";
 
 $rnat = powmod(15, 31, 17);
 $rbig = powmod($x, $y, $z);
-die "powmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 8 && $rbig == $class->new("573707816919163066477349622");
+die "powmod native" unless checkv($rnat,8);
+die "powmod bigint" unless checkv($rbig,"573707816919163066477349622");
 print ".";
 
 $rnat = divmod(15, 31, 17);
 $rbig = divmod($x, $y, $z);
-die "divmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 12 && $rbig == $class->new("814177443435415951196839160");
+die "divmod native" unless checkv($rnat,12);
+die "divmod bigint" unless checkv($rbig,"814177443435415951196839160");
 print ".";
 
 $rnat = muladdmod(15, 31, 2, 17);
 $rbig = muladdmod($x, $y, 2, $z);
-die "muladdmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 8 && $rbig == $class->new("749232057443429182743012875");
+die "muladdmod native" unless checkv($rnat,8);
+die "muladdmod bigint" unless checkv($rbig,"749232057443429182743012875");
 print ".";
 
 $rnat = mulsubmod(15, 31, 2, 17);
 $rbig = mulsubmod($x, $y, 2, $z);
-die "mulsubmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 4 && $rbig == $class->new("749232057443429182743012871");
+die "mulsubmod native" unless checkv($rnat,4);
+die "mulsubmod bigint" unless checkv($rbig,"749232057443429182743012871");
 print ".";
 
 $rnat = factorialmod(15, 17);
 $rbig = factorialmod(1000, $z+1);
-die "factorialmod" unless !ref($rnat) && $rnat == 1;
-die "factorialmod" unless ref($rbig) eq $class && $rbig == $class->new("13829182657193587281465406");
+die "factorialmod native" unless checkv($rnat,1);
+die "factorialmod bigint" unless checkv($rbig,"13829182657193587281465406");
 print ".";
 
 $rnat = sqrtmod(310, 17);
 $rbig = sqrtmod($y, $z);
-die "sqrtmod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 2 && $rbig == $class->new("50031545098999707");
+die "sqrtmod native" unless checkv($rnat,2);
+die "sqrtmod bigint" unless checkv($rbig,"50031545098999707");
 print ".";
 
 # TODO divrem, tdivrem, fdivrem, cdivrem
 
 $rnat = lucasumod(4,-3,2379,377);
 $rbig = lucasumod(4,-3,2379,$x);
-die "lucasumod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 68 && $rbig == $class->new("705649089465838257763");
+die "lucasumod native" unless checkv($rnat,68);
+die "lucasumod bigint" unless checkv($rbig,"705649089465838257763");
 print ".";
 
 $rnat = lucasvmod(4,-3,2379,377);
 $rbig = lucasvmod(4,-3,2379,$x);
-die "lucasumod" unless !ref($rnat) && ref($rbig) eq $class && $rnat == 105 && $rbig == $class->new("751898682006794398852");
+die "lucasvmod native" unless checkv($rnat,105);
+die "lucasvmod bigint" unless checkv($rbig,"751898682006794398852");
 print ".";
 
 {
   my($r1,$r2);
   ($r1,$r2) = lucasuvmod(31,-17,88891112, 570);
-  die "lucasuvmod" unless !ref($r1) && !ref($r2);
-  die "lucasuvmod" unless $r1 == 535 && $r2 == 257;
+  die "lucasuvmod" unless checkv($r1,535) && checkv($r2,257);
   ($r1,$r2) = lucasuvmod(31,-17,88891112, $x);
-  die "lucasuvmod" unless ref($r1) eq $class && ref($r2) eq $class;
-  die "lucasuvmod" unless $r1 == $class->new("585481810409681695659") && $r2 == $class->new("1102837250424259606255");
+  die "lucasuvmod" unless checkv($r1,"585481810409681695659") && checkv($r2,"1102837250424259606255");
   print ".";
 }
 
@@ -291,3 +318,23 @@ print ".";
 
 
 print "\nPASS\n";
+
+
+sub checkv {
+  my($n,$v)=@_;
+
+  # This is great except it assumes addint always works correctly.
+  # That should be true, but this test is trying to verify it.
+  #$v = addint($v,0);  # assuming addint works, v is the right type
+  #return 0 unless (!ref($n) && !ref($v)) || (ref($v) && ref($n) eq $class);
+  #return $n == $v;
+
+  # This assumes cmpint will work correctly.  It doesn't depend on return types.
+  if (cmpint($v,~0) <= 0 && cmpint($v,negint(1+(~0 >> 1))) >= 0) {
+    return 0 unless !ref($n) && $n == $v;
+  } else {
+    $v = $class->new($v) unless ref($v);
+    return 0 unless ref($n) eq $class && $n == $v;
+  }
+  1;
+}
