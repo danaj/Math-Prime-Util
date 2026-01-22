@@ -514,7 +514,7 @@ sub split_d {
   my($E,$arr) = @_;
   my $a1 = $arr->[0];
   my $a2 = $arr->[1];
-  return ($a1,$a2,map { ref($_) ? $_ : (1<<$E) + $_  } @$arr) if $E < 48;
+  return ($a1,$a2,map { ref($_) ? $_ : 2**$E + $_    } @$arr) if $E < 48;
   return ($a1,$a2,map { ref($_) ? $_ : plus_2_66($_) } @$arr) if $E == 66;
   die "unsupported test exponent $E";
 }
