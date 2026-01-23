@@ -4984,9 +4984,21 @@ sub powint {
     return Mmulint($a,$a);
   }
 
-  if (!ref($a) && !ref($b)) {
-    my $r = $a ** $b;  # 100001 ** 3 will not be an integer on 32-bit systems
-    return int($r) if $r < 1000000000000000 && $r > -1000000000000000;
+  if (!ref($a) && !ref($b) && $b < MPU_MAXBITS) {
+    if ($b == 3) {
+      return int($a*$a*$a) if $a <= 99999;;
+      return Mmulint(int($a*$a), $a) if $a <= 31622776;
+    } else {
+      # Check if inside limit of int on 32-bit
+      my $r = $a ** $b;
+      return int($r) if $r < 1000000000000000 && $r > -1000000000000000;
+      # Try to complete using a single mulint if we can
+      $r = $a ** (($b+1)>>1);
+      if ($r < 1000000000000000 && $r > -1000000000000000) {
+        return Mmulint(int($r), $b&1 ? int($a**($b>>1)) : int($r));
+      }
+    }
+    # Fall through
   }
 
   return Mmulint(Mmulint($a,$a),$a) if $b == 3;
@@ -7296,6 +7308,12 @@ sub rootint {
   my ($n, $k, $refp) = @_;
   validate_integer_nonneg($n);
   validate_integer_positive($k);
+  croak("rootint: third argument not a scalar reference") if defined $refp && !ref($refp);
+
+  if ($k == 1) {
+    $$refp = $n if defined $refp;
+    return $n;
+  }
 
   # It's unclear whether we should add GMPfunc here.  We want it in logint
   # because it's slow or not included in Perl bigint classes.
@@ -7313,10 +7331,7 @@ sub rootint {
     $R = Math::BigInt->new("$n")->broot($k);
   }
   $R = _bigint_to_int($R) if $R <= INTMAX;
-  if (defined $refp) {
-    croak("rootint: third argument not a scalar reference") unless ref($refp);
-    $$refp = Mpowint($R,$k);
-  }
+  $$refp = Mpowint($R,$k) if defined $refp;
   $R;
 }
 

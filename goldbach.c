@@ -148,3 +148,5 @@ UV goldbach_pair_count(UV n)
 
   return s;
 }
+
+/* See https://arxiv.org/pdf/2601.16193 for ideas on upper,lower,approx. */
