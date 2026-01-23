@@ -291,7 +291,7 @@ t/52-primearray.t
 t/53-realfunctions.t
 t/70-rt-bignum.t
 t/80-pp.t
-t/81-bignum.t
+t/81-bigint.t
 t/90-release-perlcritic.t
 t/91-release-pod-syntax.t
 t/92-release-pod-coverage.t
