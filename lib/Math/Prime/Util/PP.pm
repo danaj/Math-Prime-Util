@@ -7314,6 +7314,35 @@ sub rootint {
     $$refp = $n if defined $refp;
     return $n;
   }
+  if (!ref($n)) {  # native integer
+    if ($n == 0) {
+      $$refp = 0 if defined $refp;
+      return 0;
+    }
+    if ($k == 2 && $n <= 562949953421312) {
+      my $R = int(sqrt($n));
+      $$refp = $R*$R if defined $refp;
+      return $R;
+    }
+    if ($k >= MPU_MAXBITS || $n >> $k == 0) {
+      $$refp = 1 if defined $refp;
+      return 1;
+    }
+    my $R = int($n ** (1/$k));  # Could be off by +/-1.
+    my $F = $n <= 562949953421312 ? $R**$k : powint($R,$k);
+    if ($F > $n) {
+      $R--;
+      $F = $n <= 562949953421312 ? $R**$k : powint($R,$k);
+    } else {
+      my $F1 = $n <= 562949953421312 ? ($R+1)**$k : powint($R+1,$k);
+      if ($F1 <= $n) {
+        $R++;
+        $F = $F1;
+      }
+    }
+    $$refp = $F if defined $refp;
+    return $R;
+  }
 
   # It's unclear whether we should add GMPfunc here.  We want it in logint
   # because it's slow or not included in Perl bigint classes.
