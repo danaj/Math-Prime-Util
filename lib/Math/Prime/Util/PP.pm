@@ -5006,7 +5006,7 @@ sub powint {
 
   if (!ref($a) && !ref($b) && $b < MPU_MAXBITS) {
     if ($b == 3) {
-      return int($a*$a*$a) if $a <= 99999;;
+      return int($a*$a*$a) if $a <= 99999;
       return Mmulint(int($a*$a), $a) if $a <= 31622776;
     } else {
       # Check if inside limit of int on 32-bit
@@ -6587,9 +6587,22 @@ sub powmod {
     $b = -$b;
   }
 
-  return 1 if $b == 0;
-  return _modabsint($a,$n) if $b == 1;
-  return Mmulmod($a,$a,$n) if $b == 2;
+  if ($b <= 8) {
+    return 1 if $b == 0;
+    return _modabsint($a,$n) if $b == 1;
+    return Mmulmod($a,$a,$n) if $b == 2;
+    # For exponents 3-8, this can be 20x faster for native n
+    if (!ref($n) && $a <= 31622776 && $a >= -31622776) {
+      my $a2 = int($a*$a);
+      return Mmulmod($a2,$a,$n) if $b == 3;
+      my $a4 = Mmulmod($a2,$a2,$n);
+      return $a4 if $b == 4;
+      return Mmulmod($a4,$a,$n) if $b == 5;
+      return Mmulmod($a4,$a2,$n) if $b == 6;
+      return Mmulmod($a4,Mmulmod($a2,$a,$n),$n) if $b == 7;
+      return Mmulmod($a4,$a4,$n) if $b == 8;
+    }
+  }
 
   my $r = _bi_powmod($a,$b,$n);
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
