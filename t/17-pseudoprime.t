@@ -154,6 +154,19 @@ subtest 'strong pseudoprimes (Miller-Rabin test)', sub {
     my @exp = map { 1 } 0 .. $#phis;
     is_deeply(\@got, \@exp, "A014233: first strong pseudoprime to N prime bases");
   }
+
+  # A 77-bit composite that passes many bases
+  ok(is_strong_pseudoprime("318665857834031151167461", 2,3,5,7,11,13,17,19,23,29,31,37),"318665857834031151167461 is a pseudoprime to many bases");
+
+  # I don't think we benefit from doing these tests.
+  # '21652684502221' => [ qw/2 7 37 61 9375/ ],
+  # '3825123056546413051' => [ qw/2 3 5 7 11 13 17 19 23 29 31 325 9375/ ],
+  # '318665857834031151167461' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
+  # '3317044064679887385961981' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 73 325 9375/ ],
+  # '6003094289670105800312596501' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 61 325 9375/ ],
+  # '59276361075595573263446330101' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
+  # '564132928021909221014087501701' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
+  # '1543267864443420616877677640751301' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 61 325 9375/ ],
 };
 
 
@@ -247,6 +260,14 @@ subtest 'Perrin pseudoprimes', sub {
     is( is_perrin_pseudoprime("36407440637569",2), 0, "36407440637569 is not an Adams/Shanks Perrin pseudoprime");
     is( is_perrin_pseudoprime("364573433665",2), 1, "364573433665 is an Adams/Shanks Perrin pseudoprime");
     is( is_perrin_pseudoprime("364573433665",3), 0, "364573433665 is not a Grantham restricted Perrin pseudoprime");
+  }
+
+  # Large Perrin pseudoprime.  Very slow without GMP.
+  SKIP: {
+    skip "very large pseudoprime without EXTENDED_TESTING",1 unless $extra;
+    skip "very large pseudoprime without GMP backend",1 unless $usegmp && $Math::Prime::Util::GMP::VERSION >= 0.40;
+    my $perrinpsp = "1872702918368901354491086980308187833191468631072304770659547218657051750499825897279325406141660412842572655186363032039901203993254366727915836984799032960354882761038920216623610400227219443050113697104123375722324640843102690830473074828429679607154504449403902608511103291058038852618235905156930862492532896467422733403061010774542590301998535381232230279731082501";
+    is( is_perrin_pseudoprime($perrinpsp), 1, "18727...2501 is a Perrin PRP" );
   }
 };
 

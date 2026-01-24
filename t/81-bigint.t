@@ -33,7 +33,6 @@ if ($broken64) {
                + 1   # primes, twin primes, semiprimes, almost primes, etc.
                + 1   # next/prev prime
                + 1   # prime_iterator
-               + 1   # pseudoprimes
                + 1   # primecount and lower/upper/approx
                + 1   # factoring
                + 1   # znorder znprimroot znlog
@@ -43,7 +42,6 @@ if ($broken64) {
                + 1   # liouville
                + 1   # ispower
                + 1   # random primes
-               + 1   # Perrin PsP
                + 1   # vecequal
                + 1;  # $_ didn't get changed
 }
@@ -102,7 +100,6 @@ use Math::Prime::Util qw/
   next_prime
   prev_prime
   prime_iterator
-  is_strong_pseudoprime
   random_prime
   random_ndigit_prime
   random_nbit_prime
@@ -110,14 +107,12 @@ use Math::Prime::Util qw/
   random_strong_prime
   random_maurer_prime
   miller_rabin_random
-  is_perrin_pseudoprime
   is_bpsw_prime
   verify_prime
   valuation
   vecequal
 /;
-# TODO:  is_strong_lucas_pseudoprime
-#        ExponentialIntegral
+# TODO:  ExponentialIntegral
 #        LogarithmicIntegral
 #        RiemannR
 
@@ -367,30 +362,6 @@ subtest 'prime iterator', sub {
 
 ###############################################################################
 
-subtest 'pseudoprimes', sub {
-  # composite pseudoprimes to various small prime bases
-  my %pseudoprimes = (
-   '75792980677' => [ qw/2/ ],
-   '21652684502221' => [ qw/2 7 37 61 9375/ ],
-   '3825123056546413051' => [ qw/2 3 5 7 11 13 17 19 23 29 31 325 9375/ ],
-   '318665857834031151167461' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
-   '3317044064679887385961981' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 73 325 9375/ ],
-   '6003094289670105800312596501' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 61 325 9375/ ],
-   '59276361075595573263446330101' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
-   '564132928021909221014087501701' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 325 9375/ ],
-   #'1543267864443420616877677640751301' => [ qw/2 3 5 7 11 13 17 19 23 29 31 37 61 325 9375/ ],
-  );
-
-  while (my($psrp, $baseref) = each (%pseudoprimes)) {
-    my $baselist = join(",", @$baseref);
-    my @expmr = map { (0!=1) } @$baseref;
-    my @gotmr = map { is_strong_pseudoprime($psrp, $_) } @$baseref;
-    is_deeply(\@gotmr, \@expmr, "$psrp is a strong pseudoprime to bases $baselist");
-  }
-};
-
-###############################################################################
-
 subtest 'prime counts', sub {
   # Testing prime_count only on a small range for time reasons
   is(prime_count(877777777777777778417252,877777777777777778417352), 1, "prime_count(87..7252, 87..7352)");
@@ -559,18 +530,6 @@ subtest 'random primes', sub {
   is(miller_rabin_random(1009), 1, "MRR(1009) = 1");   # runs one random base
 
   } # ^^^ skipped without $extra
-};
-
-###############################################################################
-
-subtest 'Perrin primality test', sub {
-  SKIP: {
-  skip "Perrin pseudoprime tests without EXTENDED_TESTING.", 2 unless $extra;
-  my $perrinpsp = "1872702918368901354491086980308187833191468631072304770659547218657051750499825897279325406141660412842572655186363032039901203993254366727915836984799032960354882761038920216623610400227219443050113697104123375722324640843102690830473074828429679607154504449403902608511103291058038852618235905156930862492532896467422733403061010774542590301998535381232230279731082501";
-  # It's fast with a *new* version of the GMP code (that has the test).
-  is( is_perrin_pseudoprime($perrinpsp), 1, "18727...2501 is a Perrin PRP" );
-  is( is_bpsw_prime($perrinpsp), 1-1, "18727...2501 is not a BPSW prime" );
-  }
 };
 
 ###############################################################################
