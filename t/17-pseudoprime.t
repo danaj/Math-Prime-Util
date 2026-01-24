@@ -239,12 +239,15 @@ subtest 'Perrin pseudoprimes', sub {
   }
 
   # Perrin restrictions
-  is( is_perrin_pseudoprime("40814059160177",0), 1, "40814059160177 is an unrestricted Perrin pseudoprime");
-  is( is_perrin_pseudoprime("40814059160177",1), 0, "40814059160177 is not a minimal restricted Perrin pseudoprime");
-  is( is_perrin_pseudoprime("36407440637569",1), 1, "36407440637569 is minimal restricted Perrin pseudoprime");
-  is( is_perrin_pseudoprime("36407440637569",2), 0, "36407440637569 is not an Adams/Shanks Perrin pseudoprime");
-  is( is_perrin_pseudoprime("364573433665",2), 1, "364573433665 is an Adams/Shanks Perrin pseudoprime");
-  is( is_perrin_pseudoprime("364573433665",3), 0, "364573433665 is not a Grantham restricted Perrin pseudoprime");
+  is( is_perrin_pseudoprime(271441,0), 1, "271441 is an unrestricted Perrin pseudoprime");
+  is( is_perrin_pseudoprime(271441,1), 0, "271441 is not a minimal restricted Perrin pseudoprime");
+  SKIP: {
+    skip "restrictions without EXTENDED_TESTING on 32-bit",4 unless $use64 || $extra;
+    is( is_perrin_pseudoprime("36407440637569",1), 1, "36407440637569 is minimal restricted Perrin pseudoprime");
+    is( is_perrin_pseudoprime("36407440637569",2), 0, "36407440637569 is not an Adams/Shanks Perrin pseudoprime");
+    is( is_perrin_pseudoprime("364573433665",2), 1, "364573433665 is an Adams/Shanks Perrin pseudoprime");
+    is( is_perrin_pseudoprime("364573433665",3), 0, "364573433665 is not a Grantham restricted Perrin pseudoprime");
+  }
 };
 
 subtest 'Catalan pseudoprimes', sub {
