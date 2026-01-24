@@ -448,10 +448,9 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
   $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
 
   if (ref($n)) {
-    # Check div by 7,11,13,17,19
-    return 0 unless $n % 7 && $n % 11 && $n % 13 && $n % 17 && $n % 19;
-    # Check div by 23,29,...,109
-    return 0 unless Mgcd($n,'28839581143093741777136811781826822267') == 1;
+    # Check div by 7,11,13,17,19,23,29;  then by 31,37,...,109,113
+    return 0 unless Mgcd($n,215656441) == 1;
+    return 0 unless Mgcd($n,'4885866070719029716366506343847722513') == 1;
     return 0 unless _miller_rabin_2($n);
     if (Mcmpint($n,"18446744073709551615") <= 0) {
       return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
@@ -1681,12 +1680,33 @@ sub is_square_free {
 sub is_odd {
   my($n) = @_;
   validate_integer($n);
-  return 0 + ($n % 2 == 1);
+  # Note:  If n is a Math::BigInt (Calc), then performance:
+  #    0.25x  $n->is_odd()                           # method is fastest
+  #    0.34x  (substr($n,-1,1) =~ tr/13579/13579/)   # Perl look at string
+  #    0.46x  is_odd($n)                             # XS looks at the string
+  #    1.0x   $n % 2 ? 1 : 0
+  #    1.6x   $n & 1 : 1 : 0
+  # Using LTM backend:
+  #    0.21   $n->is_odd
+  #    0.41   (substr($n,-1,1) =~ tr/13579/13579/)
+  #    0.64   is_odd($n)
+  #    0.9    $n & 1 ? 1 : 0
+  #    1.0    $n % 2 ? 1 : 0
+  #
+  # Math::GMPz (30x faster baseline)
+  #    0.23   Math::GMPz::Rmpz_odd_p($n)
+  #    0.73   (substr($n,-1,1) =~ tr/13579/13579/)
+  #    0.95   $n & 1 ? 1 : 0
+  #    1.0    $n % 2 ? 1 : 0
+  #    1.5    is_odd($n)
+  my $R = ref($n);
+  return $n->is_odd() if defined $R && $R eq 'Math::BigInt';
+  return $n % 2 ? 1 : 0;
 }
 sub is_even {
   my($n) = @_;
   validate_integer($n);
-  return 0 + ($n % 2 == 0);
+  return $n % 2 ? 0 : 1;
 }
 
 sub is_divisible {
@@ -2791,7 +2811,7 @@ sub is_practical {
   validate_integer($n);
   return 0 if $n <= 0;
 
-  return 0+($n==1) if $n & 1;
+  return $n==1?1:0 if $n % 2;
   return 1 if ($n & ($n-1)) == 0;
   return 0 if ($n % 6) && ($n % 20) && ($n % 28) && ($n % 88) && ($n % 104) && ($n % 16);
 
@@ -3355,7 +3375,7 @@ sub legendre_phi {
 sub _sieve_prime_count {
   my $high = shift;
   return (0,0,1,2,2,3,3)[$high] if $high < 7;
-  $high-- unless ($high & 1);
+  $high-- unless ($high % 2);
   return 1 + ${_sieve_erat($high)} =~ tr/0//;
 }
 
@@ -3365,7 +3385,7 @@ sub _count_with_sieve {
   my $count = 0;
   if   ($low < 3) { $low = 3; $count++; }
   else            { $low |= 1; }
-  $high-- unless ($high & 1);
+  $high-- unless ($high % 2);
   return $count if $low > $high;
   my $sbeg = $low >> 1;
   my $send = $high >> 1;
@@ -5864,7 +5884,7 @@ sub _allsqrtmodpk {
       # if p^k divides a, we need the square roots of zero, satisfied by
       # ip^j with 0 <= i < p^{floor(k/2)}, j = p^{ceil(k/2)}
       my $low = Mpowint($p,$k >> 1);
-      my $high = ($k & 1)  ?  Mmulint($low, $p)  :  $low;
+      my $high = ($k % 2)  ?  Mmulint($low, $p)  :  $low;
       return map Mmulint($high, $_), 0 .. $low - 1;
     }
     # p divides a, p^2 does not
@@ -7588,7 +7608,7 @@ sub is_euler_pseudoprime {
   return 0 if $n < 0;
   @bases = (2) if scalar(@bases) == 0;
   return 0+($n >= 2) if $n < 3;
-  return 0 if ($n & 1) == 0;
+  return 0 if ($n % 2) == 0;
 
   foreach my $a (@bases) {
     croak "Base $a is invalid" if $a < 2;
@@ -9429,8 +9449,16 @@ sub trial_factor {
 
   # Do initial bigint reduction.  Hopefully reducing it to native int.
   if (ref($n)) {
-    $n = tobigint("$n");  # Don't modify their original input!
+    my $ismbi = ref($n) eq 'Math::BigInt';
     while ($start_idx <= $#_primes_small) {
+      # Math::BigInt is *terribly* slow doing mods.  Use GCDs => 2-3x faster.
+      if ($ismbi && $start_idx <= $#_primes_small-2 && $_primes_small[$start_idx+2] <= $limit && $_primes_small[$start_idx] <= 99989) {
+        my $g = $_primes_small[$start_idx+0] * $_primes_small[$start_idx+1] * $_primes_small[$start_idx+2];
+        if ($n->bgcd($g)->is_one) {
+          $start_idx += 3;
+          next;
+        }
+      }
       my $f = $_primes_small[$start_idx++];
       last if $f > $limit;
       if ($n % $f == 0) {
