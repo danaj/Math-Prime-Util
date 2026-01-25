@@ -12180,7 +12180,7 @@ sub random_unrestricted_semiprime {
   my $min = Mpowint(2,$b-1);
   my $max = Maddint($min, $min - 1);
 
-  if ($b <= 64) {
+  if ($b <= MPU_MAXBITS) {
     do {
       $n = $min + Murandomb($b-1);
     } while !Mis_semiprime($n);
@@ -12221,7 +12221,7 @@ sub random_unrestricted_semiprime {
     );
     my ($p,$r);
     $r = Math::Prime::Util::drand();
-    for my $prime (2..127) {
+    for my $prime (2..113,127) {
       next unless defined $M{$prime};
       my $PR = $M{$prime} / $b  +  0.19556 / $prime;
       if ($r <= $PR) {
@@ -12244,11 +12244,23 @@ sub random_unrestricted_semiprime {
       do {
         $r  = Math::Prime::Util::drand($weight) - $M;
       } while $r < $minr;
-      # Using Math::BigFloat::bexp is ungodly slow, so avoid at all costs.
-      # TODO: try Math::Prime::Util::GMP::expreal
-      my $re = exp($r);
-      my $a = ($re < log(~0)) ? int(exp($re)+0.5)
-                              : _upgrade_to_float($re)->bexp->bround->as_int;
+      my $a;
+      if ($r <= 3.54) {
+        # result under 10^15, can do directly
+        $a = int( exp(exp($r)) + 0.5 );
+      } elsif ($Math::Prime::Util::_GMPfunc{"expreal"}) {
+        # Use our fast arbitrary precision expreal.
+        my $digits = $r < 4.45 ? 40 : int(exp($r)/2.2 + 2);  # overestimate
+        my $re = Math::Prime::Util::GMP::expreal($r,$digits);
+        $a = Math::Prime::Util::GMP::expreal($re,$digits);
+        $a = Mtoint($a);  #_upgrade_to_float($a)->as_int;
+      } else {
+        # exp(x)=exp(x/n)^n
+        # We could use Math::BigFloat but it's sooooooooooo slow.
+        my $re = exp($r);
+        my $redd = 1+int($re/34.5);
+        $a = Mpowint(int(exp($re/$redd)+0.5), $redd);
+      }
       $p = $a < 2 ? 2 : Mprev_prime($a+1);
     }
     my $ranmin = Mcdivint($min, $p);
