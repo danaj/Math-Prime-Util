@@ -13,7 +13,7 @@ use Math::Prime::Util qw/ prime_get_config
                           addint subint add1int sub1int logint modint cmpint
                           mulint divint powint modint lshiftint rshiftint
                           sqrtint cdivint
-                          powmod
+                          powmod invmod
                           vecsum vecprod gcd is_odd fromdigits
                         /;
 
@@ -419,11 +419,8 @@ sub _set_premod {
   croak "Bad mod $mod [@plist]" unless $mod <= ~0 && $mod*$plist[-1] < ~0;
   my($bpremod,$twopremod) = (modint($b,$mod), powmod(2,$bits,$mod));
   for my $p (@plist) {
-    for my $i (0 .. $p-1) {
-      next if ($twopremod*$i + $bpremod) % $p;
-      $arr->[$p] = $i;
-      last;
-    }
+    # Find the value X where $twopremod * X + $bpremod % $p == 0
+    $arr->[$p] = (invmod($twopremod,$p) * ($p-$bpremod)) % $p;
   }
 }
 sub _get_premod {
