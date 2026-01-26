@@ -434,9 +434,28 @@ sub random_ndigit_prime {
   return $_random_prime->($low, $high);
 }
 
-my @_random_nbit_m;
-my @_random_nbit_lambda;
-my @_random_nbit_arange;
+sub _set_premod {
+  my($arr, $b, $bits, @plist) = @_;
+  my $mod = vecprod(@plist);
+  croak "Bad mod $mod [@plist]" unless $mod <= ~0 && $mod*$plist[-1] < ~0;
+  my($bpremod,$twopremod) = (modint($b,$mod), powmod(2,$bits,$mod));
+  for my $p (@plist) {
+    for my $i (0 .. $p-1) {
+      next if ($twopremod*$i + $bpremod) % $p;
+      $arr->[$p] = $i;
+      last;
+    }
+  }
+}
+sub _get_premod {
+  my($b, $bits, @plist) = @_;
+  my @premod;
+  my($fn,$fp,$bn) = MPU_32BIT ? (8,23,3) : (14,47,5);
+  # Do one initial mod with first $fn primes, then batches of $bn primes.
+  _set_premod(\@premod, $b, $bits, splice(@plist,0,$fn)) if @plist >= $fn && $plist[$fn-1] <= $fp;
+  _set_premod(\@premod, $b, $bits, splice(@plist,0,$bn)) while @plist;
+  @premod;
+}
 
 sub random_nbit_prime {
   my($bits) = @_;
@@ -473,43 +492,38 @@ sub random_nbit_prime {
   # with the native int trial division.  If the irandf function was very
   # slow, then A2 would look more promising.
   #
-  if (1 && $bits > 64) {
+  if (1 && $bits > MPU_MAXBITS) {
     my $l = (MPU_64BIT && $bits > 79)  ?  63  :  31;
     $l = 49 if $l == 63 && OLD_PERL_VERSION;  # Fix for broken Perl 5.6
     $l = $bits-2 if $bits-2 < $l;
+    my $lbits = $bits - $l - 1;
 
     my $brand = urandomb($bits-$l-2);
-    my $b = add1int(lshiftint($brand,1));
+    my $b = add1int(lshiftint($brand));
 
     # Precalculate some modulii so we can do trial division on native int
-    # 9699690 = 2*3*5*7*11*13*17*19, so later operations can be native ints
-    my @premod;
-    my $bpremod = modint($b, 9699690);
-    my $twopremod = powmod(2, $bits-$l-1, 9699690);
-    foreach my $zi (0 .. 19-1) {
-      foreach my $pm (3, 5, 7, 11, 13, 17, 19) {
-        next if $zi >= $pm || defined $premod[$pm];
-        $premod[$pm] = $zi if ( ($twopremod*$zi+$bpremod) % $pm) == 0;
-      }
-    }
+    my @PM = _get_premod($b, $lbits, 3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89);
     _make_big_gcds() if $_big_gcd_use < 0;
     if (!MPU_USE_GMP) { require Math::Prime::Util::PP; }
 
     my $loop_limit = 1_000_000;
     while ($loop_limit-- > 0) {
       my $a = (1 << $l) + urandomb($l);
-      # $a % s == $premod[s]  =>  $p % s == 0  =>  p will be composite
-      next if $a %  3 == $premod[ 3] || $a %  5 == $premod[ 5]
-           || $a %  7 == $premod[ 7] || $a % 11 == $premod[11]
-           || $a % 13 == $premod[13] || $a % 17 == $premod[17]
-           || $a % 19 == $premod[19];
-      my $p = addint(lshiftint($a,$bits-$l-1), $b);
+      # $a % s == $PM[s]  =>  $p % s == 0  =>  p will be composite
+      next if $a %  3 == $PM[ 3] || $a %  5 == $PM[ 5] || $a %  7 == $PM[ 7]
+           || $a % 11 == $PM[11] || $a % 13 == $PM[13] || $a % 17 == $PM[17]
+           || $a % 19 == $PM[19] || $a % 23 == $PM[23] || $a % 29 == $PM[29]
+           || $a % 31 == $PM[31] || $a % 37 == $PM[37] || $a % 41 == $PM[41]
+           || $a % 43 == $PM[43] || $a % 47 == $PM[47] || $a % 53 == $PM[53]
+           || $a % 59 == $PM[59] || $a % 61 == $PM[61] || $a % 67 == $PM[67]
+           || $a % 71 == $PM[71] || $a % 73 == $PM[73] || $a % 79 == $PM[79]
+           || $a % 83 == $PM[83] || $a % 89 == $PM[89];
+      my $p = addint(lshiftint($a,$lbits), $b);
       #die " $a $b $p" if $a % 11 == $premod[11] && $p % 11 != 0;
       #die "!$a $b $p" if $a % 11 != $premod[11] && $p % 11 == 0;
       if (MPU_USE_GMP) {
         next unless Math::Prime::Util::GMP::is_prime($p);
       } else {
-        next unless gcd($p, 1348781387) == 1; # 23-43
         if ($_big_gcd_use && $p > $_big_gcd_top) {
           next unless gcd($p, $_big_gcd[0]) == 1;
           next unless gcd($p, $_big_gcd[1]) == 1;
@@ -533,7 +547,7 @@ sub random_nbit_prime {
     if ($bits > MPU_MAXBITS) {
       my $p = add1int(lshiftint(1,$bits-1));
       while ($loop_limit-- > 0) {
-        my $n = addint(lshiftint(urandomb($bits-2),1), $p);
+        my $n = addint(lshiftint(urandomb($bits-2)), $p);
         return $n if is_prob_prime($n);
       }
     } else {
@@ -882,14 +896,14 @@ sub _random_safe_prime_large {
     $p = addint($base, $p);
 
     # 2. p = 2q+1  =>  q = p>>1
-    $q = rshiftint($p,1);
+    $q = rshiftint($p);
 
     # 3. Force q mod 6 = 5
     $qmod = modint(add1int($q),6);
     if ($qmod > 0) {
       $q = subint($q,$qmod);
       $q = addint($q,12) if 1+logint($q,2) != $bits-1;
-      $p = add1int(lshiftint($q,1));
+      $p = add1int(lshiftint($q));
     }
 
     # 4. Fast compositeness pre-tests for q and p
