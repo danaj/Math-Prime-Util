@@ -87,9 +87,9 @@ sub approx_in_range {
   my($n,$rn) = @_;
   my $arn = nth_ramanujan_prime_approx($n);
   my $an  = ramanujan_prime_count_approx($rn);
-  return 'nth approx too low' if $arn < ($rn-$rn/50);
-  return 'nth approx too high' if $arn > ($rn+$rn/50);
-  return 'count approx too low' if $an < ($n-$n/50);
-  return 'count approx too high' if $an > ($n+$n/50);
+  return 'nth approx too low' if "$arn" < ($rn-$rn/50);
+  return 'nth approx too high' if "$arn" > ($rn+$rn/50);
+  return 'count approx too low' if "$an" < ($n-$n/50);
+  return 'count approx too high' if "$an" > ($n+$n/50);
   $rn;
 }

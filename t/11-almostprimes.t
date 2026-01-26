@@ -143,9 +143,9 @@ sub approx_in_range {
   my $div = $usexs ? 20 : 4;
   $div *= 0.3 if $k > 2 && $n < 60;
   $div *= 0.5 if $k > 3;
-  return 'nth approx too low' if $arn < ($rn-$rn/$div);
-  return 'nth approx too high' if $arn > ($rn+$rn/$div);
-  return 'count approx too low' if $an < ($n-$n/$div);
-  return 'count approx too high' if $an > ($n+$n/$div);
+  return 'nth approx too low' if "$arn" < ($rn-$rn/$div);
+  return 'nth approx too high' if "$arn" > ($rn+$rn/$div);
+  return 'count approx too low' if "$an" < ($n-$n/$div);
+  return 'count approx too high' if "$an" > ($n+$n/$div);
   $rn;
 }

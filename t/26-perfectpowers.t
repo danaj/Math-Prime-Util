@@ -148,9 +148,9 @@ sub approx_in_range {
   my($n,$rn) = @_;
   my $arn = nth_perfect_power_approx($n);
   my $an  = perfect_power_count_approx($rn);
-  return 'nth approx too low' if $arn < ($rn-$rn/100);
-  return 'nth approx too high' if $arn > ($rn+$rn/100);
-  return 'count approx too low' if $an < ($n-$n/100);
-  return 'count approx too high' if $an > ($n+$n/100);
+  return 'nth approx too low' if "$arn" < ($rn-$rn/100);
+  return 'nth approx too high' if "$arn" > ($rn+$rn/100);
+  return 'count approx too low' if "$an" < ($n-$n/100);
+  return 'count approx too high' if "$an" > ($n+$n/100);
   $rn;
 }
