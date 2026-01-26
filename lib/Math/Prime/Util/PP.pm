@@ -12043,7 +12043,7 @@ sub urandomm {
 
 sub random_prime {
   my($low, $high) = @_;
-  if (scalar(@_) == 1) { ($low,$high) = (2,$low);          }
+  if (scalar(@_) == 1) { ($low,$high) = (2,$low);       }
   else                 { validate_integer_nonneg($low); }
   validate_integer_nonneg($high);
 
@@ -12059,7 +12059,7 @@ sub random_ndigit_prime {
   validate_integer_nonneg($digits);
   croak "random_ndigit_prime digits must be >= 1" unless $digits >= 1;
   return reftyped($_[0], Math::Prime::Util::GMP::random_ndigit_prime($digits))
-    if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"};
+    if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"} && !getconfig()->{'nobigint'};
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_ndigit_prime($digits);
 }

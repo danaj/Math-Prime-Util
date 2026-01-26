@@ -2890,7 +2890,7 @@ void urandomb(IN UV bits)
       }
       if (res || ix == 0) XSRETURN_UV(res);
     }
-    DISPATCHPP();
+    DISPATCHPP_GMPONLYIF(ix != 1 || bits != uvmax_maxlen)
     objectify_result(aTHX_ 0, ST(0));
     XSRETURN(1);
 
