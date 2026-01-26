@@ -7254,15 +7254,17 @@ sub fromdigits {
   return 0 if $r eq "";
   { # Validate string
     my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
-    for my $c (split(//,lc($r))) {
-      my $v = index($cmap,$c);
-      croak "Invalid digit for base $base" if $v < 0;
-    }
+    croak "Invalid digit for base $base" if $r =~ /[^$cmap]/i;
   }
   if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/) {
     $n = $_BIGINT->new($r, $base);
   } else {
-    $n = Math::BigInt->from_base($r, $base);
+    # from_base is 2x slower than calling the method directly (TODO file an RT)
+    if    ($base ==  2) { $n = Math::BigInt->from_bin($r); }
+    elsif ($base ==  8) { $n = Math::BigInt->from_oct($r); }
+    elsif ($base == 10) { $n = Math::BigInt->from_dec($r); }
+    elsif ($base == 16) { $n = Math::BigInt->from_hex($r); }
+    else                { $n = Math::BigInt->from_base($r,$base); }
     $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne 'Math::BigInt';
   }
   return $n <= INTMAX ? _bigint_to_int($n) : $n;
