@@ -391,7 +391,7 @@ sub random_prime {
     # At this point low and high are both primes, and low < high.
   }
 
-  # At this point low and high are both primes, and low < high.
+  # At this point low and high are both odds, and low < high.
   return $_random_prime->($low, $high);
 }
 

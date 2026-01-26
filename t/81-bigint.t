@@ -476,7 +476,7 @@ subtest 'is_power', sub {
 ###############################################################################
 
 # We have a separate test file for random primes (t/16-randomprime.t)
-# These tests really should just all be moved there.
+# These tests should all be moved there.
 subtest 'random primes', sub {
   my $randprime;
 
