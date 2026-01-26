@@ -14,7 +14,7 @@ use Math::Prime::Util qw/ prime_get_config
                           mulint divint powint modint lshiftint rshiftint
                           sqrtint cdivint
                           powmod
-                          vecsum vecprod gcd is_odd
+                          vecsum vecprod gcd is_odd fromdigits
                         /;
 
 BEGIN {
@@ -360,20 +360,15 @@ my @_random_nbit_ranges   = (undef, undef, [2,3],[5,7] );
 my %_random_cache_small;
 
 # For fixed small ranges with XS, e.g. 6-digit, 18-bit
+# mpu 'say join ",",map {($b,$e)=(next_prime(powint(10,$_-1)),prev_prime(powint(10,$_))); $s=prime_count($b); $c=prime_count($b,$e); "[$s,$c]";} 1..8'
+my $_d_digits = [undef,[1,4],[5,21],[26,143],[169,1061],[1230,8363],[9593,68906],[78499,586081],[664580,5096876]];
+# mpu 'say join ",",map {($b,$e)=(next_prime(powint(2,$_-1)),prev_prime(powint(2,$_))); $s=prime_count($b); $c=prime_count($b,$e); "[$s,$c]";} 2..24'
+my $_d_bits = [undef,undef,[2,1],[3,2],[5,2],[7,5],[12,7],[19,13],[32,23],[55,43],[98,75],[173,137],[310,255],[565,464],[1029,872],[1901,1612],[3513,3030],[6543,5709],[12252,10749],[23001,20390],[43391,38635],[82026,73586],[155612,140336],[295948,268216],[564164,513708]];
 sub _random_xscount_prime {
-  my($low,$high) = @_;
-  my($istart, $irange);
-  my $cachearef = $_random_cache_small{$low,$high};
-  if (defined $cachearef) {
-    ($istart, $irange) = @$cachearef;
-  } else {
-    my $beg = ($low <= 2)  ?  2  :  next_prime($low-1);
-    my $end = ($high < ~0)  ?  prev_prime($high + 1)  :  prev_prime($high);
-    ($istart, $irange) = ( prime_count(2, $beg), prime_count($beg, $end) );
-    $_random_cache_small{$low,$high} = [$istart, $irange];
-  }
-  my $rand = urandomm($irange);
-  return nth_prime($istart + $rand);
+  my($n, $data) = @_;
+  my $dv = $data->[$n];
+  croak "bad xscount data: $n" unless defined $dv;
+  return nth_prime($dv->[0] + urandomm($dv->[1]));
 }
 
 sub random_prime {
@@ -402,8 +397,7 @@ sub random_ndigit_prime {
   my($digits) = @_;
   croak "random_ndigit_prime, digits must be >= 1" unless $digits >= 1;
 
-  return _random_xscount_prime( int(10 ** ($digits-1)), int(10 ** $digits) )
-    if $digits <= 6 && MPU_USE_XS;
+  return _random_xscount_prime($digits,$_d_digits) if $digits <= 6 && MPU_USE_XS;
 
   my $bigdigits = $digits >= MPU_MAXDIGITS;
   if ($bigdigits && prime_get_config->{'nobigint'}) {
@@ -463,13 +457,13 @@ sub random_nbit_prime {
   $bits = int("$bits");
 
   # Very small size, use the nth-prime method
-  if ($bits <= 20 && MPU_USE_XS) {
+  if ($bits <= 19 && MPU_USE_XS) {
     if ($bits <= 4) {
       return (2,3)[urandomb(1)] if $bits == 2;
       return (5,7)[urandomb(1)] if $bits == 3;
       return (11,13)[urandomb(1)] if $bits == 4;
     }
-    return _random_xscount_prime( 1 << ($bits-1), 1 << $bits );
+    return _random_xscount_prime($bits,$_d_bits);
   }
 
   croak "Mid-size random primes not supported on broken old Perl"
@@ -1108,7 +1102,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012-2013 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2026 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
