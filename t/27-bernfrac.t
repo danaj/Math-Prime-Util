@@ -32,11 +32,8 @@ subtest 'bernfrac (Bernoulli numbers)', sub {
   #is_deeply( \@den, \@A002445, "B_2n denominators 0 .. $#A002445" );
 
   SKIP: {
-    skip "bernfrac(502) only in XS and EXTENDED_TESTING",1 unless $extra && $usexs;
-    my($num,$den) = bernfrac(502);
-    my $sum = 0;
-    $sum += $_ for split(//, $num);
-    is($sum-$den, 242,"bernfrac(502): sumdigits(numerator)-denominator = 242");
+    skip "bernfrac(60) only with EXTENDED_TESTING",1 unless $extra;
+    is_deeply([bernfrac(60)],["-1215233140483755572040304994079820246041491",56786730],"bernfrac(60) (numerator has 43 digits)");
   }
 };
 
