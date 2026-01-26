@@ -375,7 +375,7 @@ my $_max_native_prime = MPU_32BIT ? 4294967291 : 18446744073709551557;
 
 sub random_prime {
   my($low,$high) = @_;
-  return if $high < 2 || $low > $high;
+  return undef if $high < 2 || $low > $high;
 
   if ($high-$low > 1000000000) {
     # Range is large, just make them odd if needed.
@@ -387,7 +387,7 @@ sub random_prime {
     $low = ($low <= 2)  ?  2  :  next_prime($low-1);
     $high = ($high == ~0) ? prev_prime($high) : prev_prime($high + 1);
     return $low if ($low == $high) && is_prob_prime($low);
-    return if $low >= $high;
+    return undef if $low >= $high;
     # At this point low and high are both primes, and low < high.
   }
 

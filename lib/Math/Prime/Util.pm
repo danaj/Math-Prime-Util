@@ -393,7 +393,7 @@ sub _to_gmp {
   return (ref($_[0]) eq 'Math::GMP') ? $_[0] : Math::GMP->new($_[0]);
 }
 sub _reftyped {
-  return unless defined $_[1];
+  return undef unless defined $_[1];
   my $ref0 = ref($_[0]);
   if (OLD_PERL_VERSION) {
     # Perl 5.6 truncates arguments to doubles if you look at them funny
