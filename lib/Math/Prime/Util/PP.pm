@@ -7262,7 +7262,7 @@ sub fromdigits {
     # from_base is 2x slower than calling the method directly (TODO file an RT)
     if    ($base ==  2) { $n = Math::BigInt->from_bin($r); }
     elsif ($base ==  8) { $n = Math::BigInt->from_oct($r); }
-    elsif ($base == 10) { $n = Math::BigInt->from_dec($r); }
+    elsif ($base == 10) { $n = Math::BigInt->new($r); }
     elsif ($base == 16) { $n = Math::BigInt->from_hex($r); }
     else                { $n = Math::BigInt->from_base($r,$base); }
     $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne 'Math::BigInt';

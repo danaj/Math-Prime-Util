@@ -357,7 +357,6 @@ my $_random_prime = sub {
 # Cache of tight bounds for each digit.  Helps performance a lot.
 my @_random_ndigit_ranges = (undef, [2,7], [11,97] );
 my @_random_nbit_ranges   = (undef, undef, [2,3],[5,7] );
-my %_random_cache_small;
 
 # For fixed small ranges with XS, e.g. 6-digit, 18-bit
 # mpu 'say join ",",map {($b,$e)=(next_prime(powint(10,$_-1)),prev_prime(powint(10,$_))); $s=prime_count($b); $c=prime_count($b,$e); "[$s,$c]";} 1..8'
@@ -757,7 +756,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
       or do { croak "Must have Digest::SHA 4.00 or later"; };
   }
 
-  my $k2 = Math::BigInt->new(2)->bpow($k-1);
+  my $k2 = tobigint(powint(2,$k-1));
 
   if ($k < 33) {
     my $seed = $input_seed;
@@ -791,7 +790,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
     $xstr = Digest::SHA::sha256_hex($seed) . $xstr;
     $seed = _seed_plus_one($seed);
   }
-  my $x = tobigint( Math::BigInt->from_hex('0x'.$xstr) );
+  my $x = tobigint(fromdigits($xstr,16));
   $x = $k2 + ($x % $k2);
   my $t = ($x + 2*$c0 - 1) / (2*$c0);
   _make_big_gcds() if $_big_gcd_use < 0;
@@ -824,7 +823,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
         $astr = Digest::SHA::sha256_hex($seed) . $astr;
         $seed = _seed_plus_one($seed);
       }
-      my $a = tobigint( Math::BigInt->from_hex('0x'.$astr) );
+      my $a = tobigint(fromdigits($astr,16));
       $a = ($a % ($c-3)) + 2;
       my $z = powmod($a, 2*$t, $c);
       if (gcd($z-1,$c) == 1 && powmod($z, $c0, $c) == 1) {
