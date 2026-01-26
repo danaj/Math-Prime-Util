@@ -354,8 +354,7 @@ my $_random_prime = sub {
     croak "Random function broken?";
 };
 
-# Cache of tight bounds for each digit.  Helps performance a lot.
-my @_random_ndigit_ranges = (undef, [2,7], [11,97] );
+# Cache of tight bounds for each bit.  Not used in current code path.
 my @_random_nbit_ranges   = (undef, undef, [2,3],[5,7] );
 
 # For fixed small ranges with XS, e.g. 6-digit, 18-bit
@@ -369,6 +368,10 @@ sub _random_xscount_prime {
   croak "bad xscount data: $n" unless defined $dv;
   return nth_prime($dv->[0] + urandomm($dv->[1]));
 }
+
+my @_digit_loprime = qw/0 2 11 101 1009 10007 100003 1000003 10000019 100000007 1000000007 10000000019 100000000003 1000000000039 10000000000037 100000000000031 1000000000000037 10000000000000061 100000000000000003 1000000000000000003 10000000000000000051/;
+my @_digit_hiprime = qw/0 7 97 997 9973 99991 999983 9999991 99999989 999999937 9999999967 99999999977 999999999989 9999999999971 99999999999973 999999999999989 9999999999999937 99999999999999997 999999999999999989 9999999999999999961 99999999999999999989/;
+my $_max_native_prime = MPU_32BIT ? 4294967291 : 18446744073709551557;
 
 sub random_prime {
   my($low,$high) = @_;
@@ -393,38 +396,21 @@ sub random_prime {
 }
 
 sub random_ndigit_prime {
-  my($digits) = @_;
-  croak "random_ndigit_prime, digits must be >= 1" unless $digits >= 1;
+  my($D) = @_;
+  croak "random_ndigit_prime, digits must be >= 1" unless $D >= 1;
 
-  return _random_xscount_prime($digits,$_d_digits) if $digits <= 6 && MPU_USE_XS;
+  return _random_xscount_prime($D,$_d_digits) if $D <= 6 && MPU_USE_XS;
 
-  my $bigdigits = $digits >= MPU_MAXDIGITS;
-  if ($bigdigits && prime_get_config->{'nobigint'}) {
+  $_digit_loprime[$D] = powint(10,$D-1)+1 unless defined $_digit_loprime[$D];
+  $_digit_hiprime[$D] = powint(10,$D)-1 unless defined $_digit_hiprime[$D];
+  my($lo,$hi) = ($_digit_loprime[$D], $_digit_hiprime[$D]);
+
+  if ($D >= MPU_MAXDIGITS && prime_get_config->{'nobigint'}) {
     croak "random_ndigit_prime with -nobigint, digits out of range"
-      if $digits > MPU_MAXDIGITS;
-    # Special case for nobigint and threshold digits
-    if (!defined $_random_ndigit_ranges[$digits]) {
-      my $low  = int(10 ** ($digits-1));
-      my $high = ~0;
-      $_random_ndigit_ranges[$digits] = [next_prime($low),prev_prime($high)];
-    }
+      if $D > MPU_MAXDIGITS;
+    $hi = $_max_native_prime;
   }
-
-  if (!defined $_random_ndigit_ranges[$digits]) {
-    my $low  = powint(10,$digits-1);
-    my $high = powint(10,$digits);
-    if ($bigdigits) {
-      # Just pull the range in to the nearest odd.
-      $_random_ndigit_ranges[$digits] = [$low+1, $high-1];
-    } else {
-      # Note: Perl 5.6.2 cannot represent 10**15 as an integer, so things
-      # will crash all over the place if you try.  We can stringify it, but
-      # will just fail tests later.
-      $_random_ndigit_ranges[$digits] = [next_prime($low),prev_prime($high)];
-    }
-  }
-  my ($low, $high) = @{$_random_ndigit_ranges[$digits]};
-  return $_random_prime->($low, $high);
+  return $_random_prime->($lo, $hi);
 }
 
 sub _set_premod {
