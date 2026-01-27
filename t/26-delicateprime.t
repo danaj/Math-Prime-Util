@@ -20,7 +20,11 @@ is(is_delicate_prime(929573), 0, "is_delicate_prime(929573) = 0");
 
 is_deeply( [map { is_delicate_prime($_) } @a050249], [map { 1 } @a050249], "is_delicate_prime(n) = 1 for first ".scalar(@a050249)." known.");
 
-is_deeply( [map { is_delicate_prime($a186995[$_-2],$_) } 2..2+$#a186995], [map { 1 } @a186995], "first delicate primes for bases 2 to ".(2+$#a186995).".");
+if ($extra) {
+  is_deeply( [map { is_delicate_prime($a186995[$_-2],$_) } 2..2+$#a186995], [map { 1 } @a186995], "first delicate primes for bases 2 to ".(2+$#a186995).".");
+} else {
+  is_deeply( [map { is_delicate_prime($a186995[$_-2],$_) } 2,5,8,10,16], [1,1,1,1,1], "first delicate primes for bases 2, 5, 8, 10, and 16.");
+}
 
 is_deeply( [grep { is_delicate_prime($_,2) } 2..277], [qw/127 173 191 223 233 239 251 257 277/], "First 9 delicate primes base 2" );
 is_deeply( [grep { is_delicate_prime($_,3) } 2..283], [qw/2 7 13 19 31 41 149 239 283/], "First 9 delicate primes base 3" );

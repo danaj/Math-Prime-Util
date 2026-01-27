@@ -7246,6 +7246,7 @@ sub fromdigits {
   if ($refr && $refr !~ /^Math::/) {
     croak "fromdigits: first argument must be a string or array reference"
       unless $refr eq 'ARRAY';
+    # Math::BigInt->from_base_num is identical but slower
     return _FastIntegerInput($r,$base);
   }
 

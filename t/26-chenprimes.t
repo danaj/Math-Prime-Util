@@ -21,4 +21,7 @@ is_deeply( [map { next_chen_prime($chen200[$_]) } 0..$#chen200-1],
 
 is(is_chen_prime("10000000000687"), 1, "is_chen_prime(10^13+687)");
 
-is("".next_chen_prime("10000000000000000"), "10000000000000079", "next_chen_prime(10^16)");
+SKIP: {
+  skip "large next_chen_prime only with EXTENDED_TESTING", 1 unless $extra;
+  is("".next_chen_prime("10000000000000000"), "10000000000000079", "next_chen_prime(10^16)");
+}
