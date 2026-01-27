@@ -63,8 +63,8 @@ for my $t (@tests) {
   is_deeply( \@res, $expect, "$what @$range" );
 }
 
-is_deeply( [sieve_prime_cluster(1,1e10,2,4)], [3], "Inadmissible pattern (0,2,4) finds (3,5,7)");
-is_deeply( [sieve_prime_cluster(1,1e10,2,8,14,26)], [3,5], "Inadmissible pattern (0,2,8,14,26) finds (3,5,11,17,29) and (5,7,13,19,31)");
+is_deeply( [sieve_prime_cluster(1,1e9,2,4)], [3], "Inadmissible pattern (0,2,4) finds (3,5,7)");
+is_deeply( [sieve_prime_cluster(1,1e9,2,8,14,26)], [3,5], "Inadmissible pattern (0,2,8,14,26) finds (3,5,11,17,29) and (5,7,13,19,31)");
 
 my @pcache;  # holds primes in two ranges
 

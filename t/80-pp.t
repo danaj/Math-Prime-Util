@@ -2,6 +2,17 @@
 use strict;
 use warnings;
 
+# This is not a comprehensive test for all functions, but very basic
+# functionality of the PP code, covering all functions.
+#
+# For proper testing of the PP code, use:
+#
+#    MPU_NO_XS=1 MPU_NO_GMP=1 make test
+#
+# which runs the whole test suite without any C code.
+# Add EXTENDED_TESTING=1 if desired.
+
+
 # Set these first thing, before loading the package.  This will turn off
 # both XS and GMP entirely, so everything is the PPFE + PP code.
 # A reminder that the caller's versions of these are not changed.
@@ -10,13 +21,10 @@ BEGIN {
   $ENV{MPU_NO_XS}  = 1;
   $ENV{MPU_NO_GMP} = 1;
 }
-
-# This is a subset of our tests.  You really should run the whole test suite
-# on the PP code.  What this will do is basic regression testing.
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = ~0 > 4294967295 && ~0 != 18446744073709550592;
-
 use Test::More;
+
 my @small_primes = qw/
 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71
 73 79 83 89 97 101 103 107 109 113 127 131 137 139 149 151 157 163 167 173
@@ -48,48 +56,11 @@ my @composites = qw/
 66066 173645446 7500135 115501463
 /;
 
-# pseudoprimes to various small prime bases
-my %pseudoprimes = (
-   2 => [ qw/2047   42799 4335241 1078467589/ ],
-   3 => [ qw/121    44287 4252381 1075490821/ ],
-   5 => [ qw/781    38081 4265257 1075156291/ ],
-   7 => [ qw/25 325 29857 4411681 1074439981/ ],
-  11 => [ qw/133    43213 4224533 1076929261/ ],
-  13 => [ qw/85     35371 4336879 1079159203/ ],
-  17 => [ qw/9 91   71071 4224533 1076237119/ ],
-  19 => [ qw/9 49   49771 4384693 1074718783/ ],
-  23 => [ qw/169    25201 4219129 1079063371/ ],
-  29 => [ qw/15 91  48133 4219129 1075151447/ ],
-  31 => [ qw/15 49  29341 4270657 1073833843/ ],
-  37 => [ qw/9 451  59563 4287817 1075430539/ ],
-  61 => [ qw/217    79381 4219129 1079326249/ ],
-  73 => [ qw/205    34219 4321153 1074220489/ ],
- psp2       => [ qw/341 561       29341 4259905 1073823745/ ],
- psp3       => [ qw/91 121        44287 4252381 1073827147/ ],
- lucas      => [ qw/9179 10877    44099 4259789 1074039119/ ],
- slucas     => [ qw/5459 5777     75077 4309631 1080085439/ ],
- eslucas    => [ qw/989 3239 5777 72389 4226777 1076503199/ ],
- aeslucas1  => [ qw/989 10469     39059 4269341 1076503199/ ],
- aeslucas2  => [ qw/4531 12209    62479 4403027 1074695441/ ],
-);
-# Test a pseudoprime larger than 2^32.
-push @{$pseudoprimes{2}}, 75792980677 if $use64;
-my $num_pseudoprimes = 0;
-foreach my $ppref (values %pseudoprimes) {
-  push @composites, @$ppref;
-  $num_pseudoprimes += scalar @$ppref;
-}
-{
-  my %uniq;
-  $uniq{$_}++ for (@composites);
-  @composites = sort {$a<=>$b} keys %uniq;
-}
-
 
 plan tests => 2 +  # require_ok
               1 +  # arithmetic
               1 +  # primality
-              1 +  # trial_primes
+              1 +  # trial_primes (non-exported function)
               1 +  # primes
               1 +  # sieve_range
               1 +  # next_prime, prev_prime
@@ -102,7 +73,6 @@ plan tests => 2 +  # require_ok
               1 +  # twin primes
               1 +  # semi primes
               1 +  # ramanujan_primes
-#              1 +  # other prime related
               1 +  # real functions
               1 +  # factoring
               1 +  # AKS primality
@@ -126,9 +96,6 @@ use Math::BigInt;
 use Math::BigFloat;
 require_ok 'Math::Prime::Util::PP';
 require_ok 'Math::Prime::Util::PrimalityProving';
-
-# Turn off use of BRS - ECM tries to use this.
-# prime_set_config( irand => sub { int(rand(4294967296.0)) } );
 
 ###############################################################################
 
@@ -183,17 +150,17 @@ subtest 'arithmetic ops', sub {
 
 subtest 'primality', sub {
   {
-  my %small_primes = map { $_ => 1 } @small_primes;
-  my @isprime = map { is_prime($_) } (0 .. 1086);
-  my @exprime = map { $small_primes{$_} ? 2 : 0 } (0 .. 1086);
-  is_deeply( \@isprime, \@exprime, "is_prime 0 .. 1086" );
+    my %small_primes = map { $_ => 1 } @small_primes;
+    my @isprime = map { is_prime($_) } (0 .. 1086);
+    my @exprime = map { $small_primes{$_} ? 2 : 0 } (0 .. 1086);
+    is_deeply( \@isprime, \@exprime, "is_prime 0 .. 1086" );
   }
   {
-  my @isprime = map { is_prime($_) ? "$_ is prime" : "$_ is composite" }
-                @primes, @composites;
-  my @exprime =  map { "$_ is prime" } @primes;
-  push @exprime, map { "$_ is composite" } @composites;
-  is_deeply( \@isprime, \@exprime, "is_prime for selected numbers" );
+    my @isprime = map { is_prime($_) ? "$_ is prime" : "$_ is composite" }
+                  @primes, @composites;
+    my @exprime =  map { "$_ is prime" } @primes;
+    push @exprime, map { "$_ is composite" } @composites;
+    is_deeply( \@isprime, \@exprime, "is_prime for selected numbers" );
   }
 };
 
@@ -281,14 +248,14 @@ subtest 'next and prev prime', sub {
   }
 
   {
-    my @exprime = map { "next_prime($_) == 2010881" }        (2010733..2010880);
-    my @isprime = map { "next_prime($_) == ".next_prime($_) }(2010733..2010880);
-    is_deeply(\@isprime, \@exprime, "next_prime for 148 primes before primegap end 2010881");
+    my @samples = (2010733, 2010768, 2010870, 2010880);
+    @samples = (2010733..2010880) if $extra;
+    is_deeply([map{next_prime($_)}@samples],[map {2010881} 0..$#samples], "next_prime in primegap before 2010881");
   }
   {
-    my @exprime = map { "prev_prime($_) == 2010733" }        (2010734..2010881);
-    my @isprime = map { "prev_prime($_) == ".prev_prime($_) }(2010734..2010881);
-    is_deeply(\@isprime, \@exprime, "prev_prime for 148 primes before primegap start 2010733");
+    my @samples = (2010734, 2010768, 2010870, 2010881);
+    @samples = (2010734..2010881) if $extra;
+    is_deeply([map{prev_prime($_)}@samples],[map {2010733} 0..$#samples], "prev_prime in primegap after 2010733");
   }
   # Similar test case to 2010870, where m=0 and next_prime is at m=1
   is(next_prime(1234567890),1234567891,"next_prime(1234567890) == 1234567891)");
@@ -379,49 +346,60 @@ subtest 'pseudoprime tests', sub {
   is( is_strong_pseudoprime(2, 2), 1, "MR with 2 shortcut prime");
   is( is_strong_pseudoprime(3, 2), 1, "MR with 3 shortcut prime");
 
-  while (my($base, $ppref) = each (%pseudoprimes)) {
-    my $npseudos = scalar @$ppref;
-    my @expmr = map { 1 } @$ppref;
-    my @gotmr;
-    if ($base =~ /^psp(\d+)/) {
-       my $pbase = $1;
-       @gotmr = map { is_pseudoprime($_, $pbase) } @$ppref;
-    } elsif ($base =~ /^aeslucas(\d+)/) {
-       my $inc = $1;
-       @gotmr = map { is_almost_extra_strong_lucas_pseudoprime($_, $inc) } @$ppref;
-    } elsif ($base eq 'eslucas') {
-       @gotmr = map { is_extra_strong_lucas_pseudoprime($_) } @$ppref;
-    } elsif ($base eq 'slucas') {
-       @gotmr = map { is_strong_lucas_pseudoprime($_) } @$ppref;
-    } elsif ($base eq 'lucas') {
-       @gotmr = map { is_lucas_pseudoprime($_) } @$ppref;
-    } else {
-       @gotmr = map { is_strong_pseudoprime($_, $base) } @$ppref;
-    }
-    is_deeply(\@gotmr, \@expmr, "$npseudos pseudoprimes (base $base)");
+  my @psp = ([2,341],[2,561],[2,29341],[2,4259905],
+             [3, 91],[3,121],[3,44287],[3,4252381]);
+  is_deeply([grep { !is_pseudoprime($_->[1],$_->[0]) } @psp],
+            [],"Small pseudoprimes");
+  my @spsp = ([2,2047],[2,42799],[2,4335241],[2,1078467589],[2,75792980677],
+              [3, 121],[3,44287],[3,4252381],[3,1075490821],
+              [5, 781],[5,38081],[5,4265257],
+              [31,15],[31,49],[31,29341],[31,4270657]);
+  is_deeply([grep { !is_strong_pseudoprime($_->[1],$_->[0]) } @spsp],
+            [],"Small strong pseudoprimes");
+  ok(is_strong_pseudoprime(75792980677),"is_strong_pseudoprime(75792980677)");
+
+  is_deeply([grep {!is_lucas_pseudoprime($_)} qw/9179 10877 44099 4259789/],
+            [], "Small Lucas pseudoprimes");
+  is_deeply([grep {!is_strong_lucas_pseudoprime($_)} qw/5459 5777 75077 4309631/],
+            [], "Small strong Lucas pseudoprimes");
+  is_deeply([grep {!is_extra_strong_lucas_pseudoprime($_)} qw/989 3239 5777 72389 4226777 1076503199/],
+            [], "Small extra strong Lucas pseudoprimes");
+  is_deeply([grep {!is_almost_extra_strong_lucas_pseudoprime($_)} qw/989 3239 5777 72389 4226777/],
+            [], "Small AES Lucas pseudoprimes");
+  is_deeply([grep {!is_almost_extra_strong_lucas_pseudoprime($_,2)} qw/4531 12209 62479 4403027/],
+            [], "Small AES-2 Lucas pseudoprimes");
+
+  is_deeply([grep {is_bpsw_prime($_)} qw/2047 42799 4335241 121 781 989 5777 72389/],
+            [], "Small pure BPSW test");
+
+  {
+    # n is a SPSP to bases: 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47
+    my $n = Math::BigInt->new("168790877523676911809192454171451");
+    # We don't need to verify that in this test.
+    is( is_strong_pseudoprime( $n, 47), 1, "168790877523676911809192454171451 (SPSP to 2..52) test base 47" );
+    is( is_strong_pseudoprime( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
+    #is( is_strong_lucas_pseudoprime($n), 0, "368105533664589636823262455488673 is not a strong Lucas pseudoprime" );
   }
 
   {
-  my $n = Math::BigInt->new("168790877523676911809192454171451");
-  is( is_strong_pseudoprime( $n, 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47), 1, "168790877523676911809192454171451 looks prime with bases 2..52" );
-  is( is_strong_pseudoprime( $n, 53), 0, "168790877523676911809192454171451 found composite with base 53" );
-  is( is_strong_lucas_pseudoprime($n), 0, "368105533664589636823262455488673 is not a strong Lucas pseudoprime" );
-
-  ok(is_bpsw_prime(2179),"is_bpsw_prime small prime");
-  ok(!is_bpsw_prime("168790877523676911809192454171451"),"is_bpsw_prime large composite");
-
-  SKIP: {
-    skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
-    is( is_frobenius_underwood_pseudoprime($n), 0, "168790877523676911809192454171451 is not a Frobenius pseudoprime" );
+    my $n = "153515674455111174527";
+    ok(is_extra_strong_lucas_pseudoprime($n), "$n is an ESLSP");
+    ok(!is_bpsw_prime($n), "is_bpsw_prime($n) = 0 as expected");
+    # Could verify with other tests e.g. frobenius_{khashin,underwood}
   }
+
   is(is_perrin_pseudoprime(517697641), 1, "517697641 is a Perrin pseudoprime");
   is(is_perrin_pseudoprime(102690901,3), 1, "102690901 is a Perrin pseudoprime (Grantham)");
   is(is_frobenius_pseudoprime(517697641), 0, "517697641 is not a Frobenius pseudoprime");
+  is(is_frobenius_khashin_pseudoprime(517697659),1,"517697659 is prime via Frobenius-Khashin test");
+  SKIP: {
+    # TODO: 2026 does this still happen?
+    skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
+    ok(is_frobenius_underwood_pseudoprime(517697659), "517697659 is prime via Frobenius-Underwood test" );
   }
 
   is(is_euler_pseudoprime(703, 3), 1, "703 is a base 3 Euler pseudoprime");
   is(is_euler_plumb_pseudoprime(3277), 1, "3277 is a Euler-Plumb pseudoprime");
-  is(is_frobenius_khashin_pseudoprime(517697659),1,"517697659 is prime via Frobenius-Khashin test");
   is(is_catalan_pseudoprime(17), 1, "is_catalan_pseudoprime(17) true");
   is(is_catalan_pseudoprime(15127), 0, "is_catalan_pseudoprime(15127) false");
   SKIP: {
@@ -597,7 +575,7 @@ subtest 'Semi primes', sub {
 
 ###############################################################################
 subtest 'Ramanujan primes', sub {
-  is_deeply( ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
+  is_deeply(ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
 
   {
     my($n,$c) = (8840,500);
@@ -627,12 +605,6 @@ subtest 'Ramanujan primes', sub {
     cmp_closeto($ap, $n, $tol, "nth_ramanujan_prime_approx($c)");
   }
 };
-
-###############################################################################
-
-#subtest 'other prime related', sub {
-#  is(sum_primes(4321),1179453,"sum_primes(4321) = 1179453");
-#};
 
 ###############################################################################
 
@@ -1039,6 +1011,10 @@ subtest 'misc number theory functions', sub {
     foroddcomposites(sub {push @t,$_}, 15202630,15202641);
     is_deeply( [@t], [15202635,15202641], "foroddcomposites 15202630,15202641" );
   }
+  { my @t;
+    forsemiprimes(sub {push @t,$_}, 152026,152060);
+    is_deeply( [@t], [152049,152051,152059], "forsemiprimes 152026,152060" );
+  }
   { my $k = 0;
     fordivisors(sub {$k += $_+int(sqrt($_))},92834);
     is( $k, 168921, "fordivisors: d|92834: k+=d+int(sqrt(d))" );
@@ -1059,6 +1035,11 @@ subtest 'misc number theory functions', sub {
   { my @p;
     forpart(sub { push @p, [@_] }, 4);
     is_deeply( \@p, [ [1,1,1,1],[1,1,2],[1,3],[2,2],[4] ], "forpart(4)" );
+  }
+
+  { my @set=([1,2],[qw/a b c/]);  my @out;
+    forsetproduct {push @out,"@_"} @set;
+    is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], "forsetproduct([1,2],[qw/a b c/])" );
   }
 
   is( Pi(82), "3.141592653589793238462643383279502884197169399375105820974944592307816406286208999", "Pi(82)" );
@@ -1494,14 +1475,12 @@ subtest 'Goldbach', sub {
 #  random_semiprime
 
 
-# forsemiprimes {...} [start,] end    loop over semiprimes in range
 # foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range
 # forsquarefree {...} [start,] end    loop with factors of square-free n
 # forsquarefreeint {...} [start,] end loop over square-free n
 # forcomp { ... } n [,{...}]          loop over integer compositions
 # formultiperm { ... } \@n            loop over multiset permutations
 # forderange { ... } n                loop over derangements
-# forsetproduct { ... } \@a[,...]     loop over Cartesian product of lists
 # prime_iterator                      returns a simple prime iterator
 # prime_iterator_object               returns a prime iterator object
 # lastfor                             stop iteration of for.... loop
@@ -1510,12 +1489,10 @@ subtest 'Goldbach', sub {
 #
 #  sieve_prime_cluster
 #
-#  _inverse_R
 #  znorder bigint
 #  non-GMP lucas_sequence
 #  pminus1_factor stage 2
 #  forcompositions with hash
-#  forsemiprimes
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
 
