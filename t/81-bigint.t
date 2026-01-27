@@ -236,10 +236,13 @@ subtest 'basic mod ops', sub {
   is(invmod($A,$C),33944411285878109917,"invmod");
 
   is(sqrtmod($C,$D),8765086989354512719,"sqrtmod [prime modulus]");
-  my @all1 = (269348601420886766,4581843100180665863,5958379381550639316,10270873880310418413);
   my @all2 = (2960938399489571940,22255231847764978494,72790332930348326988,92084626378623733542);
-  ok(is_one_of(sqrtmod($D,$Ca),@all1), "sqrtmod [composite modulus]");
   ok(is_one_of(sqrtmod($C,$Da),@all2), "sqrtmod [composite modulus]");
+  SKIP: {
+    skip "another sqrtmod skipped without EXTENDED_TESTING",1 unless $extra;
+    my @all1 = (269348601420886766,4581843100180665863,5958379381550639316,10270873880310418413);
+    ok(is_one_of(sqrtmod($D,$Ca),@all1), "sqrtmod [composite modulus]");
+  }
 
   is(rootmod($C,5,$D),81379717162684976939,"rootmod(C,5,D) [prime modulus]");
   my @all3 =(1653087340990329197,15231025166435087123,28808962991879845049,42386900817324602975,55964838642769360901,69542776468214118827,83120714293658876753);

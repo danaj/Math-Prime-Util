@@ -540,26 +540,26 @@ sub is_prime {
 # since it was published in 1980, though we know infinitely many exist.
 # It has also been verified that no 64-bit composite will return true.
 # Slow since it's all in PP and uses bigints.
-sub is_bpsw_prime {
+sub _is_bpsw_prime {
   my($n) = @_;
-  validate_integer($n);
-  return 0 if $n < 2;
+  return ($n==2 || $n==3 || $n==5) ? 2 : 0  if $n < 7;
+  return 0 unless $n % 2;
   return 0 unless _miller_rabin_2($n);
   if ($n <= 18446744073709551615) {
     return is_almost_extra_strong_lucas_pseudoprime($n) ? 2 : 0;
   }
   return is_extra_strong_lucas_pseudoprime($n) ? 1 : 0;
 }
+sub is_bpsw_prime {
+  my($n) = @_;
+  validate_integer($n);
+  return _is_bpsw_prime($n);
+}
 
 sub is_provable_prime {
   my($n) = @_;
   validate_integer($n);
-  return 0 if $n < 2;
-  if ($n <= 18446744073709551615) {
-    return 0 unless _miller_rabin_2($n);
-    return 0 unless is_almost_extra_strong_lucas_pseudoprime($n);
-    return 2;
-  }
+  return _is_bpsw_prime($n) if $n <= 18446744073709551615;
   my($is_prime, $cert) = Math::Prime::Util::is_provable_prime_with_cert($n);
   $is_prime;
 }
@@ -9543,9 +9543,12 @@ sub trial_factor {
 my $_holf_r;
 my @_fsublist = (
   [ "power",      sub { _power_factor (shift) } ],
-  [ "pbrent 32k", sub { pbrent_factor (shift,   32*1024, 1, 1) } ],
-  [ "p-1 1M",     sub { pminus1_factor(shift, 1_000_000, undef, 1); } ],
-  [ "ECM 1k",     sub { ecm_factor    (shift,     1_000,   5_000, 15) } ],
+
+  [ "pbrent 2k",  sub { pbrent_factor (shift,    2*1024, 1, 1) } ],
+  [ "p-1 16k",    sub { pminus1_factor(shift,    16_384, 16_384, 1); } ],
+  [ "ECM 500",    sub { ecm_factor    (shift,       500, 10_000, 10) } ],
+  [ "ECM 4k",     sub { ecm_factor    (shift,     4_000, 20_000, 20) } ],
+
   [ "pbrent 512k",sub { pbrent_factor (shift,  512*1024, 7, 1) } ],
   [ "p-1 4M",     sub { pminus1_factor(shift, 4_000_000, undef, 1); } ],
   [ "ECM 10k",    sub { ecm_factor    (shift,    10_000,  50_000, 10) } ],
