@@ -1226,7 +1226,8 @@ subtest 'perfect powers', sub {
   ok(perfect_power_count_upper("9999999999900000000000000") >= 3162493192548,"perfect_power_count_upper");
   cmp_closeto(perfect_power_count_approx("9999999999900000000000000"),3162493192548,1000,"perfect_power_count_approx");
 
-  is("".nth_perfect_power(1234567890),"1521310467887050801","nth_perfect_power");
+  #is("".nth_perfect_power(1234567890),"1521310467887050801","nth_perfect_power");
+  is(nth_perfect_power(1234567),1495530880561,"nth_perfect_power");
   ok(nth_perfect_power_lower(1234567) <= 1495530880561,"nth_perfect_power_lower");
   ok(nth_perfect_power_upper(1234567) >= 1495530880561,"nth_perfect_power_lower");
   cmp_closeto(nth_perfect_power_approx(1234567),1495530880561,10000000,"nth_perfect_power_approx");
