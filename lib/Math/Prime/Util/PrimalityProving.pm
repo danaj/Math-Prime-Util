@@ -4,7 +4,7 @@ use warnings;
 use Carp qw/carp croak confess/;
 use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
                          is_provable_prime_with_cert
-                         lucas_sequence
+                         lucasvmod kronecker is_power
                          factor
                          prime_get_config
                         /;
@@ -423,6 +423,7 @@ sub _read_vars {
   return map { Math::BigInt->new("$return{$_}") } @_;
 }
 
+# is_power(n,2)
 sub _is_perfect_square {
   my($n) = @_;
 
@@ -444,6 +445,7 @@ sub _is_perfect_square {
 }
 
 # Calculate Jacobi symbol (M|N)
+# kronecker(n,m)
 sub _jacobi {
   my($n, $m) = @_;
   return 0 if $m <= 0 || ($m % 2) == 0;
@@ -648,9 +650,9 @@ sub _verify_bls15 {
   return _pfail "BLS15: $n failed D != 0" unless $D != 0;
   return _pfail "BLS15: $n failed jacobi(D,N) = -1" unless _jacobi($D,$n) == -1;
   return _pfail "BLS15: $n failed V_{m/2} mod N != 0"
-      unless (lucas_sequence($n, $lp, $lq, $m/2))[1] != 0;
+      unless lucasvmod($lp, $lq, $m/2, $n) != 0;
   return _pfail "BLS15: $n failed V_{(N+1)/2} mod N == 0"
-      unless (lucas_sequence($n, $lp, $lq, ($n+1)/2))[1] == 0;
+      unless lucasvmod($lp, $lq, ($n+1)/2, $n) == 0;
   ($n, $q);
 }
 
