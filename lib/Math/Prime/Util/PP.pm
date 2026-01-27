@@ -7825,10 +7825,8 @@ sub is_qr {
   # return (defined Math::Prime::Util::sqrtmod($a,$n)) ? 1 : 0;
 
   return (undef,1,1)[$n] if $n <= 2;
-  $a = Mmodint($a,$n);
+  $a = Mmodint($a,$n) if $a >= $n || $a < 0;;
   return 1 if $a <= 1;
-
-  return 0+(Mkronecker($a,$n) == 1) if Mis_prime($n);
 
   foreach my $f (Mfactor_exp($n)) {
     my($p,$e) = @$f;

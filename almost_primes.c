@@ -658,9 +658,9 @@ UV almost_prime_count_lower(uint32_t k, UV n) {
 
 UV max_nth_almost_prime(uint32_t k) {
 #if BITS_PER_WORD == 32
-  static const UV offset[32] = {0,4,1,9,5,0,7,47,31,3,15,511,1263,5119,1023,255,23295,2559,4095,126975,16383,262143,2359295,2097151,5767167,1048575,33554431,16777215,100663295,67108863,268435455,1073741823};
+  static const UV offset[32] = {UV_MAX-1,4,1,9,5,0,7,47,31,3,15,511,1263,5119,1023,255,23295,2559,4095,126975,16383,262143,2359295,2097151,5767167,1048575,33554431,16777215,100663295,67108863,268435455,1073741823};
 #else
-  static const UV offset[64] = {0,58,14,2,4,
+  static const UV offset[64] = {UV_MAX-1,58,14,2,4,
     /*  5-12 */  3,17,0,1,195,51,127,63,
     /* 13-22 */  767,1535,511,255,15,8191,1023,83967,16383,111615,
     /* 23-32 */  557055,2097151,524287,65535,1048575,6553599,33554431,4194303,671088639,16777215,
@@ -949,12 +949,13 @@ static void _genkap(UV lo, UV hi, uint32_t k, UV m, UV begp, UV **List, UV *Lpos
 UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
   UV *L, Lpos = 0, Lsize, countest;
 
-  if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
+  if (k >= BITS_PER_WORD) { *list = 0; return 0; }
   if ((lo >> k) == 0) lo = UVCONST(1) << k;
   if (hi > max_nth_almost_prime(k)) hi = max_nth_almost_prime(k);
   if (lo > hi) { *list = 0; return 0; }
 
   /* For these small k values, these are typically faster */
+  if (k == 0) { New(0,L,1,UV);  L[0]=1;  *list=L;  return 1; }
   if (k == 1) return range_prime_sieve(list, lo, hi);
   if (k == 2) return range_semiprime_sieve(list, lo, hi);
 
