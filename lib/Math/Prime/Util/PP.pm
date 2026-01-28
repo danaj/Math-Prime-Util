@@ -8055,14 +8055,31 @@ sub subfactorial {
   my($n) = @_;
   validate_integer_nonneg($n);
   if ($n <= 3) { return ($n == 0) ? 1 : $n-1; }
-  Mvecsum(map{ Mvecprod((-1)**($n-$_),Mbinomial($n,$_),Mfactorial($_)) }0..$n);
+  my $r = 0;
+  for my $k (2..$n) {
+    $r = Mmulint($r,$k);
+    if ($k&1) { $r--; } else { $r++; }
+  }
+  $r;
 }
 
+my $_fubinis = [1,1,3,13,75];
+sub _add_fubini {  # Add the next Fubini sequence term to an array reference.
+  my($A)= @_;
+  my $N = @$A;
+  push @$A, Mvecsum(map { Mmulint(Mbinomial($N,$_),$A->[$N-$_]) } 1..$N);
+}
 sub fubini {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return 1 if $n <= 1;
-  Mvecsum(map{ Mmulint(Mfactorial($_),Mstirling($n,$_,2)) }1..$n);
+
+  my $cmax = $n < 500 ? $n : 500;
+  _add_fubini($_fubinis) until defined $_fubinis->[$cmax];
+  return $_fubinis->[$n] if defined $_fubinis->[$n];
+
+  my @F = @$_fubinis;  # copy the cached values to our own.
+  _add_fubini(\@F) until defined $F[$n];
+  return $F[$n];
 }
 
 
