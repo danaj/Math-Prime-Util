@@ -149,6 +149,7 @@ our $_BIGINT;
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
 *Mvecsort = \&Math::Prime::Util::vecsort;
 *Mvecsorti = \&Math::Prime::Util::vecsorti;
+*Mvecslide = \&Math::Prime::Util::vecslide;
 *Mtoset = \&Math::Prime::Util::toset;
 *Msetinsert = \&Math::Prime::Util::setinsert;
 *Msetcontains = \&Math::Prime::Util::setcontains;
@@ -269,7 +270,7 @@ sub _validate_integer {
   } else {
     if ($refn =~ /^Math::Big(Int|Float)$/) {
       croak "Parameter '$n' must be an integer" unless $n->is_int();
-      my $bits = length($n->as_bin) - 2;
+      my $bits = length($n->to_bin);
       $_[0] = _bigint_to_int($_[0])
         if $bits <= MPU_MAXBITS || ($bits == MPU_MAXBITS+1 && $n == INTMIN);
     } else {
@@ -2227,7 +2228,7 @@ sub powerfree_part {
 
 sub _T {
   my($n)=shift;
-  Mdivint(Mmulint($n, Maddint($n, 1)), 2);
+  Mrshiftint(Mmulint($n, Maddint($n, 1)));
 }
 sub _fprod {
   my($n,$k)=@_;
@@ -2242,11 +2243,10 @@ sub powerfree_part_sum {
 
   return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
 
-  my $sum = _T($n);
-  for (2 .. Mrootint($n,$k)) {
-    $sum = Maddint($sum, Mmulint(_fprod($_,$k), _T(Mdivint($n, Mpowint($_, $k)))));
-  }
-  $sum;
+  Mvecsum( _T($n),
+           map { Mmulint(_fprod($_,$k), _T(Mdivint($n, Mpowint($_, $k)))) }
+              2 .. Mrootint($n,$k)
+         );
 }
 
 sub squarefree_kernel {
@@ -7117,9 +7117,11 @@ sub valuation {
       return 2 if $n & 4;
       $s = sprintf("%b",$n);
     } elsif (ref($n) eq 'Math::BigInt') {
-      $s = substr($n->as_bin,2);
+      $s = $n->to_bin;
+    } elsif (ref($n) eq 'Math::GMPz') {
+      return Math::GMPz::Rmpz_scan1($n,0);
     } else {
-      $s = substr(Math::BigInt->new("$n")->as_bin,2);
+      $s = Math::BigInt->new("$n")->to_bin;
     }
     return length($s) - rindex($s,'1') - 1;
   }
@@ -7144,9 +7146,9 @@ sub _splitdigits {
   if ($base == 10) {
     @d = split(//,"$n");
   } elsif ($base == 2) {
-    @d = split(//,substr(Math::BigInt->new("$n")->as_bin,2));
+    @d = split(//,Math::BigInt->new("$n")->to_bin);
   } elsif ($base == 16) {
-    @d = map { $_mapdigit{$_} } split(//,substr(Math::BigInt->new("$n")->as_hex,2));
+    @d = map { $_mapdigit{$_} } split(//,Math::BigInt->new("$n")->to_hex);
   } else {
     # The validation turned n into a bigint if necessary
     while ($n >= 1) {
@@ -9414,17 +9416,51 @@ sub _basic_factor {
   @factors;
 }
 
+# Assume $f divides $n.  Remove all occurances, add them to @$flist.  Return $n.
+sub _remove_factor {
+  my($n, $f, $flist) = @_;
+
+  do {
+    push @$flist, $f;
+    $n = Mdivint($n,$f);
+  } until $n % $f;
+
+  # Better for many repeated factors
+  #if ($n % ($f*$f)) {
+  #  push @$flist, $f;
+  #  $n = Mdivint($n,$f);
+  #} else {
+  #  my($k,$fk,$fk1) = (2,$f*$f,Mmulint($f*$f,$f));
+  #  while (!($n % $fk1)) { $k++; ($fk,$fk1)=($fk1,Mmulint($fk1,$f)); }
+  #  $n = Mdivint($n,$fk);
+  #  push @$flist, map { $f } 1..$k;
+  #}
+
+  $n;
+}
 sub trial_factor {
   my($n, $limit) = @_;
   _validate_integer_nonneg($n);
   _validate_integer_nonneg($limit) if defined $limit;
 
   return ($n==1) ? () : ($n)  if $n < 4;
+  return ($n) if defined $limit && $limit < 2;
 
-  if ($Math::Prime::Util::_GMPfunc{"trial_factor"}) {
-    my @f = defined $limit ? Math::Prime::Util::GMP::trial_factor($n,$limit)
-                           : Math::Prime::Util::GMP::trial_factor($n);
-    return ref($_[0]) ? maybetobigintall(@f) : @f;
+  if ($Math::Prime::Util::_GMPfunc{"trial_factor"} && $Math::Prime::Util::GMP::VERSION >= 0.22) {
+    # Not the same API -- other than 2/3/5, returns a single factor
+    my @F = ();
+    while (1) {
+      my @f = defined $limit ? Math::Prime::Util::GMP::trial_factor($n,$limit)
+                             : Math::Prime::Util::GMP::trial_factor($n);
+      # Pull off the factors of 2,3,5 that are done fully.
+      push @F,shift(@f) while @f && $f[0] <= 5;
+      push @F,$f[0] if @f == 1;
+      last if @f <= 1;
+      # Store the small factor we found, then keep factoring the remainder.
+      $n = pop(@f);
+      push @F,@f;
+    }
+    return ref($_[0]) ? maybetobigintall(@F) : @F;
   }
 
   my @factors;
@@ -9468,91 +9504,130 @@ sub trial_factor {
     return @factors;
   }
 
-  my $start_idx = 1;
-  # Expand small primes if it would help.
-  push @_primes_small, @{Mprimes($_primes_small[-1]+1, 100_003)}
-    if $n > 400_000_000
-    && $_primes_small[-1] < 99_000
-    && (!defined $limit || $limit > $_primes_small[-1]);
-
-  my $sqrtn = Msqrtint($n);
-  $limit = $sqrtn if !defined $limit || $limit > $sqrtn;
-
-  # Do initial bigint reduction.  Hopefully reducing it to native int.
-  if (ref($n)) {
-    my $ismbi = ref($n) eq 'Math::BigInt';
-    while ($start_idx <= $#_primes_small) {
-      # Math::BigInt is *terribly* slow doing mods.  Use GCDs => 2-3x faster.
-      if ($ismbi && $start_idx <= $#_primes_small-2 && $_primes_small[$start_idx+2] <= $limit && $_primes_small[$start_idx] <= 99989) {
-        my $g = $_primes_small[$start_idx+0] * $_primes_small[$start_idx+1] * $_primes_small[$start_idx+2];
-        if ($n->bgcd($g)->is_one) {
-          $start_idx += 3;
-          next;
-        }
-      }
-      my $f = $_primes_small[$start_idx++];
-      last if $f > $limit;
-      if ($n % $f == 0) {
-        do {
-          push @factors, $f;
-          $n = Mdivint($n,$f);
-        } while $n % $f == 0;
-        last if $n < INTMAX;
-        $sqrtn = Msqrtint($n);
-        $limit = $sqrtn if $limit > $sqrtn;
-      }
+  # STEP 1  Pull out factors of 2
+  if (!ref($n)) {
+    while ($n % 2 == 0) {
+      push @factors, 2;
+      $n >>= 1;
     }
-    return @factors if $n == 1;
-    return (@factors,$n) if $start_idx <= $#_primes_small && $_primes_small[$start_idx] > $limit;
+  } elsif (ref($n) eq 'Math::BigInt') {
+    my $k = 0;
+    if ($n->is_even) {
+      my $s = $n->to_bin();
+      $k = length($s) - rindex($s,'1') - 1;
+    }
+    if ($k > 0) { push @factors, (2) x $k;  $n = Mrshiftint($n,$k); }
+  } elsif ($n % 2 == 0) {
+    my $k = Mvaluation($n,2);
+    if ($k > 0) { push @factors, (2) x $k;  $n = Mrshiftint($n,$k); }
   }
 
-  if (!ref($n)) {
-    for my $i ($start_idx .. $#_primes_small) {
-      my $p = $_primes_small[$i];
-      last if $p > $limit;
+  # STEP 2  Defined and accurate $limit, add more small primes
+  $limit = Msqrtint($n) if !defined $limit || $limit*$limit > $n;
+
+  # Add more primes if we might use them.  Maybe wait until needed?
+  push @_primes_small, @{Mprimes($_primes_small[-1]+1, 100_003)}
+    if $_primes_small[-1] < 100_000
+    && $limit > $_primes_small[-1];
+
+  my $I = 2;  # small prime index, start at p=3
+
+  # STEP 3: Math::BigInt using small primes list until native or no more
+  if (ref($n) eq 'Math::BigInt') {
+    # n is a odd positive Math::BigInt with at least 32 bits.
+    # Batch primes and use gcd to check.  If using Math::BigInt, 2-5x faster.
+    while ($I+3 <= $#_primes_small && $_primes_small[$I+3] <= $limit && $I <= 1951956) {
+      my($f1,$f2,$f3,$f4) = @_primes_small[$I .. $I+3];
+      my $g = $n->bgcd($f1<=5581 ? $f1*$f2*$f3*$f4 : Mmulint($f1*$f4,$f2*$f3));
+      $I += 4;
+      next if $g->is_one;
+      my $G = _bigint_to_int($g);   # Native int (or larger)
+      $G = $g if $G >= INTMAX;      # Must use original if multiples found.
+      $n = _remove_factor($n, $f1, \@factors) unless $G % $f1;
+      $n = _remove_factor($n, $f2, \@factors) unless $G % $f2;
+      $n = _remove_factor($n, $f3, \@factors) unless $G % $f3;
+      $n = _remove_factor($n, $f4, \@factors) unless $G % $f4;
+      if ($limit*$limit >= $n) {
+        my $sqrtn = Msqrtint($n);
+        $limit = $sqrtn if $limit > $sqrtn;
+      }
+      last if !ref($n);
+    }
+    # n is either a bigint and > INTMAX, or a native type <= INTMAX;
+    return @factors if $n == 1;
+    my $f = $I > $#_primes_small ? $_primes_small[-1]+2 : $_primes_small[$I];
+    return (@factors,$n) if $f > $limit;
+  }
+
+  # STEP 4: any bigint, small primes list until native or no more
+  if (ref($n)) {
+    while ($I <= $#_primes_small) {
+      my $f = $_primes_small[$I];
+      last if $f > $limit;
+      $I++;
+      next if $n % $f;
+      $n = _remove_factor($n, $f, \@factors);
+      if ($limit*$limit >= $n) {
+        my $sqrtn = Msqrtint($n);
+        $limit = $sqrtn if $limit > $sqrtn;
+      }
+      last if !ref($n);
+    }
+    return @factors if $n == 1;
+    my $f = $I > $#_primes_small ? $_primes_small[-1]+2 : $_primes_small[$I];
+    return (@factors,$n) if $f > $limit;
+  }
+
+  # STEP 5: Still a bigint.  Wheel (mod 2310) starting from last small prime.
+  if (ref($n)) {
+    my $f = $_primes_small[-1];
+    my($s,$w) = ($_primes_small[-1], 2*3*5*7*11);
+    my @wheel = Mvecslide(sub{$b-$a}, grep { Mgcd($_,$w)==1 } $s+0..$s+$w);
+    SEARCH: while ($f <= $limit) {
+      for my $inc (@wheel) {
+        $f += $inc;
+        if ($f <= $limit && !($n % $f)) {
+          $n = _remove_factor($n, $f, \@factors);
+          last SEARCH if $n == 1;
+          if ($limit*$limit >= $n) {
+            my $sqrtn = Msqrtint($n);
+            $limit = $sqrtn if $limit > $sqrtn;
+          }
+        }
+      }
+    }
+    push @factors, $n if $n > 1;
+    return @factors;
+  }
+
+  # STEP 6:  native small primes list
+  for my $i ($I .. $#_primes_small) {
+    my $p = $_primes_small[$i];
+    last if $p > $limit;
+    if (($n % $p) == 0) {
+      do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
+      last if $n == 1;
+      my $newlim = int( sqrt($n) + 0.001);
+      $limit = $newlim if $newlim < $limit;
+    }
+  }
+  return @factors if $n == 1;
+
+  # STEP 7:  native wheel (mod 30)
+  if ($_primes_small[-1] < $limit) {
+    my $inc = (($_primes_small[-1] % 6) == 1) ? 4 : 2;
+    my $p = $_primes_small[-1] + $inc;
+    while ($p <= $limit) {
       if (($n % $p) == 0) {
         do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
         last if $n == 1;
         my $newlim = int( sqrt($n) + 0.001);
         $limit = $newlim if $newlim < $limit;
       }
-    }
-    if ($_primes_small[-1] < $limit) {
-      my $inc = (($_primes_small[-1] % 6) == 1) ? 4 : 2;
-      my $p = $_primes_small[-1] + $inc;
-      while ($p <= $limit) {
-        if (($n % $p) == 0) {
-          do { push @factors, $p;  $n = int($n/$p); } while ($n % $p) == 0;
-          last if $n == 1;
-          my $newlim = int( sqrt($n) + 0.001);
-          $limit = $newlim if $newlim < $limit;
-        }
-        $p += ($inc ^= 6);
-      }
-    }
-  } else {   # n is a bigint.  Use mod-210 wheel trial division.
-    # Generating a wheel mod $w starting at $s:
-    # mpu 'my($s,$w,$t)=(11,2*3*5); say join ",",map { ($t,$s)=($_-$s,$_); $t; } grep { gcd($_,$w)==1 } $s+1..$s+$w;'
-    # Should start at $_primes_small[$start_idx], do 11 + next multiple of 210.
-
-    my @incs = (2,4,2,4,6,2,6,4,2,4,6,6,2,6,4,2,6,4,6,8,4,2,4,2,4,8,6,4,6,2,4,6,2,6,6,4,2,4,6,2,6,4,2,4,2,10,2,10);
-    my $f = 11; while ($f <= $_primes_small[$start_idx-1]-210) { $f += 210; }
-    SEARCH: while ($f <= $limit) {
-      foreach my $finc (@incs) {
-        if ($n % $f == 0 && $f <= $limit) {
-          do {
-            push @factors, $f;
-            $n = Mdivint($n,$f);
-          } while $n % $f == 0;
-          last SEARCH if $n == 1;
-          $sqrtn = Msqrtint($n);
-          $limit = $sqrtn if $limit > $sqrtn;
-        }
-        $f += $finc;
-      }
+      $p += ($inc ^= 6);
     }
   }
-  push @factors, $n  if $n > 1;
+  push @factors, $n if $n > 1;
   @factors;
 }
 

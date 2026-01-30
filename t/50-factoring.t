@@ -115,7 +115,7 @@ plan tests => 4      # factor, factor_exp, including scalar
             + 2*scalar(@testdivisors)
             + 3      # extra divisors tests
             + 10*10  # 10 extra factoring tests * 10 algorithms
-            + 7      # more factoring for code coverage
+            + 8      # more factoring for code coverage
             + 4      # omega and bigomega
             ;
 
@@ -205,6 +205,7 @@ SKIP: {
 
 # To hit some extra coverage
 is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203 * 2503" );
+is_deeply( [Math::Prime::Util::trial_factor(1819015037140)], [2,2,5,7,7,1856137793], "trial_factor(1819015037140) fully factors");
 SKIP: {
   skip "holf_factor for 64-bit input", 1 unless $use64 || !$usexs;
   is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );

@@ -185,7 +185,7 @@ sub mpu_PPM_regex {
       Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
       Mdivisor_sum Mis_congruent Mis_divisible
       Mis_semiprime Mis_square_free Mhclassno
-      Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum
+      Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum Mvecslide
       Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits

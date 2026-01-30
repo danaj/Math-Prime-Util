@@ -274,6 +274,8 @@ Revision history for Perl module Math::Prime::Util
 
     - trial_factor etc. take an SV rather than silently coerce to a UV.
 
+    - PP trial_factor corrects for MPU::GMP's different API.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - LMO prime count is 1.2-1.5x faster.
