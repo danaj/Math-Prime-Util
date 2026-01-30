@@ -27,8 +27,11 @@ my @listo = (
                $listo[$k-1],
                "$k-omega primes 10000 .. 10100" );
   }
+
   # mpu 'say vecprod(map { random_prime(1000) } 1..18)'
-  is(is_omega_prime(10,"11459432004627285861642499001908643827"), 1, "is_omega_prime(10,11459432004627285861642499001908643827)");
+  # mpu '@x=vecuniq map{random_prime(1000,5000)}1..10 until @x==10; say "@x"; say vecprod(@x)'
+
+  is(is_omega_prime(10,"24705358214159761813058494125740243"), 1, "is_omega_prime(10,24705358214159761813058494125740243)");
   is(is_omega_prime(14,"264161530428233522652629658999365"), 1, "is_omega_prime(14,264161530428233522652629658999365)");
   # 18 factors, but one is repeated
   is(is_omega_prime(18,"32271228927564477576537111610496905348679567"), 0, "is_omega_prime(18,32271228927564477576537111610496905348679567) = 0");

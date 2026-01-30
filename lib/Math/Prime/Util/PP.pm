@@ -5234,19 +5234,39 @@ sub divint {
   }
   (fdivrem(@_))[0];
 }
+sub _posmodint {   # Simple no-error all positive case
+  #croak "Invalid call to _posmodint(@_)" unless $_[1] > 0 && $_[0] >= 0;
+  my $r;
+  if (ref($_[1]) || ref($_[0])) {
+    $r = $_[0] % $_[1];
+    $r = _bigint_to_int($r) if $r <= INTMAX;
+  } elsif ($_[1] < INTMAX && $_[0] < INTMAX) {
+    $r = $_[0] % $_[1];
+  } else {
+    $r = tobigint($_[0]) % tobigint($_[1]);
+    $r = _bigint_to_int($r) if $r <= INTMAX;
+  }
+  $r;
+}
 sub modint {
-  if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
-    my $r;
-    if (ref($_[1]) || ref($_[0])) {
-      $r = $_[0] % $_[1];
-      $r = _bigint_to_int($r) if $r <= INTMAX;
-    } elsif ($_[1] < INTMAX && $_[0] < INTMAX) {
-      $r = $_[0] % $_[1];
-    } else {
-      $r = tobigint($_[0]) % tobigint($_[1]);
-      $r = _bigint_to_int($r) if $r <= INTMAX;
+  # Fast processing for simple cases
+  if ($_[1] > 0 && $_[0] >= 0) {
+    return _posmodint(@_);
+  } elsif ($_[1] < 0 && $_[0] >= 0) {
+    if ($_[0] < INTMAX && -$_[1] < INTMAX) {
+      my $r = _posmodint($_[0],-$_[1]);
+      return $r == 0 ? 0 : $_[1]+$r;
     }
-    return $r;
+  } elsif ($_[1] > 0 && $_[0] <= 0) {
+    if (-$_[0] < INTMAX && $_[1] < INTMAX) {
+      my $r = _posmodint(-$_[0],$_[1]);
+      return $r == 0 ? 0 : $_[1]-$r;
+    }
+  } elsif ($_[1] < 0 && $_[0] <= 0) {
+    if (-$_[0] < INTMAX && -$_[1] < INTMAX) {
+      my $r = _posmodint(-$_[0],-$_[1]);
+      return $r == 0 ? 0 : -$r;
+    }
   }
   (fdivrem(@_))[1];
 }
@@ -5865,9 +5885,10 @@ sub sqrtmod {
   my $r = _sqrtmod_composite($a,$n);
   if (defined $r) {
     $r = $n-$r if $n-$r < $r;
-    #croak "Bad _sqrtmod_composite root $a,$n" unless Mmulmod($r,$r,$n) == $a;
+    $r = _bigint_to_int($r) if ref($r) && $r <= INTMAX;
   }
-  return $r;
+  #croak "Bad _sqrtmod_composite root $a,$n" unless Mmulmod($r,$r,$n) == $a;
+  $r;
 }
 
 
