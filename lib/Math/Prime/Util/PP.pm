@@ -8069,7 +8069,17 @@ my $_fubinis = [1,1,3,13,75];
 sub _add_fubini {  # Add the next Fubini sequence term to an array reference.
   my($A)= @_;
   my $N = @$A;
-  push @$A, Mvecsum(map { Mmulint(Mbinomial($N,$_),$A->[$N-$_]) } 1..$N);
+
+  # Faster method from Daniel Șuteu.
+  # 1..400   no-GMP   GMP     Math::GMPz
+  # old      51.82    13.95    0.804
+  # new      35.73     3.79    0.380
+
+  my($t,$x) = (1);
+  push @$A, Mvecsum(map { $x = Smulint($t, $A->[$_]);
+                          $t = Smulint($t, $N - $_);
+                          $t = Sdivint($t, $_+1);
+                          $x } 0..$N-1);
 }
 sub fubini {
   my($n) = @_;
