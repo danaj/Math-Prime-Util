@@ -75,6 +75,8 @@ our $_BIGINT;
 
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
+*Madd1int = \&Math::Prime::Util::add1int;
+*Msub1int = \&Math::Prime::Util::sub1int;
 *Mmulint = \&Math::Prime::Util::mulint;
 *Mdivint = \&Math::Prime::Util::divint;
 *Mpowint = \&Math::Prime::Util::powint;
@@ -942,7 +944,7 @@ sub prime_powers {
     my $sref = [];
     while ($low <= $high) {
       push @$sref, $low if Mis_prime_power($low);
-      $low = Maddint($low, 1);
+      $low = Madd1int($low);
     }
     return $sref;
   } else {
@@ -1094,7 +1096,7 @@ sub next_prime_power {
   validate_integer_nonneg($n);
   return (2,2,3,4,5,7,7,8,9)[$n] if $n <= 8;
   while (1) {
-    $n = Maddint($n, 1);
+    $n = Madd1int($n);
     return $n if Mis_prime_power($n);
   }
 }
@@ -1103,7 +1105,7 @@ sub prev_prime_power {
   validate_integer_nonneg($n);
   return (undef,undef,undef,2,3,4,5,5,7)[$n] if $n <= 8;
   while (1) {
-    $n = Msubint($n, 1);
+    $n = Msub1int($n);
     return $n if Mis_prime_power($n);
   }
 }
@@ -1112,7 +1114,7 @@ sub partitions {
   my $n = shift;
   validate_integer_nonneg($n);
 
-  my $d = Msqrtint(Maddint($n,1));
+  my $d = Msqrtint(Madd1int($n));
   my @pent = (1, map { (($_*(3*$_+1))>>1, (($_+1)*(3*$_+2))>>1) } 1 .. $d);
   my $bigpn = (~0 > 4294967295) ? 400 : 270;
   my($ZERO,$ONE) = map { $n >= $bigpn ? tobigint($_) : $_ } (0,1);
@@ -1496,7 +1498,7 @@ sub inverse_totient {
   return wantarray ? () : 0 if $n < 1 || ($n & 1);
 
   if (Mis_prime($n >> 1)) {   # Coleman Remark 3.3 (Thm 3.1) and Prop 6.2
-    my $np1 = Maddint($n,1);
+    my $np1 = Madd1int($n);
     return wantarray ? () : 0                      if !Mis_prime($np1);
     return wantarray ? ($np1, Mmulint($np1,2)) : 2 if $n >= 10;
   }
@@ -1504,7 +1506,7 @@ sub inverse_totient {
   if (!wantarray) {
     my %r = ( 1 => 1 );
     Mfordivisors(sub { my $d = $_;
-      my $p = Maddint($d,1);
+      my $p = Madd1int($d);
       if (Mis_prime($p)) {
         my($dp,@sumi,@sumv) = ($d);
         for my $v (0 .. Mvaluation($n, $p)) {
@@ -1529,7 +1531,7 @@ sub inverse_totient {
 
     # 1. For each divisor from 1 .. n, track which values are needed.
     for my $d (divisors($n)) {
-      my $p = Maddint($d,1);
+      my $p = Madd1int($d);
       next unless Mis_prime($p);
       my @L;
       for my $v (0 .. Mvaluation($n, $p)) {
@@ -1922,7 +1924,7 @@ sub nth_powerful {
 
   # hi could be too low.
   while (Math::Prime::Util::powerful_count($hi,$k) < $n) {
-    $lo = Maddint($hi,1);
+    $lo = Madd1int($hi);
     $hi = Mmulint($k, $hi);
   }
 
@@ -1976,7 +1978,7 @@ sub sumpowerful {
   if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
 
   return $n if $n <= 1;
-  return Mrshiftint(Mmulint($n,Maddint($n,1)),1) if $k <= 1;
+  return Mrshiftint(Mmulint($n,Madd1int($n))) if $k <= 1;
 
   # Alternate method for testing.
   # my @a;  _genpowerful(1, 2*$k-1, $n, $k, \@a);  return Mvecsum(@a);
@@ -2118,7 +2120,7 @@ sub powerfree_count {
     if ($i < 15) {
       $c = Math::Prime::Util::mertens($hi) - Math::Prime::Util::mertens($lo);
     } else {
-      $c += $_ for Mmoebius( Maddint($lo,1), $hi );
+      $c += $_ for Mmoebius( Madd1int($lo), $hi );
     }
     push @C, $c * ($i-1);
     @C = (Mvecsum(@C)) if scalar(@C) > 100000;  # Save/restrict memory.
@@ -2195,7 +2197,7 @@ sub powerfree_sum {
     sub {
       $ik = Mpowint($_, $k);
       $nik = Mdivint($n, $ik);
-      $T = Mrshiftint(Mmulint($nik, Maddint($nik,1)), 1);
+      $T = Mrshiftint(Mmulint($nik, Madd1int($nik)));
       $sum = (scalar(@_) & 1) ? Msubint($sum, Mmulint($ik,$T)) :
                                 Maddint($sum, Mmulint($ik,$T));
     },
@@ -2228,7 +2230,7 @@ sub powerfree_part {
 
 sub _T {
   my($n)=shift;
-  Mrshiftint(Mmulint($n, Maddint($n, 1)));
+  Mrshiftint(Mmulint($n, Madd1int($n)));
 }
 sub _fprod {
   my($n,$k)=@_;
@@ -2278,7 +2280,7 @@ sub _perfect_power_count {
   for my $k (2 .. $log2n) {
     my $m = Mmoebius($k);
     next if $m == 0;
-    push @T, Mmulint(-$m, Msubint(Mrootint($n,$k),1));
+    push @T, Mmulint(-$m, Msub1int(Mrootint($n,$k)));
   }
   Mvecsum(@T);
 }
@@ -2318,10 +2320,10 @@ sub _next_perfect_power {
   my $kinit = $only_oddpowers ? 3 : 2;
   my $kinc  = $only_oddpowers ? 2 : 1;
 
-  my $best = Mpowint(Maddint(Mrootint($n,$kinit),1),$kinit);
+  my $best = Mpowint(Madd1int(Mrootint($n,$kinit)),$kinit);
   for (my $k = $kinit+$kinc; $k <= 1+$log2n; $k += $kinc) {
     my $r = Mrootint($n,$k);
-    my $c = Mpowint(Maddint($r,1),$k);
+    my $c = Mpowint(Madd1int($r),$k);
     $best = $c if $c < $best && $c > $n;
   }
   $best;
@@ -2342,7 +2344,7 @@ sub _prev_perfect_power {
     my $r = Mrootint($n,$k);
     if ($r > 1) {
       my $c = Mpowint($r,$k);
-      $c = Mpowint(Msubint($r,1),$k) if $c >= $n;
+      $c = Mpowint(Msub1int($r),$k) if $c >= $n;
       $best = $c if $c > $best && $c < $n;
     }
   }
@@ -2887,7 +2889,7 @@ sub _totpred {
   for my $d (Mdivisors($n)) {
     last if $d >= $maxd;
     my $p = ($d < (INTMAX >> 2))  ?  ($d << 1) + 1 :
-            Maddint(Mlshiftint($d,1),1);
+            Madd1int(Mlshiftint($d));
     next unless Mis_prime($p);
     my $r = Mdivint($n,$d);
     while (1) {
@@ -2989,7 +2991,7 @@ sub _rmertens {
   my $s = Msqrtint($n);
   my $ns = int($n/($s+1));
 
-  my ($nk, $nk1) = ($n, Mrshiftint($n,1));
+  my ($nk, $nk1) = ($n, Mrshiftint($n));
   my $SUM = Msubint(1,Msubint($nk,$nk1));
   my @S;
   foreach my $k (2 .. $ns) {
@@ -3288,9 +3290,9 @@ sub divisor_sum {
       my ($p, $e) = @$f;
       my $pk = Mpowint($p,$k);
       if ($e == 1) {
-        push @prod, Maddint($pk,1);
+        push @prod, Madd1int($pk);
       } else {
-        push @prod, Mvecsum(Maddint($pk,1), map { Mpowint($pk,$_) } 2..$e);
+        push @prod, Mvecsum(Madd1int($pk), map { Mpowint($pk,$_) } 2..$e);
       }
     }
   }
@@ -4496,7 +4498,7 @@ sub nth_almost_prime_upper {
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_lower($k, $hi);
   while ($rhi < $n) {
-    $lo = Maddint($hi,1);
+    $lo = Madd1int($hi);
     $hi = Mvecsum($hi, int(1.02 * ("$hi"/"$rhi") * ("$n"-"$rhi")), 100);
     $rhi = almost_prime_count_lower($k, $hi);
   }
@@ -4525,7 +4527,7 @@ sub nth_almost_prime_lower {
   # We just guessed at hi, so bump it up until it's in range
   my $rhi = almost_prime_count_upper($k, $hi);
   while ($rhi < $n) {
-    $lo = Maddint($hi,1);
+    $lo = Madd1int($hi);
     $hi = Mvecsum($hi, int(1.02 * ("$hi"/"$rhi") * ("$n"-"$rhi")), 100);
     $rhi = almost_prime_count_upper($k, $hi);
   }
@@ -4778,7 +4780,7 @@ sub ramanujan_prime_count_upper {
   validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
   my $lo = Mdivint(prime_count_lower($n),3);
-  my $hi = Mrshiftint(prime_count_upper($n),1);
+  my $hi = Mrshiftint(prime_count_upper($n));
   1+_binary_search($n, $lo, $hi,
                    sub{Math::Prime::Util::nth_ramanujan_prime_lower(shift)});
 }
@@ -4872,7 +4874,7 @@ sub sum_primes {
             ($xssum) ? Math::Prime::Util::sum_primes($low,$next)
                      : Mvecsum( @{Mprimes($low,$next)} ));
     last if $next == $high;
-    $low = Maddint($next,1);
+    $low = Madd1int($next);
   }
   $sum;
 }
@@ -5352,13 +5354,13 @@ sub powersum {
 
   return $n if $n <= 1 || $k == 0;
 
-  return Mdivint(Mvecprod($n, Maddint($n,1), Maddint(Mmulint($n,2),1)),6) if $k==2;
+  return Mdivint(Mvecprod($n, Madd1int($n), Madd1int(Mmulint($n,2))),6) if $k==2;
   return Mdivint(Mvecprod(
-                          $n, Maddint($n,1), Maddint(Mmulint($n,2),1),
+                          $n, Madd1int($n), Madd1int(Mmulint($n,2)),
                           Mvecsum( Mmulint(3,Mpowint($n,2)), Mmulint(3,$n), -1 )
                          ),30) if $k==4;
 
-  my $a = Mrshiftint(Mmulint($n,Maddint($n,1)),1);
+  my $a = Mrshiftint(Mmulint($n,Madd1int($n)));
   return $a if $k == 1;
   return Mmulint($a,$a) if $k == 3;
   return Mdivint(Msubint(Mmulint(4,Mpowint($a,3)),Mmulint($a,$a)),3) if $k == 5;
@@ -5746,10 +5748,10 @@ sub is_happy {
 sub _sqrtmod_prime {
   my($a, $p) = @_;
   my($x, $q, $e, $t, $z, $r, $m, $b);
-  my $Q = Msubint($p,1);
+  my $Q = Msub1int($p);
 
   if (($p % 4) == 3) {
-    $r = Mpowmod($a, Mrshiftint(Maddint($p,1),2), $p);
+    $r = Mpowmod($a, Mrshiftint(Madd1int($p),2), $p);
     return undef unless Mmulmod($r,$r,$p) == $a;
     return $r;
   }
@@ -5763,7 +5765,7 @@ sub _sqrtmod_prime {
   }
 
   # Verify Euler's criterion for odd p
-  return undef if $p != 2 && Mpowmod($a, Mrshiftint($Q,1), $p) != 1;
+  return undef if $p != 2 && Mpowmod($a, Mrshiftint($Q), $p) != 1;
 
   # Cohen Algorithm 1.5.1.  Tonelli-Shanks.
   $e = Mvaluation($Q, 2);
@@ -6010,7 +6012,7 @@ sub _rootmod_prime_splitk {
   $$refzeta = 1 if defined $refzeta;
   $a = Mmodint($a, $p) if $a >= $p;
   return $a if $a == 0 || ($a == 1 && !defined $refzeta);
-  my $p1 = Msubint($p,1);
+  my $p1 = Msub1int($p);
 
   if ($k == 2) {
     my $r = _sqrtmod_prime($a,$p);
@@ -7551,7 +7553,7 @@ sub _harmonic_split { # From Fredrik Johansson
   my($a,$b) = @_;
   return (1, $a) if $b-$a == 1;
   return (Mvecsum($a,$a,1), Maddint(Mmulint($a,$a),$a)) if $b-$a == 2;
-  my $m = Mrshiftint(Maddint($a,$b),1);
+  my $m = Mrshiftint(Maddint($a,$b));
   my ($p,$q) = _harmonic_split($a, $m);
   my ($r,$s) = _harmonic_split($m, $b);
   (Maddint(Mmulint($p,$s),Mmulint($q,$r)), Mmulint($q,$s));
@@ -7560,7 +7562,7 @@ sub _harmonic_split { # From Fredrik Johansson
 sub harmfrac {
   my($n) = @_;
   return (0,1) if $n <= 0;
-  my($p,$q) = _harmonic_split(1, Maddint($n,1));
+  my($p,$q) = _harmonic_split(1, Madd1int($n));
   my $gcd = Mgcd($p,$q);
   ($p,$q) = map { Mdivint($_,$gcd) } ($p,$q) if $gcd > 1;
   ($p,$q);
@@ -7662,7 +7664,7 @@ sub _miller_rabin_2 {
   if (ref($n)) {
 
     if (!defined $nm1) {
-      $nm1 = Msubint($n,1);
+      $nm1 = Msub1int($n);
       $s = Mvaluation($nm1,2);
       $d = Mrshiftint($nm1,$s);
     }
@@ -7732,7 +7734,7 @@ sub is_strong_pseudoprime {
 
   if (ref($n)) {
 
-    my $nm1 = Msubint($n,1);
+    my $nm1 = Msub1int($n);
     my $s = Mvaluation($nm1,2);
     my $d = Mrshiftint($nm1,$s);
 
@@ -8116,9 +8118,9 @@ sub _negcfrac {
   if (@CF == 1) {
     $CF[0] = $neg0;
   } elsif ($CF[1] == 1) {
-    splice(@CF, 0, 3, Msubint($neg0,1), Maddint($CF[2],1));
+    splice(@CF, 0, 3, Msub1int($neg0), Madd1int($CF[2]));
   } else {
-    splice(@CF, 0, 2, Msubint($neg0,1), 1, Msubint($CF[1],1));
+    splice(@CF, 0, 2, Msub1int($neg0), 1, Msub1int($CF[1]));
   }
   @CF;
 }
@@ -8161,7 +8163,7 @@ sub next_stern_brocot {
   validate_integer_positive($num);
   validate_integer_positive($den);
   # There should be a better solution
-  nth_stern_brocot(Maddint(stern_brocot_n($num,$den),1));
+  nth_stern_brocot(Madd1int(stern_brocot_n($num,$den)));
 }
 
 sub calkin_wilf_n {
@@ -8217,7 +8219,7 @@ sub nth_stern_diatomic {
 sub farey {
   my($n,$k) = @_;
   validate_integer_positive($n);
-  my $len = Maddint(Math::Prime::Util::sumtotient($n),1);
+  my $len = Madd1int(Math::Prime::Util::sumtotient($n));
 
   my($p0, $q0, $p1, $q1, $p2, $q2, $j) = (0,1,1,$n);
 
@@ -8324,7 +8326,7 @@ sub is_primitive_root {
   if (Mis_even($n)) {
     return 0 if ($n % 4) == 0; # n can't still be even after we shift it
     return 0 if Mis_even($a);  # n and a cannot both be even
-    $n = Mrshiftint($n,1);     # a is odd, so it is a primroot of p^k also
+    $n = Mrshiftint($n);       # a is odd, so it is a primroot of p^k also
   }
   return 0 if Mgcd($a, $n) != 1;
   return 0 if _is_perfect_square($a);
@@ -8333,7 +8335,7 @@ sub is_primitive_root {
   $k = Mis_prime_power($n,\$p);
   return 0 if !$k;
   $n = $p;
-  $phi = Msubint($n,1);
+  $phi = Msub1int($n);
   return 0 if $k > 1 && Mpowmod($a, $phi, Mmulint($p,$p)) == 1;
 
   return 0 if Mkronecker($a,$n) != -1;
@@ -8413,7 +8415,7 @@ sub _dlp_bsgs {
   my ($a,$g,$p,$_verbose) = @_;
   my $invg = Minvmod($g, $p);
   return 0 unless defined $invg;
-  my $N = Maddint(Msqrtint($p-1),1);
+  my $N = Madd1int(Msqrtint($p-1));
   # Limit for time and space.
   my $b = $N > 4_000_000 ? 4_000_000 : $N;
 
@@ -8489,7 +8491,7 @@ sub znprimroot {
   return if $n % 4 == 0;
 
   my $iseven = Mis_even($n);
-  $n = Mrshiftint($n,1) if $iseven;
+  $n = Mrshiftint($n) if $iseven;
 
   my($k,$p);
   $k = Mis_prime_power($n, \$p);
@@ -8706,7 +8708,7 @@ sub lucasuvmod {
   } elsif ($nisodd && ($Q == 1 || $Q == ($n-1))) {
     my $ps = ($P == 1);
     my $qs = ($Q == 1);
-    my $halfn = Maddint(Mrshiftint($n,1),1);
+    my $halfn = Madd1int(Mrshiftint($n));
     foreach my $bit (@kbits) {
       $U = Mmulmod($U, $V, $n);
       $V = ($qs) ? Mmulsubmod($V,$V,2,$n) : Mmuladdmod($V,$V,2,$n);
@@ -8715,22 +8717,22 @@ sub lucasuvmod {
         my $t = Mmulmod($U, $D, $n);
         $U = (!$ps) ? Mmuladdmod($U,$P,$V,$n) : Maddmod($U,$V,$n);
         if (Mis_odd($U)) {
-          $U = Maddint(Mrshiftint($U, 1), $halfn);
+          $U = Maddint(Mrshiftint($U), $halfn);
         } else {
-          $U = Mrshiftint($U, 1);
+          $U = Mrshiftint($U);
         }
         $V = (!$ps) ? Mmuladdmod($V,$P,$t,$n) : Maddmod($V,$t,$n);
         if (Mis_odd($V)) {
-          $V = Maddint(Mrshiftint($V, 1), $halfn);
+          $V = Maddint(Mrshiftint($V), $halfn);
         } else {
-          $V = Mrshiftint($V, 1);
+          $V = Mrshiftint($V);
         }
         $qs = ($Q==1);
       }
     }
   } elsif ($nisodd) {
     my $Qk = $Q;
-    my $halfn = Maddint(Mrshiftint($n,1),1);
+    my $halfn = Madd1int(Mrshiftint($n));
     foreach my $bit (@kbits) {
       $U = Mmulmod($U, $V, $n);
       $V = Mmulsubmod($V, $V, Maddmod($Qk, $Qk, $n), $n);
@@ -8739,15 +8741,15 @@ sub lucasuvmod {
         my $t = Mmulmod($U, $D, $n);
         $U = Mmuladdmod($U, $P, $V, $n);
         if (Mis_odd($U)) {
-          $U = Maddint(Mrshiftint($U, 1), $halfn);
+          $U = Maddint(Mrshiftint($U), $halfn);
         } else {
-          $U = Mrshiftint($U, 1);
+          $U = Mrshiftint($U);
         }
         $V = Mmuladdmod($V, $P, $t, $n);
         if (Mis_odd($V)) {
-          $V = Maddint(Mrshiftint($V, 1), $halfn);
+          $V = Maddint(Mrshiftint($V), $halfn);
         } else {
-          $V = Mrshiftint($V, 1);
+          $V = Mrshiftint($V);
         }
         $Qk = Mmulmod($Qk, $Q, $n);
       }
@@ -8864,7 +8866,7 @@ sub pisano_period {
 
   my $lim = Mmulint(6,$n);
   for (my $ret = $k;  $ret <= $lim;  $ret = Maddint($ret,$k)) {
-    return $ret if Mlucasumod(1, -1, Msubint($ret,1), $n) == 1;
+    return $ret if Mlucasumod(1, -1, Msub1int($ret), $n) == 1;
   }
   undef;
 }
@@ -8924,10 +8926,10 @@ sub is_extra_strong_lucas_pseudoprime {
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
   # This would be a great place to use a factor remove function
-  my($s, $k) = (0, Maddint($n,1));
+  my($s, $k) = (0, Madd1int($n));
   while (Mis_even($k) && $k != 0) {
     $s++;
-    $k = Mrshiftint($k,1);
+    $k = Mrshiftint($k);
   }
 
   my($U, $V) = lucasuvmod($P, $Q, $k, $n);
@@ -9088,7 +9090,7 @@ sub is_perrin_pseudoprime {
   my @S = _perrin_signature($n);
   return 0 unless $S[4] == 0;
   return 1 if $restrict == 0;
-  return 0 unless $S[1] == Msubint($n,1);
+  return 0 unless $S[1] == Msub1int($n);
   return 1 if $restrict == 1;
   my $j = Mkronecker(-23,$n);
   if ($j == -1) {
@@ -9119,8 +9121,8 @@ sub _catgamma {
     }
   }
   # Section 5 rephrases Theorem 2 into the middle binomial.
-  my $N = Msubint($n,1);
-  my $m = Mrshiftint($N,1);
+  my $N = Msub1int($n);
+  my $m = Mrshiftint($N);
   my $r = Math::Prime::Util::binomialmod($N, $m, $mod);
   return ($m & 1) ? $mod-$r : $r;
 }
@@ -9211,7 +9213,7 @@ sub is_mersenne_prime {
   return 1 if $p == 2;
   return 0 unless is_prob_prime($p);
   return 0 if $p > 3 && $p % 4 == 3 && $p < ((~0)>>1) && is_prob_prime($p*2+1);
-  my $mp = Msubint(Mlshiftint(1,$p), 1);
+  my $mp = Msub1int(Mlshiftint(1,$p));
 
   # Definitely faster than using Math::BigInt that doesn't have GMP.
   return (0 == (Math::Prime::Util::GMP::lucasuvmod(4, 1, $mp+1, $mp))[0])
@@ -9918,7 +9920,7 @@ sub pminus1_factor {
   if (!ref($n)) {
     # Stage 1 only
     my $sqrtn = Msqrtint($n);
-    $B1 = !defined $B1 || $B1 > $sqrtn ? $sqrtn : $sqrtn;
+    $B1 = $sqrtn if !defined $B1 || $B1 > $sqrtn;
     my $sqrtb1 = int(sqrt($B1));
     my($pc_beg, $pc_end) = (2, 6_000-1);
     my $pa = 2;
@@ -9990,7 +9992,7 @@ sub pminus1_factor {
     }
     $q = $bprimes[-1];
     last if $f != 1 || $pc_end >= $B1;
-    ($pc_beg, $pc_end) = (Maddint($pc_end,1), Maddint($pc_end,500_000));
+    ($pc_beg, $pc_end) = (Madd1int($pc_end), Maddint($pc_end,500_000));
   }
   $pa = _bi_powmod($pa, $t, $n);
   if ($pa == 0) { push @factors, $n; return @factors; }
@@ -10039,7 +10041,7 @@ sub pminus1_factor {
         }
       }
       last if $f != 1 || $pc_end >= $B2;
-      ($pc_beg, $pc_end) = (Maddint($pc_end,1), Maddint($pc_end,500_000));
+      ($pc_beg, $pc_end) = (Madd1int($pc_end), Maddint($pc_end,500_000));
     }
     $f = Mgcd($b, $n);
   }
@@ -10099,7 +10101,7 @@ sub holf_factor {
         my $f = Mgcd($ni, $n);
         return _found_factor($f, $n, "HOLF", @factors);
       }
-      $s = Maddint($s,1);
+      $s = Madd1int($s);
       my $m = Msubint(Mmulint($s,$s),$ni);
       if (Mis_power($m, 2, \my $f)) {
         $f = Mgcd($n, $s > $f ? $s-$f : $f-$s);
@@ -10136,7 +10138,7 @@ sub fermat_factor {
   if (ref($n)) {
     my $pa = Msqrtint($n);
     return _found_factor($pa, $n, "Fermat", @factors) if Mmulint($pa,$pa) == $n;
-    $pa = Maddint($pa,1);
+    $pa = Madd1int($pa);
     my $b2 = Msubint(Mmulint($pa,$pa),$n);
     my $lasta = Maddint($pa,$rounds);
     while ($pa <= $lasta) {
@@ -10144,7 +10146,7 @@ sub fermat_factor {
         my $i = Msubint($pa,($lasta-$rounds))+1;
         return _found_factor(Msubint($pa,$s), $n, "Fermat ($i rounds)", @factors);
       }
-      $pa = Maddint($pa,1);
+      $pa = Madd1int($pa);
       $b2 = Msubint(Mmulint($pa,$pa),$n);
     }
   } else {
@@ -11752,7 +11754,7 @@ sub _setcomplement {
   if ((ref($min) && !ref($max)) || (!ref($min) && ref($max))) {
     while ($min <= $max) {
       push @s, $min unless exists $ina{$min};
-      $min = Maddint($min,1);
+      $min = Madd1int($min);
     }
   } else {
     while ($min <= $max) {
@@ -12081,7 +12083,7 @@ sub foralmostprimes {
 
   my $estcount = almost_prime_count_approx($k,$hi) - almost_prime_count_approx($k,$lo);
   my $nsegs = "$estcount" / 1e6;
-  my $len = Maddint(Msubint($hi,$lo),1);
+  my $len = Madd1int(Msubint($hi,$lo));
   my $segsize = ($nsegs <= 1.1) ? $len : int("$len"/$nsegs);
   if ($segsize < 5*1e6) { $segsize = 5e6; }
   # warn "  estcount $estcount   nsegs $nsegs   segsize $segsize\n";
@@ -12101,7 +12103,7 @@ sub foralmostprimes {
         last if Math::Prime::Util::_get_forexit();
       }
     }
-    $lo = Maddint($seghi,1);
+    $lo = Madd1int($seghi);
     last if Math::Prime::Util::_get_forexit();
   }
   Math::Prime::Util::_end_for_loop($oldforexit);
@@ -12138,7 +12140,7 @@ sub urandomm {
   } else {
     # TODO: verify and try to optimize this
     my $bytes = 1 + length(todigitstring($n,16));
-    my $rmax = Msubint(Mpowint(2,$bytes*8),1);
+    my $rmax = Msub1int(Mpowint(2,$bytes*8));
     my $overflow = $rmax - ($rmax % $n);
     do { $r = Murandomb($bytes*8); } while $r >= $overflow;
   }
