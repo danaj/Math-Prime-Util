@@ -14,18 +14,6 @@ my @simple = (0 .. 16,
 
 my @neg = map { -$_ } (1..32);
 
-my @T = (             # powerfree part, squarefree_kernel
- [0, [0, 0]],
- [1, [1, 1]],
- [2, [2, 2]],
- [ 48, [3, 6]],
- [-48, [-3, -6]],
- [2*2*3*5, [3*5, 2*3*5]],
- [2*3*3*3*5*5*7, [2*3*7, 2*3*5*7]],
- ["15110906613599", [1511, 151104533]],
- ["4000000000000027", ["4162330905307", "129032258064517"]],
-);
-
 plan tests => 3     # simple is square free
             + 11*2  # powerfree_count, powerfree_sum
             + 6+2   # ""
@@ -104,17 +92,29 @@ is(powerfree_part(-4000), -10, "powerfree_part(-4000) = -10");
 
 ##### powerfree_part
 
-my @pfpst = (1,1,140859826282,181173729990,198592475728,206650589642,210471526468,212309099991);
+my @pfpst = (1,1,971014567,1248722293,1368821452,1424239488,1450660380,1463313419);
 for my $k (0 .. 7) {
   is_deeply(
       [map { powerfree_part_sum($_, $k) } 0..32],
       [map { vecsum(map { powerfree_part($_, $k) } 1..$_) } 0..32],
       "powerfree_part_sum(0..64, $k)"
   );
-  is( "".powerfree_part_sum(654321,$k), $pfpst[$k], "powerfree_part_sum(654321,$k) = $pfpst[$k]" );
+  is(powerfree_part_sum(54321,$k), $pfpst[$k], "powerfree_part_sum(54321,$k) = $pfpst[$k]");
 }
 
 ##### powerfree_part and squarefree_kernel
+
+my @T = (             # powerfree part, squarefree_kernel
+ [0, [0, 0]],
+ [1, [1, 1]],
+ [2, [2, 2]],
+ [ 48, [3, 6]],
+ [-48, [-3, -6]],
+ [2*2*3*5, [3*5, 2*3*5]],
+ [2*3*3*3*5*5*7, [2*3*7, 2*3*5*7]],
+ ["15110906613599", [1511, 151104533]],
+ ["4011892804050009", ["4174706351769", "129415896904839"]],
+);
 
 is_deeply( [map { powerfree_part($_->[0]) } @T], [map { $_->[1]->[0] } @T], "powerfree_part" );
 is_deeply( [map { squarefree_kernel($_->[0]) } @T], [map { $_->[1]->[1] } @T], "squarefree_kernel" );

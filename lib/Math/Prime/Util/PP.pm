@@ -2024,9 +2024,6 @@ sub powerful_numbers {
   return [] if $hi < $lo;
   return [$lo .. $hi] if $k <= 1;
 
-  my $npn = Math::Prime::Util::powerful_count($hi,$k);
-  $npn -= Math::Prime::Util::powerful_count($lo-1, $k) if $lo > 1;
-
   my $pn = [];
   _pcg($lo, $hi, $k, 1, 2*$k-1, $pn);
   Mvecsorti($pn);
@@ -2229,11 +2226,11 @@ sub powerfree_part {
 }
 
 sub _T {
-  my($n)=shift;
-  Mrshiftint(Mmulint($n, Madd1int($n)));
+  my($n) = @_;
+  return $n < 65536 ? ($n*($n+1))>>1 : Mrshiftint(Mmulint($n, Madd1int($n)));
 }
 sub _fprod {
-  my($n,$k)=@_;
+  my($n,$k) = @_;
   Mvecprod(map { 1 - Mpowint($_->[0], $k) } Mfactor_exp($n));
 }
 
