@@ -403,7 +403,8 @@ sub random_ndigit_prime {
 
   $_digit_loprime[$D] = powint(10,$D-1)+1 unless defined $_digit_loprime[$D];
   $_digit_hiprime[$D] = powint(10,$D)-1 unless defined $_digit_hiprime[$D];
-  my($lo,$hi) = ($_digit_loprime[$D], $_digit_hiprime[$D]);
+  my($lo,$hi) = map { $_ >= ~0 && !ref($_) ? addint($_,0) : $_ }
+                ($_digit_loprime[$D], $_digit_hiprime[$D]);
 
   if ($D >= MPU_MAXDIGITS && prime_get_config->{'nobigint'}) {
     croak "random_ndigit_prime with -nobigint, digits out of range"

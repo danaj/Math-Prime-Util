@@ -157,11 +157,13 @@ subtest 'large random nbit/ndigit', sub {
   my $n = random_nbit_prime(80);
   ok( ref($n) =~ /^Math::/, "random 80-bit prime returns a BigInt" );
   ok( 1+logint($n,2) == 80, "random 80-bit prime '$n' is in range" );
+
+  my $D = $use64 ? 30 : 16;
   SKIP: {
-    skip "Skipping 30-digit random prime with broken 64-bit Perl", 2 if $broken64;
-    my $n = random_ndigit_prime(30);
-    ok( ref($n) =~ /^Math::/, "random 30-digit prime returns a BigInt" );
-    ok( 1+logint($n,10) == 30, "random 30-digit prime '$n' is in range" );
+    skip "Skipping $D-digit random prime with broken 64-bit Perl", 2 if $broken64;
+    my $n = random_ndigit_prime($D);
+    ok( ref($n) =~ /^Math::/, "random $D-digit prime returns a BigInt" );
+    ok( 1+logint($n,10) == $D, "random $D-digit prime '$n' is in range" );
   }
 };
 

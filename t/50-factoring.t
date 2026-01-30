@@ -263,9 +263,9 @@ sub linear_to_exp {
 
 ####  prime_omega and prime_bigomega
 {
-  my @omegai = (qw/0 1 2 36 102 392 8593952 1309524066293741924073/);
-  my @omegao = (qw/1 0 1 2  3   2   3       5/);
-  my @omegab = (qw/1 0 1 4  3   5   7       7/);
+  my @omegai = (qw/0 1 2 36 102 392 8593952 820681752040947471423/);
+  my @omegao = (qw/1 0 1 2  3   2   3       6/);
+  my @omegab = (qw/1 0 1 4  3   5   7       8/);
   is_deeply([map { prime_omega($_)     } @omegai],\@omegao,"prime_omega(n)");
   is_deeply([map { prime_bigomega($_)  } @omegai],\@omegab,"prime_bigomega(n)");
   is_deeply([map {prime_omega('-'.$_)  } @omegai],\@omegao,"prime_omega(-n)");
