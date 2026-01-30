@@ -5881,8 +5881,9 @@ sub sqrtmod {
   return (undef,0)[$n] if $n <= 1;
   #return Mmodint(Msqrtint($a),$n) if _is_perfect_square($a);
   $a = Mmodint($a,$n);
+  return $a if $a <= 1;
 
-  my $r = _sqrtmod_composite($a,$n);
+  my $r = Mis_prime($n) ? _sqrtmod_prime($a,$n) : _sqrtmod_composite($a,$n);
   if (defined $r) {
     $r = $n-$r if $n-$r < $r;
     $r = _bigint_to_int($r) if ref($r) && $r <= INTMAX;
@@ -5948,7 +5949,9 @@ sub allsqrtmod {
   validate_integer_abs($n);
   return $n ? (0) : () if $n <= 1;
   $A = Mmodint($A,$n);
-  Mvecsort(  _allsqrtmodfact($A, $n, [ Mfactor_exp($n) ])  );
+  my @R = Mis_prime($n) ? _allsqrtmodpk($A,$n,1)
+                        : _allsqrtmodfact($A, $n, [Mfactor_exp($n)]);
+  Mvecsort(@R);
 }
 
 
@@ -6440,7 +6443,7 @@ sub allrootmod {
   return ($A == 1) ? (0..$n-1) : ()  if $k == 0;
 
   my @roots;
-  my @nf = Mfactor_exp($n);
+  my @nf = Mis_prime($n) ? ([$n,1]) : Mfactor_exp($n);
 
   if (Mis_prime($k)) {
     @roots = _allrootmod_kprime($A, $k, $n, @nf);
