@@ -368,7 +368,7 @@ sub _toint {
 }
 
 sub _toint_simple {
-  my $n = shift;
+  my($n) = @_;
   if ($n >= 0) {
     my $max = MPU_32BIT ? 4294967295 : 70368744177664;  # 2^46
     if ($n =~ /^[+]?\d+\z/) {
@@ -1111,7 +1111,7 @@ sub prev_prime_power {
 }
 
 sub partitions {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
 
   my $d = Msqrtint(Madd1int($n));
@@ -1195,14 +1195,14 @@ sub lucky_count {
   return $hicount - $locount;
 }
 sub _simple_lucky_count_approx {
-  my $n = shift;
+  my($n) = @_;
   $n = "$n" if ref($n);
   return 0 + ($n > 0) + ($n > 2) if $n < 7;
   return 0.9957 * $n/log($n) if $n <= 1000000;
   return (1.03670 - log($n)/299) * $n/log($n);
 }
 sub _simple_lucky_count_upper {
-  my $n = shift;
+  my($n) = @_;
   $n = "$n" if ref($n);
   return 0 + ($n > 0) + ($n > 2) if $n < 7;
   return int(5 + 1.039 * $n/log($n)) if $n <= 7000;
@@ -1210,13 +1210,13 @@ sub _simple_lucky_count_upper {
   return int($n/(1.065*log($n) - $a - 3.1/log($n) - 2.85/(log($n)*log($n))));
 }
 sub _simple_lucky_count_lower {
-  my $n = shift;
+  my($n) = @_;
   my $approx = _simple_lucky_count_approx($n);
   my $est = $approx * (($n <= 10000) ? 0.9 : 0.99);
   int($est);
 }
 sub lucky_count_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
   my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
@@ -1224,7 +1224,7 @@ sub lucky_count_approx {
                  sub{Math::Prime::Util::nth_lucky_approx(shift)});
 }
 sub lucky_count_upper {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
   my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
@@ -1232,7 +1232,7 @@ sub lucky_count_upper {
                    sub{Math::Prime::Util::nth_lucky_lower(shift)});
 }
 sub lucky_count_lower {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
   my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
@@ -1241,7 +1241,7 @@ sub lucky_count_lower {
 }
 
 sub nth_lucky {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
   my $k = $n-1;
@@ -1251,7 +1251,7 @@ sub nth_lucky {
   2*$k+1;
 }
 sub nth_lucky_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
   $n = "$n" if ref($n);
@@ -1267,14 +1267,14 @@ sub nth_lucky_approx {
   return int( $n * $mult + 0.5);
 }
 sub nth_lucky_upper {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
   my $c = ($n <= 100) ? 1.05 : ($n <= 300) ? 1.03 : ($n <= 800) ? 1.01 : 1.0033;
   return 1 + int( $c * nth_lucky_approx($n) + 0.5 );
 }
 sub nth_lucky_lower {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= $#_small_lucky;
   my $c = ($n <= 130) ? 0.985 : ($n <= 1000) ? 0.992 : 0.996;
@@ -1282,7 +1282,7 @@ sub nth_lucky_lower {
 }
 
 sub is_lucky {
-  my $n = shift;
+  my($n) = @_;
 
   # Pretests
   return 0 if $n <= 0 || !($n % 2) || ($n % 6) == 5 || $_lf63[$n % 63];
@@ -1305,7 +1305,7 @@ sub is_lucky {
 }
 
 sub minimal_goldbach_pair {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return undef if $n < 4;
   return Mis_prime($n-2) ? 2 : undef  if $n & 1 || $n == 4;
@@ -1317,7 +1317,7 @@ sub minimal_goldbach_pair {
   undef;
 }
 sub goldbach_pair_count {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return 0 if $n < 4;
   return Mis_prime($n-2) ? 1 : 0  if $n & 1 || $n == 4;
@@ -1328,7 +1328,7 @@ sub goldbach_pair_count {
   $s;
 }
 sub goldbach_pairs {
-  my $n = shift;
+  my($n) = @_;
   return goldbach_pair_count($n) unless wantarray;
   validate_integer_nonneg($n);
   return () if $n < 4;
@@ -1342,7 +1342,7 @@ sub goldbach_pairs {
 
 
 sub primorial {
-  my $n = shift;
+  my($n) = @_;
 
   my @plist = @{Mprimes($n)};
   my $max = (MPU_32BIT) ? 29 : (OLD_PERL_VERSION) ? 43 : 53;
@@ -1365,13 +1365,13 @@ sub primorial {
 }
 
 sub pn_primorial {
-  my $n = shift;
+  my($n) = @_;
   return (1,2,6,30,210,2310,30030,510510,9699690,223092870)[$n] if $n < 10;
   Mprimorial(nth_prime($n));
 }
 
 sub consecutive_integer_lcm {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
 
   return (1,1,2)[$n] if $n <= 2;
@@ -2504,7 +2504,7 @@ sub prime_power_count {
   return _prime_power_count($hi) - (($lo <= 2) ? 0 : _prime_power_count($lo-1));
 }
 sub prime_power_count_lower {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (0,0,1,2,3,4)[$n] if $n <= 5;
   Mvecsum(
@@ -2512,7 +2512,7 @@ sub prime_power_count_lower {
   );
 }
 sub prime_power_count_upper {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (0,0,1,2,3,4)[$n] if $n <= 5;
   Mvecsum(
@@ -2520,7 +2520,7 @@ sub prime_power_count_upper {
   );
 }
 sub prime_power_count_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (0,0,1,2,3,4)[$n] if $n <= 5;
   Mvecsum(
@@ -2529,7 +2529,7 @@ sub prime_power_count_approx {
 }
 
 sub _simple_nth_prime_power_upper {
-  my $n = shift;
+  my($n) = @_;
   Mnth_prime_upper($n);
 }
 sub _simple_nth_prime_power_lower {
@@ -2538,7 +2538,7 @@ sub _simple_nth_prime_power_lower {
   int( 0.98 * Math::Prime::Util::nth_prime_lower($n) - 400 );
 }
 sub nth_prime_power_lower {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
   my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
@@ -2546,7 +2546,7 @@ sub nth_prime_power_lower {
                  sub{Math::Prime::Util::prime_power_count_upper(shift)});
 }
 sub nth_prime_power_upper {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
   my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
@@ -2554,7 +2554,7 @@ sub nth_prime_power_upper {
                    sub{Math::Prime::Util::prime_power_count_lower(shift)});
 }
 sub nth_prime_power_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
   my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
@@ -2562,7 +2562,7 @@ sub nth_prime_power_approx {
                  sub{Math::Prime::Util::prime_power_count_approx(shift)});
 }
 sub nth_prime_power {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
   # TODO: This is a good candidte for the approx interpolation method
@@ -3372,7 +3372,7 @@ sub legendre_phi {
 }
 
 sub _sieve_prime_count {
-  my $high = shift;
+  my($high) = @_;
   return (0,0,1,2,2,3,3)[$high] if $high < 7;
   $high-- unless ($high % 2);
   return 1 + ${_sieve_erat($high)} =~ tr/0//;
@@ -3398,7 +3398,7 @@ sub _count_with_sieve {
 }
 
 sub _lehmer_pi {
-  my $x = shift;
+  my($x) = @_;
   return _sieve_prime_count($x) if $x < 1_000;
 
   my $z = Msqrtint($x);
@@ -3954,7 +3954,7 @@ sub twin_prime_count {
   $sum;
 }
 sub _semiprime_count {
-  my $n = shift;
+  my($n) = @_;
   my($sum,$pc) = (0,0);
   Mforprimes( sub {
     $sum += Mprime_count(int($n/$_))-$pc++;
@@ -4235,7 +4235,7 @@ sub nth_twin_prime_approx {
 }
 
 sub nth_semiprime {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
   my $x = "$n" + 0.000000001; # Get rid of bigint so we can safely call log
@@ -4249,7 +4249,7 @@ sub nth_semiprime {
 }
 
 sub nth_semiprime_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
   $n = "$n" + 0.00000001;
@@ -4730,7 +4730,7 @@ sub nth_omega_prime {
 }
 
 sub nth_ramanujan_prime_upper {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (0,2,11)[$n] if $n <= 2;
 
@@ -4757,7 +4757,7 @@ sub nth_ramanujan_prime_upper {
   $ret;
 }
 sub nth_ramanujan_prime_lower {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (0,2,11)[$n] if $n <= 2;
   my $nth = Math::Prime::Util::nth_prime_lower(Mmulint($n,2));
@@ -4766,14 +4766,14 @@ sub nth_ramanujan_prime_lower {
   $nth;
 }
 sub nth_ramanujan_prime_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (0,2,11)[$n] if $n <= 2;
   my($lo,$hi) = (nth_ramanujan_prime_lower($n),nth_ramanujan_prime_upper($n));
   $lo + (($hi-$lo)>>1);
 }
 sub ramanujan_prime_count_upper {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
   my $lo = Mdivint(prime_count_lower($n),3);
@@ -4782,7 +4782,7 @@ sub ramanujan_prime_count_upper {
                    sub{Math::Prime::Util::nth_ramanujan_prime_lower(shift)});
 }
 sub ramanujan_prime_count_lower {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
   my $lo = int(prime_count_lower($n) / 3);
@@ -4791,7 +4791,7 @@ sub ramanujan_prime_count_lower {
                  sub{Math::Prime::Util::nth_ramanujan_prime_upper(shift)});
 }
 sub ramanujan_prime_count_approx {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return (($n < 2) ? 0 : 1) if $n < 11;
   #$n = _upgrade_to_float($n) if ref($n) || $n > 2e16;
@@ -4803,7 +4803,7 @@ sub ramanujan_prime_count_approx {
 }
 
 sub _sum_primes_n {
-  my $n = shift;
+  my($n) = @_;
   return (0,0,2,5,5)[$n] if $n < 5;
   my $r = Msqrtint($n);
   my $r2 = $r + Mdivint($n, $r+1);
@@ -7156,8 +7156,7 @@ sub valuation {
 }
 
 sub hammingweight {
-  my $n = shift;
-  return 0 + (Mtodigitstring($n,2) =~ tr/1//);
+  return 0 + (Mtodigitstring($_[0],2) =~ tr/1//);
 }
 
 my @_digitmap = (0..9, 'a'..'z');
@@ -7297,7 +7296,7 @@ sub fromdigits {
 }
 
 sub _validate_zeckendorf {
-  my $s = shift;
+  my($s) = @_;
   if ($s ne '0') {
     croak "fromzeckendorf: expected binary string"
       unless $s =~ /^1[01]*\z/;
@@ -7515,7 +7514,7 @@ sub _bernoulli_seidel {
 }
 
 sub bernfrac {
-  my $n = shift;
+  my($n) = @_;
   return (1,1) if $n == 0;
   return (1,2) if $n == 1;    # We're choosing 1/2 instead of -1/2
   return (0,1) if $n < 0 || $n & 1;
@@ -9224,7 +9223,7 @@ my %_mersenne_primes;
 undef @_mersenne_primes{2,3,5,7,13,17,19,31,61,89,107,127,521,607,1279,2203,2281,3217,4253,4423,9689,9941,11213,19937,21701,23209,44497,86243,110503,132049,216091,756839,859433,1257787,1398269,2976221,3021377,6972593,13466917,20996011,24036583,25964951,30402457,32582657,37156667,42643801,43112609,57885161,74207281,77232917,82589933,136279841};
 
 sub is_mersenne_prime {
-  my $p = shift;
+  my($p) = @_;
 
   # Use the known Mersenne primes
   return 1 if exists $_mersenne_primes{$p};
@@ -9313,7 +9312,7 @@ sub _test_anr {
 }
 
 sub _log_gamma {
-  my $x = shift;
+  my($x) = @_;
   my @lanczos = (0.99999999999980993, 676.5203681218851, -1259.1392167224028,
       771.32342877765313, -176.61502916214059, 12.507343278686905,
       -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7);
@@ -9347,7 +9346,7 @@ sub _bern41_acceptable {
 }
 
 sub is_aks_prime {
-  my $n = shift;
+  my($n) = @_;
   _validate_integer($n);
   return 0 if $n < 2 || Mis_power($n);
   return 1 if $n == 2;
@@ -10473,7 +10472,7 @@ sub chebyshev_psi {
 }
 
 sub hclassno {
-  my $n = shift;
+  my($n) = @_;
   validate_integer($n);
 
   return -1 if $n == 0;
@@ -10511,7 +10510,7 @@ sub hclassno {
 # Also see Lygeros (2010).
 # The two hclassno calls could be collapsed with some work
 sub _tauprime {
-  my $p = shift;
+  my($p) = @_;
   return -24 if $p == 2;
 
   my $sum = 0;
@@ -10562,7 +10561,7 @@ sub _taupower {
 }
 
 sub ramanujan_tau {
-  my $n = shift;
+  my($n) = @_;
   validate_integer_nonneg($n);
   return 0 if $n <= 0;
 
@@ -10997,7 +10996,7 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
 }
 
 sub LambertW {
-  my $x = shift;
+  my($x) = @_;
   croak "Invalid input to LambertW:  x must be >= -1/e" if $x < -0.36787944118;
   $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
   my $xacc = ref($x) ? _find_big_acc($x) : 0;
@@ -11081,7 +11080,7 @@ sub LambertW {
 
 my $_Pi = "3.141592653589793238462643383279503";
 sub Pi {
-  my $digits = shift;
+  my($digits) = @_;
   return 0.0+$_Pi unless $digits;
   return 0.0+sprintf("%.*lf", $digits-1, $_Pi) if $digits < 15;
   return _upgrade_to_float($_Pi, $digits) if $digits < 30;
@@ -11521,7 +11520,7 @@ sub numtoperm {
 }
 
 sub permtonum {
-  my $A = shift;
+  my($A) = @_;
   croak "permtonum argument must be an array reference"
     unless ref($A) eq 'ARRAY';
   my $n = scalar(@$A);

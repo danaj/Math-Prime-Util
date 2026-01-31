@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use 5.020;
 use Carp qw/carp croak confess/;
 $| = 1;  # fast pipes
 

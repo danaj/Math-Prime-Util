@@ -132,6 +132,7 @@ bench/bench-set-tiny.pl
 bench/factor-gnufactor.pl
 bench/setreject.pl
 bench/sort.pl
+bench/vecequal.pl
 examples/README
 examples/csrand.pl
 examples/csrand-gmp.pl
