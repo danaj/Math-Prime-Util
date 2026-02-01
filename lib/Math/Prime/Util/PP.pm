@@ -11719,6 +11719,32 @@ sub vecsingleton {
 
 # SET/VEC generic.
 
+# Assume two (sorted,uniqed,validated) sets as input, merge $T into $S.
+sub _merge_sets_inplace {
+  my($S,$T) = @_;
+
+  # 1 Push set over to make room at the front.
+  unshift @$S, (0) x scalar(@$T);
+  # 2 walk the two arrays merging values
+  my($it,$nt) = (0, scalar(@$T));
+  my($is,$ns) = ($nt, scalar(@$S));
+  my $i = 0;
+  while ($it < $nt && $is < $ns) {
+    my($SV,$TV) = ($S->[$is], $T->[$it]);
+    if    ($SV == $TV) { $S->[$i++] = $SV;  $is++;  $it++; }
+    elsif ($SV <  $TV) { $S->[$i++] = $SV;  $is++;           }
+    else               { $S->[$i++] = $TV;          $it++; }
+  }
+  # 3 splice the remainder onto the end of the set
+  if ($is < $ns) {      # slide the last part over
+    splice(@$S, $i, $is-$i);
+  } elsif ($it < $nt) { # replace everything at the end with the new values
+    splice(@$S, $i, @$S-$i, @{$T}[$it..$nt-1]);
+  } else {
+    $#$S = $i-1;
+  }
+  $S;
+}
 sub setunion {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
@@ -11893,8 +11919,33 @@ sub setinsert {
     push @$set, @newset;
   } elsif ($newset[-1] < $set->[0]) {
     unshift @$set, @newset;
-  } elsif (@newset > 100) {
-    @$set = Msetunion($set,\@newset);
+  } elsif (@newset > 400) {
+    # $set is required to be in proper form as input.
+    # @newset was run through toset() earlier, so it is in proper form.
+    # Times from the 20x50k insert operation in xt/test-sets.
+
+    # 17.09  In theory efficient, but too much redundant work
+    #@$set = Msetunion($set,\@newset);
+
+    # 12.48  Better but still ignores all input structure
+    #@$set = Mtoset([@$set,@newset]);
+
+    #  6.04  toset inlined and with all unnecessary work removed
+    #my($k,%seen);
+    #@$set = grep { not $seen{$k=$_}++ } @$set,@newset;
+    #if ($] < 5.026) {  @$set = sort { 0+($a<=>$b) } @$set;  }
+    #else            {  @$set = sort {    $a<=>$b  } @$set;  }
+
+    #  5.64  as above but assume $set has no duplicates
+    #my($k,%seen);
+    #undef @seen{@$set};
+    #push @$set, grep { !exists $seen{$k=$_} } @newset;
+    #if ($] < 5.026) {  @$set = sort { 0+($a<=>$b) } @$set;  }
+    #else            {  @$set = sort {    $a<=>$b  } @$set;  }
+
+    #  4.12  Merge two proper-form sets
+    _merge_sets_inplace($set, \@newset);
+
   } else {
     # 1. values in front and back.
     my($nbeg,$nend) = (0,0);
