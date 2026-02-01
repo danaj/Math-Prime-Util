@@ -747,34 +747,6 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 
 /******************************************************************************/
 
-static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
-{
-  SSize_t len, i;
-  UV *r, carry = 0;
-  if (SvTYPE((SV*)av) != SVt_PVAV)
-    croak("fromdigits first argument must be a string or array reference");
-  len = av_count(av);
-  New(0, r, len, UV);
-  for (i = len-1; i >= 0; i--) {
-    SV** psvd = av_fetch(av, i, 0);
-    if (_validate_and_set(r+i, aTHX_ *psvd, IFLAG_ANY) != 1) break;
-    r[i] += carry;
-    if (r[i] >= (UV)base && i > 0) {
-      carry = r[i] / base;
-      r[i] -= carry * base;
-    } else {
-      carry = 0;
-    }
-  }
-  if (i >= 0) {
-    Safefree(r);
-    return -1;
-  }
-  /* printf("array is ["); for(i=0;i<len;i++)printf("%lu,",r[i]); printf("]\n"); */
-  *ret = r;
-  return len;
-}
-
 
 #define IARR_TYPE_ANY 0x00
 #define IARR_TYPE_NEG 0x01
@@ -806,6 +778,39 @@ static int _sign_cmp(int xsign, UV x, int ysign, UV y) {
   return ((xsign == -1 && (IV)x < (IV)y) || (xsign != -1 && x < y)) ? -1 : 1;
 }
 
+/******************************************************************************/
+
+#define DECL_ARREF(name) \
+  AV *   avp_ ## name; \
+  SV **  svarr_ ## name; \
+  Size_t len_ ## name; \
+  bool   use_direct_ ## name;
+
+#define AR_READONLY 0
+#define AR_WRITE 1
+#define USE_ARREF(name, sv, subname, will_modify) \
+  if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV)) \
+    croak("%s: expected array reference", subname); \
+  avp_ ## name = (AV*) SvRV(sv); \
+  len_ ## name = av_count(avp_ ## name); \
+  use_direct_ ## name = !SvMAGICAL(avp_ ## name); \
+  if (will_modify && SvREADONLY(avp_ ## name)) \
+    croak("%s: array reference is readonly", subname); \
+  if (will_modify && !AvREAL(avp_ ## name) && AvREIFY(avp_ ## name)) \
+    use_direct_ ## name = 0; \
+  svarr_ ## name = use_direct_ ## name ? AvARRAY(avp_ ## name) : 0;
+
+static SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i) {
+  if (svarr == 0) {
+    SV **svp = av_fetch(av, i, 0);
+    return svp ? *svp : &PL_sv_undef;
+  }
+  return svarr[i];
+}
+#define FETCH_ARREF(name,i) _fetch_arref(aTHX_ avp_ ## name, svarr_ ## name, i)
+
+#define STORE_ARREF(name, i, sv) \
+  do { (use_direct_ ## name ? (svarr_ ## name)[i] = sv : av_store(avp_ ## name, i, sv)) } while(0)
 
 static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what, bool readonly)
 {
@@ -831,23 +836,21 @@ static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what, bool readon
 
 static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr)
 {
-  AV *av;
   Size_t len, i;
-  SV** arr;
   int itype = IARR_TYPE_ANY;
   UV  *r;
+  DECL_ARREF(avp);
 
-  av = _simple_array_ref_from_sv(aTHX_ sva, fstr, TRUE);
-  len = av_count(av);
+  USE_ARREF(avp, sva, fstr, AR_READONLY);
+  len = len_avp;
   *retlen = len;
   if (len == 0) {
     *ret = 0;
     return itype;
   }
-  arr = AvARRAY(av);
   New(0, r, len, UV);
   for (i = 0; i < len; i++) {
-    SV *iv = arr[i];
+    SV *iv = FETCH_ARREF(avp,i);
     if (iv == 0) continue;
     if (SVNUMTEST(iv)) {
       IV n = SvIVX(iv);
@@ -890,6 +893,36 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
   }
   return itype;
 }
+
+static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
+{
+  SSize_t len, i;
+  UV *r, carry = 0;
+  if (SvTYPE((SV*)av) != SVt_PVAV)
+    croak("fromdigits first argument must be a string or array reference");
+  len = av_count(av);
+  New(0, r, len, UV);
+  for (i = len-1; i >= 0; i--) {
+    SV** psvd = av_fetch(av, i, 0);
+    if (_validate_and_set(r+i, aTHX_ *psvd, IFLAG_ANY) != 1) break;
+    r[i] += carry;
+    if (r[i] >= (UV)base && i > 0) {
+      carry = r[i] / base;
+      r[i] -= carry * base;
+    } else {
+      carry = 0;
+    }
+  }
+  if (i >= 0) {
+    Safefree(r);
+    return -1;
+  }
+  /* printf("array is ["); for(i=0;i<len;i++)printf("%lu,",r[i]); printf("]\n"); */
+  *ret = r;
+  return len;
+}
+
+/******************************************************************************/
 
 static int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bmax) {
   if (typea == IARR_TYPE_BAD || typeb == IARR_TYPE_BAD)
@@ -5191,8 +5224,7 @@ void vecsorti(IN SV* sva)
     XSRETURN(1);
 
 
-void
-numtoperm(IN UV n, IN SV* svk)
+void numtoperm(IN UV n, IN SV* svk)
   PREINIT:
     UV k;
     int i, S[32];
@@ -5211,21 +5243,19 @@ numtoperm(IN UV n, IN SV* svk)
     DISPATCHPP();
     XSRETURN(1);
 
-void
-permtonum(IN SV* svp)
+void permtonum(IN SV* svp)
   PREINIT:
-    AV *av;
     UV val, num;
-    Size_t plen, i;
+    Size_t i, plen;
+    DECL_ARREF(avp);
   PPCODE:
-    CHECK_ARRAYREF(svp);
-    av = (AV*) SvRV(svp);
-    plen = av_count(av);
+    USE_ARREF(avp, svp, SUBNAME, AR_READONLY);
+    plen = len_avp;
     if (plen <= 20) {
       int V[21], A[21] = {0};
       for (i = 0; i < plen; i++) {
-        SV **iv = av_fetch(av, i, 0);
-        if (_validate_and_set(&val, aTHX_ iv ? *iv : 0, IFLAG_POS) != 1)
+        SV *iv = FETCH_ARREF(avp,i);
+        if (_validate_and_set(&val, aTHX_ iv, IFLAG_POS) != 1)
           break;
         if (val >= plen || A[val] != 0) break;
         A[val] = i+1;
@@ -5238,8 +5268,7 @@ permtonum(IN SV* svp)
     objectify_result(aTHX_ svp, ST(0));
     XSRETURN(1);
 
-void
-randperm(IN UV n, IN UV k = 0)
+void randperm(IN UV n, IN UV k = 0)
   PREINIT:
     UV i, *S;
     dMY_CXT;
@@ -5278,7 +5307,7 @@ void vecsample(IN SV* svk, ...)
     AV     *av;
     SV    **arr;
     UV      k;
-    size_t  nitems, i;
+    Size_t  nitems, i;
     dMY_CXT;
   PPCODE:
     if (items == 1)
@@ -5309,35 +5338,36 @@ void vecsample(IN SV* svk, ...)
         uint32_t j = urandomm32(randcxt, nitems-i);
         { SV* t = ST(i); ST(i) = ST(i+j); ST(i+j) = t; }
       }
-      XSRETURN(k);
-    }
+    } else { /* We are given a single array reference.  Select from it. */
+      DECL_ARREF(avp);
+      USE_ARREF(avp, ST(1), SUBNAME, AR_READONLY);
+      nitems = len_avp;
 
-    /* We are given a single array reference.  Select from it. */
-    av = _simple_array_ref_from_sv(aTHX_ ST(1), "vecsample", TRUE);
-    nitems = av_count(av);
-    arr = AvARRAY(av);
-    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
-      k = nitems;
-    if (k == 0)
-      XSRETURN_EMPTY;
-    if (nitems < 65536) {
-      uint16_t *I;
-      New(0, I, nitems, uint16_t);
-      I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
-      for (i = 0; i < k; i++) {
-        uint32_t j = urandomm32(randcxt, nitems-i);
-        uint16_t t = I[i+j];  I[i+j] = I[i];  XPUSHs(arr[t]);
+      if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
+        k = nitems;
+      if (k == 0)
+        XSRETURN_EMPTY;
+      if (nitems < 65536) {
+        uint16_t *I;
+        New(0, I, nitems, uint16_t);
+        I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
+        for (i = 0; i < k; i++) {
+          uint32_t j = urandomm32(randcxt, nitems-i);
+          uint16_t t = I[i+j];  I[i+j] = I[i];
+          XPUSHs(FETCH_ARREF(avp,t));
+        }
+        Safefree(I);
+      } else {
+        size_t *I;
+        New(0, I, nitems, size_t);
+        I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
+        for (i = 0; i < k; i++) {
+          size_t j = urandomm64(randcxt, nitems-i);
+          size_t t = I[i+j];  I[i+j] = I[i];
+          XPUSHs(FETCH_ARREF(avp,t));
+        }
+        Safefree(I);
       }
-      Safefree(I);
-    } else {
-      size_t *I;
-      New(0, I, nitems, size_t);
-      I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
-      for (i = 0; i < k; i++) {
-        size_t j = urandomm64(randcxt, nitems-i);
-        size_t t = I[i+j];  I[i+j] = I[i];  XPUSHs(arr[t]);
-      }
-      Safefree(I);
     }
     XSRETURN(k);
 
