@@ -538,7 +538,7 @@ sub prime_iterator {
       return $p = shift(@$pr);
     };
   } elsif ($_HAVE_GMP) {
-    return sub { $p = $p-$p+Math::Prime::Util::GMP::next_prime($p); return $p;};
+    return sub { $p = addint(0,Math::Prime::Util::GMP::next_prime($p)); return $p;};
   } else {
     require Math::Prime::Util::PP;
     return sub { $p = Math::Prime::Util::PP::next_prime($p); return $p; }

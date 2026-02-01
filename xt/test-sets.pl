@@ -11,11 +11,14 @@ use Benchmark qw/:all/;
 
 my $N = 100000;
 
-my @set1 = map { 2*$_+1 } 0..$N-1;          # Odds
-my @set2 = map { 2*$_   } 0..$N-1;          # Evens
-my @set3 = reverse @set1;                   # Odds descending
-my @set4 = map { _hash32($_) } 0..$N-1;     # random1
-my @set5 = map {_hash32(10*$N+$_)} 0..$N-1; # random2
+my @set1 = map { 2*$_+1 } 0..$N-1;             # Odds
+my @set2 = map { 2*$_   } 0..$N-1;             # Evens
+my @set3 = reverse @set1;                      # Odds descending
+
+# Set::IntSpan::Fast only works on SIGNED 32-bit inputs (!!!).  So shift down.
+
+my @set4 = map {_hash32($_)>>1} 0..$N-1;       # random1
+my @set5 = map {_hash32(10*$N+$_)>>1} 0..$N-1; # random2
 
 sub _hash32 {
   use integer;
@@ -191,47 +194,59 @@ __END__
 # Insert
 
 tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
-442393   0.098s
+442393   0.057s
 
 tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
-442393   0.110s
+442393   0.067s
 
 tmmpu 'csrand(5); $s=[]; use Math::Prime::Util::PP; $t+=Math::Prime::Util::PP::setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
-442393   0.149s
+442393   0.105s
 
-tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
-442393   0.260s
+# ^^^ These are inserting a single chunk of 500k numbers
+#  \/ These are inserting one at a time
 
 tmmpu 'csrand(5); %h=(); for (1..500000) { $h{urandomm(2000000)}=1;} @s=vecsort(keys %h); say scalar(@s);'
-442393   0.273s
+442393   0.232s
+
+tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size()'
+442393   0.258s
+
+tmmpu 'use Set::Scalar; my $s=Set::Scalar->new(); csrand(5); for (1..500000) { $s->insert(urandomm(2000000)) } say $s->size();'
+442393   1.344s
 
 tmmpu 'csrand(5); $s=[]; for (1..500000) { $t+=setinsert($s,urandomm(2000000)); } say $t;'
-442393   3.980s
+442393   3.967s
 
 tmmpu 'use Math::Prime::Util::PP; csrand(5); $s=[]; for (1..500000) { $t+=Math::Prime::Util::PP::setinsert($s,urandomm(2000000)); } say $t;'
-442393   14.291s
+442393   14.170s
 
 tmmpu 'use List::BinarySearch::XS qw/:all/; @s=(); csrand(5); for (1..500000) { $v=urandomm(2000000); $index=binsearch_pos {$a<=>$b} $v,@s; splice @s,$index,0,$v if $s[$index] != $v; } say scalar(@s)'
-442393   17.570s
+442393   17.504s
 
 tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(); for (1..500000) { $s->add(urandomm(2000000)) } say $s->cardinality()'
-442393   22.637s
+442393   22.776s
 
 tmmpu 'use Tie::Array::Sorted; tie @s,"Tie::Array::Sorted",sub{ $_[0]<=>$_[1] }; csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
-442393   26.004s
+442393   26.286s
 
 tmmpu 'use Set::SortedArray; my $s=Set::SortedArray->new(); csrand(5); for (1..50000) { $s=$s+[urandomm(2000000)]; } say $s->size();'
-49407   over 3 minutes, maybe there is a better way to insert
+49407   164.110s (for 10x fewer insertions than above)
 
 
 
 # Another insert test, 20 inserts, final count is 786538
 
 tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,[map {urandomm(2000000)}1..50000]); say scalar(@$s); }'
-0.272s
+0.195s
 
 tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(1999990); for (1..20) { $s->insert(map {urandomm(2000000)}1..50000); say $s->size(); }'
-0.506s
+0.482s
 
 tmmpu 'use Set::Scalar; csrand(5); $s=Set::Scalar->new(1999990); for (1..20) { $s->insert(map {urandomm(2000000)}1..50000); say $s->size(); }'
-1.512s
+1.405s
+
+tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(1999990); for (1..20) { $s->add(map {urandomm(2000000)}1..50000); say $s->cardinality; }'
+1.964s
+
+MPU_NO_XS=1 MPU_NO_GMP=1 tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,[map {urandomm(2000000)}1..50000]); say scalar(@$s); }'
+4.146s

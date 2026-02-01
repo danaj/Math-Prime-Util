@@ -168,6 +168,7 @@ sub mpu_factor_regex {
 sub mpu_PPM_regex {
   my @funcs = qw(
       Maddint Msubint Mmulint Mdivint Mcdivint Mpowint Mabsint Mnegint
+      Madd1int Msub1int
       Mdivrem Mtdivrem
       Mmodint Mlogint Mrootint Msqrtint Mcmpint
       Mlshiftint Mrshiftint
