@@ -7962,7 +7962,9 @@ sub binomialmod {
 
   # Avoid the possible enormously slow bigint creation.
   if ($Math::Prime::Util::_GMPfunc{"binomial"} && $Math::Prime::Util::_GMPfunc{"modint"}) {
-    return reftyped($_[2], Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
+    if ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296)) {
+      return reftyped($_[2], Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
+    }
   }
 
   return 1 if $k == 0 || $k == $n;

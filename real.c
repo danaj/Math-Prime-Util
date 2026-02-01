@@ -10,6 +10,11 @@
 #include "real.h"
 #include "mathl.h"
 
+/* 1) Naive FP summation
+ * 2) Kahan summation
+ * 3) Neumaier, also called KBN or "improved Kahan–Babuška algorithm"
+ * 4) Klein, also called KB2 or second-order Kahan-Babuška
+ */
 #define SUM_TYPE_NORMAL    0
 #define SUM_TYPE_KAHAN     0
 #define SUM_TYPE_NEUMAIER  1
