@@ -162,6 +162,9 @@ subtest 'primality', sub {
     push @exprime, map { "$_ is composite" } @composites;
     is_deeply( \@isprime, \@exprime, "is_prime for selected numbers" );
   }
+
+  ok(is_prime("18446744073709551521"),"is_prime(18446744073709551521) true")
+    if $extra;
 };
 
 is_deeply( Math::Prime::Util::PP::trial_primes(80),
@@ -259,6 +262,8 @@ subtest 'next and prev prime', sub {
   }
   # Similar test case to 2010870, where m=0 and next_prime is at m=1
   is(next_prime(1234567890),1234567891,"next_prime(1234567890) == 1234567891)");
+  # We were getting this wrong
+  is(next_prime("18446744073709551515"),"18446744073709551521","next_prime(18446744073709551515) = 18446744073709551521") if $use64;
 };
 
 ###############################################################################

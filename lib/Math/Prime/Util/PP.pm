@@ -8324,7 +8324,7 @@ sub _is_perfect_square {
     return 1 if Mmulint($sq,$sq) == $n;
   } else {
     return 0 if (1 << ($n & 31)) & 0xfdfcfdec;
-    my $sq = int(sqrt($n));
+    my $sq = $n < 562949953421312 ? int(sqrt($n)) : Msqrtint($n);
     return 1 if ($sq*$sq) == $n;
   }
   0;

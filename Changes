@@ -276,6 +276,8 @@ Revision history for Perl module Math::Prime::Util
 
     - PP trial_factor corrects for MPU::GMP's different API.
 
+    - PP is_perfect_square was wrong for 18446744073709551521 on 64-bit.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - LMO prime count is 1.2-1.5x faster.
