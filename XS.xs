@@ -807,15 +807,22 @@ static int _sign_cmp(int xsign, UV x, int ysign, UV y) {
 }
 
 
-static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what)
+static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what, bool readonly)
 {
   AV* av;
   if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV))
     croak("%s: expected array reference", what);
   av = (AV*) SvRV(sv);
-  /* TODO: It's quite possible these have no affect on calling AvARRAY */
-  if (SvMAGICAL(av) || SvREADONLY(av) || !AvREAL(av))
-    croak("%s: argument is magical, readonly, or not real", what);
+
+  /* MAGICAL:  We must use fetch etc. */
+  if (SvMAGICAL(av)) croak("%s: array reference is magical", what);
+
+  if (!readonly) {
+    if (SvREADONLY(av)) croak("%s: array reference is readonly", what);
+    if (!AvREAL(av) && AvREIFY(av)) /* Need to reify.  We should never see. */
+      croak("%s: array reference is not 'real'", what);
+  }
+
   return av;
 }
 
@@ -830,7 +837,7 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
   int itype = IARR_TYPE_ANY;
   UV  *r;
 
-  av = _simple_array_ref_from_sv(aTHX_ sva, fstr);
+  av = _simple_array_ref_from_sv(aTHX_ sva, fstr, TRUE);
   len = av_count(av);
   *retlen = len;
   if (len == 0) {
@@ -3385,10 +3392,12 @@ divisor_sum(IN SV* svn, ...)
   PREINIT:
     UV n, k, sigma;
   PPCODE:
-    if (items == 1 && _validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      sigma = divisor_sum(n, 1);
-      if (n <= 1 || sigma != 0)
-        XSRETURN_UV(sigma);
+    if (items == 1) {
+      if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+        sigma = divisor_sum(n, 1);
+        if (n <= 1 || sigma != 0)
+          XSRETURN_UV(sigma);
+      }
     } else {
       SV* svk = ST(1);
       if ( (!SvROK(svk) || (SvROK(svk) && SvTYPE(SvRV(svk)) != SVt_PVCV)) &&
@@ -4852,7 +4861,7 @@ void setcontains(IN SV* sva, IN SV* svb)
       bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
       subset = is_in_set(aTHX_ ava, 0, bstatus, b);
     } else { /* The second argument is an array reference (set) */
-      avb = _simple_array_ref_from_sv(aTHX_ svb, SUBNAME);
+      avb = _simple_array_ref_from_sv(aTHX_ svb, SUBNAME, TRUE);
       blen = av_count(avb);
       if (ix == 0 && blen > alen) {
         subset = 0;  /* cannot fit */
@@ -4882,7 +4891,7 @@ void setinsert(IN SV* sva, IN SV* svb)
     int bstatus;
   PPCODE:
     /* First argument is an array reference */
-    ava = _simple_array_ref_from_sv(aTHX_ sva, "setinsert");
+    ava = _simple_array_ref_from_sv(aTHX_ sva, "setinsert", FALSE);
     /* Case of the second argument being a single integer. */
     if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
       bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
@@ -5170,7 +5179,10 @@ void vecsorti(IN SV* sva)
       DISPATCHPP();
       XSRETURN(1);
     }
-    arr = AvARRAY(SvRV(sva));
+    {
+      AV* ava = _simple_array_ref_from_sv(aTHX_ sva, "vecsorti", FALSE);
+      arr = AvARRAY(ava);
+    }
     for (i = 0; i < len; i++) {
       if (type == IARR_TYPE_NEG) sv_setiv(arr[i],(IV)L[i]);
       else                       sv_setuv(arr[i],L[i]);
@@ -5301,7 +5313,7 @@ void vecsample(IN SV* svk, ...)
     }
 
     /* We are given a single array reference.  Select from it. */
-    av = (AV*) SvRV(ST(1));
+    av = _simple_array_ref_from_sv(aTHX_ ST(1), "vecsample", TRUE);
     nitems = av_count(av);
     arr = AvARRAY(av);
     if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
@@ -6215,7 +6227,7 @@ forsetproduct (SV* block, ...)
     New(0, arptr, narrays, AV*);
     New(0, arout, narrays, SV*);
     for (i = 0; i < narrays; i++) {
-      arptr[i] = (AV*) SvRV(ST(i+1));
+      arptr[i] = _simple_array_ref_from_sv(aTHX_ ST(i+1),"forsetproduct",TRUE);
       arlen[i] = av_count(arptr[i]);
       arout[i] = AvARRAY(arptr[i])[0];
     }
