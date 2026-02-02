@@ -46,10 +46,6 @@ if ($broken64) {
                + 1;  # $_ didn't get changed
 }
 
-# Using GMP makes these tests run about 2x faster on some machines
-use bigint try => 'GMP,GMPz,LTM,Pari'; #  <-------- large numbers ahead!  > 2^64
-use Math::BigFloat;
-
 use Math::Prime::Util qw/
   prime_set_config
   negint absint signint cmpint
@@ -115,6 +111,9 @@ use Math::Prime::Util qw/
 # TODO:  ExponentialIntegral
 #        LogarithmicIntegral
 #        RiemannR
+
+use bigint;                            # <-------- large numbers ahead!  > 2^64
+use Math::BigFloat;
 
 my $usegmp = Math::Prime::Util::prime_get_config->{gmp};
 my $bignumver = $bigint::VERSION;

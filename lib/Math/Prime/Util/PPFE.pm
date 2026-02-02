@@ -749,6 +749,7 @@ sub _get_forexit { $_exitloop; }
 sub _start_for_loop { my $old = $_exitloop; $_exitloop = 0; $old; }
 sub _end_for_loop { $_exitloop = shift; }
 
+no warnings 'prototype';
 sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   Math::Prime::Util::PP::forprimes(@_);
 }

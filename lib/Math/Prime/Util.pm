@@ -350,7 +350,7 @@ sub _load_bigint {
 }
 
 sub _bigint_to_int {
-  return (OLD_PERL_VERSION) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
+  return (OLD_PERL_VERSION && $_[0] >= 0) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
                             : int("$_[0]");
 }
 sub _to_bigint {

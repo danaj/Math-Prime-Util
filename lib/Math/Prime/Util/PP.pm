@@ -253,6 +253,7 @@ sub _bfdigits {
 
 
 sub _validate_integer {
+  $_[0] = "$_[0]" if OLD_PERL_VERSION && "$_[0]" > 1e15 || $_[0] < -1e15;
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -272,7 +273,7 @@ sub _validate_integer {
   } else {
     if ($refn =~ /^Math::Big(Int|Float)$/) {
       croak "Parameter '$n' must be an integer" unless $n->is_int();
-      my $bits = length($n->to_bin);
+      my $bits = length($n->as_bin)-2;
       $_[0] = _bigint_to_int($_[0])
         if $bits <= MPU_MAXBITS || ($bits == MPU_MAXBITS+1 && $n == INTMIN);
     } else {
@@ -283,6 +284,7 @@ sub _validate_integer {
   1;
 }
 sub _validate_integer_nonneg {
+  $_[0] = "$_[0]" if OLD_PERL_VERSION && "$_[0]" > 1e15;
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -311,12 +313,12 @@ sub _validate_integer_nonneg {
 sub _validate_integer_positive {
   _validate_integer($_[0]);
   croak "Parameter '$_[0]' must be a positive integer"
-    if $_[0] < 1;
+    if "$_[0]" < 1;
   1;
 }
 sub _validate_integer_abs {
   _validate_integer($_[0]);
-  $_[0] = -$_[0] if $_[0] < 0;
+  $_[0] = -$_[0] if "$_[0]" < 0;
   1;
 }
 
@@ -5289,16 +5291,14 @@ sub cdivint {
 
 sub absint {
   my($n) = @_;
-  validate_integer($n);
-  return (($n >= 0) ? $n : -$n) if ref($n);
-  $n =~ s/^-// if $n <= 0;
+  validate_integer_abs($n);
   reftyped($_[0], $n);
 }
 sub negint {
   my($n) = @_;
   validate_integer($n);
   return 0 if $n == 0;  # Perl 5.6 has to have this: if $n=0 => -$n = -0
-  return -$n if ref($n) || $n < (~0 >> 1);
+  return -$n if ref($n) || $n < SINTMAX;
   if ($n > 0) { $n = "-$n"; }
   else        { $n =~ s/^-//; }
   reftyped($_[0], $n);
@@ -5505,6 +5505,7 @@ sub chinese2 {
     return (undef,undef) if $n == 0;
     $n = Mabsint($n);
     $a = Mmodint($a,$n);
+    if (OLD_PERL_VERSION) { ($a,$n) = ("$a","$n"); }
     push @items, [$a,$n];
   }
   return @{$items[0]} if scalar @items == 1;
@@ -5522,13 +5523,14 @@ sub chinese2 {
                              Msubint($u,Mmulint($q,$s)),
                              Msubint($v,Mmulint($q,$t)), $r);
     }
-    ($u,$v,$g) = (-$u,-$v,-$g)  if $g < 0;
+    #($u,$v,$g) = (-$u,-$v,-$g)  if $g < 0;
+    ($u,$v,$g) = map { Mnegint($_) } ($u,$v,$g)  if $g < 0;
     return (undef,undef) if $g != 1 && ($sum % $g) != ($ai % $g); # Not co-prime
-    $s = -$s if $s < 0;
-    $t = -$t if $t < 0;
+    $s = Mnegint($s) if "$s" < 0;
+    $t = Mnegint($t) if "$t" < 0;
     $lcm = Mmulint($lcm, $s);
-    $u = Maddint($u, $lcm) if $u < 0;
-    $v = Maddint($v, $lcm) if $v < 0;
+    $u = Maddint($u, $lcm) if "$u" < 0;
+    $v = Maddint($v, $lcm) if "$v" < 0;
     my $vs = Mmulmod($v,$s,$lcm);
     my $ut = Mmulmod($u,$t,$lcm);
     my $m1 = Mmulmod($sum,$vs,$lcm);
@@ -5590,6 +5592,13 @@ sub vecprod {
 
   return $_[0] if @_ == 1;
 
+  # Argh, Perl 5.6.2.
+  if (OLD_PERL_VERSION) {
+    my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
+    $prod = _bigint_to_int($prod) if ref($prod) && $prod <= INTMAX && $prod >= INTMIN;
+    return $prod;
+  }
+
   # Try native for non-negative/non-zero inputs
   if ($_[0] > 0 && $_[0] <= INTMAX && $_[1] > 0 && $_[1] <= INTMAX) {
     my $prod = shift @_;
@@ -5601,13 +5610,11 @@ sub vecprod {
 
   return mulint($_[0], $_[1]) if @_ == 2;
 
-  # Product tree:
-  #
+  # Product tree
   # my $prod = _product_mulint(0, $#_, \@_);
-  # $prod = _bigint_to_int($prod) if ref($prod) && $prod <= INTMAX && $prod >= INTMIN;
-  # Or faster:
   my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
-  $prod = _bigint_to_int($prod) if $prod <= INTMAX && $prod >= INTMIN;
+
+  $prod = _bigint_to_int($prod) if ref($prod) && $prod <= INTMAX && $prod >= INTMIN;
   $prod;
 }
 
@@ -7140,11 +7147,11 @@ sub valuation {
       return 2 if $n & 4;
       $s = sprintf("%b",$n);
     } elsif (ref($n) eq 'Math::BigInt') {
-      $s = $n->to_bin;
+      $s = $n->as_bin;
     } elsif (ref($n) eq 'Math::GMPz') {
       return Math::GMPz::Rmpz_scan1($n,0);
     } else {
-      $s = Math::BigInt->new("$n")->to_bin;
+      $s = Math::BigInt->new("$n")->as_bin;
     }
     return length($s) - rindex($s,'1') - 1;
   }
@@ -7168,9 +7175,9 @@ sub _splitdigits {
   if ($base == 10) {
     @d = split(//,"$n");
   } elsif ($base == 2) {
-    @d = split(//,Math::BigInt->new("$n")->to_bin);
+    @d = split(//,substr(Math::BigInt->new("$n")->as_bin,2));
   } elsif ($base == 16) {
-    @d = map { $_mapdigit{$_} } split(//,Math::BigInt->new("$n")->to_hex);
+    @d = map { $_mapdigit{$_} } split(//,substr(Math::BigInt->new("$n")->as_hex,2));
   } else {
     # The validation turned n into a bigint if necessary
     while ($n >= 1) {
@@ -7230,9 +7237,17 @@ sub todigitstring {
     $s = Math::GMPz::Rmpz_get_str($n,$base);
   } elsif ($refn eq 'Math::GMP') {
     $s = Math::GMP::get_str_gmp($n,$base);
-  } else {
+  } elsif ($Math::BigInt::VERSION >= 1.999842) {
     $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
     $s = $n->to_base($base);
+  } else {
+    my @d = ($n == 0) ? () : _splitdigits($n, $base, -1);
+    if ($base <= 10) {
+      $s = join("", @d);
+    } else {
+      die "Invalid base for string: $base" if $base > 36;
+      $s = join("", map { $_digitmap[$_] } @d);
+    }
   }
   if ($len > 0) {
     $s = substr($s,0,$len);
@@ -7289,7 +7304,13 @@ sub fromdigits {
     elsif ($base ==  8) { $n = Math::BigInt->from_oct($r); }
     elsif ($base == 10) { $n = Math::BigInt->new($r); }
     elsif ($base == 16) { $n = Math::BigInt->from_hex($r); }
-    else                { $n = Math::BigInt->from_base($r,$base); }
+    else {
+      if ($Math::BigInt::VERSION >= 1.999842) {
+        $n = Math::BigInt->from_base($r,$base);
+      } else {
+        $n=_FastIntegerInput([map{index("0123456789abcdefghijklmnopqrstuvwxyz",$_)}split(//,lc($r))],$base);
+      }
+    }
     $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne 'Math::BigInt';
   }
   return $n <= INTMAX ? _bigint_to_int($n) : $n;
@@ -9547,7 +9568,7 @@ sub trial_factor {
   } elsif (ref($n) eq 'Math::BigInt') {
     my $k = 0;
     if ($n->is_even) {
-      my $s = $n->to_bin();
+      my $s = substr($n->as_bin(),2);
       $k = length($s) - rindex($s,'1') - 1;
     }
     if ($k > 0) { push @factors, (2) x $k;  $n = Mrshiftint($n,$k); }
@@ -9887,6 +9908,7 @@ sub pbrent_factor {
         $saveXi = Maddint($Xi,0);
         foreach my $i (1 .. $dorounds) {
           $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
+          if (OLD_PERL_VERSION) { $m=mulmod($m,subint($Xi,$Xm),$n); next; }
           $m = Mmulmod($m, $Xi > $Xm ? $Xi-$Xm : $Xm-$Xi,$n);
         }
         $rleft -= $dorounds;

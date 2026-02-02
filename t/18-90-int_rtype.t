@@ -59,7 +59,11 @@ my @tests = (
   [-1, $mp1, $m],
 );
 
-plan tests => 4 + scalar(@tests) + 1 + 1;
+if ($isbroken64) {
+  plan skip_all => "Broken 64-bit Perl, skipping all tests";
+} else {
+  plan tests => 4 + scalar(@tests) + 1 + 1;
+}
 
 is(should_be_ref($mm1), 0, "$mm1 should be a UV");
 is(should_be_ref($m),   0, "$m should be a UV");

@@ -485,7 +485,7 @@ sub random_nbit_prime {
 
     my $loop_limit = 1_000_000;
     while ($loop_limit-- > 0) {
-      my $a = (1 << $l) + urandomb($l);
+      my $a = addint((1 << $l),urandomb($l));
       # $a % s == $PM[s]  =>  $p % s == 0  =>  p will be composite
       next if $a %  3 == $PM[ 3] || $a %  5 == $PM[ 5] || $a %  7 == $PM[ 7]
            || $a % 11 == $PM[11] || $a % 13 == $PM[13] || $a % 17 == $PM[17]
