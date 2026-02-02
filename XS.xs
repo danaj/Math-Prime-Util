@@ -116,6 +116,7 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
   #define SVf_MAGTEST  SVf_ROK
 #else
   #define SVf_MAGTEST  SVf_AMAGIC
+  #define GV_NOTQUAL   0
 #endif
 
 #define SVNUMTEST(n) \
@@ -1391,11 +1392,13 @@ bool _validate_integer(SV* svn)
     }
     status = _validate_and_set(&n, aTHX_ svn, mask);
     if (status != 0) {
-#if PERL_VERSION_LT(5,8,0) && BITS_PER_WORD == 64
-      sv_setpviv(svn, n);
-#else
       if (status == 1)  sv_setuv(svn, n);
       else              sv_setiv(svn, n);
+#if PERL_VERSION_LT(5,8,0) && BITS_PER_WORD == 64
+      if (status == 1 && n > 562949953421312UL)
+        sv_setpvf(svn, "%"UVuf, n);
+      if (status == -1 && (IV)n < -562949953421312)
+        sv_setpvf(svn, "%"IVdf, n);
 #endif
     } else {  /* Status 0 = bigint */
       if (mask & IFLAG_ABS) {
