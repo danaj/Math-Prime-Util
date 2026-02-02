@@ -16,15 +16,11 @@ my $broken64 = (18446744073709550592 == ~0);
 if ($broken64) {
   warn <<EOW;
 
-Your Perl has a broken 64-bit implementation.
+Your Perl, version $], has a broken 64-bit implementation.
 Arithmetic operations on numbers larger than 2^53 are wrong.
 
-Much core functionality will work, but some functions, especially
-random primes, will not work for large inputs.
-
-I highly recommend upgrading to a newer version of Perl.
-
 EOW
+  die "Perl configuration unsupported\n";
 }
 
 WriteMakefile1(
@@ -152,7 +148,7 @@ WriteMakefile1(
                },
              },
 
-    MIN_PERL_VERSION => 5.006002,
+    MIN_PERL_VERSION => (~0 > 4294967295) ? 5.008001 : 5.006002,
 );
 
 sub WriteMakefile1 {   # Cribbed from eumm-upgrade by Alexandr Ciornii
