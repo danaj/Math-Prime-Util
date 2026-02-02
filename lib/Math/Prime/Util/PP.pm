@@ -253,7 +253,7 @@ sub _bfdigits {
 
 
 sub _validate_integer {
-  $_[0] = "$_[0]" if OLD_PERL_VERSION && "$_[0]" > 1e15 || $_[0] < -1e15;
+  $_[0] = "$_[0]" if OLD_PERL_VERSION && ("$_[0]" > 1e15 || "$_[0]" < -1e15);
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -317,9 +317,12 @@ sub _validate_integer_positive {
   1;
 }
 sub _validate_integer_abs {
+  if (ref($_[0])) {
+    $_[0] = -$_[0] if $_[0] < 0;
+  } else {
+    $_[0] =~ s/^-// if "$_[0]" < 0;
+  }
   _validate_integer($_[0]);
-  $_[0] = -$_[0] if "$_[0]" < 0;
-  1;
 }
 
 # If we try to call the function in any normal way, just loading this module
@@ -378,7 +381,7 @@ sub _toint_simple {
     } elsif ($n < $max) {
       return int("$n");
     } else {
-      $n = _upgrade_to_float("$n")->as_int;
+      $n = "" . _upgrade_to_float("$n")->bfloor;
     }
   } else {
     my $min = MPU_32BIT ? -2147483648 : -35184372088832;  # -2^45
@@ -387,7 +390,7 @@ sub _toint_simple {
     } elsif ($n > $min) {
       return int($n);
     } else {
-      $n = _upgrade_to_float($n)->as_int;
+      $n = "" . _upgrade_to_float("$n")->bceil;
     }
   }
   validate_integer($n);
@@ -6589,6 +6592,7 @@ sub _bi_powmod {
   } elsif ($refn eq 'Math::GMP') {
     $r = $r->powm_gmp($b,$n);
   } elsif ($refn eq 'Math::BigInt') {
+    $r->bmod($n) if $Math::BigInt::VERSION < 1.999;
     $r->bmodpow($b,$n);
   } else {
     $r->bmodpow("$b","$n");
@@ -7237,7 +7241,7 @@ sub todigitstring {
     $s = Math::GMPz::Rmpz_get_str($n,$base);
   } elsif ($refn eq 'Math::GMP') {
     $s = Math::GMP::get_str_gmp($n,$base);
-  } elsif ($Math::BigInt::VERSION >= 1.999842) {
+  } elsif ($Math::BigInt::VERSION >= 1.999814) {
     $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
     $s = $n->to_base($base);
   } else {
@@ -7298,19 +7302,15 @@ sub fromdigits {
   }
   if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/) {
     $n = $_BIGINT->new($r, $base);
+  } elsif ($Math::BigInt::VERSION < 1.999814) {
+    $n=_FastIntegerInput([map{index("0123456789abcdefghijklmnopqrstuvwxyz",$_)}split(//,lc($r))],$base);
   } else {
     # from_base is 2x slower than calling the method directly (TODO file an RT)
     if    ($base ==  2) { $n = Math::BigInt->from_bin($r); }
     elsif ($base ==  8) { $n = Math::BigInt->from_oct($r); }
     elsif ($base == 10) { $n = Math::BigInt->new($r); }
     elsif ($base == 16) { $n = Math::BigInt->from_hex($r); }
-    else {
-      if ($Math::BigInt::VERSION >= 1.999842) {
-        $n = Math::BigInt->from_base($r,$base);
-      } else {
-        $n=_FastIntegerInput([map{index("0123456789abcdefghijklmnopqrstuvwxyz",$_)}split(//,lc($r))],$base);
-      }
-    }
+    else {                $n = Math::BigInt->from_base($r,$base); }
     $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne 'Math::BigInt';
   }
   return $n <= INTMAX ? _bigint_to_int($n) : $n;
