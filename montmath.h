@@ -94,4 +94,32 @@ static INLINE uint64_t _u64div(uint64_t c, uint64_t n) {
 
 #endif /* use_montmath */
 
+#if 0
+  /* AArch64 */
+  /* https://www.pure.ed.ac.uk/ws/portalfiles/portal/412503872/Concurrency_and_Computation_-_2023_-_Jesus_-_Vectorizing_and_distributing_number_theoretic_transform_to_count_Goldbach.pdf /*
+  /* https://era.ed.ac.uk/server/api/core/bitstreams/ed9176f7-d8ed-4af9-aa20-3a82c5f8e353/content */
+
+#define umul128(ph, pl, m0, m1) do { \
+    uint64_t __m0 = (m0), __m1 = (m1); \
+    __asm__ ("umulh\t%0, %1, %2" \
+             : "=r" (ph) \
+             : "r" (__m0), "r" (__m1)); \
+    (pl) = __m0 * __m1; \
+  } while(0)
+static INLINE uint64_t montmul(uint64_t a, uint64_t b, uint64_t n, uint64_t npi) {
+  uint64_t m, xh, xl, yh, yl, z;
+  umul128(xh, xl, a, b);         /* x = a * b */
+  m = (uint64_t)(xl * npi)       /* m = (x*N') mod R */
+  umul128(yh, yl, m, n);         /* y = m * N */
+  z = xh+yh+((xl+yl) < xl);      /* z = (x+y)/R */
+  return z >= N ? z-n : z;
+}
+
+/*
+   Q = R^2 mod N
+   to_mont(x)   = xR mod N   = montmul(x,Q)
+   from_mont(X) = X/R mod N  = montmul(X,1)
+ */
+#endif
+
 #endif

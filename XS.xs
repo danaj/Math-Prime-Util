@@ -4885,9 +4885,10 @@ void setcontains(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
   PREINIT:
     UV b;
-    AV *ava, *avb;
+    AV *ava;
     int bstatus, subset;
     Size_t alen, blen, i;
+    DECL_ARREF(arb);
   PPCODE:
     CHECK_ARRAYREF(sva);   /* First argument is a set as array ref */
     ava = (AV*) SvRV(sva);
@@ -4897,18 +4898,17 @@ void setcontains(IN SV* sva, IN SV* svb)
       bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
       subset = is_in_set(aTHX_ ava, 0, bstatus, b);
     } else { /* The second argument is an array reference (set) */
-      avb = _simple_array_ref_from_sv(aTHX_ svb, SUBNAME, TRUE);
-      blen = av_count(avb);
+      USE_ARREF(arb, svb, SUBNAME, AR_READONLY);
+      blen = len_arb;
       if (ix == 0 && blen > alen) {
         subset = 0;  /* cannot fit */
       } else {
         int findall = (ix == 0) ? 1 : 0;
-        SV** arr = AvARRAY(avb);
         set_data_t cache = init_set_lookup_cache(aTHX_ ava);
         /* setcontains:    if we find anything that is NOT in SETA, return 0
          * setcontainsany: if we find anything that IS     in SETA, return 1  */
         for (i = 0, subset = findall; i < blen && subset == findall; i++) {
-          bstatus = _validate_and_set(&b, aTHX_ arr[i], IFLAG_ANY);
+          bstatus = _validate_and_set(&b, aTHX_ FETCH_ARREF(arb,i), IFLAG_ANY);
           subset = is_in_set(aTHX_ ava, &cache, bstatus, b);
         }
         free_set_lookup_cache(&cache);
@@ -5307,8 +5307,6 @@ void vecsample(IN SV* svk, ...)
   PROTOTYPE: $@
   PREINIT:
     void   *randcxt;
-    AV     *av;
-    SV    **arr;
     UV      k;
     Size_t  nitems, i;
     dMY_CXT;
