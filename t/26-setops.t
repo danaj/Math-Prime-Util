@@ -121,6 +121,9 @@ my @removes = (
   [ [1,2,3], [1],     1, [2,3], "remove first element" ],
   [ [1,2,3], [3,2,1], 3, [], "remove all elements" ],
   [ [1,2,3], [1,1,1], 1, [2,3], "list with duplicates" ],
+  [ [1..8], [-4,6,9], 1, [1..5,7,8], "remove mix" ],
+  [ [5],     5,       1, [], "remove single scalar to empty" ],
+  [ [5],     [5],     1, [], "remove single aref to empty" ],
 );
 my @inverts = (
   [ [], [],           0, [], "empty sets" ],

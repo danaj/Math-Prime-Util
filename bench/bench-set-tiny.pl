@@ -9,7 +9,7 @@ use lib 'lib';
 use Benchmark qw( cmpthese );
 
 use Set::Tiny;
-#use Set::Scalar;
+use Set::Scalar;
 #use Set::Object;
 use Math::Prime::Util qw/toset setinsert setcontains setremove setinvert
                          setintersect setunion setminus setdelta vecequal/;
@@ -18,13 +18,15 @@ use Math::Prime::Util qw/toset setinsert setcontains setremove setinvert
 #my @b = 51 .. 150;
 my @a = 1 .. 1000;
 my @b = 501 .. 2500;
+#my @a = 1 .. 10000;
+#my @b = 5001 .. 15000;
 
 my $s_t1 = Set::Tiny->new(@a);
 my $s_t2 = Set::Tiny->new(@b);
 my $s_m1 = [toset(\@a)];
 my $s_m2 = [toset(\@b)];
-#my $s_s1 = Set::Scalar->new(@a);
-#my $s_s2 = Set::Scalar->new(@b);
+my $s_s1 = Set::Scalar->new(@a);
+my $s_s2 = Set::Scalar->new(@b);
 #my $s_o1 = Set::Object->new(@a);
 #my $s_o2 = Set::Object->new(@b);
 
@@ -32,39 +34,45 @@ my %tests = (
     A_new => {
         t => sub { Set::Tiny->new(@a) },
         m => sub { [toset(\@a)] },
-        #s => sub { Set::Scalar->new(@a) },
+        s => sub { Set::Scalar->new(@a) },
         #o => sub { Set::Object->new(@a) },
     },
 
     A_clone => {
         t => sub { $s_t1->clone },
         m => sub { [@$s_m1] },
-        #s => sub { $s_s1->clone },
+        s => sub { $s_s1->clone },
         #o => sub { },
     },
     A_insert => {
         t => sub { Set::Tiny->new->insert(@a) },
         m => sub { setinsert([],\@a); },
-        #s => sub { Set::Scalar->new->insert(@a) },
+        s => sub { Set::Scalar->new->insert(@a) },
         #o => sub { Set::Object->new->insert(@a) },
+    },
+    A_deleteone => {
+        t => sub { Set::Tiny->new(@a)->delete(500) },
+        m => sub { setremove([toset(\@a)],500); },
+        s => sub { Set::Scalar->new(@a)->delete(@b) },
+        #o => sub { Set::Object->new(@a)->delete(@b) },
     },
     A_delete => {
         t => sub { Set::Tiny->new(@a)->delete(@b) },
         m => sub { setremove([toset(\@a)],\@b); },
-        #s => sub { Set::Scalar->new(@a)->delete(@b) },
+        s => sub { Set::Scalar->new(@a)->delete(@b) },
         #o => sub { Set::Object->new(@a)->delete(@b) },
     },
     A_invert => {
         t => sub { Set::Tiny->new(@a)->invert(@b) },
         m => sub { setinvert([toset(\@a)],\@b); },
-        #s => sub { Set::Scalar->new(@a)->invert(@b) },
+        s => sub { Set::Scalar->new(@a)->invert(@b) },
         #o => sub { Set::Object->new(@a)->invert(@b) },
     },
     C_is_equal => {
         t => sub { $s_t1->is_equal($s_t2) },
         #m => sub { vecequal($s_m1,$s_m2) },    # Probably much faster
         m => sub { Math::Prime::Util::set_is_equal($s_m1,$s_m2) },
-        #s => sub { $s_s1->is_equal($s_s2) },
+        s => sub { $s_s1->is_equal($s_s2) },
         #o => sub { $s_o1->equal($s_o2) },
     },
 
@@ -74,31 +82,31 @@ my %tests = (
         t => sub { $s_t1->is_subset($s_t2) },
         #m => sub { setcontains($s_m1, $s_m2) },    # Probably faster
         m => sub { Math::Prime::Util::set_is_subset($s_m2,$s_m1); },
-        #s => sub { $s_s1->is_subset($s_s2) },
+        s => sub { $s_s1->is_subset($s_s2) },
         #o => sub { $s_o1->subset($s_o2) },
     },
     C_is_proper_subset => {
         t => sub { $s_t1->is_proper_subset($s_t2) },
         m => sub { Math::Prime::Util::set_is_proper_subset($s_m2,$s_m1); },
-        #s => sub { $s_s1->is_proper_subset($s_s2) },
+        s => sub { $s_s1->is_proper_subset($s_s2) },
         #o => sub { $s_o1->proper_subset($s_o2) },
     },
     C_is_superset => {
         t => sub { $s_t1->is_superset($s_t2) },
         m => sub { Math::Prime::Util::set_is_superset($s_m2,$s_m1); },
-        #s => sub { $s_s1->is_superset($s_s2) },
+        s => sub { $s_s1->is_superset($s_s2) },
         #o => sub { $s_o1->superset($s_o2) },
     },
     C_is_proper_superset => {
         t => sub { $s_t1->is_proper_superset($s_t2) },
         m => sub { Math::Prime::Util::set_is_proper_superset($s_m2,$s_m1); },
-        #s => sub { $s_s1->is_proper_superset($s_s2) },
+        s => sub { $s_s1->is_proper_superset($s_s2) },
         #o => sub { $s_o1->proper_superset($s_o2) },
     },
     C_is_disjoint => {
         t => sub { $s_t1->is_disjoint($s_t2) },
         m => sub { Math::Prime::Util::set_is_disjoint($s_m1,$s_m2); },
-        #s => sub { $s_s1->is_disjoint($s_s2) },
+        s => sub { $s_s1->is_disjoint($s_s2) },
         #o => sub { $s_o1->is_disjoint($s_o2) },
     },
 
@@ -109,7 +117,7 @@ my %tests = (
     B_contains => {
         t => sub { $s_t1->contains(@b) },
         m => sub { setcontains($s_m1,\@b) },
-        #s => sub { $s_s1->contains(@b) },
+        s => sub { $s_s1->contains(@b) },
         #o => sub { $s_o1->contains(@b) },
     },
 #  Set::Tiny  $s->difference($t)     $s minus $t
@@ -117,25 +125,25 @@ my %tests = (
     B_difference => {
         t => sub { $s_t1->difference($s_t2) },
         m => sub { setminus($s_m1,$s_m2) },
-        #s => sub { $s_s1->difference($s_s2) },
+        s => sub { $s_s1->difference($s_s2) },
         #o => sub { $s_o1->difference($s_o2) },
     },
     B_union => {
         t => sub { $s_t1->union($s_t2) },
         m => sub { setunion($s_m1,$s_m2) },
-        #s => sub { $s_s1->union($s_s2) },
+        s => sub { $s_s1->union($s_s2) },
         #o => sub { $s_o1->union($s_o2) },
     },
     B_intersection => {
         t => sub { $s_t1->intersection($s_t2) },
         m => sub { setintersect($s_m1,$s_m2) },
-        #s => sub { $s_s1->intersection($s_s2) },
+        s => sub { $s_s1->intersection($s_s2) },
         #o => sub { $s_o1->intersection($s_o2) },
     },
     B_symmetric_difference => {
         t => sub { $s_t1->symmetric_difference($s_t2) },
         m => sub { setdelta($s_m1,$s_m2) },
-        #s => sub { $s_s1->symmetric_difference($s_s2) },
+        s => sub { $s_s1->symmetric_difference($s_s2) },
         #o => sub { $s_o1->symmetric_difference($s_o2) },
     },
 );
@@ -148,7 +156,7 @@ for my $test ( sort keys %tests ) {
         -1,
         {
             'Set::Tiny'   => $tests{$test}{t},
-            #'Set::Scalar' => $tests{$test}{s},
+            'Set::Scalar' => $tests{$test}{s},
             #'Set::Object' => $tests{$test}{o},
             'MPU' => $tests{$test}{m},
         }

@@ -737,10 +737,6 @@ sub harmreal {
   Math::Prime::Util::PP::harmreal($n, $precision);
 }
 
-sub setremove {
-  require Math::Prime::Util::PP;
-  Math::Prime::Util::PP::setremove(@_);
-}
 sub setinvert {
   require Math::Prime::Util::PP;
   Math::Prime::Util::PP::setinvert(@_);

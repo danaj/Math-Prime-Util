@@ -12012,34 +12012,29 @@ sub _setremove1 {
 
 sub setremove {
   my($set, $in) = @_;
-  my @newset;
   if (!ref($in) || ref($in) ne 'ARRAY') {
-    validate_integer($in);
-    @newset = ($in);
-  } else {
-    @newset = Mtoset($in);
+    return _setremove1($set,$in);
   }
   my $setsize = scalar(@$set);
-  return 0 if $setsize == 0 || scalar(@newset) == 0 || $newset[0] > $set->[-1] || $newset[-1] < $set->[0];
+  return 0 if $setsize == 0;
 
-  if (@newset > 100) {
-    @$set = Math::Prime::Util::setminus($set,\@newset);
+  # Try to decide the most performant of the two methods.
+  my $fitmin = $setsize <   170 ? 1 + ($setsize>=35) + int($setsize/30)
+             : $setsize < 75000 ? int(2.7*sqrt($setsize)-28)
+                                : 700;
+  if (@$in <= $fitmin) {
+    _setremove1($set,$_) for @$in;
   } else {
-    #_setremove1($set, $_) for @newset;
-    for my $v (@newset) {
-      next if $v < $set->[0];
-      last if $v > $set->[-1];
-      my($lo,$hi) = (0,$#$set);
-      while ($lo < $hi) {
-        my $mid = $lo + (($hi-$lo) >> 1);
-        if ($set->[$mid] < $v) { $lo = $mid+1; }
-        else                   { $hi = $mid; }
-      }
-      if ($set->[$hi] == $v) {
-        splice @$set, $hi, 1;
-        last if @$set == 0;
-      }
+    my($SMIN,$SMAX) = ($set->[0],$set->[-1]);
+    my(%remove, $k);
+    for my $v (@$in) {
+      validate_integer($v);
+      #next if exists $remove{$k=$v} || $v < $SMIN || $v > $SMAX;
+      undef $remove{$k=$v};
     }
+    my $remsize = scalar(keys(%remove));
+    return 0 if $remsize == 0;
+    @$set = grep { !exists $remove{$k=$_} } @$set;
   }
   return $setsize - scalar(@$set);
 }
