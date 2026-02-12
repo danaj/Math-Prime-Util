@@ -12039,39 +12039,60 @@ sub setremove {
   return $setsize - scalar(@$set);
 }
 
+sub _setinvert1 {
+  my($rset, $v) = @_;
+  # No validate here.
+
+  if (scalar(@$rset) == 0 || $v > $rset->[-1]) {
+    push @$rset, $v;
+  } elsif ($v < $rset->[0]) {
+    unshift @$rset, $v;
+  } else {
+    my($lo,$hi) = (0,$#$rset);
+    while ($lo < $hi) {
+      my $mid = $lo + (($hi-$lo) >> 1);
+      if ($rset->[$mid] < $v) { $lo = $mid+1; }
+      else                    { $hi = $mid; }
+    }
+    if ($rset->[$hi] == $v) {
+      splice @$rset, $hi, 1;
+      return -1;
+    }
+    splice @$rset, $hi, 0, $v;
+  }
+  1;
+}
+
 sub setinvert {
   my($set, $in) = @_;
-  my @newset;
   if (!ref($in) || ref($in) ne 'ARRAY') {
     validate_integer($in);
-    @newset = ($in);
-  } else {
-    @newset = Mtoset($in);
-    return 0 if scalar(@newset) == 0;
+    return _setinvert1($set,$in);
   }
-  # newset is in integer set form.  No duplicates.
+  my @newset = Mtoset($in);
+  return 0 if scalar(@newset) == 0;
+
   my $setsize = scalar(@$set);
   if ($setsize == 0) {
     @$set = @newset;
     return scalar(@$set);
   }
+  # Like setinsert and setremove, we assume the input set is in set form.
+
   if (@newset > 100) {
-    @$set = Math::Prime::Util::setdelta($set,\@newset);
-  } else {
-    for my $v (@newset) {
-      #_setremove1($set,$v) or _setinsert1($set,$v);
-      my($lo,$hi) = (0,$#$set);
-      while ($lo < $hi) {
-        my $mid = $lo + (($hi-$lo) >> 1);
-        if ($set->[$mid] < $v) { $lo = $mid+1; }
-        else                   { $hi = $mid; }
-      }
-      if ($set->[$hi] == $v) {
-        splice @$set, $hi, 1;
+    my @S;
+    for my $sv (@$set) {
+      push @S, shift @newset while @newset && $newset[0] < $sv;
+      if (@newset && $newset[0] == $sv) {
+        shift @newset;
       } else {
-        splice @$set, $hi, 0, $v;
+        push @S, $sv;
       }
     }
+    push @S, @newset;
+    @$set = @S;
+  } else {
+    _setinvert1($set,$_) for @newset;
   }
   return scalar(@$set) - $setsize;
 }

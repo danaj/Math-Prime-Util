@@ -7406,30 +7406,31 @@ give a strict order.  Many modules are fast at some operations and slow
 at others.  Some have particular inputs they are very fast or very slow
 with.  Each module has different functionality.
 
-We chose, following Pari and Mathematica, to represent sets as native lists
-of sorted de-duplicated integers, rather than a dedicated object.
-This allows some flexibility and use for other purposes, but it can result
-in poor performance for some cases, especially with very large sets
-(100k+ entries) where we spend a large amount of time parsing
-and manipulating the Perl input array.
-It also is quite space inefficient, using approximately 32 bytes for
-each integer.
+We chose, following Pari and Mathematica, to represent sets as native
+lists of sorted de-duplicated integers, rather than a dedicated object.
+This allows flexibility and use for other purposes, but it isn't ideal
+for general performance, especially with very large sets (100k+ elements)
+where we spend a large amount of time parsing and manipulating the
+Perl input array.  While an opaque data structure would use 8 or fewer
+bytes per element, Perl arrays use approximately 32 bytes per integer.
+Still, this is quite favorable compared to Perl hashes at 120 to 220
+(e.g. Set::Light, Set::Tiny, Set::Scalar, Set::Functional).
 
-For many purposes, L<Set::Tiny> works quite well.  It is B<very> tiny,
-unlike this module.  It has basic features and is quite fast.  It is not
-limited to integers.  On the other hand, even using native Perl sorted
-arrays rather than a dedicated set objects, our module is typically
-faster (2-10x) and uses less memory,
-though of course it is XS so this should not be surprising.
+For many purposes, L<Set::Tiny> works quite well.
+The module source is B<very> tiny, unlike this module.
+It has basic features and is quite fast.
+It is not limited to integers.
+On the other hand, our module is typically faster (2-10x) and uses
+less memory, even with our choice of native Perl sorted arrays.
 
 Finding the sumset size of the first 10,000 primes.
 
   my %r;  my $p = primes(nth_prime(10000));
 
-  13.3s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
+  12.9s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
                 say scalar(keys %r);
    9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
-   2.5s    3MB  say scalar setbinop { $a+$b } $p;
+   2.3s    3MB  say scalar setbinop { $a+$b } $p;
    0.4s    3MB  say scalar sumset $p;
 
 Set intersection of C<[-1000..100]> and C<[-100..1000]>.

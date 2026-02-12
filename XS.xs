@@ -4821,8 +4821,8 @@ void setunion(IN SV* sva, IN SV* svb)
             else                                     r[rlen++] = rb[ib++];
           }
         }
-        while (ia < alen)   r[rlen++] = ra[ia++];
-        while (ib < blen)   r[rlen++] = rb[ib++];
+        if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
+        if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
       } else if (ix == 1) { /* intersect */
         New(0, r, (alen > blen) ? alen : blen, UV);
         while (ia < alen && ib < blen) {
@@ -4844,7 +4844,7 @@ void setunion(IN SV* sva, IN SV* svb)
             else                                     ib++;
           }
         }
-        while (ia < alen)   r[rlen++] = ra[ia++];
+        if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
       } else if (ix == 3) { /* delta (symmetric difference) */
         New(0, r, alen + blen, UV);
         while (ia < alen && ib < blen) {
@@ -4855,8 +4855,8 @@ void setunion(IN SV* sva, IN SV* svb)
             else                                     r[rlen++] = rb[ib++];
           }
         }
-        while (ia < alen)   r[rlen++] = ra[ia++];
-        while (ib < blen)   r[rlen++] = rb[ib++];
+        if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
+        if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
       }
       Safefree(ra);
       Safefree(rb);

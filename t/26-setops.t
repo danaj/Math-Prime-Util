@@ -133,6 +133,7 @@ my @inverts = (
   [ [1,2,3], [1],    -1, [2,3], "invert first element" ],
   [ [1,2,3], [3,2,1],-3, [], "invert all elements" ],
   [ [1,2,3], [1,1],  -1, [2,3], "list with duplicates" ],
+  [ [0..10], [5,10,15,20], 0, [0..4,6,7,8,9,15,20], "mixed inversions" ],
 );
 
 plan tests => 2        # specific tests
@@ -440,5 +441,10 @@ subtest 'setinvert', sub {
     my($A,$B,$exp,$NEWA,$what) = @$test;
     my $res = setinvert($A,$B);
     is_deeply( [$res,$A], [$exp,$NEWA], $what );
+    # By hand (1):
+    #my @new = setminus([setunion($A,$B)],[setintersect($A,$B)])
+    #my $res = scalar(@$A)-scalar(@new);
+    # By hand (2):
+    #my @new = setdelta($A,$B);
   }
 };
