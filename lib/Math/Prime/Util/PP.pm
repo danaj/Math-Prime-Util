@@ -11693,7 +11693,7 @@ sub sumset {
   } else {
     $rb = $ra;
   }
-  return () if scalar(@$ra) == 0 || scalar(@$rb) == 0;
+  return [] if scalar(@$ra) == 0 || scalar(@$rb) == 0;
 
   validate_integer($_) for @$ra;
   if ($ra != $rb) { validate_integer($_) for @$rb; }
