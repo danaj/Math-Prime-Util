@@ -11682,7 +11682,7 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
       push @set, $sub->();
     }
   }
-  Mtoset(\@set);
+  Mtoset(@set);
 }
 
 sub sumset {
@@ -11704,7 +11704,7 @@ sub sumset {
       push @set, Maddint($x,$y);
     }
   }
-  Mtoset(\@set);
+  Mtoset(@set);
 }
 
 sub vecuniq {
@@ -11771,10 +11771,9 @@ sub setunion {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
                                      && (ref($rb) || '') eq 'ARRAY';
-  # return toset([@$ra,@$rb]);
+  # return toset(@$ra,@$rb);
   my(%seen,$k);
-  my @res = Mtoset([grep { not $seen{$k = $_}++ } @$ra,@$rb]);
-  return wantarray ? @res : scalar(@res);
+  Mtoset(grep { not $seen{$k = $_}++ } @$ra,@$rb);
 }
 sub setintersect {
   my($ra,$rb) = @_;
@@ -11784,8 +11783,7 @@ sub setintersect {
   if (scalar(@$ra) == 0) { return wantarray ? () : 0; }
   my %ina;
   undef @ina{@$ra};
-  my @res = Mtoset([grep { exists $ina{$_} } @$rb]);
-  return wantarray ? @res : scalar(@res);
+  Mtoset(grep { exists $ina{$_} } @$rb);
 }
 sub setminus {
   my($ra,$rb) = @_;
@@ -11794,8 +11792,7 @@ sub setminus {
   return @$ra if scalar(@$rb) == 0;
   my %inb;
   undef @inb{@$rb};
-  my @res = Mtoset([grep { !exists $inb{$_} } @$ra]);
-  return wantarray ? @res : scalar(@res);
+  Mtoset(grep { !exists $inb{$_} } @$ra);
 }
 sub setdelta {
   my($ra,$rb) = @_;
@@ -11808,8 +11805,7 @@ sub setdelta {
   undef @inb{@$rb};
   my @s =  grep { !exists $inb{$_} } @$ra;
   push @s, grep { !exists $ina{$_} } @$rb;
-  my @res =  Mtoset(\@s);
-  return wantarray ? @res : scalar(@res);
+  Mtoset(@s);
 }
 
 # Can do setminus([$min..$max],\@L) albeit 2x slower
@@ -11836,13 +11832,12 @@ sub _setcomplement {
 }
 
 sub toset {
-  my($ra) = @_;
-  croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
-
-  validate_integer($_) for @$ra;
-  return @$ra if scalar(@$ra) <= 1;
+  my(@list) = @_;
+  validate_integer($_) for @list;
+  return \@list if scalar(@list) <= 1;
   my($k,%seen);
-  Mvecsort( grep { not $seen{$k = $_}++; } @$ra );
+  @list = grep { not $seen{$k = $_}++; } @list;
+  Mvecsorti(\@list);
 }
 
 # Is the second set a subset of the first set?
@@ -11853,7 +11848,7 @@ sub setcontains {
     validate_integer($sub);
     @newset = ($sub);
   } else {
-    @newset = Mtoset($sub);
+    @newset = @{Mtoset(@$sub)};
   }
   return 1 if @newset == 0;
   return 0 if @$set == 0 || @newset > @$set || $newset[-1] > $set->[-1] || $newset[0] < $set->[0];
@@ -11934,7 +11929,7 @@ sub setinsert {
     validate_integer($in);
     @newset = ($in);
   } else {
-    @newset = Mtoset($in);
+    @newset = @{Mtoset(@$in)};
   }
   my $setsize = scalar(@$set);
   if ($setsize == 0 || $newset[0] > $set->[-1]) {
@@ -11947,10 +11942,10 @@ sub setinsert {
     # Times from the 20x50k insert operation in xt/test-sets.
 
     # 17.09  In theory efficient, but too much redundant work
-    #@$set = Msetunion($set,\@newset);
+    #@$set = @{Msetunion($set,\@newset)};
 
     # 12.48  Better but still ignores all input structure
-    #@$set = Mtoset([@$set,@newset]);
+    #@$set = @{Mtoset([@$set,@newset])};
 
     #  6.04  toset inlined and with all unnecessary work removed
     #my($k,%seen);
@@ -12069,7 +12064,7 @@ sub setinvert {
     validate_integer($in);
     return _setinvert1($set,$in);
   }
-  my @newset = Mtoset($in);
+  my @newset = @{Mtoset(@$in)};
   return 0 if scalar(@newset) == 0;
 
   my $setsize = scalar(@$set);
@@ -12101,44 +12096,44 @@ sub set_is_disjoint {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (scalar(Msetintersect($s,$t) == 0));
+  return 0 + (scalar(@{Msetintersect($s,$t)} == 0));
 }
 sub set_is_equal {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s == @$t && scalar(Msetintersect($s,$t)) == @$t);
+  return 0 + (@$s == @$t && scalar(@{Msetintersect($s,$t)}) == @$t);
 }
 sub set_is_subset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s >= @$t && scalar(Msetintersect($s,$t)) == @$t);
+  return 0 + (@$s >= @$t && scalar(@{Msetintersect($s,$t)}) == @$t);
 }
 sub set_is_proper_subset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s > @$t && scalar(Msetintersect($s,$t)) == @$t);
+  return 0 + (@$s > @$t && scalar(@{Msetintersect($s,$t)}) == @$t);
 }
 sub set_is_superset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s <= @$t && scalar(Msetintersect($s,$t)) == @$s);
+  return 0 + (@$s <= @$t && scalar(@{Msetintersect($s,$t)}) == @$s);
 }
 sub set_is_proper_superset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s < @$t && scalar(Msetintersect($s,$t)) == @$s);
+  return 0 + (@$s < @$t && scalar(@{Msetintersect($s,$t)}) == @$s);
 }
 sub set_is_proper_intersection {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
   my $minsize = (scalar(@$s) < scalar(@$t)) ? scalar(@$s) : scalar(@$t);
-  my $intersize = scalar(Msetintersect($s,$t));
+  my $intersize = scalar(@{Msetintersect($s,$t)});
   return ($intersize > 0 && $intersize < $minsize) ? 1 : 0;
 }
 
@@ -12147,7 +12142,7 @@ sub is_sidon_set {
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
 
   my %sums;
-  my @S = Mtoset($ra);  # Validated, sorted, deduped.
+  my @S = @{Mtoset(@$ra)};  # Validated, sorted, deduped.
   while (@S) {
     my $x = pop @S;
     return 0 if $x < 0;
@@ -12165,7 +12160,7 @@ sub is_sumfree_set {
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY';
 
   my %ina;
-  my @S = Mtoset($ra);  # Validated, sorted, deduped.
+  my @S = @{Mtoset(@$ra)};  # Validated, sorted, deduped.
   $ina{$_}=undef for @S;
   while (@S) {
     my $x = pop @S;

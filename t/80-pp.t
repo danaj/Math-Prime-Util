@@ -1042,8 +1042,8 @@ subtest 'misc number theory functions', sub {
     is_deeply( \@p, [ [1,1,1,1],[1,1,2],[1,3],[2,2],[4] ], "forpart(4)" );
   }
 
-  { my @set=([1,2],[qw/a b c/]);  my @out;
-    forsetproduct {push @out,"@_"} @set;
+  { my @out;
+    forsetproduct {push @out,"@_"} [1,2],[qw/a b c/];
     is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], "forsetproduct([1,2],[qw/a b c/])" );
   }
 
@@ -1280,7 +1280,7 @@ subtest 'powerfree', sub {
 ###############################################################################
 subtest 'set functions', sub {
   my @OS = (-5,0,1,2,8,17,20);
-  is_deeply([toset([-5,17,2,8,2,0,20,1,2])],\@OS,"toset");
+  is_deeply(toset(-5,17,2,8,2,0,20,1,2),\@OS,"toset");
   { my @S = @OS;  my $r = setinsert(\@S,1);
     is_deeply([$r,@S],[0,-5,0,1,2,8,17,20],"setinsert one element already in set");
   }
@@ -1317,17 +1317,17 @@ subtest 'set functions', sub {
 
   is(setcontains(primes(500),353),1,"setcontains with primes");
 
-  is_deeply([setbinop { $a * $b } [1,2,3],[2,3,4]],[2,3,4,6,8,9,12],"setbinop");
-  is_deeply([sumset([-1,0,1])], [-2,-1,0,1,2], "sumset");
+  is_deeply(setbinop(sub{$a * $b},[1,2,3],[2,3,4]),[2,3,4,6,8,9,12],"setbinop");
+  is_deeply(sumset([-1,0,1]), [-2,-1,0,1,2], "sumset");
 
   {
     my @A = (1,2,3,4);
     my @B = (3,4,5,6);
-    is_deeply([setunion(\@A,\@B)],[1,2,3,4,5,6],"setunion");
-    is_deeply([setintersect(\@A,\@B)],[3,4],"setintersect");
-    is_deeply([setminus(\@A,\@B)],[1,2],"setminus");
-    is_deeply([setminus(\@B,\@A)],[5,6],"setminus");
-    is_deeply([setdelta(\@A,\@B)],[1,2,5,6],"setdelta");
+    is_deeply(setunion(\@A,\@B),[1,2,3,4,5,6],"setunion");
+    is_deeply(setintersect(\@A,\@B),[3,4],"setintersect");
+    is_deeply(setminus(\@A,\@B),[1,2],"setminus");
+    is_deeply(setminus(\@B,\@A),[5,6],"setminus");
+    is_deeply(setdelta(\@A,\@B),[1,2,5,6],"setdelta");
 
     is(is_sidon_set(\@A),0,"is_sidon_set (false)");
     is(is_sidon_set([1,2,4,8,16,29,58]),1,"is_sidon_set (true)");

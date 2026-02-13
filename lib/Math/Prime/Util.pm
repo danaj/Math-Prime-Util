@@ -3501,13 +3501,19 @@ This is identical to L<List::MoreUtils::slide>.
 
 =head2 toset
 
-Given an array reference containing integers, returns a list ideal for set
-operations.  The result is numerically sorted with duplicates removed.
+   my $set = toset(52,-6,14,-6,0);  # $set = [-6,0,14,52]
+   say "number of elements in set: ",scalar(@$set);
+   say "smallest value: ",$set->[0];
+   say "largest value: ",$set->[-1];
+
+Given a list of integers, returns an array reference representing the
+integer set.
+The result is numerically sorted with duplicates removed.
 The input array must only contain integers (signed integers, bigints,
 objects that evaluate to integers, strings representing integers are all ok).
 This "set form" is optimal for the set operations.
 
-After the set is in this form, the size of the set is simply the list length.
+After the set is in this form, the size of the set is simply the length.
 Similarly the set minimum and maximum are trivial.  All values in the output
 will be either typed as either native integers (IV or UV) or bigints.
 
@@ -3615,9 +3621,9 @@ Similar to L</setcontains>, the first set B<must> be in set form.
 
 =head2 setbinop
 
-  my @sumset = setbinop { $a + $b } [1,2,3], [2,3,4];  # [3,4,5,6,7]
-  my @difset = setbinop { $a - $b } [1,2,3], [2,3,4];  # [-3,-2,-1,0,1]
-  my @setsum = setbinop { $a + $b } [1,2,3];           # [2,3,4,5,6]
+  my $sumset = setbinop { $a + $b } [1,2,3], [2,3,4];  # [3,4,5,6,7]
+  my $difset = setbinop { $a - $b } [1,2,3], [2,3,4];  # [-3,-2,-1,0,1]
+  my $setsum = setbinop { $a + $b } [1,2,3];           # [2,3,4,5,6]
 
 Given a code block and two array references containing integers, treats
 them as integer sets and constructs a new set from the cross product of
@@ -3632,7 +3638,7 @@ Our function uses B<much> less memory, as of Pari 2.17.0.
 =head2 sumset
 
 Given two array references of integers, treats them as integer sets and
-returns the sumset as a list in set form.
+returns the sumset as a set (a sorted de-duplicated array reference).
 
 If only one array reference is given, it will be used for both.
 It is common to see sumset applied to a single set.
@@ -3641,12 +3647,12 @@ This is equivalent to:
 
   my %r;  my @A=(2,4,6,8);  my @B=(3,5,7);
   forsetproduct { $r{vecsum(@_)}=undef; } \@A,\@B;
-  my @sumset = vecsort(keys %r);
+  my $sumset = [vecsort(keys %r)];
 
 or
 
-  my @sumset1 = setbinop { addint($a,$b) } [1,2,3];
-  my @sumset2 = setbinop { addint($a,$b) } [1,2,3], [2,3,4];
+  my $sumset1 = setbinop { addint($a,$b) } [1,2,3];
+  my $sumset2 = setbinop { addint($a,$b) } [1,2,3], [2,3,4];
 
 In Mathematica one can use C<Total[Tuples[A,B],{2}]>.
 In Pari/GP one can use C<setbinop((a,b)->a+b,X,Y)>.
@@ -3654,8 +3660,8 @@ In Pari/GP one can use C<setbinop((a,b)->a+b,X,Y)>.
 =head2 setunion
 
 Given exactly two array references of integers, treats them as sets and
-returns the union as a list.
-The returned list will have all elements that appear in either input set.
+returns the union as a set.
+The returned set will have all elements that appear in either input set.
 
 This is more efficient if the input is in set form
 (numerically sorted, no duplicates).
@@ -3670,8 +3676,8 @@ Sage's C<union> function on Set objects.
   my $is_disjoint = scalar(setintersect($set1, $set2)) == 0;
 
 Given exactly two array references of integers, treats them as sets and
-returns the intersection as a list.
-The returned list will have all elements that appear in both input sets.
+returns the intersection as a set.
+The returned set will have all elements that appear in both input sets.
 
 This is more efficient if the input is in set form
 (numerically sorted, no duplicates).
@@ -3684,8 +3690,8 @@ Sage's C<intersection> function on Set objects.
 =head2 setminus
 
 Given exactly two array references of integers, treats them as sets and
-returns the difference as a list.
-The returned list will have all elements that appear in the first set but
+returns the difference as a set.
+The returned set will have all elements that appear in the first set but
 not in the second.
 
 This is more efficient if the input is in set form
@@ -3699,8 +3705,8 @@ Sage's C<difference> function on Set objects.
 =head2 setdelta
 
 Given exactly two array references of integers, treats them as sets and
-returns the symmetric difference as a list.
-The returned list will have all elements that appear in only one of the
+returns the symmetric difference as a set.
+The returned set will have all elements that appear in only one of the
 two input sets.
 
 This is more efficient if the input is in set form

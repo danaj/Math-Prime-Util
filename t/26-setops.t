@@ -22,15 +22,48 @@ use warnings;
 #   set_is_superset
 #   set_is_proper_subset
 #   set_is_proper_superset
-#   set_is_proper_intersection (XS ok, PP not ok)
+#   set_is_proper_intersection (XS dups ok, PP not ok)
 #
-# first arg MUST be in set form (numerically sorted and no duplicates)
-# second arg is any integer list:
+# If given exactly two array references, both MUST be in set form.
+# If given one array reference and zero or more scalars,
+# the first MUST be in set form.  The scalars are any integer list.
 #   setinsert
-#   setcontains
-#   setcontainsany
 #   setremove
 #   setinvert
+#   setcontains
+#   setcontainsany
+
+
+# Returns boolean.  Sets as input.
+#   set_is_equal($S,$T)
+#   set_is_subset($S,$T)
+#   set_is_superset($S,$T)
+#   set_is_proper_subset($S,$T)
+#   set_is_proper_superset($S,$T)
+#   set_is_proper_intersection($S,$T)
+#   set_is_disjoint($S,$T)
+#   is_sidon_set($S)
+#   is_sumfree_set($S)
+#   setcontains($S,$T)     / setcontains($S,$x)
+#   setcontainsany($S,$T)  / setcontainsany($S,$x)
+#
+# Returns integer (new_size - old_size).
+# MODIFIES $S  <<<<<<<<<<
+# takes either a set or an unordered list
+#   setinsert($S,$T) / setinsert($S,$v,...)
+#   setremove($S,$T) / setremove($S,$v,...)
+#   setinvert($S,$T) / setinvert($S,$v,...)
+#
+# Returns set.  List as input.
+#   toset(...)
+# Returns set.  Sets as input.
+#   setunion($S,$T)
+#   setintersect($S,$T)
+#   setminus($S,$T)
+#   setdelta($S,$T)
+#   setbinop { } $S,$T
+#   sumset($S,$T)
+
 
 use Test::More;
 use Math::Prime::Util qw/setunion setintersect setminus setdelta
@@ -151,71 +184,71 @@ plan tests => 2        # specific tests
 
 ###### some specific tests
 
-is_deeply([setunion([1,2,3],[-11,-5,10])],[-11,-5,1,2,3,10],"setunion signed properly sorted");
-is( scalar setdelta([7,1,3,5,1], [3,7,8,3,9]), 4, "scalar setdelta with dups yields same as array" );
+is_deeply(setunion([1,2,3],[-11,-5,10]),[-11,-5,1,2,3,10],"setunion signed properly sorted");
+is_deeply(setdelta([7,1,3,5,1], [3,7,8,3,9]), [1,5,8,9], "setdelta with unsorted and dups works" );
 
 subtest 'toset', sub {
-  is_deeply( [toset([])],[],"toset: empty list" );
-  is_deeply( [toset([1])],[1],"toset: one value" );
-  is_deeply( [toset([3,-2,1,3,3,-14])],[-14,-2,1,3],"toset: simple" );
-  is_deeply( [toset([qw/1 -2147483647 3 2 2147483648/])],
+  is_deeply( toset(),[],"toset: empty list" );
+  is_deeply( toset(1),[1],"toset: one value" );
+  is_deeply( toset(3,-2,1,3,3,-14),[-14,-2,1,3],"toset: simple" );
+  is_deeply( toset(qw/1 -2147483647 3 2 2147483648/),
              [qw/-2147483647 1 2 3 2147483648/],
              "toset: 32-bit mix of sign and unsigned" );
-  is_deeply( [toset([qw/1 -9223372036854775807 3 2 9223372036854775808/])],
+  is_deeply( toset(qw/1 -9223372036854775807 3 2 9223372036854775808/),
              [qw/-9223372036854775807 1 2 3 9223372036854775808/],
              "toset: 64-bit mix of sign and unsigned" );
-  is_deeply( [toset([qw/9223372036854775812 9223372036854775809 9223372036854775810 9223372036854775811/])],
+  is_deeply( toset(qw/9223372036854775812 9223372036854775809 9223372036854775810 9223372036854775811/),
              [qw/9223372036854775809 9223372036854775810 9223372036854775811 9223372036854775812/],
              "toset: 63-bit values should be sorted correctly" );
   {
     my $b = powint(2,129);
     my @L = map { addint($b,$_) } (-2,3,0,0,-2,0,3);
     my @R = map { addint($b,$_) } (-2,0,3);
-    is_deeply( [toset(\@L)], \@R, "toset: 129-bit unsigned inputs" );
+    is_deeply( toset(@L), \@R, "toset: 129-bit unsigned inputs" );
   }
 };
 
 subtest 'union', sub {
   for my $info (@sets) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    is_deeply( [setunion($x,$y)], $aunion,     $str );
+    is_deeply( setunion($x,$y), $aunion,     $str );
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setunion($x,$y)], $aunion);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } (setunion($x,$y), $aunion);
     is_deeply($got, $exp, "vec $str");
   }
 };
 subtest 'intersect', sub {
   for my $info (@sets) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    is_deeply( [setintersect($x,$y)], $ainter, $str );
+    is_deeply( setintersect($x,$y), $ainter, $str );
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setintersect($x,$y)], $ainter);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } (setintersect($x,$y), $ainter);
     is_deeply($got, $exp, "vec $str");
   }
 };
 subtest 'minus (difference)', sub {
   for my $info (@sets) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    is_deeply( [setminus($x,$y)], $aminus, $str );
+    is_deeply( setminus($x,$y), $aminus, $str );
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setminus($x,$y)], $aminus);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } (setminus($x,$y), $aminus);
     is_deeply($got, $exp, "vec $str");
   }
 };
 subtest 'delta (symmetric difference)', sub {
   for my $info (@sets) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    is_deeply( [setdelta($x,$y)], $adelta, $str );
+    is_deeply( setdelta($x,$y), $adelta, $str );
   }
   for my $info (@vecs) {
     my($x,$y,$str,$aunion,$ainter,$aminus,$adelta) = @$info;
-    my($got,$exp) = map { [sort map {"$_"} @$_] } ([setdelta($x,$y)], $adelta);
+    my($got,$exp) = map { [sort map {"$_"} @$_] } (setdelta($x,$y), $adelta);
     is_deeply($got, $exp, "vec $str");
   }
 };
@@ -352,7 +385,7 @@ subtest 'setinsert', sub {
     setinsert($s,$v);
     #print "  # exp @{[toset(\@new)]}\n";
     #print "  # got @$s\n";
-    is_deeply( $s, [toset(\@new)], "setinsert $what" );
+    is_deeply( $s, toset(@new), "setinsert $what" );
   }
 };
 

@@ -701,7 +701,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
        ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str_,slen_)) ); \
        XSRETURN(1); } while(0)
 
-#define CREATE_AV(av) \
+#define CREATE_RETURN_AV(av) \
   do { \
        av = newAV(); \
        { \
@@ -738,7 +738,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
   { \
     AV* av_; \
     size_t k_, alen_ = in_alen; \
-    CREATE_AV(av_); \
+    CREATE_RETURN_AV(av_); \
     av_extend(av_, (SSize_t)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
       av_push(av_, NEWSVINT(sign,arr[k_])); \
@@ -835,6 +835,16 @@ static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what, bool readon
 #define DEBUG_PRINT_ARRAY(name,av) \
   { Size_t j_; SV** arr_ = AvARRAY(av);  printf("%s: [",name);  for(j_=0; j_<av_count(av); j_++) printf("%lu ",SvUV(arr_[j_])); printf("]\n"); }
 
+#define READ_UV_IARR(dst, src, itype) \
+  { \
+    UV n; \
+    int istatus = _validate_and_set(&n, aTHX_ src, IFLAG_ANY); \
+    if      (istatus == -1)                  itype |= IARR_TYPE_NEG; \
+    else if (istatus == 1 && n > (UV)IV_MAX) itype |= IARR_TYPE_POS; \
+    if (istatus == 0 || itype == IARR_TYPE_BAD) break; \
+    dst = n; \
+  }
+
 static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr)
 {
   Size_t len, i;
@@ -862,15 +872,7 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
       }
       r[i] = (UV)n;
     } else {
-      UV n;
-      int istatus = _validate_and_set(&n, aTHX_ iv, IFLAG_ANY);
-      if (istatus == -1) {
-        itype |= IARR_TYPE_NEG;
-      } else if (istatus == 1 && n > (UV)IV_MAX) {
-        itype |= IARR_TYPE_POS;
-      }
-      if (istatus == 0 || itype == IARR_TYPE_BAD) break;
-      r[i] = n;
+      READ_UV_IARR(r[i], iv, itype);
     }
   }
   if (i < len) {
@@ -1672,7 +1674,7 @@ sieve_primes(IN UV low, IN UV high)
   PREINIT:
     AV* av;
   PPCODE:
-    CREATE_AV(av);
+    CREATE_RETURN_AV(av);
     if ((low <= 2) && (high >= 2)) av_push(av, newSVuv( 2 ));
     if ((low <= 3) && (high >= 3)) av_push(av, newSVuv( 3 ));
     if ((low <= 5) && (high >= 5)) av_push(av, newSVuv( 5 ));
@@ -1716,7 +1718,7 @@ void primes(IN SV* svlo, IN SV* svhi = 0)
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      CREATE_AV(av);
+      CREATE_RETURN_AV(av);
       if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
       if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));
       if ((lo <= 5) && (hi >= 5)) av_push(av, newSVuv( 5 ));
@@ -1759,7 +1761,7 @@ void almost_primes(IN UV k, IN SV* svlo, IN SV* svhi = 0)
   PPCODE:
     if ((items == 2 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items >= 3 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      CREATE_AV(av);
+      CREATE_RETURN_AV(av);
       S = 0;
       if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
       else         n = range_omega_prime_sieve(&S, k, lo, hi);
@@ -1783,7 +1785,7 @@ void prime_powers(IN SV* svlo, IN SV* svhi = 0)
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      CREATE_AV(av);
+      CREATE_RETURN_AV(av);
       if (ix == 0) {         /* Prime power */
         if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
         if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));
@@ -1824,7 +1826,7 @@ lucky_numbers(IN SV* svlo, IN SV* svhi = 0)
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      CREATE_AV(av);
+      CREATE_RETURN_AV(av);
       if (lo == 0 && hi <= UVCONST(4000000000)) {
         uint32_t* lucky = lucky_sieve32(&nlucky, hi);
         for (i = 0; i < nlucky; i++)
@@ -1885,7 +1887,7 @@ void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
         (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
-      CREATE_AV(av);
+      CREATE_RETURN_AV(av);
       powerful = powerful_numbers_range(&npowerful, lo, hi, k);
       for (i = 0; i < npowerful; i++)
         av_push(av,newSVuv(powerful[i]));
@@ -4613,7 +4615,7 @@ void chebyshev_theta(IN SV* svn)
     XSRETURN(1);
 
 
-#define RETURN_SET_VALS(s)   /* Return sorted set values */ \
+#define RETURN_SET_REF(s)   /* Return sorted set values */ \
   { \
     UV *sdata; \
     unsigned long slen = iset_size(s); \
@@ -4625,7 +4627,13 @@ void chebyshev_theta(IN SV* svn)
     New(0, sdata, slen, UV); \
     iset_allvals(s, sdata); \
     iset_destroy(&s); \
-    RETURN_LIST_VALS( slen, sdata, sign ); \
+    RETURN_LIST_REF( slen, sdata, sign ); \
+  }
+#define RETURN_EMPTY_SET_REF() \
+  { \
+    AV* av_; \
+    CREATE_RETURN_AV(av_); \
+    XSRETURN(1); \
   }
 
 void sumset(IN SV* sva, IN SV* svb = 0)
@@ -4647,7 +4655,7 @@ void sumset(IN SV* sva, IN SV* svb = 0)
     if (alen == 0 || blen == 0) {
       if (rb != ra) Safefree(rb);
       Safefree(ra);
-      XSRETURN_EMPTY;
+      RETURN_EMPTY_SET_REF();
     }
     if (atype == IARR_TYPE_BAD || btype == IARR_TYPE_BAD)
       stype = IARR_TYPE_BAD;
@@ -4657,7 +4665,7 @@ void sumset(IN SV* sva, IN SV* svb = 0)
       if (rb != ra) Safefree(rb);
       Safefree(ra);
       DISPATCHPP();
-      return;
+      XSRETURN(1);
     }
     sign = IARR_TYPE_TO_STATUS(stype);
     /* Sumset */
@@ -4667,7 +4675,7 @@ void sumset(IN SV* sva, IN SV* svb = 0)
         iset_add(&s, ra[i]+rb[j], sign);
     if (rb != ra) Safefree(rb);
     Safefree(ra);
-    RETURN_SET_VALS(s);
+    RETURN_SET_REF(s);
 
 void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: &$;$
@@ -4689,7 +4697,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     CHECK_ARRAYREF(sva);
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
-    if (alen == 0) XSRETURN_EMPTY;
+    if (alen == 0) RETURN_EMPTY_SET_REF();
 
     if (svb == 0) {
       avb = ava;
@@ -4698,10 +4706,10 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
       avb = (AV*) SvRV(svb);
     }
     blen = av_count(avb);
-    if (blen == 0) XSRETURN_EMPTY;
+    if (blen == 0) RETURN_EMPTY_SET_REF();
 
     /* TODO: Something in the block calls is killing the stack on older Perls.
-     * It is broken in 5.10.0 and earlier, and ok in 5.10.1 and later.  Force
+     * It is failing in 5.10.0 and earlier, and ok in 5.10.1 and later.  Force
      * call into the PP routine. */
     i = 0;
     asv = bsv = 0;
@@ -4731,7 +4739,7 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
       if (bsv != asv) Safefree(bsv);
       if (asv != 0)   Safefree(asv);
       DISPATCHPP();
-      return;
+      XSRETURN(1);
     }
 
     /* ====== Call block on cross product, insert result into set ====== */
@@ -4784,10 +4792,10 @@ void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
     if (i < alen || j < blen) {
       iset_destroy(&s);
       DISPATCHPP();
-      return;
+      XSRETURN(1);
     }
     /* ====== Get sorted set values.  Put on return stack. ====== */
-    RETURN_SET_VALS(s);
+    RETURN_SET_REF(s);
   }
 
 void setunion(IN SV* sva, IN SV* svb)
@@ -4860,13 +4868,13 @@ void setunion(IN SV* sva, IN SV* svb)
       }
       Safefree(ra);
       Safefree(rb);
-      RETURN_LIST_VALS(rlen, r, pcmp);
+      RETURN_LIST_REF(rlen, r, pcmp);
     }
     /* if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) { .. isets .. } */
     Safefree(ra);
     Safefree(rb);
     DISPATCHPP();
-    return;
+    XSRETURN(1);
 
 void set_is_disjoint(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
@@ -5287,18 +5295,27 @@ void is_sumfree_set(IN SV* sva)
     DISPATCHPP();
     XSRETURN(1);
 
-void toset(IN SV* sva)
+void toset(...)
+  PROTOTYPE: @
   PREINIT:
-    int atype;
-    UV *ra;
-    size_t alen;
+    int type;
+    size_t i, len;
+    UV n, *L;
   PPCODE:
-    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "toset");
-    if (atype == IARR_TYPE_BAD) {
-      DISPATCHPP();
-      return;
+    if (items == 0) RETURN_EMPTY_SET_REF();
+    len = (size_t) items;
+    New(0, L, len, UV);
+    type = IARR_TYPE_ANY;
+    for (i = 0; i < len; i++) {
+      READ_UV_IARR(L[i], ST(i), type);
     }
-    RETURN_LIST_VALS(alen, ra, atype != IARR_TYPE_NEG);
+    if (i >= len && type != IARR_TYPE_BAD) {
+      sort_dedup_uv_array(L, type == IARR_TYPE_NEG, &len);
+      RETURN_LIST_REF(len, L, type != IARR_TYPE_NEG);
+    }
+    Safefree(L);
+    DISPATCHPP();
+    XSRETURN(1);
 
 
 void vecsort(...)
@@ -5319,15 +5336,7 @@ void vecsort(...)
       New(0, L, len, UV);
       type = IARR_TYPE_ANY;
       for (i = 0; i < len; i++) {
-        UV n;
-        int istatus = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
-        if (istatus == -1) {
-          type |= IARR_TYPE_NEG;
-        } else if (istatus == 1 && n > (UV)IV_MAX) {
-          type |= IARR_TYPE_POS;
-        }
-        if (istatus == 0 || type == IARR_TYPE_BAD) break;
-        L[i] = n;
+        READ_UV_IARR(L[i], ST(i), type);
       }
       if (i < len)
         type = IARR_TYPE_BAD;

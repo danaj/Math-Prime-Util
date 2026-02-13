@@ -226,7 +226,7 @@ Tags:
   vecsample(k,@list)                  return k random elements of list
   vecslide { ... } @list              calls block for each pair in list
 
-  toset(\@A)                          convert to unique sorted integer list
+  toset(...)                          convert to unique sorted integer aref
   setinsert(\@A,$v)                   insert integer v into integer set A
   setinsert(\@A,\@B)                  insert list B values into integer set A
   setremove(\@A,$v)                   remove integer v from integer set A
