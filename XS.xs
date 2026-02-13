@@ -736,13 +736,20 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 
 #define RETURN_LIST_REF(in_alen,arr,sign)   /* Return array values as ref */ \
   { \
-    AV* av_; \
     size_t k_, alen_ = in_alen; \
-    CREATE_RETURN_AV(av_); \
+    AV* av_ = newAV(); \
     av_extend(av_, (SSize_t)alen_); \
     for (k_ = 0; k_ < alen_; k_++) \
       av_push(av_, NEWSVINT(sign,arr[k_])); \
     Safefree(arr); \
+    ST(0) = sv_2mortal(newRV_noinc((SV*) av_)); \
+    XSRETURN(1); \
+  }
+
+#define RETURN_EMPTY_LIST_REF() \
+  { \
+    AV* av_ = newAV(); \
+    ST(0) = sv_2mortal(newRV_noinc((SV*) av_)); \
     XSRETURN(1); \
   }
 
@@ -4620,21 +4627,12 @@ void chebyshev_theta(IN SV* svn)
     UV *sdata; \
     unsigned long slen = iset_size(s); \
     int sign = iset_sign(s); \
-    if (GIMME_V == G_SCALAR) { \
-      iset_destroy(&s); \
-      XSRETURN_UV(slen); \
-    } \
     New(0, sdata, slen, UV); \
     iset_allvals(s, sdata); \
     iset_destroy(&s); \
     RETURN_LIST_REF( slen, sdata, sign ); \
   }
-#define RETURN_EMPTY_SET_REF() \
-  { \
-    AV* av_; \
-    CREATE_RETURN_AV(av_); \
-    XSRETURN(1); \
-  }
+#define RETURN_EMPTY_SET_REF()  RETURN_EMPTY_LIST_REF()
 
 void sumset(IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: $;$

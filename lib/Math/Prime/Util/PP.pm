@@ -11780,7 +11780,7 @@ sub setintersect {
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
                                      && (ref($rb) || '') eq 'ARRAY';
   ($ra,$rb) = ($rb,$ra) if scalar(@$ra) > scalar(@$rb);  # Performance
-  if (scalar(@$ra) == 0) { return wantarray ? () : 0; }
+  return [] if scalar(@$ra) == 0;
   my %ina;
   undef @ina{@$ra};
   Mtoset(grep { exists $ina{$_} } @$rb);
@@ -11789,7 +11789,7 @@ sub setminus {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
                                      && (ref($rb) || '') eq 'ARRAY';
-  return @$ra if scalar(@$rb) == 0;
+  return $ra if scalar(@$rb) == 0;
   my %inb;
   undef @inb{@$rb};
   Mtoset(grep { !exists $inb{$_} } @$ra);
@@ -11798,8 +11798,8 @@ sub setdelta {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
                                      && (ref($rb) || '') eq 'ARRAY';
-  return @$ra if scalar(@$rb) == 0;
-  return @$rb if scalar(@$ra) == 0;
+  return $ra if scalar(@$rb) == 0;
+  return $rb if scalar(@$ra) == 0;
   my(%ina, %inb);
   undef @ina{@$ra};
   undef @inb{@$rb};
