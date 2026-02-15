@@ -904,6 +904,53 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
   return itype;
 }
 
+static int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svbase, size_t len)
+{
+  size_t i;
+  int itype = IARR_TYPE_ANY;
+  UV  *r;
+  *retlen = len;
+  if (len == 0) {
+    *ret = 0;
+    return itype;
+  }
+  New(0, r, len, UV);
+  for (i = 0; i < len; i++) {
+    SV *iv = svbase[i];
+    if (SVNUMTEST(iv)) {
+      IV n = SvIVX(iv);
+      if (n < 0) {
+        if (SvIsUV(iv))  itype |= IARR_TYPE_POS;
+        else             itype |= IARR_TYPE_NEG;
+        if (itype == IARR_TYPE_BAD) break;
+      }
+      r[i] = (UV)n;
+    } else {
+      READ_UV_IARR(r[i], iv, itype);
+    }
+  }
+  if (i < len) {
+    Safefree(r);
+    *ret = 0;
+    return IARR_TYPE_BAD;
+  }
+  *ret = r;
+  if (want_sort) {
+    if (itype == IARR_TYPE_NEG) {
+      for (i = 1; i < len; i++)
+        if ( (IV)r[i] <= (IV)r[i-1] )
+          break;
+    } else {
+      for (i = 1; i < len; i++)
+        if (r[i] <= r[i-1])
+          break;
+    }
+    if (i < len)
+      sort_dedup_uv_array(r, itype == IARR_TYPE_NEG, retlen);
+  }
+  return itype;
+}
+
 static int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
 {
   SSize_t len, i;
@@ -965,7 +1012,9 @@ typedef struct { /* lo in 0, hi in 1, cached values in rest */
   signed char status[2+MPU_SC_SIZE];
 } set_data_t;
 
-#define _TRI_VAL(x) (((x) > 0) - ((x) < 0))  /* neg => -1, pos => 1, 0 => 0 */
+static void _sc_clear_cache(set_data_t *cache) {
+  memset(cache->status, 0, sizeof(signed char) * (2+MPU_SC_SIZE));
+}
 
 #define _SC_GET_VALUE(statvar, var, arr, i) \
   statvar = _validate_and_set(&var, aTHX_ arr[i], IFLAG_ANY); \
@@ -982,7 +1031,7 @@ typedef struct { /* lo in 0, hi in 1, cached values in rest */
         var     = cache->value[imod_]; \
       } else { \
         _SC_GET_VALUE(statvar, var, arr, i) \
-        cache->status[imod_] = _TRI_VAL(statvar); \
+        cache->status[imod_] = statvar; \
         cache->value[imod_]  = var; \
         cache->index[imod_]  = i; \
       } \
@@ -996,7 +1045,7 @@ static int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, int loindex, int hi
   } else {
     _SC_GET_VALUE(*lostatus, *loval, avarr, loindex);
     if (cache) {
-      cache->status[0] = _TRI_VAL(*lostatus);
+      cache->status[0] = *lostatus;
       cache->value[0]  = *loval;
     }
   }
@@ -1005,7 +1054,7 @@ static int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, int loindex, int hi
   } else {
     _SC_GET_VALUE(*histatus, *hival, avarr, hiindex);
     if (cache) {
-      cache->status[1] = _TRI_VAL(*histatus);
+      cache->status[1] = *histatus;
       cache->value[1] = *hival;
     }
   }
@@ -1094,17 +1143,14 @@ static int is_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
 }
 
 /* 1 if deleted, 0 if not deleted, -1 if need to punt to PP */
-static int del_from_set(pTHX_ AV* ava, SV* svb) {
-  UV b;
-  int bstatus, index;
-  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-  if (bstatus == 0) return -1;
-  index = index_in_set(aTHX_ ava, 0, bstatus, b);
-  if (index <= 0) return index;
+static int del_from_set(pTHX_ AV* ava, int bstatus, UV b) {
+  int index = index_in_set(aTHX_ ava, 0, bstatus, b);
+  if (index <= 0)
+    return index;
   {
     SV **arr = AvARRAY(ava);
     SV *savep = arr[index-1];
-    size_t alen = av_count(ava);
+    Size_t alen = av_count(ava);
     if (index > alen/2) {
       if (index < alen) {
         memmove(arr+index-1, arr+index, sizeof(SV*) * (alen-index));
@@ -1121,7 +1167,36 @@ static int del_from_set(pTHX_ AV* ava, SV* svb) {
   }
   return 1;
 }
-
+/* 1 if inserted, 0 if not inserted, -1 if need to punt to PP */
+static int ins_into_set(pTHX_ AV* ava, int bstatus, UV b) {
+  int index = insert_index_in_set(aTHX_ ava, 0, bstatus, b);
+  if (index <= 0)
+    return index;
+  {
+    SV *newb, **arr;
+    SV* newsvb = NEWSVINT(bstatus, b);
+    Size_t alen = av_count(ava);
+    if ((Size_t)index > alen/2) {
+      av_push(ava, newsvb);
+      if ((Size_t)index <= alen) {
+        arr = AvARRAY(ava);
+        newb = arr[alen];
+        memmove(arr+index, arr+index-1, sizeof(SV*) * (alen-(index-1)));
+        arr[index-1] = newb;
+      }
+    } else {
+      av_unshift(ava, 1);
+      av_store(ava, 0, newsvb);
+      if (index > 1) {
+        arr = AvARRAY(ava);
+        newb = arr[0];
+        memmove(arr+0, arr+1, sizeof(SV*) * index);
+        arr[index-1] = newb;
+      }
+    }
+  }
+  return 1;
+}
 
 /******************************************************************************/
 
@@ -4940,259 +5015,264 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     DISPATCHPP();
     XSRETURN(1);
 
-void setcontains(IN SV* sva, IN SV* svb)
+void setcontains(IN SV* sva, ...)
   ALIAS:
     setcontainsany = 1
-  PROTOTYPE: $$
+  PROTOTYPE: $@
   PREINIT:
     UV b;
     AV *ava;
-    int bstatus, subset;
+    int bstatus, subset, findall;
     Size_t alen, blen, i;
     DECL_ARREF(arb);
   PPCODE:
     CHECK_ARRAYREF(sva);   /* First argument is a set as array ref */
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
-    /* Case of the second argument being a single integer. */
-    if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
-      bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-      subset = is_in_set(aTHX_ ava, 0, bstatus, b);
-    } else { /* The second argument is an array reference (set) */
-      USE_ARREF(arb, svb, SUBNAME, AR_READONLY);
-      blen = len_arb;
-      if (ix == 0 && blen > alen) {
-        subset = 0;  /* cannot fit */
-      } else {
-        int findall = (ix == 0) ? 1 : 0;
-        set_data_t cache = {0};
-        /* setcontains:    if we find anything that is NOT in SETA, return 0
-         * setcontainsany: if we find anything that IS     in SETA, return 1  */
-        for (i = 0, subset = findall; i < blen && subset == findall; i++) {
-          bstatus = _validate_and_set(&b, aTHX_ FETCH_ARREF(arb,i), IFLAG_ANY);
-          subset = is_in_set(aTHX_ ava, &cache, bstatus, b);
-        }
+    if (items < 2)  RETURN_NPARITY(1);
+    if (SvMAGICAL(ava) || SvREADONLY(ava) || !AvREAL(ava)) {
+      /* Punt these rare complicated cases to Perl */
+      DISPATCHPP();
+      XSRETURN(1);
+    }
+    findall = ix == 0 ? 1 : 0;
+    if (items == 2 && SvROK(ST(1)) && SvTYPE(SvRV(ST(1))) == SVt_PVAV) {
+      set_data_t svcache;
+      USE_ARREF(arb, ST(1), SUBNAME, AR_READONLY);
+      /* If setcontainsany and B is bigger than A, swap them for performance. */
+      if (ix == 1 && len_arb > alen && svarr_arb != 0) {
+        ava = avp_arb;
+        alen = len_arb;
+        USE_ARREF(arb, ST(0), SUBNAME, AR_READONLY);
       }
+      blen = len_arb;
+      subset = ix == 0 && blen > alen  ?  0  :  findall;
+      _sc_clear_cache(&svcache);
+      /* setcontains:    if we find anything that is NOT in SETA, return 0
+       * setcontainsany: if we find anything that IS     in SETA, return 1  */
+      for (i = 0; i < blen && subset == findall; i++) {
+        bstatus = _validate_and_set(&b, aTHX_ FETCH_ARREF(arb,i), IFLAG_ANY);
+        subset = is_in_set(aTHX_ ava, &svcache, bstatus, b);
+      }
+    } else {
+      UV *rb;
+      int btype = array_to_int_array(aTHX_ &blen, &rb, 1, &ST(1), items-1);
+      bstatus = IARR_TYPE_TO_STATUS(btype);
+      subset = bstatus == 0 ? -1 : ix == 0 && blen > alen  ?  0  :  findall;
+      if (blen <= 4) {
+        for (i = 0; i < blen && subset == findall; i++)
+          subset = is_in_set(aTHX_ ava, 0, bstatus, rb[i]);
+      } else {
+        set_data_t svcache;
+        _sc_clear_cache(&svcache);
+        for (i = 0; i < blen && subset == findall; i++)
+          subset = is_in_set(aTHX_ ava, &svcache, bstatus, rb[i]);
+      }
+      Safefree(rb);
     }
     if (subset != -1)
       RETURN_NPARITY(subset);
     DISPATCHPP();
     XSRETURN(1);
 
-void setinsert(IN SV* sva, IN SV* svb)
-  PROTOTYPE: $$
-  PREINIT:
-    UV b;
-    AV *ava;
-    int bstatus;
-  PPCODE:
-    /* First argument is an array reference */
-    ava = _simple_array_ref_from_sv(aTHX_ sva, "setinsert", FALSE);
-    /* Case of the second argument being a single integer. */
-    if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
-      bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-      if (bstatus != 0) {
-        Size_t count = av_count(ava);
-        int index = insert_index_in_set(aTHX_ ava, 0, bstatus, b);
-        if (index == 0) RETURN_NPARITY(0);
-        if (index > 0) { /* Insert into array reference */
-          SV *newb, **arr;
-          SV* newsvb = NEWSVINT(bstatus, b);
-          if ((Size_t)index > count/2) {
-            av_push(ava, newsvb);
-            if ((Size_t)index <= count) {
-              arr = AvARRAY(ava);
-              newb = arr[count];
-              memmove(arr+index, arr+index-1, sizeof(SV*) * (count-(index-1)));
-              arr[index-1] = newb;
-            }
-          } else {
-            av_unshift(ava, 1);
-            av_store(ava, 0, newsvb);
-            if (index > 1) {
-              arr = AvARRAY(ava);
-              newb = arr[0];
-              memmove(arr+0, arr+1, sizeof(SV*) * index);
-              arr[index-1] = newb;
-            }
-          }
-          RETURN_NPARITY(1);
-        }
-      }
-    } else {
-      UV *rb;
-      size_t i, blen, nbeg, nmid, nend, nmidcheck;
-      int btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setinsert arg 2");
-      bstatus = IARR_TYPE_TO_STATUS(btype);
-      if (bstatus != 0) {
-        Size_t alen = av_count(ava);
-        int alostatus, ahistatus;
-        UV  alo, ahi;
-        set_data_t cache = {0};
-
-        /* 1. ava is empty.  push everything and we're done. */
-        if (alen == 0) {
-          av_extend(ava, blen);
-          for (i = 0; i < blen; i++)
-            av_push(ava, NEWSVINT(bstatus, rb[i]));
-          Safefree(rb);
-          RETURN_NPARITY(blen);
-        }
-        /* Get hi and lo values of set. */
-        if (_sc_set_lohi(aTHX_ AvARRAY(ava), &cache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
-          if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0)
-            croak("%s: expected numerically ascending sorted input", SUBNAME);
-          /* Both lo/hi are not bigint, so there are no bigints in the set. */
-          nbeg = nend = nmid = 0;
-          /* 1. Find out how many elements go in front. */
-          while (nbeg < blen && _sign_cmp(bstatus,rb[nbeg],alostatus,alo) < 0)
-            nbeg++;
-            ;
-          /* 2. Find out how many elements go at the end. */
-          while (nend < blen-nbeg && _sign_cmp(bstatus,rb[blen-1-nend],ahistatus,ahi) > 0)
-            nend++;
-          /* 3. In-place insert everything in the middle. */
-          nmidcheck = blen - nbeg - nend;
-          if (nmidcheck > 0) {
-            size_t *insert_idx;
-            SV **insert_sv;
-            New(0, insert_idx, nmidcheck, size_t);
-            New(0, insert_sv,  nmidcheck, SV*);
-            for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
-              int index = insert_index_in_set(aTHX_ ava,&cache,bstatus,rb[i]);
-              if (index < 0)
-                croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
-              if (index > 0) {
-                insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
-                insert_idx[nmid] = index-1;                /* Where to insert */
-                nmid++;
-              }
-            }
-            av_extend(ava, alen + nmid + nbeg + nend);
-            if (nmid > 0) {
-              SV** arr;
-              unsigned long index_lastorig = alen-1;
-              unsigned long index_moveto   = index_lastorig + nmid;
-
-              /* Push new values on end so Perl calculates array right. */
-              for (i = 0; i < nmid; i++)
-                av_push(ava, insert_sv[i]);
-              arr = AvARRAY(ava);
-              /* SV* pointer manipulation to insert new values in place. */
-              for (i = 0; i < nmid; i++) {
-                size_t j     = nmid-1-i;
-                size_t idx   = insert_idx[j];
-                size_t nmove = index_lastorig - idx + 1;
-                if (nmove > 0) {
-                  size_t moveto = index_moveto - nmove + 1;
-                  memmove(arr+moveto, arr+idx, sizeof(SV*) * nmove);
-                  index_lastorig -= nmove;
-                  index_moveto -= nmove;
-                }
-                arr[index_moveto--] = insert_sv[j];
-              }
-            }
-            Safefree(insert_sv);
-            Safefree(insert_idx);
-          }
-          /* 4. Insert at front */
-          if (nbeg > 0) {
-            av_unshift(ava, nbeg);
-            for (i = 0; i < nbeg; i++)
-              av_store(ava, i, NEWSVINT(bstatus, rb[i]));
-          }
-          /* 5. Push onto back */
-          if (nend > 0) {
-            for (i = 0; i < nend; i++)
-              av_push(ava, NEWSVINT(bstatus, rb[blen-nend+i]));
-          }
-          Safefree(rb);
-          RETURN_NPARITY(nbeg+nmid+nend);
-        }
-      }
-      Safefree(rb);
-    }
-    DISPATCHPP();
-    XSRETURN(1);
-
-void setremove(IN SV* sva, IN SV* svb)
-  PROTOTYPE: $$
+void setinsert(IN SV* sva, ...)
+  PROTOTYPE: $@
   PREINIT:
     AV *ava;
     Size_t alen, blen, i;
+    UV *rb;
+    int btype, bstatus;
   PPCODE:
-    if ((!SvROK(sva)) || (SvTYPE(SvRV(sva)) != SVt_PVAV))
-      croak("%s: expected array reference", SUBNAME);
+    CHECK_ARRAYREF(sva);   /* First argument is a set as array ref */
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
-    if (alen == 0)
+    if (items < 2)
       RETURN_NPARITY(0);
     if (SvMAGICAL(ava) || SvREADONLY(ava) || !AvREAL(ava)) {
       /* Punt these rare complicated cases to Perl */
       DISPATCHPP();
       XSRETURN(1);
     }
-    /* Case of the second argument being a single integer. */
-    if (!SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV) {
-      int res = del_from_set(aTHX_ ava, svb);
-      if (res >= 0) RETURN_NPARITY(res);
+
+    if (SvROK(ST(1)) && SvTYPE(SvRV(ST(1))) == SVt_PVAV) {
+      if (items != 2)
+        croak("setinsert: expected integer list or single array reference");
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, ST(1), "setinsert");
     } else {
-      blen = av_count((AV*)SvRV(svb));
+      btype = array_to_int_array(aTHX_ &blen, &rb, 1, &ST(1), items-1);
+    }
+    bstatus = IARR_TYPE_TO_STATUS(btype);
+
+    if (bstatus != 0 && blen <= 4) {
+      int res = 0;
+      size_t nins = 0;
+      for (i = 0; res >= 0 && i < blen; i++) {
+        res = ins_into_set(aTHX_ ava, bstatus, rb[i]);
+        nins += (res > 0);
+      }
+      if (res >= 0) { Safefree(rb); RETURN_NPARITY(nins); }
+    } else if (bstatus != 0) {
+      size_t nbeg, nmid, nend, nmidcheck;
+      int alostatus, ahistatus;
+      UV  alo, ahi;
+      set_data_t svcache;
+
+      /* 1. ava is empty.  push everything and we're done. */
+      if (alen == 0) {
+        av_extend(ava, blen);
+        for (i = 0; i < blen; i++)
+          av_push(ava, NEWSVINT(bstatus, rb[i]));
+        Safefree(rb);
+        RETURN_NPARITY(blen);
+      }
+      _sc_clear_cache(&svcache);
+      /* Get hi and lo values of set. */
+      if (_sc_set_lohi(aTHX_ AvARRAY(ava), &svcache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
+        if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0)
+          croak("%s: expected numerically ascending sorted input", SUBNAME);
+        /* Both lo/hi are not bigint, so there are no bigints in the set. */
+        nbeg = nend = nmid = 0;
+        /* 1. Find out how many elements go in front. */
+        while (nbeg < blen && _sign_cmp(bstatus,rb[nbeg],alostatus,alo) < 0)
+          nbeg++;
+          ;
+        /* 2. Find out how many elements go at the end. */
+        while (nend < blen-nbeg && _sign_cmp(bstatus,rb[blen-1-nend],ahistatus,ahi) > 0)
+          nend++;
+        /* 3. In-place insert everything in the middle. */
+        nmidcheck = blen - nbeg - nend;
+        if (nmidcheck > 0) {
+          size_t *insert_idx;
+          SV **insert_sv;
+          New(0, insert_idx, nmidcheck, size_t);
+          New(0, insert_sv,  nmidcheck, SV*);
+          for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
+            int index = insert_index_in_set(aTHX_ ava,&svcache,bstatus,rb[i]);
+            if (index < 0)
+              croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
+            if (index > 0) {
+              insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
+              insert_idx[nmid] = index-1;                /* Where to insert */
+              nmid++;
+            }
+          }
+          av_extend(ava, alen + nmid + nbeg + nend);
+          if (nmid > 0) {
+            SV** arr;
+            unsigned long index_lastorig = alen-1;
+            unsigned long index_moveto   = index_lastorig + nmid;
+
+            /* Push new values on end so Perl calculates array correctly. */
+            for (i = 0; i < nmid; i++)
+              av_push(ava, insert_sv[i]);
+            arr = AvARRAY(ava);
+            /* SV* pointer manipulation to insert new values in place. */
+            for (i = 0; i < nmid; i++) {
+              size_t j     = nmid-1-i;
+              size_t idx   = insert_idx[j];
+              size_t nmove = index_lastorig - idx + 1;
+              if (nmove > 0) {
+                size_t moveto = index_moveto - nmove + 1;
+                memmove(arr+moveto, arr+idx, sizeof(SV*) * nmove);
+                index_lastorig -= nmove;
+                index_moveto -= nmove;
+              }
+              arr[index_moveto--] = insert_sv[j];
+            }
+          }
+          Safefree(insert_sv);
+          Safefree(insert_idx);
+        }
+        /* 4. Insert at front */
+        if (nbeg > 0) {
+          av_unshift(ava, nbeg);
+          for (i = 0; i < nbeg; i++)
+            av_store(ava, i, NEWSVINT(bstatus, rb[i]));
+        }
+        /* 5. Push onto back */
+        if (nend > 0) {
+          for (i = 0; i < nend; i++)
+            av_push(ava, NEWSVINT(bstatus, rb[blen-nend+i]));
+        }
+        Safefree(rb);
+        RETURN_NPARITY(nbeg+nmid+nend);
+      }
+    }
+    Safefree(rb);
+    DISPATCHPP();
+    XSRETURN(1);
+
+void setremove(IN SV* sva, ...)
+  PROTOTYPE: $@
+  PREINIT:
+    AV *ava;
+    Size_t alen, blen, i;
+    UV *rb;
+    int btype, bstatus;
+  PPCODE:
+    CHECK_ARRAYREF(sva);   /* First argument is a set as array ref */
+    ava = (AV*) SvRV(sva);
+    alen = av_count(ava);
+    if (alen == 0 || items < 2)
+      RETURN_NPARITY(0);
+    if (SvMAGICAL(ava) || SvREADONLY(ava) || !AvREAL(ava)) {
+      /* Punt these rare complicated cases to Perl */
+      DISPATCHPP();
+      XSRETURN(1);
+    }
+    if (SvROK(ST(1)) && SvTYPE(SvRV(ST(1))) == SVt_PVAV) {
+      if (items != 2)
+        croak("setremove: expected integer list or single array reference");
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, ST(1), "setremove");
+    } else {
+      btype = array_to_int_array(aTHX_ &blen, &rb, 1, &ST(1), items-1);
+    }
+    if (btype != IARR_TYPE_BAD) {
+      bstatus = IARR_TYPE_TO_STATUS(btype);
       if (blen <= 5 || alen <= 20) {  /* SIMPLE DELETE LOOP */
         int res = 0;
         size_t ndel = 0;
-        DECL_ARREF(avb);
-        USE_ARREF(avb, svb, SUBNAME, AR_READONLY);
-        blen = len_avb;
         for (i = 0; res >= 0 && i < blen; i++) {
-          res = del_from_set(aTHX_ ava, FETCH_ARREF(avb,i));
+          res = del_from_set(aTHX_ ava, bstatus, rb[i]);
           if (res > 0) ndel++;
         }
-        if (res >= 0) RETURN_NPARITY(ndel);
-                /* TODO: tune this crossover.  It's not critical. */
+        if (res >= 0) { Safefree(rb); RETURN_NPARITY(ndel); }
       } else if (blen < 500 || (blen*100) < alen) { /* ONE PASS DELETE */
-        UV *rb;
-        int btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setremove arg 2");
-        int bstatus = IARR_TYPE_TO_STATUS(btype);
-        if (bstatus != 0) {
-          Size_t *del_idx, ndel = 0;
-          set_data_t cache = {0};
-          /* Create index list to remove */
-          New(0, del_idx, blen, Size_t);
-          for (i = 0; i < blen; i++) {
-            int index = index_in_set(aTHX_ ava, &cache, bstatus, rb[i]);
-            if (index < 0)
-              croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
-            if (index > 0)
-              del_idx[ndel++] = index-1;
-          }
-          Safefree(rb);
-          if (ndel > 0) {
-            SV **arr = AvARRAY(ava);
-            size_t to = del_idx[0];
-            for (i = 0; i < ndel; i++) {
-              size_t idx = del_idx[i];
-              size_t beg = idx+1;
-              size_t len = (i+1) >= ndel ?  alen-beg  :  del_idx[i+1]-beg;
-              SvREFCNT_dec_NN(arr[idx]);
-              if (len > 0) {
-                memmove(arr+to, arr+beg, sizeof(SV*) * len);
-                to += len;
-              }
-            }
-            Zero(arr + alen - ndel, ndel, SV*);
-            av_fill(ava, alen-ndel-1);
-          }
-          Safefree(del_idx);
-          RETURN_NPARITY(ndel);
+        Size_t *del_idx, ndel = 0;
+        set_data_t svcache;
+        _sc_clear_cache(&svcache);
+        /* Create index list to remove */
+        New(0, del_idx, blen, Size_t);
+        for (i = 0; i < blen; i++) {
+          int index = index_in_set(aTHX_ ava, &svcache, bstatus, rb[i]);
+          if (index < 0)
+            croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
+          if (index > 0)
+            del_idx[ndel++] = index-1;
         }
         Safefree(rb);
+        if (ndel > 0) {
+          SV **arr = AvARRAY(ava);
+          size_t to = del_idx[0];
+          for (i = 0; i < ndel; i++) {
+            size_t idx = del_idx[i];
+            size_t beg = idx+1;
+            size_t len = (i+1) >= ndel ?  alen-beg  :  del_idx[i+1]-beg;
+            SvREFCNT_dec_NN(arr[idx]);
+            if (len > 0) {
+              memmove(arr+to, arr+beg, sizeof(SV*) * len);
+              to += len;
+            }
+          }
+          Zero(arr + alen - ndel, ndel, SV*);
+          av_fill(ava, alen-ndel-1);
+        }
+        Safefree(del_idx);
+        RETURN_NPARITY(ndel);
       } else { /* CLEAR AND GREP */
-        int atype, btype,astatus, del_complete = 0;
-        UV *ra = 0, *rb = 0;
+        int atype, astatus, del_complete = 0;
+        UV *ra = 0;
         atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
-        btype = (atype == IARR_TYPE_BAD) ? IARR_TYPE_BAD
-              : arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
         if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
           size_t ia = 0, ib = 0;
           int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
@@ -5217,6 +5297,7 @@ void setremove(IN SV* sva, IN SV* svb)
     }
     DISPATCHPP();
     XSRETURN(1);
+
 
 void is_sidon_set(IN SV* sva)
   PROTOTYPE: $
@@ -5301,16 +5382,9 @@ void toset(...)
     UV n, *L;
   PPCODE:
     if (items == 0) RETURN_EMPTY_SET_REF();
-    len = (size_t) items;
-    New(0, L, len, UV);
-    type = IARR_TYPE_ANY;
-    for (i = 0; i < len; i++) {
-      READ_UV_IARR(L[i], ST(i), type);
-    }
-    if (i >= len && type != IARR_TYPE_BAD) {
-      sort_dedup_uv_array(L, type == IARR_TYPE_NEG, &len);
+    type = array_to_int_array(aTHX_ &len, &L, 1, &ST(0), items);
+    if (type != IARR_TYPE_BAD)
       RETURN_LIST_REF(len, L, type != IARR_TYPE_NEG);
-    }
     Safefree(L);
     DISPATCHPP();
     XSRETURN(1);
@@ -5330,14 +5404,7 @@ void vecsort(...)
         croak("vecsort: expected integer list or single array reference");
       type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), "vecsort");
     } else {
-      len = (size_t) items;
-      New(0, L, len, UV);
-      type = IARR_TYPE_ANY;
-      for (i = 0; i < len; i++) {
-        READ_UV_IARR(L[i], ST(i), type);
-      }
-      if (i < len)
-        type = IARR_TYPE_BAD;
+      type = array_to_int_array(aTHX_ &len, &L, 0, &ST(0), items);
     }
     if (GIMME_V != G_ARRAY) /* In scalar context, return number of elements */
       XSRETURN_UV(len);

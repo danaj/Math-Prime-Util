@@ -32,46 +32,46 @@ sub _hash32 {
 # Verify toset
 
 {
-  my @s = toset(\@set3);
-  die "toset on descending odds didn't work right" unless vecequal(\@set1,\@s);
+  my $s = toset(@set3);
+  die "toset on descending odds didn't work right" unless vecequal(\@set1,$s);
 }
 
-my @iset4 = toset(\@set4);   print "iset4 entries:  ",$#iset4+1,"\n";
-my @iset5 = toset(\@set5);   print "iset5 entries:  ",$#iset5+1,"\n";
+my @iset4 = @{toset(@set4)};   print "iset4 entries:  ",$#iset4+1,"\n";
+my @iset5 = @{toset(@set5)};   print "iset5 entries:  ",$#iset5+1,"\n";
 
 # Verify functions
 
 if (1) {
-  my @s1 = setintersect(\@set1,\@set2);
-  die "intersect of odds and evens should be null" unless @s1 = 0;
-  my @s2 = setintersect(\@set1,\@set3);
-  die "intersect of odds and odds should be odds" unless vecequal(\@set1,\@s2);
-  my @s3 = setintersect(\@set2,\@set3);
-  die "intersect of evens and odds should be null" unless @s3 = 0;
+  my $s1 = setintersect(\@set1,\@set2);
+  die "intersect of odds and evens should be null" unless @$s1 == 0;
+  my $s2 = setintersect(\@set1,\@set3);
+  die "intersect of odds and odds should be odds" unless vecequal($s2,\@set1);
+  my $s3 = setintersect(\@set2,\@set3);
+  die "intersect of evens and odds should be null" unless @$s3 == 0;
 }
 if (1) {
-  my @s1 = setunion(\@set1,\@set2);
-  die "union of odds and evens should be all" unless vecequal(\@s1,[0..2*$N-1]);
-  my @s2 = setunion(\@set1,\@set3);
-  die "union of odds and odds should be odds" unless vecequal(\@set1,\@s2);
-  my @s3 = setunion(\@set2,\@set3);
-  die "union of evens and odds should be all" unless vecequal(\@s3,[0..2*$N-1]);
+  my $s1 = setunion(\@set1,\@set2);
+  die "union of odds and evens should be all" unless vecequal($s1,[0..2*$N-1]);
+  my $s2 = setunion(\@set1,\@set3);
+  die "union of odds and odds should be odds" unless vecequal($s2,\@set1);
+  my $s3 = setunion(\@set2,\@set3);
+  die "union of evens and odds should be all" unless vecequal($s3,[0..2*$N-1]);
 }
 if (1) {
-  my @s1 = setminus(\@set1,\@set2);
-  die "diff of odds and evens should be odds" unless vecequal(\@s1,\@set1);
-  my @s2 = setminus(\@set1,\@set3);
-  die "diff of odds and odds should be null" unless @s2 = 0;
-  my @s3 = setminus(\@set2,\@set3);
-  die "diff of evens and odds should be evens" unless vecequal(\@s3,\@set2);
+  my $s1 = setminus(\@set1,\@set2);
+  die "diff of odds and evens should be odds" unless vecequal($s1,\@set1);
+  my $s2 = setminus(\@set1,\@set3);
+  die "diff of odds and odds should be null" unless @$s2 == 0;
+  my $s3 = setminus(\@set2,\@set3);
+  die "diff of evens and odds should be evens" unless vecequal($s3,\@set2);
 }
 if (1) {
-  my @s1 = setdelta(\@set1,\@set2);
-  die "delta of odds and evens should be all" unless vecequal(\@s1,[0..2*$N-1]);
-  my @s2 = setdelta(\@set1,\@set3);
-  die "delta of odds and odds should be null" unless @s2 = 0;
-  my @s3 = setdelta(\@set2,\@set3);
-  die "delta of evens and odds should be all" unless vecequal(\@s3,[0..2*$N-1]);
+  my $s1 = setdelta(\@set1,\@set2);
+  die "delta of odds and evens should be all" unless vecequal($s1,[0..2*$N-1]);
+  my $s2 = setdelta(\@set1,\@set3);
+  die "delta of odds and odds should be null" unless @$s2 == 0;
+  my $s3 = setdelta(\@set2,\@set3);
+  die "delta of evens and odds should be all" unless vecequal($s3,[0..2*$N-1]);
 }
 
 my @R;
@@ -103,28 +103,28 @@ cmpthese(-1, {
 });
 
 cmpthese(-1, {
-  "intersect odds/odds"   => sub { @R=setintersect(\@set1,\@set1); },
-  "intersect odds/evens"  => sub { @R=setintersect(\@set1,\@set2); },
-  "intersect rodds/evens" => sub { @R=setintersect(\@set2,\@set3); },
-  "intersect hashes"      => sub { @R=setintersect(\@set4,\@set5); },
-  "intersect iset hashes" => sub { @R=setintersect(\@iset4,\@iset5); },
+  "intersect odds/odds"   => sub { $R=setintersect(\@set1,\@set1); },
+  "intersect odds/evens"  => sub { $R=setintersect(\@set1,\@set2); },
+  "intersect rodds/evens" => sub { $R=setintersect(\@set2,\@set3); },
+  "intersect hashes"      => sub { $R=setintersect(\@set4,\@set5); },
+  "intersect iset hashes" => sub { $R=setintersect(\@iset4,\@iset5); },
   "Set::SortedArray iset" => sub { $R=$saset4->intersection($saset5); },
   "Array::Set iset"       => sub { $R=set_intersect(\@iset4,\@iset5); },
   "Set::IntSpan::Fast iset"=>sub { $R=$sisf4->intersection($sisf5); },
   "Set::Functional"     => sub {@R=Set::Functional::intersection(\@sf4,\@sf5);},
   "Set::Tiny"             => sub { $R=$st4->intersection($st5);},
   "MPUPP iset"=>sub { $R=Math::Prime::Util::PP::setintersect(\@iset4,\@iset5); },
-  #"inter1 iset hashes" => sub { @R=inter1(\@iset4,\@iset5); },
-  #"inter2 iset hashes" => sub { @R=inter2(\@iset4,\@iset5); },
-  #"inter3 iset hashes" => sub { @R=inter3(\@iset4,\@iset5); },
+  #"inter1 iset hashes" => sub { $R=inter1(\@iset4,\@iset5); },
+  #"inter2 iset hashes" => sub { $R=inter2(\@iset4,\@iset5); },
+  #"inter3 iset hashes" => sub { $R=inter3(\@iset4,\@iset5); },
 });
 
 cmpthese(-1, {
-  "union odds/odds"   => sub { @R=setunion(\@set1,\@set1); },
-  "union odds/evens"  => sub { @R=setunion(\@set1,\@set2); },
-  "union rodds/evens" => sub { @R=setunion(\@set2,\@set3); },
-  "union hashes"      => sub { @R=setunion(\@set4,\@set5); },
-  "union iset hashes" => sub { @R=setunion(\@iset4,\@iset5); },
+  "union odds/odds"   => sub { $R=setunion(\@set1,\@set1); },
+  "union odds/evens"  => sub { $R=setunion(\@set1,\@set2); },
+  "union rodds/evens" => sub { $R=setunion(\@set2,\@set3); },
+  "union hashes"      => sub { $R=setunion(\@set4,\@set5); },
+  "union iset hashes" => sub { $R=setunion(\@iset4,\@iset5); },
   "union Set::Tiny"   => sub { $R=$st4->union($st5);},
   #"Set::SortedArray iset" => sub { $R=$saset4->union($saset5); },
   #"Array::Set iset"       => sub { $R=set_union(\@iset4,\@iset5); },
@@ -132,11 +132,11 @@ cmpthese(-1, {
 });
 
 cmpthese(-1, {
-  "minus odds/odds"   => sub { @R=setminus(\@set1,\@set1); },
-  "minus odds/evens"  => sub { @R=setminus(\@set1,\@set2); },
-  "minus rodds/evens" => sub { @R=setminus(\@set2,\@set3); },
-  "minus hashes"      => sub { @R=setminus(\@set4,\@set5); },
-  "minus iset hashes" => sub { @R=setminus(\@iset4,\@iset5); },
+  "minus odds/odds"   => sub { $R=setminus(\@set1,\@set1); },
+  "minus odds/evens"  => sub { $R=setminus(\@set1,\@set2); },
+  "minus rodds/evens" => sub { $R=setminus(\@set2,\@set3); },
+  "minus hashes"      => sub { $R=setminus(\@set4,\@set5); },
+  "minus iset hashes" => sub { $R=setminus(\@iset4,\@iset5); },
   "minus Set::Tiny"   => sub { $R=$st4->difference($st5);},
   #"Set::SortedArray iset" => sub { $R=$saset4->difference($saset5); },
   #"Array::Set iset"       => sub { $R=set_diff(\@iset4,\@iset5); },
@@ -144,11 +144,11 @@ cmpthese(-1, {
 });
 
 cmpthese(-1, {
-  "delta odds/odds"   => sub { @R=setdelta(\@set1,\@set1); },
-  "delta odds/evens"  => sub { @R=setdelta(\@set1,\@set2); },
-  "delta rodds/evens" => sub { @R=setdelta(\@set2,\@set3); },
-  "delta hashes"      => sub { @R=setdelta(\@set4,\@set5); },
-  "delta iset hashes" => sub { @R=setdelta(\@iset4,\@iset5); },
+  "delta odds/odds"   => sub { $R=setdelta(\@set1,\@set1); },
+  "delta odds/evens"  => sub { $R=setdelta(\@set1,\@set2); },
+  "delta rodds/evens" => sub { $R=setdelta(\@set2,\@set3); },
+  "delta hashes"      => sub { $R=setdelta(\@set4,\@set5); },
+  "delta iset hashes" => sub { $R=setdelta(\@iset4,\@iset5); },
   "Set::Tiny iset"    => sub { $R=$st4->symmetric_difference($st5);},
   "Set::SortedArray iset" => sub { $R=$saset4->symmetric_difference($saset5);},
   "Array::Set iset"       => sub { $R=set_symdiff(\@iset4,\@iset5); },
@@ -162,7 +162,7 @@ sub inter1 {
   my %counts;
   ++$counts{$_} for @$a1;
   my @c = grep { --$counts{$_} >= 0 } @$a2;
-  return @c;
+  return \@c;
 }
 sub inter2 {
   my($a1,$a2) = @_;
@@ -174,7 +174,7 @@ sub inter2 {
   foreach my $element (keys %count) {
     push @c, $element if $count{$element} > 1;
   }
-  return @c;
+  return \@c;
 }
 sub inter3 {
   my($ra,$rb) = @_;
@@ -186,20 +186,20 @@ sub inter3 {
   my @set = grep { exists $ina{$_} && not $seen{$k=$_}++ } @$rb;
   #for (@set) { return vecsort(@set) if !ref($_) && ($_ >= INTMAX || $_ <= INTMIN); }
   @set = sort { $a<=>$b } @set;
-  return @set;
+  return \@set;
 }
 
 __END__
 
 # Insert
 
-tmmpu 'csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
+tmmpu 'csrand(5); $s=toset(map{urandomm(2000000)}1..500000); say scalar(@$s)'
 442393   0.057s
 
-tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
+tmmpu 'csrand(5); $s=[]; $t+=setinsert($s,map{urandomm(2000000)}1..500000); say $t;'
 442393   0.067s
 
-tmmpu 'csrand(5); $s=[]; use Math::Prime::Util::PP; $t+=Math::Prime::Util::PP::setinsert($s,[map{urandomm(2000000)}1..500000]); say $t;'
+tmmpu 'csrand(5); $s=[]; use Math::Prime::Util::PP; $t+=Math::Prime::Util::PP::setinsert($s,map{urandomm(2000000)}1..500000); say $t;'
 442393   0.105s
 
 # ^^^ These are inserting a single chunk of 500k numbers
@@ -226,8 +226,8 @@ tmmpu 'use List::BinarySearch::XS qw/:all/; @s=(); csrand(5); for (1..500000) { 
 tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(); for (1..500000) { $s->add(urandomm(2000000)) } say $s->cardinality()'
 442393   22.776s
 
-tmmpu 'use Tie::Array::Sorted; tie @s,"Tie::Array::Sorted",sub{ $_[0]<=>$_[1] }; csrand(5); for (1..500000) { push @s,urandomm(2000000); } @s=toset(\@s); say scalar(@s)'
-442393   26.286s
+tmmpu 'use Tie::Array::Sorted; tie @s,"Tie::Array::Sorted",sub{ $_[0]<=>$_[1] }; csrand(5); for (1..500000) { push @s,urandomm(2000000); } $s=toset(@s); say scalar(@$s)'
+442393   23.721s
 
 tmmpu 'use Set::SortedArray; my $s=Set::SortedArray->new(); csrand(5); for (1..50000) { $s=$s+[urandomm(2000000)]; } say $s->size();'
 49407   164.110s (for 10x fewer insertions than above)
@@ -236,7 +236,7 @@ tmmpu 'use Set::SortedArray; my $s=Set::SortedArray->new(); csrand(5); for (1..5
 
 # Another insert test, 20 inserts, final count is 786538
 
-tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,[map {urandomm(2000000)}1..50000]); say scalar(@$s); }'
+tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,map {urandomm(2000000)}1..50000); say scalar(@$s); }'
 0.195s
 
 tmmpu 'use Set::Tiny; csrand(5); $s=Set::Tiny->new(1999990); for (1..20) { $s->insert(map {urandomm(2000000)}1..50000); say $s->size(); }'
@@ -248,5 +248,5 @@ tmmpu 'use Set::Scalar; csrand(5); $s=Set::Scalar->new(1999990); for (1..20) { $
 tmmpu 'use Set::Intspan::Fast::XS; csrand(5); $s=Set::IntSpan::Fast::XS->new(1999990); for (1..20) { $s->add(map {urandomm(2000000)}1..50000); say $s->cardinality; }'
 1.964s
 
-MPU_NO_XS=1 MPU_NO_GMP=1 tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,[map {urandomm(2000000)}1..50000]); say scalar(@$s); }'
+MPU_NO_XS=1 MPU_NO_GMP=1 tmmpu 'csrand(5); $s=[1999990]; for (1..20) { setinsert($s,map {urandomm(2000000)}1..50000); say scalar(@$s); }'
 4.146s

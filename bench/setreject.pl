@@ -111,13 +111,14 @@ cmpthese -2, {
 
 __END__
 
-                 Rate regex vecany setissubset settiny setcontainsany index setcontains setcontains0 hash
-regex           680/s    --   -58%        -60%    -61%           -65%  -70%        -70%         -73% -82%
-vecany         1618/s  138%     --         -4%     -7%           -17%  -28%        -29%         -37% -58%
-setissubset    1680/s  147%     4%          --     -3%           -13%  -25%        -27%         -34% -56%
-settiny        1732/s  155%     7%          3%      --           -11%  -23%        -24%         -32% -55%
-setcontainsany 1939/s  185%    20%         15%     12%             --  -13%        -15%         -24% -49%
-index          2239/s  229%    38%         33%     29%            15%    --         -2%         -12% -42%
-setcontains    2291/s  237%    42%         36%     32%            18%    2%          --         -10% -40%
-setcontains0   2550/s  275%    58%         52%     47%            32%   14%         11%           -- -33%
-hash           3829/s  463%   137%        128%    121%            97%   71%         67%          50%   --
+                 Rate regex  any vecany setissubset settiny setcontainsany setcontains index setcontains0 hash
+regex           721/s    -- -55%   -58%        -58%    -61%           -68%        -68%  -70%         -72% -83%
+any            1594/s  121%   --    -7%         -8%    -15%           -29%        -29%  -34%         -37% -63%
+vecany         1715/s  138%   8%     --         -1%     -8%           -23%        -23%  -29%         -32% -60%
+setissubset    1730/s  140%   9%     1%          --     -7%           -22%        -23%  -28%         -32% -59%
+settiny        1866/s  159%  17%     9%          8%      --           -16%        -16%  -23%         -26% -56%
+setcontainsany 2231/s  209%  40%    30%         29%     20%             --         -0%   -8%         -12% -48%
+setcontains    2235/s  210%  40%    30%         29%     20%             0%          --   -8%         -12% -48%
+index          2418/s  235%  52%    41%         40%     30%             8%          8%    --          -5% -43%
+setcontains0   2536/s  252%  59%    48%         47%     36%            14%         13%    5%           -- -40%
+hash           4257/s  490% 167%   148%        146%    128%            91%         90%   76%          68%   --

@@ -3524,22 +3524,20 @@ will be either typed as either native integers (IV or UV) or bigints.
    setinsert($s, 0);            # $s is now [-10..10]
    setinsert($s, [5,10,15,20]); # $s is now [-10..10,15,20]
 
-Given an array reference of integers in set form, and a second argument of
-of either a single integer or an array reference of integers,
-inserts the integers into the set.  This is inserting one or more
-integers in-place into a numerically sorted array of integers without
-duplicates.  This may be viewed as an in-place L</setunion>.
+Given two array references of integers in set form, inserts all elements
+of the second set into the first set and returns the number of elements
+that were inserted.
 
-An integer value is returned indicating how many values were inserted.
+Given an array reference of integers in set form, followed by zero or more
+integer scalars (possibly unordered and containing duplicates), inserts
+all list values into the first set and returns the number of elements that
+were inserted.  This is essentially the same as wrapping the list in
+L</toset> but convenient and possibly more efficient.
 
-If the first array reference is not in set form, the position of the new
-elements is undefined.
+This may be viewed as an in-place L</setunion>.
 
-Inserting values at the start or end is very efficient.  Because the set is a
-sorted array, as it gets large and many values are inserted in the middle,
-it can get quite slow.  If many values are to be added before using the set,
-It might be faster to add the values to the end in bulk then use L</toset>
-which will sort and remove duplicates.
+The one or two sets (array references) must be in set form (numerically
+sorted with no duplicates) or the results are undefined.
 
 =head2 setremove
 
@@ -3547,15 +3545,20 @@ which will sort and remove duplicates.
    setremove($s, 0);            # $s is now [-10..-1,1..10]
    setremove($s, [5,10,15,20]); # $s is now [-10..-1,1..4,6..9]
 
-Given an array reference of integers in set form, and a second argument of
-of either a single integer or an array reference of integers,
-removes the integers from the set.  This is deleting one or more
-integers in-place from a numerically sorted array of integers without
-duplicates.  This may be viewed as an in-place L</setminus>.
+Given two array references of integers in set form, removes all elements
+of the second set from the first set and returns the number of elements
+that were removed.
 
-An integer value is returned indicating how many values were removed.
+Given an array reference of integers in set form, followed by zero or more
+integer scalars (possibly unordered and containing duplicates), removes
+all list values from the first set and returns the number of elements that
+were removed.  This is essentially the same as wrapping the list in
+L</toset> but convenient and possibly more efficient.
 
-If the first array reference is not in set form, the result is undefined.
+This may be viewed as an in-place L</setminus>.
+
+The one or two sets (array references) must be in set form (numerically
+sorted with no duplicates) or the results are undefined.
 
 =head2 setinvert
 
@@ -3563,32 +3566,35 @@ If the first array reference is not in set form, the result is undefined.
    setinvert($s, 0);            # $s is now [-10..-1,1..10]
    setinvert($s, [5,10,15,20]); # $s is now [-10..-1,1..4,6..9,15,20]
 
-Given an array reference of integers in set form, and a second argument of
-of either a single integer or an array reference of integers,
-either insert (if not in the set) or remove (if in the set) the integers
-from the set.  This is inserting or deleting one or more
-integers in-place from a numerically sorted array of integers without
-duplicates.  This may be viewed as an in-place L</setdelta>.
+Given two array references of integers in set form, inverts the containment
+status in the first set for each element of the second set.  That is, for
+each element of the second set, inserts into the first set if not
+an element, and removes from the first set if it is an element.
 
-The second argument is treated as a set, meaning duplicates are removed
-before processing.
+Given an array reference of integers in set form, followed by zero or more
+integer scalars (possibly unordered and containing duplicates), does the
+same as if the list was wrapped in L</toset>.
 
 An integer value is returned indicating how many values were inserted,
-minus the number of values deleted..
+minus the number of values deleted.
 
-If the first array reference is not in set form, the result is undefined.
+This may be viewed as an in-place L</setdelta>.
 
+The one or two sets (array references) must be in set form (numerically
+sorted with no duplicates) or the results are undefined.
 
 =head2 setcontains
 
    my $has_element = setcontains( [-12,1..20], 15 );
    my $is_subset   = setcontains( [-12,1..20], [-12,5,10,15] );
 
-Given an array reference of integers in set form, and a second argument of
-of either a single integer or an array reference of integers,
+Given two sets (array references of numerically sorted de-duplicated integers),
 returns either 1 or 0 indicating whether the second argument
 is a subset of the first set
 (i.e. if all elements from the second argument are members of the first set).
+
+Given a set and zero or more integers in any form (possibly unordered and can
+contain duplicates), does the same as if the list was wrapped in L</toset>.
 
 If the first array reference is not in set form (numerically sorted with no
 duplicates, and no string forms), the result is undefined.  It is unlikely
@@ -3598,25 +3604,27 @@ into set form.
 
 =head2 setcontainsany
 
-  my $has_one_of = setcontains( [-12,1..20], [-14, 0, 1, 100] );  # true
+  # True if there is any intersection between the two sets
+  my $intersects = setcontainsany($set1,$set2);
+  my $has_one_of = setcontainsany( [-12,1..20], -14,0,1,100 );  # true
 
-Given an array reference of integers in set form, and a second argument of
-of either a single integer or an array reference of integers,
+Given two sets (array references of numerically sorted de-duplicated integers),
 returns either 1 or 0 indicating whether B<any> element of the second set
 is an element of the first set.
+
+Alternately, a set followed by a list of unordered integers will do the same,
+as if the list was wrapped in L</toset>.
 
 There is some functionality duplication, e.g. checking for disjoint sets
 can be done with any of these:
 
   my $dj1 = set_is_disjoint($set1, $set2);
-  my $dj2 = scalar(setintersect($set1, $set2)) == 0;
+  my $dj2 = scalar(@{setintersect($set1, $set2)}) == 0;
   my $dj3 = !setcontainsany($set1, $set2);
 
-The last, this function,  B<requires> the first set be in set form or
+This function B<requires> the array reference inputs be in set form or
 the result is undefined.  In return it can be thousands of times faster
-when that is a large set.
-
-Similar to L</setcontains>, the first set B<must> be in set form.
+for large sets.
 
 
 =head2 setbinop
@@ -3673,7 +3681,8 @@ Sage's C<union> function on Set objects.
 
 =head2 setintersect
 
-  my $is_disjoint = scalar(setintersect($set1, $set2)) == 0;
+  my $commonset = setintersection($set1,$set2);
+  my $is_disjoint = 0 == @$commonset;  # scalar size of the intersection
 
 Given exactly two array references of integers, treats them as sets and
 returns the intersection as a set.
@@ -6713,11 +6722,11 @@ Recognize Sidon and sum-free sets.  We have specific functions
 L</is_sidon_set> and L</is_sumfree_set> that are faster.
 
   sub is_sidon { my $set = shift;  my $len = scalar(@$set);
-    0+(scalar(sumset($set))==(($len*$len+$len)/2));
+    my $sumset = sumset($set);
+    0+(@$sumset==(($len*$len+$len)/2));
   }
   sub is_sum_free { my $set = shift;
-    my @sumset = sumset($set);
-    0+(scalar(setintersect($set,\@sumset)) == 0);
+    1 - setcontainsany($set,sumset($set));
   }
 
 
@@ -7413,7 +7422,7 @@ at others.  Some have particular inputs they are very fast or very slow
 with.  Each module has different functionality.
 
 We chose, following Pari and Mathematica, to represent sets as native
-lists of sorted de-duplicated integers, rather than a dedicated object.
+Perl lists of sorted de-duplicated integers, rather than a dedicated object.
 This allows flexibility and use for other purposes, but it isn't ideal
 for general performance, especially with very large sets (100k+ elements)
 where we spend a large amount of time parsing and manipulating the
@@ -7424,7 +7433,7 @@ Still, this is quite favorable compared to Perl hashes at 120 to 220
 
 For many purposes, L<Set::Tiny> works quite well.
 The module source is B<very> tiny, unlike this module.
-It has basic features and is quite fast.
+It has many basic features and is fast.
 It is not limited to integers.
 On the other hand, our module is typically faster (2-10x) and uses
 less memory, even with our choice of native Perl sorted arrays.
@@ -7436,31 +7445,47 @@ Finding the sumset size of the first 10,000 primes.
   12.9s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
                 say scalar(keys %r);
    9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
-   2.3s    3MB  say scalar setbinop { $a+$b } $p;
-   0.4s    3MB  say scalar sumset $p;
+   2.3s    3MB  $s=setbinop { $a+$b } $p;  say scalar @$s;
+   0.4s    3MB  $s=sumset $p;  say scalar @$s;
 
-Set intersection of C<[-1000..100]> and C<[-100..1000]>.
+Set intersection of C<[-1000..100]> and C<[-100..1000], with Perl 5.43.7.
 
      4 uS  Set::IntSpan::Fast::XS
-     4 uS  setintersect                       <===========  this module
+     5 uS  setintersect                       <===========  this module
      7 uS  Pari/GP 2.17.0
-    16 uS  Set::IntSpan::Fast
-    73 uS  native Perl hash intersection          /\ /\ /\  Faster
-    75 uS  Set::Tiny
-    90 uS  Set::Functional
-   118 uS  PP::setintersect                       \/ \/ \/  Slower
-   217 uS  Array::Set
-   326 uS  Set::SortedArray
-   341 uS  Set::Object
-  1659 uS  Set::Scalar
+    14 uS  Set::IntSpan::Fast
+    61 uS  native Perl hash intersection          /\ /\ /\  Faster
+    62 uS  Set::Tiny
+    66 uS  Set::Functional
+   105 uS  PP::setintersect                       \/ \/ \/  Slower
+   200 uS  Array::Set
+   310 uS  Set::Object
+   332 uS  Set::SortedArray
+  1508 uS  Set::Scalar
 
-Set::IntSpan::Fast is very fast when the sets are single spans, but for
-sparse single values it is much slower.  The other modules don't change.
+Set intersection of integers under 1000 divisible by 2 and 3 respectively.
+Sets are C<[grep{0==$_%2}0..999]> and C<[grep{0==$_%3}0..999]:
+
+     3 uS  setintersect                       <===========  this module
+     6 uS  Pari/GP 2.17.0
+    31 uS  Set::Tiny
+    32 uS  native Perl hash intersection          /\ /\ /\  Faster
+    34 uS  Set::Functional
+    37 uS  PP::setintersect                       \/ \/ \/  Slower
+    64 uS  Set::IntSpan::Fast::XS
+    86 uS  Array::Set
+   122 uS  Set::SortedArray
+   138 uS  Set::Object
+   615 uS  Set::Scalar
+  3090 uS  Set::IntSpan::Fast
+
+Set::IntSpan::Fast is very fast with the first example using single span
+sets, but gets quite slow with more spans as seen in the second example.
+The other modules are mostly unaffected by data patterns.
 
 Using our own set objects wrapping a C structure of some sort would be
 faster and lower memory.  In particular, we often spend more time just
 reading the set values than we do performing the set operation.
-The C<Set::IntSpan::Fast> and L<Set::Object> modules can avoid this.
 
 =head2 SORTING
 
@@ -7487,9 +7512,9 @@ sort rather than our C code.  This is B<substantially> slower, but produces
 the correct results.
 
 Our sorting for native signed and unsigned integers is a combination of
-quicksort (insertion sort for small partitions, median of 9 partitioning,
-and heapsort fallback if we detect repeated poor partitioning),
-and radix sort.  It is quite fast and low overhead.
+radix sort and quicksort (the latter using median of 9 partitioning,
+insertion sort for small partitions, and heapsort fallback if we detect
+repeated poor partitioning).  It is quite fast and low overhead.
 
 L<Sort::XS> has a variety of algorithms.
 However there is no option for unsigned (UV), only signed integers (IV).

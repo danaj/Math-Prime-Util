@@ -226,15 +226,16 @@ Tags:
   vecsample(k,@list)                  return k random elements of list
   vecslide { ... } @list              calls block for each pair in list
 
-  toset(...)                          convert to unique sorted integer aref
+  toset(...)                          convert to int set (unique sorted aref)
   setinsert(\@A,$v)                   insert integer v into integer set A
   setinsert(\@A,\@B)                  insert list B values into integer set A
   setremove(\@A,$v)                   remove integer v from integer set A
   setremove(\@A,\@B)                  remove list B values from integer set A
   setinvert(\@A,$v)                   if v is in set A, remove, otherwise add
-  setinvert(\@A,\@B)                  invert for all values in integer list B
-  setcontains(\@A,$v)                 is integer v in integer set A
+  setinvert(\@A,\@B)                  invert for all values in integer set B
+  setcontains(\@A,...)                are list values all in int set A
   setcontains(\@A,\@B)                is int set B a subset of int set A
+  setcontainsany(\@A,...)             are any list values in int set A
   setcontainsany(\@A,\@B)             is any value in B in int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
   sumset \@A[,\@B]                    apply a+b to all a,b [a:A,b:B]

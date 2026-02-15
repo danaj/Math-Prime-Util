@@ -44,8 +44,8 @@ use warnings;
 #   set_is_disjoint($S,$T)
 #   is_sidon_set($S)
 #   is_sumfree_set($S)
-#   setcontains($S,$T)     / setcontains($S,$x)
-#   setcontainsany($S,$T)  / setcontainsany($S,$x)
+#   setcontains($S,$T)     / setcontains($S,...)
+#   setcontainsany($S,$T)  / setcontainsany($S,...)
 #
 # Returns integer (new_size - old_size).
 # MODIFIES $S  <<<<<<<<<<
@@ -124,50 +124,6 @@ my @set2 = (
   [ ["18446744073709551615","18446744073709551616"], ["18446744073709551616"], "big pos int subset", [0,0,1,1,0] ],
 );
 
-
-my @inserts = (
-  [ [], "-9223372037410331363", "insert negative 64-bit int" ],
-  [ [],  "9223372037410331363", "insert positive 64-bit int" ],
-  [ [1,3,5], 0, "insert at start" ],
-  [ [1,3,5], 7, "insert at end" ],
-  [ [1,3,5], 2, "insert in middle" ],
-  [ [1,3,5], 4, "insert in middle" ],
-  [ [1,3,5], 1, "duplicate" ],
-  [ [1,3,5], 3, "duplicate" ],
-  [ [1,3,5], -12, "negative entries ok" ],
-  [ [-12,1,3,5], -11, "negative entries ok" ],
-  [ [-10,0,10], [-9], "single element list middle" ],
-  [ [-10,0,10], [-1,1], "two element list" ],
-  [ [-10,0,10], [-11,-9,-1,1,9,11], "list on all sides" ],
-  [ [-10,0,10], [-100,-90], "list on front" ],
-  [ [-10,0,10], [90,100], "list on back" ],
-  [ [15,17,19,22,24], [18,20,21], "inserts into middle" ],
-  [ [15,17,19,22,24], [14,20,25], "inserts into front, middle, back" ],
-  [ [negint(powint(2,63)),0], [10,100,1000], "negative set, add small pos" ],
-  [ [negint(powint(2,63)),0], [10,100,addint(powint(2,63),1000)], "negative set, add big pos" ],
-);
-my @removes = (
-  [ [], [],           0, [], "empty sets" ],
-  [ [1,2,3], [],      0, [1,2,3], "remove empty set" ],
-  [ [1,2,3], 2,       1, [1,3], "remove middle element" ],
-  [ [1,2,3], 0,       0, [1,2,3], "remove non element" ],
-  [ [1,2,3], [1],     1, [2,3], "remove first element" ],
-  [ [1,2,3], [3,2,1], 3, [], "remove all elements" ],
-  [ [1,2,3], [1,1,1], 1, [2,3], "list with duplicates" ],
-  [ [1..8], [-4,6,9], 1, [1..5,7,8], "remove mix" ],
-  [ [5],     5,       1, [], "remove single scalar to empty" ],
-  [ [5],     [5],     1, [], "remove single aref to empty" ],
-);
-my @inverts = (
-  [ [], [],           0, [], "empty sets" ],
-  [ [1,2,3], [],      0, [1,2,3], "invert empty set" ],
-  [ [1,2,3], 2,      -1, [1,3], "invert middle element" ],
-  [ [1,2,3], -12,     1, [-12,1,2,3], "invert non element" ],
-  [ [1,2,3], [1],    -1, [2,3], "invert first element" ],
-  [ [1,2,3], [3,2,1],-3, [], "invert all elements" ],
-  [ [1,2,3], [1,1],  -1, [2,3], "list with duplicates" ],
-  [ [0..10], [5,10,15,20], 0, [0..4,6,7,8,9,15,20], "mixed inversions" ],
-);
 
 plan tests => 2        # specific tests
             + 1        # toset
@@ -358,8 +314,8 @@ subtest 'setcontains', sub {
   is( setcontains([$bi1,$bi3],[$bi2]), 0, "setcontains bigint false");
   is( setcontains([$bi1,$bi2],[$bi2]), 1, "setcontains bigint true");
 
-  # We think we work with unsorted second arg
-  is(setcontains([1..8],[5,4,5,1,3]), 1, "setcontains with non-set second arg");
+  # List arg works even unordered and with duplications
+  is(setcontains([1..8],5,4,5,1,3), 1, "setcontains with list");
 };
 
 subtest 'setcontainsany', sub {
@@ -379,13 +335,46 @@ subtest 'setcontainsany', sub {
 
 
 subtest 'setinsert', sub {
-  for my $test (@inserts) {
+  my @insert_refs = (
+    [ [], [], "insert nothing into nothing" ],
+    [ [1,3,5], [], "insert nothing" ],
+    [ [-10,0,10], [-9], "single element list middle" ],
+    [ [-10,0,10], [-1,1], "two element list" ],
+    [ [-10,0,10], [-11,-9,-1,1,9,11], "list on all sides" ],
+    [ [-10,0,10], [-100,-90], "list on front" ],
+    [ [-10,0,10], [90,100], "list on back" ],
+    [ [15,17,19,22,24], [18,20,21], "inserts into middle" ],
+    [ [15,17,19,22,24], [14,20,25], "inserts into front, middle, back" ],
+    [ [negint(powint(2,63)),0], [10,100,1000], "negative set, add small pos" ],
+    [ [negint(powint(2,63)),0], [10,100,addint(powint(2,63),1000)], "negative set, add big pos" ],
+    [ [101..200], [95..105,195..205], "insert overlapping edges" ],
+  );
+  for my $test (@insert_refs) {
     my($s,$v,$what) = @$test;
-    my @new = ref($v) ? (@$s,@$v) : (@$s, $v);
+    my $exp = toset(@$s,@$v);
     setinsert($s,$v);
-    #print "  # exp @{[toset(\@new)]}\n";
-    #print "  # got @$s\n";
-    is_deeply( $s, toset(@new), "setinsert $what" );
+    is_deeply( $s, $exp, "insert a set: $what" );
+  }
+  my @insert_lists = (
+    [ [], [], "insert nothing into nothing" ],
+    [ [1,3,5], [], "insert nothing" ],
+    [ [1,3,5], [0], "insert at start" ],
+    [ [1,3,5], [7], "insert at end" ],
+    [ [1,3,5], [2], "insert in middle" ],
+    [ [1,3,5], [4], "insert in middle" ],
+    [ [1,3,5], [1], "duplicate" ],
+    [ [1,3,5], [3], "duplicate" ],
+    [ [1,3,5], [-12], "negative entries ok" ],
+    [ [-12,1,3,5], [-11], "negative entries ok" ],
+    [ [], ["-9223372037410331363"], "insert negative 64-bit int" ],
+    [ [], [ "9223372037410331363"], "insert positive 64-bit int" ],
+    [ [1,3,5], [6,4,4,6,4,4,4], "list with duplicates" ],
+  );
+  for my $test (@insert_lists) {
+    my($s,$v,$what) = @$test;
+    my $exp = toset(@$s,@$v);
+    setinsert($s,@$v);
+    is_deeply( $s, $exp, "insert a list: $what" );
   }
 };
 
@@ -463,21 +452,69 @@ subtest 'set_is_proper_intersection', sub {
 };
 
 subtest 'setremove', sub {
-  for my $test (@removes) {
+  my @remove_refs = (
+    [ [], [],           0, [], "empty sets" ],
+    [ [1,2,3], [],      0, [1,2,3], "remove empty set" ],
+    [ [1,2,3], [2],     1, [1,3], "remove middle element" ],
+    [ [1,2,3], [0],     0, [1,2,3], "remove non element" ],
+    [ [1,2,3], [1],     1, [2,3], "remove first element" ],
+    [ [1,2,3], [1,2,3], 3, [], "remove all elements" ],
+    [ [1..8], [-4,6,9], 1, [1..5,7,8], "remove mix" ],
+    [ [5],     [5],     1, [], "remove single aref to empty" ],
+  );
+  for my $test (@remove_refs) {
     my($A,$B,$exp,$NEWA,$what) = @$test;
     my $res = setremove($A,$B);
     is_deeply( [$res,$A], [$exp,$NEWA], $what );
   }
+  my @remove_lists = (
+    [ [], [],           0, [], "empty sets" ],
+    [ [1,2,3], [3,2,1], 3, [], "remove all elements" ],
+    [ [1,2,3], [1,1,1], 1, [2,3], "list with duplicates" ],
+    [ [5],     [5],     1, [], "remove single scalar to empty" ],
+  );
+  for my $test (@remove_lists) {
+    my($A,$B,$exp,$NEWA,$what) = @$test;
+    my $res = setremove($A,@$B);
+    is_deeply( [$res,$A], [$exp,$NEWA], $what );
+  }
 };
 subtest 'setinvert', sub {
-  for my $test (@inverts) {
+  #
+  # setinvert($A,$B) can be done via:
+  #    @$A = setdelta($A,$B);
+  #
+  # Or alternately:
+  #    @$A = setminus(setunion($A,$B),setintersect($A,$B))
+  #
+
+  # 1. Invert $A with a set $B
+  my @invert_refs = (
+    [ [], [],           0, [], "two empty sets" ],
+    [ [1,2,3], [],      0, [1,2,3], "invert with an empty set" ],
+    [ [1,2,3], [1],    -1, [2,3], "invert with a small set" ],
+    [ [1,2,3], [1,2,3],-3, [], "invert with duplicate set" ],
+    [ [0..10], [5,10,15,20], 0, [0..4,6,7,8,9,15,20], "mixed set inversions" ],
+  );
+  for my $test (@invert_refs) {
     my($A,$B,$exp,$NEWA,$what) = @$test;
     my $res = setinvert($A,$B);
     is_deeply( [$res,$A], [$exp,$NEWA], $what );
-    # By hand (1):
-    #my @new = setminus([setunion($A,$B)],[setintersect($A,$B)])
-    #my $res = scalar(@$A)-scalar(@new);
-    # By hand (2):
-    #my @new = setdelta($A,$B);
+  }
+
+  # 2. Invert $A with an unordered list of integers
+  my @invert_lists = (
+    [ [], [],           0, [], "empty set and empty list" ],
+    [ [1,2,3], [],      0, [1,2,3], "invert with an empty list" ],
+    [ [1,2,3], [2],    -1, [1,3], "invert with single middle element" ],
+    [ [1,2,3], [-12],   1, [-12,1,2,3], "invert with single non element" ],
+    [ [1,2,3], [3,2,1],-3, [], "invert with a list of all elements" ],
+    [ [1,2,3], [1,1],  -1, [2,3], "list with duplicates" ],
+    [ [0..10], [5,10,15,20], 0, [0..4,6,7,8,9,15,20], "mixed list inversions" ],
+  );
+  for my $test (@invert_lists) {
+    my($A,$B,$exp,$NEWA,$what) = @$test;
+    my $res = setinvert($A,@$B);
+    is_deeply( [$res,$A], [$exp,$NEWA], $what );
   }
 };

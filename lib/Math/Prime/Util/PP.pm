@@ -11842,23 +11842,23 @@ sub toset {
 
 # Is the second set a subset of the first set?
 sub setcontains {
-  my($set, $sub) = @_;
-  my @newset;
-  if (!ref($sub) || ref($sub) ne 'ARRAY') {
-    validate_integer($sub);
-    @newset = ($sub);
+  my $set = shift @_;
+  my $iset;
+  if (@_ == 1 && ref($_[0]) eq 'ARRAY') {
+    $iset = $_[0];
   } else {
-    @newset = @{Mtoset(@$sub)};
+    $iset = Mtoset(@_);
   }
-  return 1 if @newset == 0;
-  return 0 if @$set == 0 || @newset > @$set || $newset[-1] > $set->[-1] || $newset[0] < $set->[0];
+  return 1 if @$iset == 0;
+  return 0 if @$set == 0 || @$iset > @$set || $iset->[-1] > $set->[-1] || $iset->[0] < $set->[0];
 
-  if (@$set <= 150 || (@$set <= 250 && @newset > 2)) {   # Linear search
+  if (@$set <= 150 || (@$set <= 250 && @$iset > 2)) {   # Linear search
+    my $i = 0;
     for my $sv (@$set) {
-      if ($sv >= $newset[0]) {
-        return 0 if $sv > $newset[0];
-        shift @newset;
-        return 1 if @newset == 0;
+      if ($sv >= $iset->[$i]) {
+        return 0 if $sv > $iset->[$i];
+        return 1 if $i == $#$iset;
+        $i++;
       }
     }
     return 0;
@@ -11866,8 +11866,8 @@ sub setcontains {
 
   my $newlo = 0;
   # The next value is probably in this range.  Can save a lot of steps.
-  my $range = Mcdivint(scalar(@$set),(scalar(@newset)+1) >> 1);
-  for my $v (@newset) {
+  my $range = Mcdivint(scalar(@$set),(scalar(@$iset)+1) >> 1);
+  for my $v (@$iset) {
     my($lo,$hi) = ($newlo,$#$set);
     $hi = $lo + $range if $hi-$lo > $range && $set->[$lo+$range] >= $v;
     while ($lo < $hi) {
@@ -11881,23 +11881,26 @@ sub setcontains {
   1;
 }
 
-# Are any members of sub also a member of set?
 sub setcontainsany {
-  my($set, $sub) = @_;
-  $sub = [$sub] if !ref($sub) || ref($sub) ne 'ARRAY';
-  croak 'Not an array reference' unless (ref($set) || '') eq 'ARRAY'
-                                     && (ref($sub) || '') eq 'ARRAY';
-
-  # For better performance, make sub the larger
-  ($set,$sub) = ($sub,$set) if scalar(@$set) > scalar(@$sub);
+  my($set,@in) = @_;
+  my $iset;
+  if (@in == 1 && ref($in[0]) eq 'ARRAY') {
+    $iset = $in[0];
+  } else {
+    $iset = \@in;
+  }
+  # For better performance, make iset the larger
+  ($set,$iset) = ($iset,$set) if scalar(@$set) > scalar(@$iset);
   return 0 if @$set == 0;
 
   my %ina;
   undef @ina{@$set};
-  return 0 + (scalar(grep { exists $ina{$_} } @$sub) > 0);
+  for (@$iset) { return 1 if exists $ina{$_} }
+  return 0;
 }
 
-sub _setinsert1 {
+
+sub _setinsert1 {       # UNUSED
   my($rset, $v) = @_;
   validate_integer($v);
 
@@ -11923,57 +11926,58 @@ sub _setinsert1 {
 }
 
 sub setinsert {
-  my($set, $in) = @_;
-  my @newset;
-  if (!ref($in) || ref($in) ne 'ARRAY') {
-    validate_integer($in);
-    @newset = ($in);
+  my($set, @in) = @_;
+  my $iset;
+  if (@in == 1 && ref($in[0]) eq 'ARRAY') {
+    $iset = $in[0];
   } else {
-    @newset = @{Mtoset(@$in)};
+    $iset = Mtoset(@in);
   }
+  return 0 if @$iset == 0;
   my $setsize = scalar(@$set);
-  if ($setsize == 0 || $newset[0] > $set->[-1]) {
-    push @$set, @newset;
-  } elsif ($newset[-1] < $set->[0]) {
-    unshift @$set, @newset;
-  } elsif (@newset > 400) {
+  if ($setsize == 0 || $iset->[0] > $set->[-1]) {
+    push @$set, @$iset;
+  } elsif ($iset->[-1] < $set->[0]) {
+    unshift @$set, @$iset;
+  } elsif (@$iset > 400) {
     # $set is required to be in proper form as input.
     # @newset was run through toset() earlier, so it is in proper form.
     # Times from the 20x50k insert operation in xt/test-sets.
 
     # 17.09  In theory efficient, but too much redundant work
-    #@$set = @{Msetunion($set,\@newset)};
+    #@$set = @{Msetunion($set,$iset)};
 
     # 12.48  Better but still ignores all input structure
-    #@$set = @{Mtoset([@$set,@newset])};
+    #@$set = @{Mtoset([@$set,@$iset])};
 
     #  6.04  toset inlined and with all unnecessary work removed
     #my($k,%seen);
-    #@$set = grep { not $seen{$k=$_}++ } @$set,@newset;
+    #@$set = grep { not $seen{$k=$_}++ } @$set,@$iset;
     #if ($] < 5.026) {  @$set = sort { 0+($a<=>$b) } @$set;  }
     #else            {  @$set = sort {    $a<=>$b  } @$set;  }
 
     #  5.64  as above but assume $set has no duplicates
     #my($k,%seen);
     #undef @seen{@$set};
-    #push @$set, grep { !exists $seen{$k=$_} } @newset;
+    #push @$set, grep { !exists $seen{$k=$_} } @$iset;
     #if ($] < 5.026) {  @$set = sort { 0+($a<=>$b) } @$set;  }
     #else            {  @$set = sort {    $a<=>$b  } @$set;  }
 
     #  4.12  Merge two proper-form sets
-    _merge_sets_inplace($set, \@newset);
+    _merge_sets_inplace($set, $iset);
 
   } else {
     # 1. values in front and back.
     my($nbeg,$nend) = (0,0);
-    $nend++ while $nend < scalar(@newset) && $newset[-1 - $nend] > $set->[-1];
-    push @$set, splice(@newset,-$nend) if $nend > 0;
-    $nbeg++ while $nbeg < scalar(@newset) && $newset[$nbeg] < $set->[0];
-    unshift @$set, splice(@newset,0,$nbeg) if $nbeg > 0;
+    my(@sbeg,@send);
+    $nend++ while $nend < scalar(@$iset) && $iset->[-1 - $nend] > $set->[-1];
+    @send = splice(@$iset,-$nend) if $nend > 0;
+    $nbeg++ while $nbeg < scalar(@$iset) && $iset->[$nbeg] < $set->[0];
+    @sbeg = splice(@$iset,0,$nbeg) if $nbeg > 0;
     # 2. values in the middle.
     my $start = 0;
-    my $range = Mcdivint(scalar(@$set),(scalar(@newset)+2) >> 1);
-    for my $v (@newset) {
+    my $range = Mcdivint(scalar(@$set),(scalar(@$iset)+2) >> 1);
+    for my $v (@$iset) {
       my($lo,$hi) = ($start,$#$set);
       $hi = $lo + $range if $hi-$lo > $range && $set->[$lo+$range] >= $v;
       while ($lo < $hi) {
@@ -11984,13 +11988,16 @@ sub setinsert {
       splice @$set, $hi, 0, $v if $set->[$hi] != $v;
       $start = $hi+1;
     }
+    # 3. bulk insert the front and back values we saved earlier
+    unshift @$set, @sbeg if @sbeg;
+    push @$set, @send if @send;
   }
   return scalar(@$set) - $setsize;
 }
 
 sub _setremove1 {
   my($rset, $v) = @_;
-  validate_integer($v);
+  #validate_integer($v);
 
   return 0 if scalar(@$rset) == 0 || $v > $rset->[-1] || $v < $rset->[0];
 
@@ -12006,27 +12013,29 @@ sub _setremove1 {
 }
 
 sub setremove {
-  my($set, $in) = @_;
-  if (!ref($in) || ref($in) ne 'ARRAY') {
-    return _setremove1($set,$in);
+  my $set = shift;
+  my $iset;
+  if (@_ == 1 && ref($_[0]) eq 'ARRAY') {
+    $iset = $_[0];
+  } else {
+    $iset = Mtoset(@_);
   }
   my $setsize = scalar(@$set);
-  return 0 if $setsize == 0;
+  return 0 if $setsize == 0 || @$iset == 0;
+
+  my($SMIN,$SMAX) = ($set->[0],$set->[-1]);
+  pop @$iset while @$iset && $iset->[-1] > $SMAX;
+  shift @$iset while @$iset && $iset->[0] < $SMIN;
 
   # Try to decide the most performant of the two methods.
   my $fitmin = $setsize <   170 ? 1 + ($setsize>=35) + int($setsize/30)
              : $setsize < 75000 ? int(2.7*sqrt($setsize)-28)
                                 : 700;
-  if (@$in <= $fitmin) {
-    _setremove1($set,$_) for @$in;
+  if (@$iset <= $fitmin) {
+    _setremove1($set,$_) for @$iset;
   } else {
-    my($SMIN,$SMAX) = ($set->[0],$set->[-1]);
     my(%remove, $k);
-    for my $v (@$in) {
-      validate_integer($v);
-      #next if exists $remove{$k=$v} || $v < $SMIN || $v > $SMAX;
-      undef $remove{$k=$v};
-    }
+    $remove{$k=$_}=undef for @$iset;
     my $remsize = scalar(keys(%remove));
     return 0 if $remsize == 0;
     @$set = grep { !exists $remove{$k=$_} } @$set;
@@ -12059,35 +12068,35 @@ sub _setinvert1 {
 }
 
 sub setinvert {
-  my($set, $in) = @_;
-  if (!ref($in) || ref($in) ne 'ARRAY') {
-    validate_integer($in);
-    return _setinvert1($set,$in);
+  my($set, @in) = @_;
+  return 0 if @in == 0;
+  my $iset;
+  if (@in == 1 && ref($in[0]) eq 'ARRAY') {
+    $iset = $in[0];
+  } else {
+    $iset = Mtoset(@in);
   }
-  my @newset = @{Mtoset(@$in)};
-  return 0 if scalar(@newset) == 0;
-
   my $setsize = scalar(@$set);
   if ($setsize == 0) {
-    @$set = @newset;
+    @$set = @$iset;
     return scalar(@$set);
   }
   # Like setinsert and setremove, we assume the input set is in set form.
 
-  if (@newset > 100) {
+  if (@$iset <= 100) {
+    _setinvert1($set,$_) for @$iset;
+  } else {
     my @S;
     for my $sv (@$set) {
-      push @S, shift @newset while @newset && $newset[0] < $sv;
-      if (@newset && $newset[0] == $sv) {
-        shift @newset;
+      push @S, shift @$iset while @$iset && $iset->[0] < $sv;
+      if (@$iset && $iset->[0] == $sv) {
+        shift @$iset;
       } else {
         push @S, $sv;
       }
     }
-    push @S, @newset;
+    push @S, @$iset;
     @$set = @S;
-  } else {
-    _setinvert1($set,$_) for @newset;
   }
   return scalar(@$set) - $setsize;
 }

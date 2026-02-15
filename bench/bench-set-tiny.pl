@@ -23,8 +23,8 @@ my @b = 501 .. 2500;
 
 my $s_t1 = Set::Tiny->new(@a);
 my $s_t2 = Set::Tiny->new(@b);
-my $s_m1 = [toset(\@a)];
-my $s_m2 = [toset(\@b)];
+my $s_m1 = toset(@a);
+my $s_m2 = toset(@b);
 my $s_s1 = Set::Scalar->new(@a);
 my $s_s2 = Set::Scalar->new(@b);
 #my $s_o1 = Set::Object->new(@a);
@@ -33,7 +33,7 @@ my $s_s2 = Set::Scalar->new(@b);
 my %tests = (
     A_new => {
         t => sub { Set::Tiny->new(@a) },
-        m => sub { [toset(\@a)] },
+        m => sub { toset(@a) },
         s => sub { Set::Scalar->new(@a) },
         #o => sub { Set::Object->new(@a) },
     },
@@ -52,19 +52,19 @@ my %tests = (
     },
     A_deleteone => {
         t => sub { Set::Tiny->new(@a)->delete(500) },
-        m => sub { setremove([toset(\@a)],500); },
+        m => sub { setremove(toset(@a),500); },
         s => sub { Set::Scalar->new(@a)->delete(@b) },
         #o => sub { Set::Object->new(@a)->delete(@b) },
     },
     A_delete => {
         t => sub { Set::Tiny->new(@a)->delete(@b) },
-        m => sub { setremove([toset(\@a)],\@b); },
+        m => sub { setremove(toset(@a),\@b); },
         s => sub { Set::Scalar->new(@a)->delete(@b) },
         #o => sub { Set::Object->new(@a)->delete(@b) },
     },
     A_invert => {
         t => sub { Set::Tiny->new(@a)->invert(@b) },
-        m => sub { setinvert([toset(\@a)],\@b); },
+        m => sub { setinvert(toset(@a),\@b); },
         s => sub { Set::Scalar->new(@a)->invert(@b) },
         #o => sub { Set::Object->new(@a)->invert(@b) },
     },
