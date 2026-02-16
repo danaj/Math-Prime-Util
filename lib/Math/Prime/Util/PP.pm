@@ -1942,8 +1942,8 @@ sub nth_powerful {
   $hi;
 }
 
-# Not currently used
 sub _genpowerful {
+  # uncoverable subroutine
   my($m, $r, $n, $k, $arr) = @_;
   if ($r < $k) { push @$arr, $m; return; }
   my $rootdiv = Mrootint(Mdivint($n, $m), $r);
@@ -3646,8 +3646,8 @@ sub inverse_li {
 
   $t;
 }
-# Not currently used
 sub _inverse_R {
+  # uncoverable subroutine
   my($n) = @_;
   validate_integer_nonneg($n);
 
@@ -4265,6 +4265,7 @@ sub nth_semiprime_approx {
 }
 
 sub _almost_prime_count_asymptotic {
+  # uncoverable subroutine
   my($k, $n) = @_;
   return 0 if ($n >> $k) == 0;
   return ($n >= 1) if $k == 0;
@@ -6027,6 +6028,7 @@ sub _ts_rootmod {
 }
 
 sub _compute_generator {
+  # uncoverable subroutine
   my($l, $e, $r, $p) = @_;
   my($m, $lem1, $y) = (1, Mpowint($l, $e-1));
   for (my $x = 2; $m == 1; $x++) {
@@ -6061,6 +6063,7 @@ sub _rootmod_prime_splitk {
     foreach my $fac (Mfactor_exp($g)) {
       my($F,$E) = @$fac;
       last if $r == 0;
+      # uncoverable branch true
       if (defined $refzeta) {
         my $V   = Mvaluation($p1, $F);
         my $REM = Mdivint($p1, Mpowint($F,$V));
@@ -6157,6 +6160,7 @@ sub _ts_prime {
 }
 
 sub _rootmod_prime {
+  # uncoverable subroutine
   my($a, $k, $p) = @_;
 
   # p must be a prime, k must be a prime.  Otherwise UNDEFINED.
@@ -6175,6 +6179,7 @@ sub _rootmod_prime {
 }
 
 sub _rootmod_prime_power {
+  # uncoverable subroutine
   my($a,$k,$p,$e) = @_;        # prime k, prime p
 
   return _sqrtmod_prime_power($a, $p, $e) if $k == 2;
@@ -6207,6 +6212,7 @@ sub _rootmod_prime_power {
 }
 
 sub _rootmod_kprime {
+  # uncoverable subroutine
   my($a,$k,$n,@nf) = @_;       # k prime, n factored into f^e,f^e,...
 
   my($N,$r) = (1,0);
@@ -6224,6 +6230,7 @@ sub _rootmod_kprime {
 }
 
 sub _rootmod_composite2 {
+  # uncoverable subroutine
   my($a,$k,$n) = @_;
 
   croak "_rootmod_composite2 bad parameters" if $a < 1 || $k < 2 || $n < 2;
@@ -9690,7 +9697,7 @@ my $_holf_r;
 my @_fsublist = (
   [ "power",      sub { _power_factor (shift) } ],
 
-  [ "pbrent 2k",  sub { pbrent_factor (shift,    2*1024, 1, 1) } ],
+  [ "pbrent 8k",  sub { pbrent_factor (shift,    8*1024, 1, 1) } ],
   [ "p-1 16k",    sub { pminus1_factor(shift,    16_384, 16_384, 1); } ],
   [ "ECM 500",    sub { ecm_factor    (shift,       500, 10_000, 10) } ],
   [ "ECM 4k",     sub { ecm_factor    (shift,     4_000, 20_000, 20) } ],
@@ -9926,7 +9933,7 @@ sub pbrent_factor {
         do {
           $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
           $f = Mgcd($Xi > $Xm ? $Xi-$Xm : $Xm-$Xi, $n);
-        } while ($f != 1 && $r-- != 0);
+        } while ($f == 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
       }
       return _found_factor($f, $n, "pbrent", @factors);
@@ -10048,7 +10055,7 @@ sub pminus1_factor {
       my ($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
       $pa = _bi_powmod($pa, $k, $n);
-      my $f = Mgcd($pa-1, $n);
+      $f = Mgcd($pa-1, $n);
       if ($f == $n) { push @factors, $n; return @factors; }
       last if $f != 1;
       $q = Mnext_prime($q);
@@ -11124,7 +11131,7 @@ sub Pi {
   # At 100k digits, the first two are 15x faster than the third, C pidigits
   #   is 200x slower, and the rest thousands of times slower.
   # At 1M digits, the first is under 1 second, MPFR under 2 seconds,
-  #   Perl AGM (Math::BigInt::GMP) is over a minute, and C piigits at 1.5 hours.
+  #   Perl AGM (Math::BigInt::GMP) over a minute, C pidigits 1.5 hours.
   #
   # Interestingly, Math::BigInt::Pari, while greatly faster than Calc, is
   # *much* slower than GMP for these operations (both AGM and Machin).  While
