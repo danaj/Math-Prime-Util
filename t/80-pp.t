@@ -143,9 +143,22 @@ subtest 'arithmetic ops', sub {
 
   is(sqrtmod(124,137),undef,"sqrtmod(124,137) = undef");
   is(sqrtmod(11,137),55,"sqrtmod(11,137) = 55");
+
+  is(rootmod(2,0,4725),undef,"rootmod k=0 => undef");
+  is(rootmod(0,7,4725),0,"rootmod a=0 => 0");
+  is(rootmod(2,11,4725),3623,"rootmod(2,11,4725) = 3623");
+  is(rootmod(2,-11,4725),4412,"rootmod with neg k = invmod of pos k");
   is(rootmod(577,3,137),95,"rootmod");
+
   is_deeply([allsqrtmod(4,13791)],[2,4595,9196,13789],"allsqrtmod");
   is_deeply([allrootmod(581,5,151)],[34,42,43,62,121],"allrootmod");
+
+  is_deeply([allsqrtmod(4,72)],[2,34,38,70],"allsqrtmod highly composite mod");
+  is_deeply([allsqrtmod(4,4725)],[2,677,1402,2077,2648,3323,4048,4723],"allsqrtmod highly composite mod");
+
+  is_deeply([allrootmod(406, 72, 9450)],
+            [qw/112 238 266 434 616 784 812 938 1162 1288 1316 1484 1666 1834 1862 1988 2212 2338 2366 2534 2716 2884 2912 3038 3262 3388 3416 3584 3766 3934 3962 4088 4312 4438 4466 4634 4816 4984 5012 5138 5362 5488 5516 5684 5866 6034 6062 6188 6412 6538 6566 6734 6916 7084 7112 7238 7462 7588 7616 7784 7966 8134 8162 8288 8512 8638 8666 8834 9016 9184 9212 9338/],
+            "allrootmod with composite k and n");
 };
 
 subtest 'primality', sub {
@@ -755,9 +768,15 @@ subtest 'factoring', sub {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor(403) ],
              [ 13, 31 ],
              "prho(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor(4294968337) ],
+             [ 11,390451667 ],
+             "prho(4294968337)" );
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(403) ],
              [ 13, 31 ],
              "pbrent(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(4294968971)],
+             [ 601, 7146371 ],
+             "pbrent(4294968971)" );
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor(403) ],
              [ 13, 31 ],
              "pminus1(403)" );
@@ -767,6 +786,9 @@ subtest 'factoring', sub {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pbrent_factor(851981) ],
              [ 13, 65537 ],
              "pbrent(851981)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::cheb_factor(2424869) ],
+             [ 37, 65537 ],
+             "cheb(2424869)" );
   #is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::ecm_factor(851981) ],
   #           [ 13, 65537 ],
   #           "ecm(851981)" );
@@ -797,10 +819,18 @@ subtest 'factoring', sub {
     test_facres("ecm", $nbig, Math::Prime::Util::PP::ecm_factor($nbig));
   }
 
+  # Test backtracking after finding multiple factors
+  $nbig = "73786976294838213647";
+  test_facres("pminus1", $nbig, Math::Prime::Util::PP::pminus1_factor($nbig));
+
+  # Test stage 2
+  $nbig = "73786976294838206467";
+  test_facres("pminus1", $nbig, Math::Prime::Util::PP::pminus1_factor($nbig,100,2000));
+
   $nbig = Math::BigInt->new("73786976930493367637");
   # Check stage 2 p-1.  Fast with Math::BigInt::GMP, slow without.
   SKIP: {
-    skip "Skipping p-1 stage 2 tests", 1 unless $extra;
+    skip "Skipping expensive p-1 stage 2 test", 1 unless $extra;
     test_facres("pminus1", $nbig, Math::Prime::Util::PP::pminus1_factor($nbig, 27000, 35000));
   }
   test_facres("fermat", $nbig, Math::Prime::Util::PP::fermat_factor($nbig));
@@ -972,6 +1002,20 @@ subtest 'misc number theory functions', sub {
 
   is_deeply([numtoperm(11,33967658)],[9,3,6,4,7,1,10,0,5,2,8],"numtoperm");
   is(permtonum([9,3,6,4,7,1,10,0,5,2,8]),33967658,"permtonum");
+  {
+    my @P = randperm(50,4);
+    my @Q;
+    my $tries = 0;
+    do { @Q = randperm(50,4); } until "@P" ne "@Q" || $tries++ > 1000;
+    ok( $tries < 1000, "randperm(50,4) generates different permutations" );
+  }
+  {
+    my @P = randperm(8,6);
+    my @Q;
+    my $tries = 0;
+    do { @Q = randperm(8,6); } until "@P" ne "@Q" || $tries++ > 1000;
+    ok( $tries < 1000, "randperm(8,6) generates different permutations" );
+  }
 
   is_deeply([map{[bernfrac($_)]}(0,1,2,3,12,13)],
             [[1,1],[1,2],[1,6],[0,1],[-691,2730],[0,1]],
@@ -1041,7 +1085,14 @@ subtest 'misc number theory functions', sub {
     forpart(sub { push @p, [@_] }, 4);
     is_deeply( \@p, [ [1,1,1,1],[1,1,2],[1,3],[2,2],[4] ], "forpart(4)" );
   }
-
+  { my @p;
+    forcomp(sub { push @p, [@_] }, 7,{amin=>2,nmin=>3});
+    is_deeply(\@p, [ [2,2,3],[2,3,2],[3,2,2] ], "forcomp(7,{amin=>2,nmin=>3})");
+  }
+  { my @p;
+    forderange(sub { push @p,join "",@_; }, 4);
+    is(join(" ",@p),"1032 1230 1302 2031 2301 2310 3012 3201 3210","forderange(4)");
+  }
   { my @out;
     forsetproduct {push @out,"@_"} [1,2],[qw/a b c/];
     is_deeply(\@out, ['1 a','1 b','1 c','2 a','2 b','2 c'], "forsetproduct([1,2],[qw/a b c/])" );
@@ -1054,6 +1105,7 @@ subtest 'misc number theory functions', sub {
 
   is(sum_primes(14400),11297213,"sum_primes(14400)");
   is(sum_primes(2100000),"156999759090","sum_primes(2100000)") if $extra;
+  is(sum_primes(2440000,2500000),"10099224219","sum_primes(2440000,2500000)") if $extra;
 
   is(mertens(5443),9,"mertens(5443)");
   is(sumtotient(5443),9008408,"sumtotient(5443)");
@@ -1101,9 +1153,15 @@ subtest 'more misc ntheory functions', sub {
   ok( is_practical(1710), "1710 is practical");
   ok( is_fundamental(-168), "-168 is fundamental");
   ok( is_fundamental(172), "172 is fundamental");
-  ok( is_congruent_number(692), "692 is a congruent number");
-  ok( is_congruent_number(206), "206 is a congruent number");
-  ok( is_congruent_number(207), "207 is a congruent number");
+
+  my @congruents = qw/34 41 206 207 692/;
+  is_deeply( [map { is_congruent_number($_) } @congruents],
+             [map { 1 } @congruents],
+             "congruent numbers: [@congruents]" );
+  my @noncongruents = qw/17 19 26 33 35 42 51 130 170 986 1819/;
+  is_deeply( [map { is_congruent_number($_) } @noncongruents],
+             [map { 0 } @noncongruents],
+             "non-congruent numbers: [@noncongruents]" );
 
   is(is_happy(536), 7, "536 is a happy number");
   is(is_happy(571,7), 3, "571 is a happy number in base 7");
@@ -1315,7 +1373,19 @@ subtest 'set functions', sub {
   is(setcontainsany(\@OS,[-1,7]),0,"setcontainsany not found");
   is(setcontainsany(\@OS,[-1,8]),1,"setcontainsany found");
 
-  is(setcontains(primes(500),353),1,"setcontains with primes");
+  ok(setcontains(primes(500),353),"setcontains with primes");
+  ok(setcontains(primes(2000),229,541,863,1223),"setcontains with more primes");
+
+  {
+    my $S = primes(5,487);
+    push @$S, 499;
+    my $SE = [3,@$S];
+    setinsert($S,3);
+    is_deeply($S,$SE,"setinsert at the front");
+    my $T = primes(4000);
+    setinsert($S,$T);
+    is_deeply($S,$T,"setinsert many values, to front, middle, and back");
+  }
 
   is_deeply(setbinop(sub{$a * $b},[1,2,3],[2,3,4]),[2,3,4,6,8,9,12],"setbinop");
   is_deeply(sumset([-1,0,1]), [-2,-1,0,1,2], "sumset");
@@ -1467,7 +1537,6 @@ subtest 'Goldbach', sub {
 #  csrand
 #  rand
 #  random_factored_integer
-#  randperm
 #
 #  random_prime
 #  random_ndigit_prime
@@ -1484,9 +1553,7 @@ subtest 'Goldbach', sub {
 # foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range
 # forsquarefree {...} [start,] end    loop with factors of square-free n
 # forsquarefreeint {...} [start,] end loop over square-free n
-# forcomp { ... } n [,{...}]          loop over integer compositions
 # formultiperm { ... } \@n            loop over multiset permutations
-# forderange { ... } n                loop over derangements
 # prime_iterator                      returns a simple prime iterator
 # prime_iterator_object               returns a prime iterator object
 # lastfor                             stop iteration of for.... loop
@@ -1497,8 +1564,6 @@ subtest 'Goldbach', sub {
 #
 #  znorder bigint
 #  non-GMP lucas_sequence
-#  pminus1_factor stage 2
-#  forcompositions with hash
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
 

@@ -316,6 +316,13 @@ subtest 'setcontains', sub {
 
   # List arg works even unordered and with duplications
   is(setcontains([1..8],5,4,5,1,3), 1, "setcontains with list");
+
+  # Cover big sets
+  {
+    my @odd  = map { 2*$_+1 } 0..300;
+    is( setcontains(\@odd,[2,4,8,16,32,64,128]), 0, "odds < 600 does not contain an even set");
+    is( setcontains(\@odd,[1,3,7,15,31,63,127]), 1, "odds < 600 contains an odd set");
+  }
 };
 
 subtest 'setcontainsany', sub {
@@ -375,6 +382,12 @@ subtest 'setinsert', sub {
     my $exp = toset(@$s,@$v);
     setinsert($s,@$v);
     is_deeply( $s, $exp, "insert a list: $what" );
+  }
+
+  {
+    my $S = [1..500];
+    setinsert($S,[501..1000]);
+    is_deeply($S,[1..1000],"insert many integers at once");
   }
 };
 
