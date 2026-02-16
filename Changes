@@ -340,6 +340,8 @@ Revision history for Perl module Math::Prime::Util
 
     - inverse_totient memory leak fixed, memory use reduced, slightly faster.
 
+    - forsetproduct handles tied input arrays.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

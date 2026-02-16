@@ -829,25 +829,6 @@ static SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i) {
 #define STORE_ARREF(name, i, sv) \
   do { (use_direct_ ## name ? (svarr_ ## name)[i] = sv : av_store(avp_ ## name, i, sv)) } while(0)
 
-/* TODO: get rid of this */
-static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what, bool readonly)
-{
-  AV* av;
-  if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV))
-    croak("%s: expected array reference", what);
-  av = (AV*) SvRV(sv);
-
-  /* MAGICAL:  We must use fetch etc. */
-  if (SvMAGICAL(av)) croak("%s: array reference is magical", what);
-
-  if (!readonly) {
-    if (SvREADONLY(av)) croak("%s: array reference is readonly", what);
-    if (!AvREAL(av) && AvREIFY(av)) /* Need to reify.  We should never see. */
-      croak("%s: array reference is not 'real'", what);
-  }
-  return av;
-}
-
 #define DEBUG_PRINT_ARRAY(name,av) \
   { Size_t j_; SV** arr_ = AvARRAY(av);  printf("%s: [",name);  for(j_=0; j_<av_count(av); j_++) printf("%lu ",SvUV(arr_[j_])); printf("]\n"); }
 
@@ -6468,13 +6449,11 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     Safefree(svals);
     END_FORCOUNT;
 
-void
-forsetproduct (SV* block, ...)
+void forsetproduct (SV* block, ...)
   PROTOTYPE: &@
   PREINIT:
-    IV narrays, i, *arlen, *arcnt;
-    AV **arptr;
-    SV **arout;
+    SSize_t narrays, i, j, *arlen, *arcnt;
+    SV ***arsvs;
     GV *gv;
     HV *stash;
     CV *subcv;
@@ -6493,35 +6472,39 @@ forsetproduct (SV* block, ...)
         XSRETURN(0);
     }
 
-    Newz(0, arcnt, narrays, IV);
-    New(0, arlen, narrays, IV);
-    New(0, arptr, narrays, AV*);
-    New(0, arout, narrays, SV*);
+    Newz(0, arcnt, narrays, SSize_t);
+    New(0, arlen, narrays, SSize_t);
+    New(0, arsvs, narrays, SV**);
+    /* Make local copies of the SV pointers.  Allows magic/tied inputs. */
     for (i = 0; i < narrays; i++) {
-      arptr[i] = _simple_array_ref_from_sv(aTHX_ ST(i+1),"forsetproduct",TRUE);
-      arlen[i] = av_count(arptr[i]);
-      arout[i] = AvARRAY(arptr[i])[0];
+      DECL_ARREF(inav);
+      USE_ARREF(inav, ST(i+1), SUBNAME, AR_READ);
+      arlen[i] = len_inav;
+      New(0, arsvs[i], len_inav, SV*);
+      for (j = 0; j < len_inav; j++) {
+        SV* v = FETCH_ARREF(inav,j);
+        arsvs[i][j] = v ? v : &PL_sv_undef;;
+      }
     }
-
     START_FORCOUNT;
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
+      SV **arr;
       I32 gimme = G_VOID;
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
       PUSH_MULTICALL(subcv);
       do {
-        av_extend(av, narrays-1);
         av_fill(av, narrays-1);
+        arr = AvARRAY(av);
         for (i = narrays-1; i >= 0; i--)  /* Faster to fill backwards */
-          AvARRAY(av)[i] = arout[i];
+          arr[i] = arsvs[i][arcnt[i]];
         { ENTER; MULTICALL; LEAVE; }
         CHECK_FORCOUNT;
         for (i = narrays-1; i >= 0; i--) {
           if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
-          arout[i] = AvARRAY(arptr[i])[arcnt[i]];
-          if (arcnt[i] > 0)  break;
+          else                         break;
         }
       } while (i >= 0);
       FIX_MULTICALL_REFCOUNT;
@@ -6531,17 +6514,18 @@ forsetproduct (SV* block, ...)
 #endif
     do {
       PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)narrays);
-      for (i = 0; i < narrays; i++) { PUSHs(arout[i]); }
+      for (i = 0; i < narrays; i++) { PUSHs(arsvs[i][arcnt[i]]); }
       PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       CHECK_FORCOUNT;
       for (i = narrays-1; i >= 0; i--) {
         if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
-        arout[i] = AvARRAY(arptr[i])[arcnt[i]];
-        if (arcnt[i] > 0)  break;
+        else                         break;
       }
     } while (i >= 0);
-    Safefree(arout);
-    Safefree(arptr);
+
+    for (i = 0; i < narrays; i++)
+      Safefree(arsvs[i]);
+    Safefree(arsvs);
     Safefree(arlen);
     Safefree(arcnt);
     END_FORCOUNT;
