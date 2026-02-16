@@ -1550,7 +1550,7 @@ limit C<hi>, returns an array reference with all prime powers between
 the limits (inclusive).  With only one input, the lower limit is C<2>.
 
 The array reference values will be all C<p^e> where
-C<lo E<lt>= p^e E<lt>= hi> with C<p> prime and C<e E<gt>= 1>.  Hence this
+C<< lo <= p^e <= hi >> with C<p> prime and C<< e >= 1 >>.  Hence this
 includes the primes as well as higher powers of primes.
 
 See also L</primes> and L</prime_power_count>.
@@ -1772,7 +1772,7 @@ Though we have defined C<prime_omega(0) = 1>, it is not included.
 Returns the Ramanujan primes R_n between the upper and lower limits
 (inclusive), with a lower limit of C<2> if none is given.  This is
 L<OEIS A104272|http://oeis.org/A104272>.  These are the Rn such that if
-C<x E<gt> Rn> then L</prime_count>(n) - L</prime_count>(n/2) E<gt>= C<n>.
+C<< x > Rn >> then L</prime_count>(n) - L</prime_count>(n/2) C<< >= n >>.
 
 This has a similar API to the L</primes> and L</twin_primes> functions, and
 like them, returns an array reference.
@@ -1893,7 +1893,7 @@ argument.
   say "The ten thousandth prime is ", nth_prime(10_000);
 
 Returns the prime that lies in index C<n> in the array of prime numbers.  Put
-another way, this returns the smallest C<p> such that C<Pi(p) E<gt>= n>.
+another way, this returns the smallest C<p> such that C<< Pi(p) >= n >>.
 
 Like most programs with similar functionality, this is one-based.
 C<nth_prime(0)> returns C<undef>, C<nth_prime(1)> returns C<2>.
@@ -2751,7 +2751,7 @@ that is equal to its aliquot sum.
   say "$n is a ", is_power($n), "-th power";
 
 Given a single integer input C<n>, returns k if C<n = r^k> for
-some integer C<r E<gt> 1, k E<gt> 1>, and 0 otherwise.  The k returned is
+some integer C<< r > 1, k > 1 >>, and 0 otherwise.  The k returned is
 the largest possible.  This can be used in a boolean statement to
 determine if C<n> is a perfect power.
 
@@ -2861,7 +2861,7 @@ function and Sage's C<squarefree_part> function.
 =head2 powerfree_part_sum
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
-the sum of k-powerfree parts of all positive integers E<lt>= C<n>.  This
+the sum of k-powerfree parts of all positive integers C<< <= n >>.  This
 is equivalent to
 
     vecsum(map { powerfree_part($_,$k) } 1..$n)
@@ -2893,7 +2893,7 @@ This corresponds to Pari/GP's C<sqrtint> function.
 
 Given an non-negative integer C<n> and positive exponent C<k>, return the
 integer k-th root of C<n>.  This is the largest integer C<r> such that
-C<r^k E<lt>= n>.
+C<< r^k <= n >>.
 
 If a third argument is present, it must be a scalar reference.
 It will be set to C<r^k>.
@@ -2913,7 +2913,7 @@ This corresponds to Pari/GP's C<sqrtnint> function.
   say "largest power of 2 less than or equal to 1000:  2^$e = $be";
 
 Given a non-zero positive integer C<n> and an integer base C<b> greater
-than 1, returns the largest integer C<e> such that C<b^e E<lt>= n>.
+than 1, returns the largest integer C<e> such that C<< b^e <= n >>.
 
 If a third argument is present, it must be a scalar reference.
 It will be set to C<b^e>.
@@ -2988,7 +2988,7 @@ to floating point, which can give wrong results, and also avoid having to
 manually convert everything to bigints.
 
 This corresponds to Pari/GP's C<cmp> function, GMP's C<mpz_cmp> function,
-Math::BigInt's C<bcmp> method, and Perl's E<lt>=E<gt> operator.
+Math::BigInt's C<bcmp> method, and Perl's << <=> >> operator.
 Previous to version 6.2, GMP could return negative or positive values other
 than -1 and 1.
 
@@ -3416,7 +3416,7 @@ return a sorted array using Perl's C<sort>.
 Using an array reference as input is slightly faster.
 
 This is almost always faster than Perl's built-in numerical sort:
-C<@a = sort { $a E<lt> = E<gt> $b } @a>.
+C<< @a = sort { $a <=> $b } @a >>.
 See the performance section for more information.
 
 =head2 vecsorti
@@ -3960,7 +3960,7 @@ This is the L<OEIS series A003277|http://oeis.org/A003277>.
 Given an integer C<n>, returns 1 if C<n> is positive and
 a Carmichael number, and returns 0 otherwise.
 These are composites that satisfy C<b^(n-1) ≡ 1 mod n> for all
-C<1 E<lt> b E<lt> n> relatively prime to C<n>.
+C<< 1 < b < n >> relatively prime to C<n>.
 Alternately Korselt's theorem says these are composites such that C<n> is
 square-free and C<p-1> divides C<n-1> for all prime divisors C<p> of C<n>.
 
@@ -4366,8 +4366,8 @@ This is an arithmetic function which counts the number of positive
 integers less than or equal to C<n> that are relatively prime to C<n>.
 
 Given the definition used, C<euler_phi> will return 0 for all
-C<n E<lt> 1>.  This follows the logic used by SAGE.  Mathematica and Pari
-return C<euler_phi(-n)> for C<n E<lt> 0>.  Mathematica returns 0 for C<n = 0>,
+C<< n < 1 >>.  This follows the logic used by SAGE.  Mathematica and Pari
+return C<euler_phi(-n)> for C<< n < 0 >>.  Mathematica returns 0 for C<n = 0>,
 Pari pre-2.6.2 raises an exception, and Pari 2.6.2 and newer returns 2.
 
 If called with two integer arguments C<low> and C<high>, they define
@@ -4398,7 +4398,7 @@ function for C<n>.
 Jordan's totient is a generalization of Euler's totient, where
   C<jordan_totient(1,$n) == euler_totient($n)>
 This counts the number of k-tuples less than or equal to n that form a coprime
-tuple with n.  As with C<euler_phi>, 0 is returned for all C<n E<lt> 1>.
+tuple with n.  As with C<euler_phi>, 0 is returned for all C<< n < 1 >>.
 This function can be used to generate some other useful functions, such as
 the Dedekind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
 
@@ -4463,7 +4463,7 @@ This is L<OEIS series A002819|http://oeis.org/A002819>.
 
 Given a non-negative integer C<n>, returns θ(n),
 the first Chebyshev function.
-This is the sum of the logarithm of each prime where C<p E<lt>= n>.
+This is the sum of the logarithm of each prime where C<< p <= n >>.
 Effectively:
 
   my $s = 0;  forprimes { $s += log($_) } $n;  return $s;
@@ -4476,7 +4476,7 @@ but computed more efficiently and accurately.
 
 Given a non-negative integer C<n>, returns ψ(n),
 the second Chebyshev function.
-This is the sum of the logarithm of each prime power where C<p^k E<lt>= n>
+This is the sum of the logarithm of each prime power where C<< p^k <= n >>
 for an integer k.
 Effectively:
 
@@ -4705,7 +4705,7 @@ The actual value will always be less than or equal to the result.
 
 Given a single non-negative integer C<n>, returns the smallest prime C<p>
 such that C<p + q = n> and both C<p> and C<q> are primes.
-Only the single value C<p> is returned, with C<q = n-p> and C<p E<lt>= q>.
+Only the single value C<p> is returned, with C<q = n-p> and C<< p <= q >>.
 Both C<p> and C<q> are prime.
 
 C<undef> is returned if no such C<p> exists.  This will happen for values
@@ -4721,14 +4721,14 @@ even inputs, and 1 millisecond for 105 bit even inputs.
 =head2 goldbach_pair_count
 
 Given a single non-negative integer C<n>, returns the number of pairs of
-primes C<p> and C<q> where C<p E<lt>= q> and C<p + q = n>.
+primes C<p> and C<q> where C<< p <= q >> and C<p + q = n>.
 
 If no such pairs exist, C<0> is returned.
 
 =head2 goldbach_pairs
 
 Given a single non-negative integer C<n>, returns a list containing each C<p>
-for all prime pairs C<p> and C<q> where C<p E<lt>= q> and C<p + q = n>.
+for all prime pairs C<p> and C<q> where C<< p <= q >> and C<p + q = n>.
 The number of elements returned is the same as L</goldbach_pair_count>.
 
 If no such pairs exist, an empty list is returned.
@@ -4843,7 +4843,7 @@ reference with all C<k>-powerful integers from C<lo> to C<hi> inclusive.
   # Best by far.
   say for @{powerful_numbers(1,$n,$k)};
 
-Note that C<n E<lt>= 0> are non-powerful.
+Note that C<< n <= 0 >> are non-powerful.
 
 =head2 powerful_count
 
@@ -4859,7 +4859,7 @@ If C<k> is omitted, C<k=2> is used.
 Given an integer C<n> and an optional non-negative integer C<k>,
 returns the sum of positive integer C<k>-powerful numbers less than or equal
 to C<n>.
-That is, the sum for all C<x>, C<1> E<lt>= C<x> E<gt>= C<n>,
+That is, the sum for all C<x>, C<< 1 <= x <= n >>,
 where C<x> is a C<k>-powerful number.
 If C<k> is omitted, C<k=2> is used.
 
@@ -4967,7 +4967,7 @@ The actual value will always be less than or equal to the result.
 
 Given a non-negative integer C<n>, return the smallest Chen prime
 strictly greater than C<n>.
-This will be a prime C<p>, C<p E<gt> n>, where C<p+2> is either a
+This will be a prime C<< p: p > n >>, where C<p+2> is either a
 prime or a semiprime.
 
 
@@ -5062,10 +5062,10 @@ This corresponds to Pari's C<binomial(n,k)> function, Mathematica's
 C<Binomial[n,k]> function, and GMP's C<mpz_bin_ui> function.
 
 For negative arguments, this matches Mathematica.  Pari does not implement
-the C<n E<lt> 0, k E<lt>= n> extension and instead returns C<0> for this
+the C<< n < 0, k <= n >> extension and instead returns C<0> for this
 case.  GMP's API does not allow negative C<k> but otherwise matches.
 C<Math::BigInt> version 1.999816 and later supports negative arguments
-with similar semantics.  Prior to this, C<n E<lt> 0, k > 0> was undefined.
+with similar semantics.  Prior to this, C<< n < 0, k > 0 >> was undefined.
 
 =head2 falling_factorial
 
@@ -5197,7 +5197,7 @@ computation as an asymptotic formula may be used.  For precisions of
 
 Given two non-negative integers C<n> and C<a>, returns the Legendre phi
 function (also called the Legendre sum).
-This is the count of positive integers E<lt>= C<n> which are not
+This is the count of positive integers C<< <= n >> which are not
 divisible by any of the first C<a> primes.
 
 This corresponds to the C<legendre_phi(n,a)> function in SAGE, and the
@@ -5208,7 +5208,7 @@ C<--phi n a> feature of C<primecount>.
   $approx_prime_count = inverse_li(1000000000);
 
 Given a non-negative integer C<n>, returns the least integer value C<k>
-such that C<Li(k)> E<gt>= n>.  Since the logarithmic integral C<Li(n)> is
+such that C<< Li(k)> >= n >>.  Since the logarithmic integral C<Li(n)> is
 a good approximation to the number of primes less than C<n>, this function
 is a good simple approximation to the nth prime.
 
@@ -5446,7 +5446,7 @@ by a mod operation.
 While very efficient, this is not state of the art.  Currently,
 Fredrik Johansson's fast multi-point polynomial evaluation method as
 used in FLINT is the fastest known implementation.
-This becomes noticeable for C<n> E<gt> C<10^8> or so,
+This becomes noticeable for C<< n > 10^8 >> or so,
 and the O(n^.5) versus O(n) complexity is very apparent with large C<n>.
 
 =head2 binomialmod
@@ -6171,7 +6171,7 @@ for "hard" numbers.  Installing the L<Math::Prime::Util::GMP> module will
 speed up bigint factoring a B<lot>, and all future effort on large number
 factoring will be in that module.  If you do not have that module for
 some reason, use the GMP or Pari version of bigint if possible
-(e.g. C<use bigint try =E<gt> 'GMP,Pari'>), which will run 2-3x faster
+(e.g. C<< use bigint try => 'GMP,Pari' >>), which will run 2-3x faster
 (though still 100x slower than the real GMP code).
 
 
@@ -6274,7 +6274,7 @@ division.  Without trial division, is possible the function will be unable
 to find a factor, in which case a single element, the input, is returned.
 
 This is Warren D. Smith's Lehman core with minor modifications.  It is
-limited to 42-bit inputs: C<n E<lt> 8796393022208>.
+limited to 42-bit inputs: C<< n < 8796393022208 >>.
 
 =head2 squfof_factor
 
@@ -6366,8 +6366,8 @@ For BigInt / BigFloat inputs, full accuracy and performance is obtained
 only if L<Math::Prime::Util::GMP> is installed.
 If this module is not available, then other methods are used and give
 at least 14 digits of accuracy:
-continued fractions (C<x E<lt> -1>),
-rational Chebyshev approximation (C< -1 E<lt> x E<lt> 0>),
+continued fractions (C<< x < -1 >>),
+rational Chebyshev approximation (C<< -1 < x < 0 >>),
 a convergent series (small positive C<x>),
 or an asymptotic divergent series (large positive C<x>).
 
@@ -6402,7 +6402,7 @@ only if L<Math::Prime::Util::GMP> is installed.
 
   my $z = RiemannZeta($s);
 
-Given a floating point input C<s> where C<s E<gt>= 0>, returns the floating
+Given a floating point input C<s> where C<< s >= 0 >>, returns the floating
 point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
 function is the sum from k=1 to infinity of C<1 / k^s>.  This function only
@@ -7195,7 +7195,7 @@ are all faster.
 =item Prime Counts and Nth Prime
 
 Outside of private research implementations doing prime counts for
-C<n E<gt> 2^64>, this module should be close to state of the art in
+C<< n > 2^64 >>, this module should be close to state of the art in
 performance, and supports results up to C<2^64>.  Further performance
 improvements are planned, as well as expansion to larger values.
 
@@ -7448,7 +7448,7 @@ Finding the sumset size of the first 10,000 primes.
    2.3s    3MB  $s=setbinop { $a+$b } $p;  say scalar @$s;
    0.4s    3MB  $s=sumset $p;  say scalar @$s;
 
-Set intersection of C<[-1000..100]> and C<[-100..1000], with Perl 5.43.7.
+Set intersection of C<[-1000..100]> and C<[-100..1000]>, with Perl 5.43.7.
 
      4 uS  Set::IntSpan::Fast::XS
      5 uS  setintersect                       <===========  this module
@@ -7464,7 +7464,7 @@ Set intersection of C<[-1000..100]> and C<[-100..1000], with Perl 5.43.7.
   1508 uS  Set::Scalar
 
 Set intersection of integers under 1000 divisible by 2 and 3 respectively.
-Sets are C<[grep{0==$_%2}0..999]> and C<[grep{0==$_%3}0..999]:
+Sets are C<[grep{0==$_%2}0..999]> and C<[grep{0==$_%3}0..999]>:
 
      3 uS  setintersect                       <===========  this module
      6 uS  Pari/GP 2.17.0
