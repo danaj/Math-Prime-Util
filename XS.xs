@@ -628,11 +628,6 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
     cv = sv_2cv(block, &stash, &gv, 0); \
     if (cv == Nullcv) croak("%s: Not a subroutine reference", SUBNAME); \
   } while (0)
-#define CHECK_ARRAYREF(sv) \
-  do { \
-    if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV)) \
-      croak("%s: expected array reference", SUBNAME); \
-  } while (0)
 
 /* In my testing, this constant return works fine with threads, but to be
  * correct (see perlxs) one has to make a context, store separate copies in
@@ -788,21 +783,34 @@ static int _sign_cmp(int xsign, UV x, int ysign, UV y) {
 
 /******************************************************************************/
 
+#define CHECK_ARRAYREF1(sv,name) \
+  do { \
+    if ( !SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVAV ) \
+      croak("%s: expected array reference", name); \
+  } while (0)
+#define CHECK_ARRAYREF(sv)  CHECK_ARRAYREF1(sv,SUBNAME)
+
+#define CHECK_AV_NOT_READONLY1(av,name) \
+  do { \
+    if (SvREADONLY(av)) \
+      croak("%s: array reference is readonly", name); \
+  } while (0)
+#define CHECK_AV_NOT_READONLY(av) CHECK_AV_NOT_READONLY1(av, SUBNAME)
+
 #define DECL_ARREF(name) \
   AV *   avp_ ## name; \
   SV **  svarr_ ## name; \
   Size_t len_ ## name;
 
-#define AR_READONLY 0
+#define AR_READ 0
 #define AR_WRITE 1
 #define USE_ARREF(name, sv, subname, will_modify) \
   do { \
-    if ((!SvROK(sv)) || (SvTYPE(SvRV(sv)) != SVt_PVAV)) \
-      croak("%s: expected array reference", subname); \
+    CHECK_ARRAYREF1(sv, subname); \
     avp_ ## name = (AV*) SvRV(sv); \
     len_ ## name = av_count(avp_ ## name); \
-    if (will_modify && SvREADONLY(avp_ ## name)) \
-      croak("%s: array reference is readonly", subname); \
+    if (will_modify) \
+      CHECK_AV_NOT_READONLY1(avp_ ## name, subname); \
     if (SvMAGICAL(avp_ ## name) || (will_modify && !AvREAL(avp_ ## name) && AvREIFY(avp_ ## name))) \
       svarr_ ## name = 0; \
     else \
@@ -821,6 +829,7 @@ static SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i) {
 #define STORE_ARREF(name, i, sv) \
   do { (use_direct_ ## name ? (svarr_ ## name)[i] = sv : av_store(avp_ ## name, i, sv)) } while(0)
 
+/* TODO: get rid of this */
 static AV* _simple_array_ref_from_sv(pTHX_ SV *sv, const char* what, bool readonly)
 {
   AV* av;
@@ -859,7 +868,7 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
   UV  *r;
   DECL_ARREF(avp);
 
-  USE_ARREF(avp, sva, fstr, AR_READONLY);
+  USE_ARREF(avp, sva, fstr, AR_READ);
   len = len_avp;
   *retlen = len;
   if (len == 0) {
@@ -5030,20 +5039,19 @@ void setcontains(IN SV* sva, ...)
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
     if (items < 2)  RETURN_NPARITY(1);
-    if (SvMAGICAL(ava) || SvREADONLY(ava) || !AvREAL(ava)) {
-      /* Punt these rare complicated cases to Perl */
+    if (SvMAGICAL(ava) || !AvREAL(ava)) { /* Punt these to Perl */
       DISPATCHPP();
       XSRETURN(1);
     }
     findall = ix == 0 ? 1 : 0;
     if (items == 2 && SvROK(ST(1)) && SvTYPE(SvRV(ST(1))) == SVt_PVAV) {
       set_data_t svcache;
-      USE_ARREF(arb, ST(1), SUBNAME, AR_READONLY);
+      USE_ARREF(arb, ST(1), SUBNAME, AR_READ);
       /* If setcontainsany and B is bigger than A, swap them for performance. */
       if (ix == 1 && len_arb > alen && svarr_arb != 0) {
         ava = avp_arb;
         alen = len_arb;
-        USE_ARREF(arb, ST(0), SUBNAME, AR_READONLY);
+        USE_ARREF(arb, ST(0), SUBNAME, AR_READ);
       }
       blen = len_arb;
       subset = ix == 0 && blen > alen  ?  0  :  findall;
@@ -5088,8 +5096,8 @@ void setinsert(IN SV* sva, ...)
     alen = av_count(ava);
     if (items < 2)
       RETURN_NPARITY(0);
-    if (SvMAGICAL(ava) || SvREADONLY(ava) || !AvREAL(ava)) {
-      /* Punt these rare complicated cases to Perl */
+    CHECK_AV_NOT_READONLY(ava);  /* We intend to modify it */
+    if (SvMAGICAL(ava) || !AvREAL(ava)) { /* Punt these to Perl */
       DISPATCHPP();
       XSRETURN(1);
     }
@@ -5215,8 +5223,8 @@ void setremove(IN SV* sva, ...)
     alen = av_count(ava);
     if (alen == 0 || items < 2)
       RETURN_NPARITY(0);
-    if (SvMAGICAL(ava) || SvREADONLY(ava) || !AvREAL(ava)) {
-      /* Punt these rare complicated cases to Perl */
+    CHECK_AV_NOT_READONLY(ava);  /* We intend to modify it */
+    if (SvMAGICAL(ava) || !AvREAL(ava)) { /* Punt these to Perl */
       DISPATCHPP();
       XSRETURN(1);
     }
@@ -5426,7 +5434,15 @@ void vecsorti(IN SV* sva)
     size_t i, len;
     UV *L;
     SV **arr;
+    AV *ava;
   PPCODE:
+    CHECK_ARRAYREF(sva);
+    ava = (AV*) SvRV(sva);
+    CHECK_AV_NOT_READONLY(ava);  /* We intend to modify it */
+    if (SvMAGICAL(ava) || !AvREAL(ava)) { /* Punt these to Perl */
+      DISPATCHPP();
+      XSRETURN(1);
+    }
     type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, "vecsorti");
     /* If we really wanted to optimize small values, the reading function
      * could create a mask like:
@@ -5442,10 +5458,7 @@ void vecsorti(IN SV* sva)
       DISPATCHPP();
       XSRETURN(1);
     }
-    {
-      AV* ava = _simple_array_ref_from_sv(aTHX_ sva, "vecsorti", FALSE);
-      arr = AvARRAY(ava);
-    }
+    arr = AvARRAY(ava);
     for (i = 0; i < len; i++) {
       if (type == IARR_TYPE_NEG) sv_setiv(arr[i],(IV)L[i]);
       else                       sv_setuv(arr[i],L[i]);
@@ -5479,7 +5492,7 @@ void permtonum(IN SV* svp)
     Size_t i, plen;
     DECL_ARREF(avp);
   PPCODE:
-    USE_ARREF(avp, svp, SUBNAME, AR_READONLY);
+    USE_ARREF(avp, svp, SUBNAME, AR_READ);
     plen = len_avp;
     if (plen <= 20) {
       int V[21], A[21] = {0};
@@ -5568,7 +5581,7 @@ void vecsample(IN SV* svk, ...)
       }
     } else { /* We are given a single array reference.  Select from it. */
       DECL_ARREF(avp);
-      USE_ARREF(avp, ST(1), SUBNAME, AR_READONLY);
+      USE_ARREF(avp, ST(1), SUBNAME, AR_READ);
       nitems = len_avp;
 
       if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
