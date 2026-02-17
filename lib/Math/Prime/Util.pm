@@ -3373,11 +3373,15 @@ items, with the associated value being the occurrence count in the array.
 This is identical to L<List::MoreUtils::frequency>.  It is typically faster
 when given only native integers.
 
-This is very similar to the Pari/GP function C<matreduce> for vectors.
+This is very similar to the Pari/GP function C<matreduce> for vectors,
+and to Python's C<Counter>.
 
 =head2 vecsingleton
 
   my @solo = vecsingleton(1,4,17,1,17,-8);  # (4,-8)
+  # Same but slower:
+  my %h = vecfreq(@n);
+  my @onlyuniqs = grep { $h{$_} == 1 } @n;
 
 Given an array of items, returns an array with all entries removed that
 appear more than once in the list.  The original ordering is preserved.
@@ -3639,6 +3643,8 @@ the two given sets.
 If only one array reference is given, it will be used with itself.
 
 The result will be in set form (numerically sorted, no duplicates).
+The input sets are not aliased inside the block (modifying C<$a> and
+C<$b> has no effect outside the block).
 
 This corresponds to Pari's C<setbinop> function.
 Our function uses B<much> less memory, as of Pari 2.17.0.

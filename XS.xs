@@ -112,7 +112,7 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
  #define my_sviv(sv) SvIV(sv)
 #endif
 
-#if PERL_VERSION_GE(5,9,4)
+#if PERL_VERSION_GE(5,9,4) || PERL_VERSION_EQ(5,8,9)
   #define SVf_MAGTEST  SVf_ROK
 #else
   #define SVf_MAGTEST  SVf_AMAGIC
@@ -625,7 +625,9 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
 
 #define SETSUBREF(cv, block) \
   do { \
-    cv = sv_2cv(block, &stash, &gv, 0); \
+    GV *gv_; \
+    HV *stash_; \
+    cv = sv_2cv(block, &stash_, &gv_, 0); \
     if (cv == Nullcv) croak("%s: Not a subroutine reference", SUBNAME); \
   } while (0)
 
@@ -689,6 +691,25 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 }
 
 #define NEWSVINT(sign,v) (((sign) > 0) ? newSVuv(v) : newSViv(v))
+#define SETSVINT(sv,setpos,posv,negv) \
+  do { if (setpos) sv_setuv(sv,posv); \
+       else        sv_setiv(sv,negv); } while(0)
+
+#if PERL_VERSION_GE(5,8,9)
+#define FASTSETSVINT(sv,setpos,val) \
+  do { \
+    const UV val_ = val; \
+    if ((setpos) && (UV)(val_) > (UV)IV_MAX) { \
+      if (SvTYPE(sv) != SVt_IV) sv_setuv(sv,val_); \
+      else { SvUV_set(sv,val_); SvIsUV_on(sv); } \
+    } else { \
+      if (SvTYPE(sv) != SVt_IV) sv_setiv(sv,(IV)val_); \
+      else { SvIV_set(sv,(IV)val_); SvIsUV_off(sv); } \
+    } \
+  } while(0)
+#else
+#define FASTSETSVINT(sv,setpos,val) SETSVINT(sv,setpos,val,(IV)val)
+#endif
 
 #define RETURN_128(hi,lo) \
   do { char str_[40]; \
@@ -1521,8 +1542,7 @@ bool _validate_integer(SV* svn)
     }
     status = _validate_and_set(&n, aTHX_ svn, mask);
     if (status != 0) {
-      if (status == 1)  sv_setuv(svn, n);
-      else              sv_setiv(svn, n);
+      SETSVINT(svn, status == 1, n, (IV)n);
 #if PERL_VERSION_LT(5,8,0) && BITS_PER_WORD == 64
       if (status == 1 && n > 562949953421312UL)
         sv_setpvf(svn, "%"UVuf, n);
@@ -2701,8 +2721,7 @@ is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
       }
       if (ret && svroot != 0) {
         if (!SvROK(svroot)) croak("is_power: third argument not a scalar reference");
-        if (status == 1) sv_setuv(SvRV(svroot),  root);
-        else             sv_setiv(SvRV(svroot), -(IV)root);
+        SETSVINT(SvRV(svroot), status == 1, root, -(IV)root);
       }
       RETURN_NPARITY(ret);
     }
@@ -4740,126 +4759,96 @@ void sumset(IN SV* sva, IN SV* svb = 0)
     Safefree(ra);
     RETURN_SET_REF(s);
 
-void setbinop(SV* block, IN SV* sva, IN SV* svb = 0)
+void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: &$;$
-  CODE:
-  {
-    AV *ava, *avb;
-    GV *agv, *bgv, *gv;
-    SV **asv, **bsv;
-    iset_t s;
-    Size_t alen, blen, i, j;
-    int status;
-    UV ret;
-    HV *stash;
-    CV *subcv;
-
-    SETSUBREF(subcv, block);
-
-    /* ====== Get and store the input array references ====== */
-    CHECK_ARRAYREF(sva);
-    ava = (AV*) SvRV(sva);
-    alen = av_count(ava);
-    if (alen == 0) RETURN_EMPTY_SET_REF();
-
-    if (svb == 0) {
-      avb = ava;
-    } else {
-      CHECK_ARRAYREF(svb);
-      avb = (AV*) SvRV(svb);
-    }
-    blen = av_count(avb);
-    if (blen == 0) RETURN_EMPTY_SET_REF();
-
-    /* TODO: Something in the block calls is killing the stack on older Perls.
-     * It is failing in 5.10.0 and earlier, and ok in 5.10.1 and later.  Force
-     * call into the PP routine. */
-    i = 0;
-    asv = bsv = 0;
+  PREINIT:
+    int atype, btype;
+    UV *ra, *rb;
+    Size_t alen, blen;
+  CODE:   /* Must be CODE and not PPCODE */
 #if PERL_VERSION_GE(5,10,1)
-    /* ====== Walk the array references storing the SV pointers ====== */
-    New(0, asv, alen, SV*);
-    for (i = 0; i < alen; i++) {
-      SV** iv = av_fetch(ava, i, 0);
-      if (iv == 0) break;
-      asv[i] = *iv;
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 0, sva, "setbinop arg 1");
+    if (svb == 0 || atype == IARR_TYPE_BAD) {
+      rb = ra;
+      blen = alen;
+      btype = atype;
+    } else {
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 0, svb, "setbinop arg 2");
     }
-    if (i >= alen) {
-      if (avb == ava) {
-        bsv = asv;
-        j = blen;
-      } else {
-        New(0, bsv, blen, SV*);
-        for (j = 0; j < blen; j++) {
-          SV** iv = av_fetch(avb, j, 0);
-          if (iv == 0) break;
-          bsv[j] = *iv;
-        }
-      }
+    if (alen == 0 || blen == 0) {
+      if (rb != ra) Safefree(rb);
+      Safefree(ra);
+      RETURN_EMPTY_SET_REF();
     }
-#endif
-    if (i < alen || j < blen) {
-      if (bsv != asv) Safefree(bsv);
-      if (asv != 0)   Safefree(asv);
-      DISPATCHPP();
-      XSRETURN(1);
-    }
+    if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) {
+      iset_t s;
+      Size_t i, j;
+      GV *agv, *bgv;
+      SV *asv, *bsv;
+      int status;
+      UV ret;
+      CV *subcv;
 
-    /* ====== Call block on cross product, insert result into set ====== */
-    agv = gv_fetchpv("a", GV_ADD, SVt_PV);
-    bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
-    SAVESPTR(GvSV(agv));
-    SAVESPTR(GvSV(bgv));
-    s = iset_create( 4UL * ((size_t)alen + (size_t)blen + 2) );
+      SETSUBREF(subcv, block);
+
+      agv = gv_fetchpv("a", GV_ADD, SVt_PV);
+      bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
+      SAVESPTR(GvSV(agv));
+      SAVESPTR(GvSV(bgv));
+      asv = NEWSVINT(0,0);
+      bsv = NEWSVINT(0,0);
+      GvSV(agv) = asv;
+      GvSV(bgv) = bsv;
+      s = iset_create( 4UL * ((size_t)alen + (size_t)blen + 2) );
 #ifdef dMULTICALL
-    if (!CvISXSUB(subcv)) {
-      dMULTICALL;
-      I32 gimme = G_SCALAR;
-      PUSH_MULTICALL(subcv);
-      for (i = 0; i < alen; i++) {
-        GvSV(agv) = asv[i];
-        for (j = 0; j < blen; j++) {
-          GvSV(bgv) = bsv[j];
-          { ENTER; MULTICALL; LEAVE; }
-          status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
-          if (status != 0)  iset_add(&s, ret, status);
-          if (status == 0 || iset_is_invalid(s)) break;
+      if (!CvISXSUB(subcv)) {
+        dMULTICALL;
+        I32 gimme = G_SCALAR;
+        PUSH_MULTICALL(subcv);
+        for (i = 0; i < alen; i++) {
+          for (j = 0; j < blen; j++) {
+            FASTSETSVINT(asv, atype == IARR_TYPE_POS, ra[i]);
+            FASTSETSVINT(bsv, btype == IARR_TYPE_POS, rb[j]);
+            { ENTER; MULTICALL; LEAVE; }
+            status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
+            if (status != 0)  iset_add(&s, ret, status);
+            if (status == 0 || iset_is_invalid(s)) break;
+          }
+          if (j < blen) break;
         }
-        if (j < blen) break;
+        FIX_MULTICALL_REFCOUNT;
+        POP_MULTICALL;
       }
-      FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
-    }
-    else
+      else
 #endif
-    {
-      for (i = 0; i < alen; i++) {
-        GvSV(agv) = asv[i];
-        for (j = 0; j < blen; j++) {
-          dSP;
-          GvSV(bgv) = bsv[j];
-          PUSHMARK(SP);
-          call_sv((SV*)subcv, G_SCALAR);
-          status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
-          if (status != 0)  iset_add(&s, ret, status);
-          if (status == 0 || iset_is_invalid(s)) break;
+      {
+        for (i = 0; i < alen; i++) {
+          for (j = 0; j < blen; j++) {
+            dSP;
+            FASTSETSVINT(asv, atype == IARR_TYPE_POS, ra[i]);
+            FASTSETSVINT(bsv, btype == IARR_TYPE_POS, rb[j]);
+            PUSHMARK(SP);
+            call_sv((SV*)subcv, G_SCALAR);
+            status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
+            if (status != 0)  iset_add(&s, ret, status);
+            if (status == 0 || iset_is_invalid(s)) break;
+          }
+          if (j < blen) break;
         }
-        if (j < blen) break;
       }
-    }
-
-    /* ====== Free cached SV pointers.  Call PP if we not complete. ====== */
-    if (bsv != asv) Safefree(bsv);
-    Safefree(asv);
-    /* ====== Call PP if not finished. Return scalar if all needed. ====== */
-    if (i < alen || j < blen) {
+      /* asv and bsv are going to be freed with agv and bgv. */
+      if (status != 0 && !iset_is_invalid(s)) {
+        if (rb != ra) Safefree(rb);
+        Safefree(ra);
+        RETURN_SET_REF(s);
+      }
       iset_destroy(&s);
-      DISPATCHPP();
-      XSRETURN(1);
     }
-    /* ====== Get sorted set values.  Put on return stack. ====== */
-    RETURN_SET_REF(s);
-  }
+    if (rb != ra) Safefree(rb);
+    Safefree(ra);
+#endif
+    DISPATCHPP();
+    XSRETURN(1);
 
 void setunion(IN SV* sva, IN SV* svb)
   PROTOTYPE: $$
@@ -4872,7 +4861,7 @@ void setunion(IN SV* sva, IN SV* svb)
     UV *ra, *rb;
     size_t alen, blen;
   PPCODE:
-    /* Get the integers and check if they are sorted unique integers first. */
+    /* Get the integers and ensure they are sorted unique integers first. */
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
     btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
 
@@ -5440,10 +5429,8 @@ void vecsorti(IN SV* sva)
       XSRETURN(1);
     }
     arr = AvARRAY(ava);
-    for (i = 0; i < len; i++) {
-      if (type == IARR_TYPE_NEG) sv_setiv(arr[i],(IV)L[i]);
-      else                       sv_setuv(arr[i],L[i]);
-    }
+    for (i = 0; i < len; i++)
+      FASTSETSVINT(arr[i], type == IARR_TYPE_POS, L[i]);
     Safefree(L);
     XSRETURN(1);
 
@@ -5795,8 +5782,6 @@ void
 forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
   PREINIT:
-    GV *gv;
-    HV *stash;
     SV* svarg;
     CV *subcv;
     unsigned char* segment;
@@ -5901,8 +5886,6 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
   PREINIT:
     UV beg, end;
-    GV *gv;
-    HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *subcv;
     DECL_FORCOUNT;
@@ -6011,8 +5994,6 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$;$
   PREINIT:
     UV beg, end;
-    GV *gv;
-    HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *subcv;
     DECL_FORCOUNT;
@@ -6098,8 +6079,6 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
   PROTOTYPE: &$$;$
   PREINIT:
     UV c, beg, end, shiftres;
-    GV *gv;
-    HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *subcv;
     DECL_FORCOUNT;
@@ -6185,8 +6164,6 @@ fordivisors (SV* block, IN SV* svn)
   PREINIT:
     UV i, n, ndivisors;
     UV *divs;
-    GV *gv;
-    HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *subcv;
     DECL_FORCOUNT;
@@ -6239,8 +6216,6 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
   PREINIT:
     UV i, n, amin, amax, nmin, nmax;
     int primeq;
-    GV *gv;
-    HV *stash;
     CV *subcv;
     SV** svals;
     DECL_FORCOUNT;
@@ -6365,8 +6340,6 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
   PROTOTYPE: &$;$
   PREINIT:
     UV i, n, k, begk, endk;
-    GV *gv;
-    HV *stash;
     CV *subcv;
     SV** svals;
     UV*  cm;
@@ -6454,8 +6427,6 @@ void forsetproduct (SV* block, ...)
   PREINIT:
     SSize_t narrays, i, j, *arlen, *arcnt;
     SV ***arsvs;
-    GV *gv;
-    HV *stash;
     CV *subcv;
     DECL_FORCOUNT;
     dMY_CXT;
@@ -6539,8 +6510,6 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     UV beg, end, n, *factors;
     int i, nfactors, maxfactors;
     factor_range_context_t fctx;
-    GV *gv;
-    HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *subcv;
     SV* svals[64];
@@ -6634,8 +6603,6 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
   PREINIT:
     UV beg, end, i;
     unsigned char* isf;
-    GV *gv;
-    HV *stash;
     SV* svarg;  /* We use svarg to prevent clobbering $_ outside the block */
     CV *subcv;
     DECL_FORCOUNT;
@@ -6708,8 +6675,7 @@ CODE:
 {   /* This is basically reduce from List::Util.  Try to maintain compat. */
     SV *ret = sv_newmortal();
     SSize_t i;
-    GV *agv,*bgv,*gv;
-    HV *stash;
+    GV *agv,*bgv;
     SV **args = &PL_stack_base[ax];
     CV *subcv;
 
@@ -6756,8 +6722,6 @@ PROTOTYPE: &@
 CODE:
 {   /* Similar to slide from List::MoreUtils. */
     SSize_t i;
-    GV *gv;
-    HV *stash;
     SV **args = &PL_stack_base[ax];
     CV *subcv;
     SV **retsvarr;  /* Store results */
@@ -6828,8 +6792,6 @@ PPCODE:
     int ret_true = !(ix & 2); /* return true at end of loop for none/all; false for any/notall */
     int invert   =  (ix & 1); /* invert block test for all/notall */
     SSize_t index;
-    GV *gv;
-    HV *stash;
     SV **args = &PL_stack_base[ax];
     CV *subcv;
 
