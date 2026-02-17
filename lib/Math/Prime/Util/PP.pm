@@ -8,9 +8,12 @@ BEGIN {
   $Math::Prime::Util::PP::VERSION = '0.73';
 }
 
+our $BIGINTVERSION = 0.0;
 BEGIN {
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); }
     unless defined $Math::BigInt::VERSION;
+  $BIGINTVERSION = $Math::BigInt::VERSION;
+  $BIGINTVERSION =~ s/^(\d+)\.(\d+).*/$1.$2/;
 }
 
 # The Pure Perl versions of all the Math::Prime::Util routines.
@@ -6599,7 +6602,7 @@ sub _bi_powmod {
   } elsif ($refn eq 'Math::GMP') {
     $r = $r->powm_gmp($b,$n);
   } elsif ($refn eq 'Math::BigInt') {
-    $r->bmod($n) if $Math::BigInt::VERSION < 1.999;
+    $r->bmod($n) if $BIGINTVERSION < 1.999;
     $r->bmodpow($b,$n);
   } else {
     $r->bmodpow("$b","$n");
@@ -7248,7 +7251,7 @@ sub todigitstring {
     $s = Math::GMPz::Rmpz_get_str($n,$base);
   } elsif ($refn eq 'Math::GMP') {
     $s = Math::GMP::get_str_gmp($n,$base);
-  } elsif ($Math::BigInt::VERSION >= 1.999814) {
+  } elsif ($BIGINTVERSION >= 1.999814) {
     $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
     $s = $n->to_base($base);
   } else {
@@ -7309,7 +7312,7 @@ sub fromdigits {
   }
   if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/) {
     $n = $_BIGINT->new($r, $base);
-  } elsif ($Math::BigInt::VERSION < 1.999814) {
+  } elsif ($BIGINTVERSION < 1.999814) {
     $n=_FastIntegerInput([map{index("0123456789abcdefghijklmnopqrstuvwxyz",$_)}split(//,lc($r))],$base);
   } else {
     # from_base is 2x slower than calling the method directly (TODO file an RT)
@@ -11683,8 +11686,9 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
   # Typically faster and less memory to push them all instead of hashing here.
   my @set;
   for my $ia (@$ra) {
-    $a = $ia;
     for my $ib (@$rb) {
+      # Set both here in case they modified $a in their function.
+      $a = $ia;
       $b = $ib;
       push @set, $sub->();
     }
