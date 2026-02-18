@@ -12112,41 +12112,56 @@ sub setinvert {
   return scalar(@$set) - $setsize;
 }
 
+# For these set_is_ functions, the inputs can be unordered but no duplicates.
+
 sub set_is_disjoint {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (scalar(@{Msetintersect($s,$t)} == 0));
+  ($s,$t) = ($t,$s) if scalar(@$s) > scalar(@$t);
+  return 1 if @$s == 0 || @$t == 0;
+  my($k,%ins);
+  $ins{$k=$_}=undef for @$s;
+  for my $v (@$t) { return 0 if exists $ins{$k=$v} }
+  1;
 }
 sub set_is_equal {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s == @$t && scalar(@{Msetintersect($s,$t)}) == @$t);
+  return 0 unless @$s == @$t;
+  my %ins;
+  $ins{$_} = 0 for @$s;
+  for my $v (@$t) {
+    return 0 unless exists $ins{$v};
+    $ins{$v}++;
+  }
+  for (values %ins) { return 0 unless $_ }
+  1;
 }
 sub set_is_subset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s >= @$t && scalar(@{Msetintersect($s,$t)}) == @$t);
+  return 1 if @$t == 0;
+  return 0 if @$s < @$t;
+  my %ins;
+  undef @ins{@$s};
+  for my $v (@$t) { return 0 unless exists $ins{$v} }
+  1;
 }
 sub set_is_proper_subset {
   my($s,$t) = @_;
   croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
                                      && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s > @$t && scalar(@{Msetintersect($s,$t)}) == @$t);
+  return 0 if @$s <= @$t;
+  set_is_subset($s,$t);
 }
 sub set_is_superset {
-  my($s,$t) = @_;
-  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
-                                     && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s <= @$t && scalar(@{Msetintersect($s,$t)}) == @$s);
+  set_is_subset($_[1],$_[0]);
 }
 sub set_is_proper_superset {
-  my($s,$t) = @_;
-  croak 'Not an array reference' unless (ref($s) || '') eq 'ARRAY'
-                                     && (ref($t) || '') eq 'ARRAY';
-  return 0 + (@$s < @$t && scalar(@{Msetintersect($s,$t)}) == @$s);
+  set_is_proper_subset($_[1],$_[0]);
 }
 sub set_is_proper_intersection {
   my($s,$t) = @_;

@@ -3637,9 +3637,9 @@ for large sets.
   my $difset = setbinop { $a - $b } [1,2,3], [2,3,4];  # [-3,-2,-1,0,1]
   my $setsum = setbinop { $a + $b } [1,2,3];           # [2,3,4,5,6]
 
-Given a code block and two array references containing integers, treats
-them as integer sets and constructs a new set from the cross product of
-the two given sets.
+Given a code block and two array references containing integers,
+treats them as integer sets and constructs a new set from applying
+the cross product to the block.
 If only one array reference is given, it will be used with itself.
 
 The result will be in set form (numerically sorted, no duplicates).
@@ -3647,7 +3647,7 @@ The input sets are not aliased inside the block (modifying C<$a> and
 C<$b> has no effect outside the block).
 
 This corresponds to Pari's C<setbinop> function.
-Our function uses B<much> less memory, as of Pari 2.17.0.
+Our function uses B<much> less memory, as of Pari 2.18.1.
 
 =head2 sumset
 
@@ -7437,21 +7437,21 @@ bytes per element, Perl arrays use approximately 32 bytes per integer.
 Still, this is quite favorable compared to Perl hashes at 120 to 220
 (e.g. Set::Light, Set::Tiny, Set::Scalar, Set::Functional).
 
-For many purposes, L<Set::Tiny> works quite well.
+For generic set use, I recommend L<Set::Tiny>.
 The module source is B<very> tiny, unlike this module.
-It has many basic features and is fast.
+It offers an easy API for basic set functions and is fast.
 It is not limited to integers.
-On the other hand, our module is typically faster (2-10x) and uses
-less memory, even with our choice of native Perl sorted arrays.
+On the other hand, with integers our module is typically faster (2-10x)
+and uses less memory, even with our choice of native Perl sorted arrays.
 
 Finding the sumset size of the first 10,000 primes.
 
   my %r;  my $p = primes(nth_prime(10000));
 
-  12.9s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
+  12.6s   15MB  forsetproduct {$r{vecsum(@_)}=undef;} $p,$p;
                 say scalar(keys %r);
    9.4s 3900MB  Pari/GP X=primes(10000); #setbinop((a,b)->a+b,X,X)
-   2.3s    3MB  $s=setbinop { $a+$b } $p;  say scalar @$s;
+   2.4s    3MB  $s=setbinop { $a+$b } $p;  say scalar @$s;
    0.4s    3MB  $s=sumset $p;  say scalar @$s;
 
 Set intersection of C<[-1000..100]> and C<[-100..1000]>, with Perl 5.43.7.

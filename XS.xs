@@ -4767,13 +4767,13 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
     Size_t alen, blen;
   CODE:   /* Must be CODE and not PPCODE */
 #if PERL_VERSION_GE(5,10,1)
-    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 0, sva, "setbinop arg 1");
+    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setbinop arg 1");
     if (svb == 0 || atype == IARR_TYPE_BAD) {
       rb = ra;
       blen = alen;
       btype = atype;
     } else {
-      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 0, svb, "setbinop arg 2");
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, "setbinop arg 2");
     }
     if (alen == 0 || blen == 0) {
       if (rb != ra) Safefree(rb);
