@@ -7,7 +7,7 @@ use Math::Prime::Util qw/euler_phi jordan_totient carmichael_lambda
                          divisor_sum moebius inverse_totient
                          sumtotient/;
 
-#my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -91,7 +91,10 @@ SKIP: {
   is($tot, 198, "Totient count 0-100 = 198");
   is(0+inverse_totient(1728), 62, "inverse_totient(1728) = 62");
   is(0+inverse_totient(362880), 1138, "inverse_totient(9!) = 1138");
-  is(0+inverse_totient(3978374400), 63600, "inverse_totient(3978374400) = 63600");
+  SKIP: {
+    skip "Larger inverse totient with EXTENDED_TESTING",1 unless $extra;
+    is(0+inverse_totient(3978374400), 63600, "inverse_totient(3978374400) = 63600");
+  }
 
   is_deeply( [inverse_totient(0)], [], "inverse_totient(0)" );
   is_deeply( [inverse_totient(1)], [1,2], "inverse_totient(1)" );
