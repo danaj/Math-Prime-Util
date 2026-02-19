@@ -10,7 +10,9 @@ use Math::Prime::Util qw/primes
                         /;
 
 
-my @trials = qw/1 2 3 4 5 6 7 17 57 89 102 1337 8573 84763 784357 1000001 2573622/;
+my @trials = qw/1 2 3 4 5 6 7 17 57 89 102 1337 8573 84763 784357/;
+push @trials, 1000001 if defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+push @trials, 2573622 if defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 plan tests => 5 * scalar @trials;
 

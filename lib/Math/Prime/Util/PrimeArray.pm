@@ -29,7 +29,8 @@ use Math::Prime::Util::MemFree;
 use Tie::Array;
 use Carp qw/carp croak confess/;
 
-use constant SEGMENT_SIZE  =>  50_000;
+use constant SEGMENT_SIZE  =>  80_000;
+use constant HALFSEG       =>  SEGMENT_SIZE >> 1;
 use constant ALLOW_SKIP    =>  3_000;     # Sieve if skipping up to this
 
 sub TIEARRAY {
@@ -75,9 +76,15 @@ sub FETCH {
 
       $self->{ACCESS_TYPE}++;
       if ($self->{ACCESS_TYPE} > 2 || $index > $endidx+1) {
-        my $end_prime = nth_prime_upper($index + SEGMENT_SIZE);
-        $self->{PRIMES} = primes( $self->{PRIMES}->[-1]+1, $end_prime );
-        $begidx = $endidx+1;
+        my $prlen = scalar @{$self->{PRIMES}};
+        # Keep up to HALFSEG elements from the previous array
+        if ($prlen > HALFSEG) {
+          @{$self->{PRIMES}} = @{$self->{PRIMES}}[-HALFSEG .. -1];
+          $begidx += $prlen - HALFSEG;
+        }
+        # Add HALFSEG elements to the end
+        my $end_prime = nth_prime_upper($index + HALFSEG);
+        push @{$self->{PRIMES}}, @{primes($self->{PRIMES}->[-1]+1, $end_prime)};
       } else {
         push @{$self->{PRIMES}}, next_prime($self->{PRIMES}->[-1]);
       }
@@ -86,10 +93,13 @@ sub FETCH {
 
       $self->{ACCESS_TYPE}--;
       if ($self->{ACCESS_TYPE} < -2 || $index < $begidx-1) {
-        my $beg_prime = $index <= SEGMENT_SIZE
-                               ?  2  :  nth_prime_lower($index - SEGMENT_SIZE);
-        $self->{PRIMES} = primes($beg_prime, $self->{PRIMES}->[0]-1);
-        $begidx -= scalar @{ $self->{PRIMES} };
+        my $prlen = scalar @{$self->{PRIMES}};
+        my $beg_prime = $index <= HALFSEG
+                               ?  2  :  nth_prime_lower($index - HALFSEG);
+        unshift @{$self->{PRIMES}}, @{primes($beg_prime, $self->{PRIMES}->[0]-1)};
+        my $prnewlen = scalar @{$self->{PRIMES}};
+        $begidx -= $prnewlen - $prlen;
+        $#{$self->{PRIMES}} = SEGMENT_SIZE-1 if $prnewlen > SEGMENT_SIZE;
       } else {
         $begidx--;
         unshift @{$self->{PRIMES}}, prev_prime($self->{PRIMES}->[0]);
@@ -98,8 +108,9 @@ sub FETCH {
     } else {                         # Random access
 
       $self->{ACCESS_TYPE} = int($self->{ACCESS_TYPE} / 2);
-      # Alternately we could get a small window, but that will be quite
-      # a bit slower if true random access.
+      # TODO: we are destroying the primes array, just to get $begidx set.
+      # We should instead have an additional single last-index-result.
+      # return nth_prime($index+1);
       $begidx = $index;
       $self->{PRIMES} = [nth_prime($begidx+1)];
 
@@ -263,17 +274,17 @@ Perl v5.18 and 5.24.  It is recommended to use a new-ish Perl.
   List::Gen       $sum = primes->take(100000)->sum
 
 Memory use is comparing the delta between just loading the module and running
-the test.  M1 Macbook, Perl 5.40.1, Math::NumSeq v75,
-Math::Prime::TiedArray v0.04 with C<extend_step 1000>, List::Gen 0.976.
+the test.  M1 Macbook, Perl 5.42.0, Math::NumSeq v75,
+Math::Prime::TiedArray v0.04 with C<extend_step 1000>, List::Gen 0.979.
 
 Summing the first 0.1M primes via walking the array (milliseconds):
 
        .05      56k    Math::Prime::Util      sumprimes
       1.7       56k    Math::Prime::Util      forprimes
-      1.7      4 MB    Math::Prime::Util      sum big array
-     11          0     Math::Prime::Util      prime_iterator
-     27        3 MB    MPU::PrimeArray        using FETCH
-     37        3 MB    MPU::PrimeArray        array
+      1.6      4 MB    Math::Prime::Util      sum big array
+     12          0     Math::Prime::Util      prime_iterator
+     31        3 MB    MPU::PrimeArray        using FETCH
+     41        3 MB    MPU::PrimeArray        array
      63        6 MB    List::Gen              sequence
      51        950k    Math::NumSeq::Primes   sequence iterator
    2367ms     78 MB    Math::Prime::TiedArray (extend 1k)
@@ -281,7 +292,7 @@ Summing the first 0.1M primes via walking the array (milliseconds):
 Summing the first 1M primes via walking the array (seconds):
 
       .0003    268k    Math::Prime::Util      sumprimes
-      .017     268k    Math::Prime::Util      forprimes
+      .018     268k    Math::Prime::Util      forprimes
       .015    41 MB    Math::Prime::Util      sum big array
      0.11        0     Math::Prime::Util      prime_iterator
      0.3       644k    MPU::PrimeArray        using FETCH
@@ -293,14 +304,14 @@ Summing the first 1M primes via walking the array (seconds):
 Summing the first 10M primes via walking the array (seconds):
 
      0.0015    432k    Math::Prime::Util      sumprimes
-     0.18      432k    Math::Prime::Util      forprimes
+     0.19      432k    Math::Prime::Util      forprimes
      0.16    394 MB    Math::Prime::Util      sum big array
      1.2         0     Math::Prime::Util      prime_iterator
-     2.7       772k    MPU::PrimeArray        using FETCH
-     3.6       772k    MPU::PrimeArray        array
+     3.0       772k    MPU::PrimeArray        using FETCH
+     4.0       772k    MPU::PrimeArray        array
      8.3s    652 MB    List::Gen              sequence
-   611       22.8MB    Math::NumSeq::Primes   sequence iterator
-           >5000 MB    Math::Primes::TiedArray (extend 1k)
+   577       22.8MB    Math::NumSeq::Primes   sequence iterator
+           >5000 MB    Math::Prime::TiedArray (extend 1k)
 
 L<Math::Prime::Util> offers four obvious solutions:
 the C<sum_primes> function,
@@ -325,7 +336,7 @@ this module for primes if it can, which is shown in the above numbers.
 It is the odd module out in this comparison, as primes aren't a core feature.
 Without this module, it is very slow.
 
-L<Math::Primes::TiedArray> is remarkably impractical for anything other
+L<Math::Prime::TiedArray> is remarkably impractical for anything other
 than tiny numbers.
 
 
@@ -345,7 +356,7 @@ Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2012-2016 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
+Copyright 2012-2026 by Dana Jacobsen E<lt>dana@acm.orgE<gt>
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
