@@ -72,6 +72,7 @@ plan tests => 2 +  # require_ok
               1 +  # prime powers
               1 +  # twin primes
               1 +  # semi primes
+              1 +  # clusters
               1 +  # ramanujan_primes
               1 +  # real functions
               1 +  # factoring
@@ -595,6 +596,15 @@ subtest 'Semi primes', sub {
 };
 
 ###############################################################################
+subtest 'Clusters', sub {
+  is_deeply([sieve_prime_cluster(0,50,2)], [3,5,11,17,29,41], "sieve_prime_cluster(0,50, 2)");
+  is_deeply([sieve_prime_cluster(0,50,2,4)], [3], "sieve_prime_cluster(0,50, 2,4)");
+  is_deeply([sieve_prime_cluster(0,50,2,6)], [5,11,17,41], "sieve_prime_cluster(0,50, 2,6)");
+  is_deeply([sieve_prime_cluster(0,50,4,6)], [7,13,37], "sieve_prime_cluster(0,50, 4,6)");
+  is_deeply([sieve_prime_cluster(100,1000,2,6,8)], [101,191,821], "sieve_prime_cluster(100,1000, 2,6,8)");
+};
+
+###############################################################################
 subtest 'Ramanujan primes', sub {
   is_deeply(ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
 
@@ -993,6 +1003,7 @@ subtest 'misc number theory functions', sub {
   is(znorder(2,35), 12, "znorder(2,35) = 12");
   is(znorder(7,35), undef, "znorder(7,35) = undef");
   is(znorder(67,999999749), 30612237, "znorder(67,999999749) = 30612237");
+  is(znorder(5,"1180591620717411303462"), "92595421232738141424", "znorder(2,1180591620717411303462) = 92595421232738141424");
 
   is(binomial(35,16), 4059928950, "binomial(35,16)");
   is("".binomial(228,12), "30689926618143230620", "binomial(228,12)");
@@ -1568,13 +1579,6 @@ subtest 'config', sub {
 # prime_iterator                      returns a simple prime iterator
 # prime_iterator_object               returns a prime iterator object
 # lastfor                             stop iteration of for.... loop
-
-# TODO:
-#
-#  sieve_prime_cluster
-#
-#  znorder bigint
-#  non-GMP lucas_sequence
 
 is( $_, 'this should not change', "Nobody clobbered \$_" );
 
