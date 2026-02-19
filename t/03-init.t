@@ -7,8 +7,6 @@ use Math::Prime::Util::MemFree;
 use Test::More  tests => 3 + 3 + 3 + 6;
 
 
-my $bigsize = 10_000_000;
-
 # This is still a slightly dubious assumption, that the precalc size _must_
 # go up when we request it.
 
@@ -25,6 +23,7 @@ my $diag = "Using " .
 diag $diag;
 
 my $init_size = prime_get_config->{'precalc_to'};
+my $bigsize = $init_size + 50_000;
 
 prime_precalc($bigsize);
 

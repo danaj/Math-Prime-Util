@@ -189,20 +189,6 @@ if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION
 # We don't have this function yet.  Use a simple version for now.
 *Mtoint = \&_toint_simple;
 
-my $_precalc_size = 0;
-sub prime_precalc {
-  my($n) = @_;
-  croak "Parameter '$n' must be a non-negative integer" unless _is_nonneg_int($n);
-  $_precalc_size = $n if $n > $_precalc_size;
-}
-sub prime_memfree {
-  $_precalc_size = 0;
-  eval { Math::Prime::Util::GMP::_GMP_memfree(); }
-    if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.49;
-}
-sub _get_prime_cache_size { $_precalc_size }
-sub _prime_memfreeall { prime_memfree; }
-
 
 sub _is_nonneg_int {
   ((defined $_[0]) && $_[0] ne '' && ($_[0] !~ tr/0123456789//c));
@@ -423,11 +409,35 @@ sub _frombinary {
 ################################################################################
 ################################################################################
 
-my @_primes_small = (0,2);
+my($_precalc_size, @_primes_small) = (2,undef,2);
 {
-  my($n, $s, $sieveref) = (7-2, 3, _sieve_erat_string(5003));
-  push @_primes_small, 2*pos($$sieveref)-1 while $$sieveref =~ m/0/g;
+  my $_init_precalc_size = 5003;
+  _register_free_sub(sub {
+    if ($_precalc_size > $_init_precalc_size) {
+      ($_precalc_size, @_primes_small) = (2,undef,2);
+      _expand_prime_cache($_init_precalc_size);
+    }
+  });
+  _expand_prime_cache($_init_precalc_size);
 }
+sub _expand_prime_cache {
+  my($N) = @_;
+  if ($N > $_precalc_size) {
+    if ($_primes_small[-1] < 7) {
+      @_primes_small = (0,2);
+      my $sieveref = _sieve_erat_string($N);
+      push @_primes_small, 2*pos($$sieveref)-1 while $$sieveref =~ m/0/g;
+    } else {
+      my($lo,$hi) = ($_primes_small[-1] + 2, $N | 0x1);
+      my($BASE, $sieveref) = ($lo-2, _sieve_segment($lo, $hi));
+      push @_primes_small, $BASE+2*pos($$sieveref) while $$sieveref =~ m/0/g;
+    }
+    $_precalc_size = $N;
+  }
+  return $_primes_small[-1];
+}
+
+
 my @_prime_next_small = (
    2,2,3,5,5,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,
    29,29,29,29,29,29,31,31,37,37,37,37,37,37,41,41,41,41,43,43,47,
@@ -615,7 +625,7 @@ sub _sieve_erat_string {
   return \$sieve;
 }
 
-# TODO: this should be plugged into precalc, memfree, etc. just like the C code
+# TODO: this should be integrated with prime_precalc
 {
   my $primary_size_limit = 15000;
   my $primary_sieve_size = 0;
@@ -632,6 +642,9 @@ sub _sieve_erat_string {
     my $sieve = substr($$primary_sieve_ref, 0, ($end+1)>>1);
     return \$sieve;
   }
+  _register_free_sub(sub {
+    ($primary_sieve_size, $primary_sieve_ref) = (0,'');
+  });
 }
 
 
@@ -8136,6 +8149,7 @@ sub _add_fubini {  # Add the next Fubini sequence term to an array reference.
                           $t = Sdivint($t, $_+1);
                           $x } 0..$N-1);
 }
+_register_free_sub(sub { $_fubinis = [1,1,3,13,75]; });
 sub fubini {
   my($n) = @_;
   validate_integer_nonneg($n);
@@ -8887,6 +8901,9 @@ sub lucasvmod {
 }
 
 my %_ppc = (3 => 8, 5 => 20, 7 => 16, 11 => 10, 13 => 28, 17 => 36, 19 => 18);
+_register_free_sub(sub {
+  %_ppc = (3 => 8, 5 => 20, 7 => 16, 11 => 10, 13 => 28, 17 => 36, 19 => 18);
+});
 sub _pisano_pp {
   my($p,$e) = @_;
   return 1 if $e == 0;
@@ -12535,7 +12552,26 @@ sub random_factored_integer {
   }
 }
 
+################################################################################
 
+sub prime_precalc {
+  my($n) = @_;
+  croak "Parameter '$n' must be a non-negative integer" unless _is_nonneg_int($n);
+  _expand_prime_cache($n);
+}
+my @_free_subs;
+sub _register_free_sub {
+  push @_free_subs, shift;
+}
+sub prime_memfree {
+  # Make the internal callbacks that reset cached data.
+  $_->() for @_free_subs;
+  # Call GMP's free if we have it
+  eval { Math::Prime::Util::GMP::_GMP_memfree(); }
+    if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.49;
+}
+sub _get_prime_cache_size { $_precalc_size }
+sub _prime_memfreeall { prime_memfree; }
 
 1;
 

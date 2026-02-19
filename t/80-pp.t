@@ -89,6 +89,7 @@ plan tests => 2 +  # require_ok
               1 +  # vector (list) functions
               1 +  # rationals
               1 +  # Goldbach
+              1 +  # config
               1;   # $_ is ok
 
 use Math::Prime::Util qw/:all/;
@@ -96,6 +97,8 @@ use Math::BigInt;
 use Math::BigFloat;
 require_ok 'Math::Prime::Util::PP';
 require_ok 'Math::Prime::Util::PrimalityProving';
+
+my $default_precalc = prime_get_config->{'precalc_to'};  # 5003
 
 ###############################################################################
 
@@ -1514,16 +1517,24 @@ subtest 'Goldbach', sub {
   is_deeply([map { scalar goldbach_pairs($_) } (180,175,177)], [14,1,0], "scalar goldbach_pairs returns count");
 };
 
+subtest 'config', sub {
+  is($default_precalc, 5003, "default PP precalc = 5003");
+  my $new_precalc = 2000 + prime_get_config->{'precalc_to'};
+  prime_precalc($new_precalc);
+  is(prime_get_config->{'precalc_to'}, $new_precalc, "after prime_precalc($new_precalc) = $new_precalc");
+  prime_memfree();
+  is(prime_get_config->{'precalc_to'}, $default_precalc, "after memfree = $default_precalc");
+
+  is(prime_get_config->{'assume_rh'}, 0, "default is not assume Riemann hypothesis");
+  prime_set_config(assume_rh => 1);
+  is(prime_get_config->{'assume_rh'}, 1, "We are now assuming it");
+};
+
 # Not here:
 #  is_provable_prime
 #  is_provable_prime_with_cert
 #  prime_certificate
 #  verify_prime
-#
-#  prime_precalc
-#  prime_memfree
-#  prime_get_config
-#  prime_set_config
 #
 #  print_primes
 #
