@@ -694,8 +694,7 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 #define SETSVINT(sv,setpos,posv,negv) \
   do { if (setpos) sv_setuv(sv,posv); \
        else        sv_setiv(sv,negv); } while(0)
-
-#if PERL_VERSION_GE(5,8,9)
+#if 1
 #define FASTSETSVINT(sv,setpos,val) \
   do { \
     const UV val_ = val; \

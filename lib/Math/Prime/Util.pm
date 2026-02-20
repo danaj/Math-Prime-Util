@@ -3356,9 +3356,11 @@ the ordering is preserved.  Hence these are equivalent:
 Given an array of integers, returns an array with all duplicate entries
 removed.  The original ordering is preserved.  All values B<must> be defined.
 
-This is similar to L<List::Util::uniq> but restricted to integers,
-while L<List::Util::uniq> supports undef and arbitrary types.
-In return our function is 2-10x faster in XS for native signed integers.
+This is similar to L<List::Util::uniqint> (the integer comparison version
+of L<List::Util::uniq>).
+Unlike the more generic L<List::Util::uniq> and L<List::MoreUtils::XS::uniq>,
+all inputs must be integers.
+With native integers, our function is 2-10x faster.
 
 =head2 vecfreq
 

@@ -373,6 +373,6 @@ subtest 'vecslide', sub {
   is_deeply([vecslide {$a+$b} 1..1],[],"vecslide with 1 element returns empty");
 
   is_deeply([vecslide {$a+$b} 1..5],[3,5,7,9],"vecslide {\$a+\$b} 1..5");
-  is_deeply([vecslide { "$a->[0] $b->[1]" } (["hello","world"], ["goodbye","friends"], ["love","hate"])], ["hello friends","goodbye hate"], "vecslide with array refs");
+  is_deeply([vecslide { "$a->[0] $b->[1]" } ["hello","world"], ["goodbye","friends"], ["love","hate"]], ["hello friends","goodbye hate"], "vecslide with array refs");
   is(join(", ", vecslide { "$a and $b" } 0..3), "0 and 1, 1 and 2, 2 and 3", "vecslide example from LMU");
 };

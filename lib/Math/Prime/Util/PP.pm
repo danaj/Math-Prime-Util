@@ -2342,7 +2342,7 @@ sub _next_perfect_power {
   for (my $k = $kinit+$kinc; $k <= 1+$log2n; $k += $kinc) {
     my $r = Mrootint($n,$k);
     my $c = Mpowint(Madd1int($r),$k);
-    $best = $c if $c < $best && $c > $n;
+    $best = Maddint($c,0) if $c < $best && $c > $n;
   }
   $best;
 }
@@ -2363,7 +2363,7 @@ sub _prev_perfect_power {
     if ($r > 1) {
       my $c = Mpowint($r,$k);
       $c = Mpowint(Msub1int($r),$k) if $c >= $n;
-      $best = $c if $c > $best && $c < $n;
+      $best = Maddint($c,0) if $c > $best && $c < $n;
     }
   }
   $best;
@@ -5243,7 +5243,8 @@ sub divrem {
 }
 
 sub divint {
-  if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
+  if (!OLD_PERL_VERSION && $_[1] > 0 && $_[0] >= 0) {
+    # Simple no-error all positive case
     my($a,$b) = @_;
     my $q;
     if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
@@ -7172,7 +7173,7 @@ sub valuation {
       return 0 if $n & 1;
       return 1 if $n & 2;
       return 2 if $n & 4;
-      $s = sprintf("%b",$n);
+      $s = sprintf("%b","$n");
     } elsif (ref($n) eq 'Math::BigInt') {
       $s = $n->as_bin;
     } elsif (ref($n) eq 'Math::GMPz') {
@@ -7729,8 +7730,8 @@ sub _miller_rabin_2 {
 
     if (!defined $nm1) {
       $nm1 = Msub1int($n);
-      $s = Mvaluation($nm1,2);
-      $d = Mrshiftint($nm1,$s);
+      $s = valuation($nm1,2);
+      $d = rshiftint($nm1,$s);
     }
     my $x = _bi_powmod(2,$d,$n);
     return 1 if $x == 1 || $x == $nm1;
@@ -9038,7 +9039,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
       $V = Mmulsubmod($V, $V, $TWO, $n);
     }
   }
-  return 1 if $V == 2 || $V == ($n-$TWO);
+  return 1 if $V == 2 || Msubint($n,$V) == 2;
   foreach my $r (0 .. $s-2) {
     return 1 if $V == 0;
     $V = Mmulsubmod($V, $V, $TWO, $n);
@@ -9502,10 +9503,11 @@ sub _basic_factor {
 sub _remove_factor {
   my($n, $f, $flist) = @_;
 
-  do {
+  while (1) {
     push @$flist, $f;
     $n = Mdivint($n,$f);
-  } until $n % $f;
+    last unless Mis_divisible($n,$f);
+  }
 
   # Better for many repeated factors
   #if ($n % ($f*$f)) {
@@ -9518,6 +9520,7 @@ sub _remove_factor {
   #  push @$flist, map { $f } 1..$k;
   #}
 
+  $n = addint($n,0) if OLD_PERL_VERSION;
   $n;
 }
 sub trial_factor {
@@ -9988,6 +9991,8 @@ sub pminus1_factor {
     return @factors if $n < 4;
   }
 
+  $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
+
   if (!ref($n)) {
     # Stage 1 only
     my $sqrtn = Msqrtint($n);
@@ -10262,6 +10267,8 @@ sub ecm_factor {
     push @factors, $n;
     return @factors;
   }
+
+  $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
 
   $ncurves = 10 unless defined $ncurves;
 

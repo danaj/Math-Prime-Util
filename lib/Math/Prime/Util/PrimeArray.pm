@@ -79,7 +79,7 @@ sub FETCH {
         my $prlen = scalar @{$self->{PRIMES}};
         # Keep up to HALFSEG elements from the previous array
         if ($prlen > HALFSEG) {
-          @{$self->{PRIMES}} = @{$self->{PRIMES}}[-HALFSEG .. -1];
+          @{$self->{PRIMES}} = @{$self->{PRIMES}}[-(HALFSEG) .. -1];
           $begidx += $prlen - HALFSEG;
         }
         # Add HALFSEG elements to the end
