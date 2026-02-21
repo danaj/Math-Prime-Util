@@ -27,16 +27,16 @@ UV minimal_goldbach_pair(UV n)
 }
 
 #if 0
-  // Some ways for finding Goldbach pairs
+  /* Some ways for finding Goldbach pairs */
 
-  // 1. Simple
+  /* 1. Simple */
   START_DO_FOR_EACH_PRIME(3,n/2) {
     if (is_prob_prime(n-p))
       L[s++] = p;
   } END_DO_FOR_EACH_PRIME
   Renew(L, s, UV);  *size=s;  return L;
 
-  // 2. Get a full list then walk from the edges.  Not bad for small sizes.
+  /* 2. Get a full list then walk from the edges.  Not bad for small sizes. */
   if (n >= 22 && n < 4294967295U) {
     uint32_t *pr;
     UV nprimes = range_prime_sieve_32(&pr, n, 0);  /* pr[0]=2, pr[1]=3, */
@@ -54,7 +54,7 @@ UV minimal_goldbach_pair(UV n)
     Safefree(pr);
   }
 
-  // 3. Single sieve
+  /* 3. Single sieve */
   if (n >= 22) {
     unsigned char* segment;
     UV seg_base, seg_low, seg_high;
@@ -70,7 +70,7 @@ UV minimal_goldbach_pair(UV n)
     sort_uv_array(L, s);
   }
 
-  // The double sieve, low as inner, comes out fastest.
+  /* The double sieve, low as inner, comes out fastest. */
 #endif
 
 static UV sieve_pairs(UV* L, UV n) {

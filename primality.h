@@ -8,7 +8,7 @@ extern bool is_euler_pseudoprime(UV const n, UV a) ISCONSTFUNC;
 extern bool is_strong_pseudoprime(UV const n, UV a) ISCONSTFUNC;
 extern bool is_euler_plumb_pseudoprime(UV const n) ISCONSTFUNC;
 extern bool is_lucas_pseudoprime(UV n, int strength) ISCONSTFUNC;
-extern bool is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment) ISCONSTFUNC;;
+extern bool is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment) ISCONSTFUNC;
 extern bool is_frobenius_pseudoprime(UV n, IV P, IV Q);
 extern bool is_frobenius_underwood_pseudoprime(UV n);
 extern bool is_frobenius_khashin_pseudoprime(UV n) ISCONSTFUNC;

@@ -341,7 +341,7 @@ static void _qs_uv(UV* L, size_t lo, size_t hi, int badpartsleft) {
   size_t p, size = hi-lo+1;
 
   if (size <= 16)
-    return insertionsort_uv(L+lo, size);
+    { insertionsort_uv(L+lo, size);  return; }
 
   p = _partition_uv(L, lo, hi);
 
@@ -350,7 +350,7 @@ static void _qs_uv(UV* L, size_t lo, size_t hi, int badpartsleft) {
     size_t r_size = hi - (p+1) + 1;
     bool highly_unbalanced = l_size < size / 8 || r_size < size / 8;
     if (highly_unbalanced && --badpartsleft <= 0)
-      return heapsort_uv(L+lo, size);
+      { heapsort_uv(L+lo, size);  return; }
   }
 
   _qs_uv(L, lo, p, badpartsleft);
@@ -360,7 +360,7 @@ static void _qs_iv(IV* L, size_t lo, size_t hi, int badpartsleft) {
   size_t p, size = hi-lo+1;
 
   if (size <= 16)
-    return insertionsort_iv(L+lo, size);
+    { insertionsort_iv(L+lo, size);  return; }
 
   p = _partition_iv(L, lo, hi);
 
@@ -369,7 +369,7 @@ static void _qs_iv(IV* L, size_t lo, size_t hi, int badpartsleft) {
     size_t r_size = hi - (p+1) + 1;
     bool highly_unbalanced = l_size < size / 8 || r_size < size / 8;
     if (highly_unbalanced && --badpartsleft <= 0)
-      return heapsort_iv(L+lo, size);
+      { heapsort_iv(L+lo, size);  return; }
   }
 
   _qs_iv(L, lo, p, badpartsleft);

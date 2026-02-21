@@ -298,7 +298,7 @@ static UV* _ramanujan_prime_window(UV n, UV* winsize, UV* npos) {
       if (i < wlen) break;
     }
     winmult *= 2;
-    MPUverbose(1, "  ramanujan_prime_count increasing window\n");
+    MPUverbose(1, "  %s increasing window\n", "ramanujan_prime_count");
   }
   *winsize = swin;
   *npos = i-1;

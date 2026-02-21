@@ -820,7 +820,7 @@ static int _sign_cmp(int xsign, UV x, int ysign, UV y) {
 #define DECL_ARREF(name) \
   AV *   avp_ ## name; \
   SV **  svarr_ ## name; \
-  Size_t len_ ## name;
+  Size_t len_ ## name
 
 #define AR_READ 0
 #define AR_WRITE 1

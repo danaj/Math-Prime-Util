@@ -331,7 +331,7 @@ signed char* range_moebius(UV lo, UV hi)
     for (i = P_GT_LO(p, p, lo); i >= lo && i <= hi; i += p)
       mu[i-lo] += logp;
     for (i = P_GT_LO(p2, p2, lo); i >= lo && i <= hi; i += p2)
-      mu[i-lo] = 0x80;
+      mu[i-lo] = (signed char)0x80;
   } END_DO_FOR_EACH_PRIME
 
   logp = (unsigned char)log2floor(lo);
@@ -648,7 +648,7 @@ static float _cbrtf(float x)
 {
   float t, r;
   union { float f; uint32_t i; } xx = { x };
-  xx.i = (xx.i + 2129874493)/3;
+  xx.i = (xx.i + 2129874493U)/3;
   t = xx.f;
   /* One round of Halley's method gets to 15.53 bits */
   r = t * t * t;
@@ -1016,7 +1016,7 @@ unsigned char* range_issquarefree(UV lo, UV hi) {
 static const uint32_t _max_ps_n[32] = {0,92681,2343,361,116,53,30,20,14,11,8,7,6,5,4,4,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2};
 static const uint32_t _max_ps_calc[9] = {0,0,1624,0,67,44,19,17,9};
 #else
-static const UV _max_ps_n[64] = {0,6074000999,3810777,92681,9839,2190,745,331,175,105,69,49,36,28,22,18,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
+static const UV _max_ps_n[64] = {0,UVCONST(6074000999),3810777,92681,9839,2190,745,331,175,105,69,49,36,28,22,18,15,13,11,10,9,8,7,6,6,5,5,5,4,4,4,4,3,3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
 static const uint32_t _max_ps_calc[9] = {0,0,2642245,0,5724,1824,482,288,115};
 #endif
 
@@ -1604,7 +1604,7 @@ UV pillai_v(UV n) {
   { uint32_t psq = p*p;  if (n >= psq && (n % psq) == 0) return 0; }
 
 /* mpu 'for (0..255) { $x=moebius($_)+1; $b[$_ >> 4] |= ($x << (2*($_%16))); } say join ",",@b;' */
-static const uint32_t _smoebius[16] = {2703565065,23406865,620863913,1630114197,157354249,2844895525,2166423889,363177345,2835441929,2709852521,1095049497,92897577,1772687649,162113833,160497957,689538385};
+static const uint32_t _smoebius[16] = {2703565065U,23406865,620863913,1630114197,157354249,2844895525U,2166423889U,363177345,2835441929U,2709852521U,1095049497,92897577,1772687649,162113833,160497957,689538385};
 int moebius(UV n) {
   if (n < 256)  return (int)((_smoebius[n >> 4] >> (2*(n % 16))) & 3) - 1;
 
@@ -1620,7 +1620,7 @@ int moebius(UV n) {
 #define ISF_TESTP(p) \
   { uint32_t psq = p*p;  if (psq > n) return 1;  if ((n % psq) == 0) return 0; }
 
-static const uint32_t _isf[8] = {3840601326,1856556782,3941394158,2362371810,3970362990,3471729898,4008603310,3938642668};
+static const uint32_t _isf[8] = {3840601326U,1856556782U,3941394158U,2362371810U,3970362990U,3471729898U,4008603310U,3938642668U};
 bool is_square_free(UV n) {
   if (n < 256)  return (_isf[n >> 5] & (1U << (n % 32))) != 0;
 

@@ -37,7 +37,7 @@ extern uint32_t    factoredp_linear_factors(UV fac[], const factored_t *nf);
 static INLINE factored_t  factorint(UV n)
  { factored_t nf; factorintp(&nf, n); return nf; }
 static INLINE void        factored_validate(const factored_t nf)
- { return factoredp_validate(&nf); }
+ { factoredp_validate(&nf); }
 static INLINE uint32_t    factored_total_factors(const factored_t nf)
  { return factoredp_total_factors(&nf); }
 static INLINE bool        factored_is_square_free(const factored_t nf)
