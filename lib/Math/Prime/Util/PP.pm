@@ -242,7 +242,10 @@ sub _bfdigits {
 
 
 sub _validate_integer {
-  $_[0] = "$_[0]" if OLD_PERL_VERSION && ("$_[0]" > 1e15 || "$_[0]" < -1e15);
+  if (OLD_PERL_VERSION && defined $_[0] && !ref($_[0])) {
+    no warnings 'numeric';
+    $_[0] = "$_[0]" if "$_[0]" > 1e15 || "$_[0]" < -1e15;
+  }
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -260,7 +263,7 @@ sub _validate_integer {
      $_[0] = "$_[0]";
      return _validate_integer($_[0]);
   } else {
-    if ($refn =~ /^Math::Big(Int|Float)$/) {
+    if ($refn =~ /^Math::Big(Int|Float)$/ && !OLD_PERL_VERSION) {
       croak "Parameter '$n' must be an integer" unless $n->is_int();
       my $bits = length($n->as_bin)-2;
       $_[0] = _bigint_to_int($_[0])
@@ -273,7 +276,10 @@ sub _validate_integer {
   1;
 }
 sub _validate_integer_nonneg {
-  $_[0] = "$_[0]" if OLD_PERL_VERSION && "$_[0]" > 1e15;
+  if (OLD_PERL_VERSION && defined $_[0] && !ref($_[0])) {
+    no warnings 'numeric';
+    $_[0] = "$_[0]" if "$_[0]" > 1e15;
+  }
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -1329,8 +1335,8 @@ sub minimal_goldbach_pair {
   my($n) = @_;
   validate_integer_nonneg($n);
   return undef if $n < 4;
-  return Mis_prime($n-2) ? 2 : undef  if $n & 1 || $n == 4;
-  my($p,$H)=(3,$n >> 1);
+  return Mis_prime($n-2) ? 2 : undef  if $n == 4 || Mis_odd($n);
+  my($p,$H)=(3,Mrshiftint($n));
   while ($p <= $H) {
     return $p if Mis_prime($n-$p);
     $p = next_prime($p);
@@ -1341,11 +1347,11 @@ sub goldbach_pair_count {
   my($n) = @_;
   validate_integer_nonneg($n);
   return 0 if $n < 4;
-  return Mis_prime($n-2) ? 1 : 0  if $n & 1 || $n == 4;
+  return Mis_prime($n-2) ? 1 : 0  if $n == 4 || Mis_odd($n);
   my $s = 0;
   Mforprimes( sub {
     $s++ if Mis_prime($n-$_);
-  }, Mrshiftint($n,1), $n-3);
+  }, Mrshiftint($n), $n-3);
   $s;
 }
 sub goldbach_pairs {
@@ -1725,11 +1731,15 @@ sub is_odd {
   #    1.5    is_odd($n)
   my $R = ref($n);
   return $n->is_odd() if defined $R && $R eq 'Math::BigInt';
+  return (my $k = substr("$n",-1,1)) =~ tr/13579/13579/ if OLD_PERL_VERSION;
   return $n % 2 ? 1 : 0;
 }
 sub is_even {
   my($n) = @_;
   validate_integer($n);
+  my $R = ref($n);
+  return $n->is_even() if defined $R && $R eq 'Math::BigInt';
+  return (my $k = substr("$n",-1,1)) =~ tr/02468/02468/ if OLD_PERL_VERSION;
   return $n % 2 ? 0 : 1;
 }
 
@@ -2342,7 +2352,7 @@ sub _next_perfect_power {
   for (my $k = $kinit+$kinc; $k <= 1+$log2n; $k += $kinc) {
     my $r = Mrootint($n,$k);
     my $c = Mpowint(Madd1int($r),$k);
-    $best = Maddint($c,0) if $c < $best && $c > $n;
+    $best = addint($c,0) if $c < $best && $c > $n;  # OLD_PERL_VERSION
   }
   $best;
 }
@@ -2363,7 +2373,7 @@ sub _prev_perfect_power {
     if ($r > 1) {
       my $c = Mpowint($r,$k);
       $c = Mpowint(Msub1int($r),$k) if $c >= $n;
-      $best = Maddint($c,0) if $c > $best && $c < $n;
+      $best = addint($c,0) if $c > $best && $c < $n;  # OLD_PERL_VERSION
     }
   }
   $best;
@@ -5021,7 +5031,7 @@ sub powint {
   return 1 if $b == 0;
   return $a if $b == 1;
   if ($b == 2) {
-    return int("$a")*int("$a") if abs($a) <= (MPU_32BIT ? 65535 : 4294967295);
+    return int("$a")*int("$a") if abs($a) < MPU_HALFWORD;
     return Mmulint($a,$a);
   }
 
@@ -6880,8 +6890,10 @@ sub is_power {
   0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc,0xfffffff6,0xfffffdfe,# 29-34
   0xf7fffffe,0xfffdfffe,0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc # 35-40
       );
-      return 0 if $a <= 40 && (1 << ($n & 31)) & $rootmask[$a];
-
+      if ($a <= 40) {
+        my $n32 = 1 << (ref($n) ? Mmodint($n,32) : $n & 31);
+        return 0 if $n32 & $rootmask[$a];
+      }
       my $RK;
       if ($n >= 0) {
         my $root = Mrootint($n, $a, \$RK);
@@ -11266,7 +11278,7 @@ sub _forcomp_sub {
   my $cinc = 1;
   if ($what eq 'oddcomposites') {
     $beg = 9 if $beg < 9;
-    $beg++ unless $beg & 1;
+    $beg++ unless $beg % 2 == 1;
     $cinc = 2;
   } else {
     $beg = 4 if $beg < 4;

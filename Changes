@@ -2,12 +2,6 @@ Revision history for Perl module Math::Prime::Util
 
 0.74 ?
 
-    - 5.6.2 64-bit is no longer supported, though 32-bit is.  We have been
-      planning to deprecate this broken configuration for over 10 years.
-      There are hundreds of lines of library code working around the borked
-      math, and if your Perl is over 22 years old it's time to upgrade.
-      The next major release is planned to move to 5.10.1 (2009) as a minimum.
-
     [API Changes]
 
     - is_pseudoprime, is_euler_pseudoprime, and is_strong_pseudoprime will

@@ -261,8 +261,8 @@ subtest 'next and prev prime', sub {
 
   is( prev_prime(2), undef, "Previous prime of 2 returns undef" );
   {
-    my $n   = $use64 ? 18446744073709551611 : 4294967291;
-    my $exp = $use64 ? "18446744073709551629" : "4294967311";
+    my $n   = ~0 > 4294967295 ? 18446744073709551611 : 4294967291;
+    my $exp = ~0 > 4294967295 ? "18446744073709551629" : "4294967311";
     my $got = next_prime($n);
     ok(ref($got) =~ /^Math::/ && "$got" eq $exp, "next_prime(~0-4) returns bigint result");
   }
