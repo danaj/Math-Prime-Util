@@ -6263,10 +6263,8 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     }
 
     if (n==0 && nmin <= 1) {
-      { PUSHMARK(SP);
-        /* Nothing */
-        PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
-      }
+      /* Nothing */
+      PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
     }
     if (n >= nmin && nmin <= nmax && amin <= amax && nmax > 0 && amax > 0)
     { /* RuleAsc algorithm from Kelleher and O'Sullivan 2009/2014) */
@@ -6538,9 +6536,8 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
     if (beg <= 1) {
-      PUSHMARK(SP);
       sv_setuv(svarg, 1);
-      PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
+      PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
     }
     fctx = factor_range_init(beg, end, ix);
@@ -6623,9 +6620,8 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
     svarg = newSVuv(0);
     GvSV(PL_defgv) = svarg;
     if (beg <= 1) {
-      PUSHMARK(SP);
       sv_setuv(svarg, 1);
-      PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
+      PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
     }
     while (beg <= end) {
@@ -6637,8 +6633,6 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
       if (!CvISXSUB(subcv)) {
         dMULTICALL;
         I32 gimme = G_VOID;
-        AV *av = save_ary(PL_defgv);
-        AvREAL_off(av);
         PUSH_MULTICALL(subcv);
         for (i = 0; i < seghi-seglo+1; i++) {
           CHECK_FORCOUNT;
@@ -6656,7 +6650,7 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
         CHECK_FORCOUNT;
         if (isf[i]) {
           sv_setuv(svarg, seglo+i);
-          PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
+          PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
         }
       }
       Safefree(isf);
