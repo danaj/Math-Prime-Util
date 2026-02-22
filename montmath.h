@@ -96,7 +96,7 @@ static INLINE uint64_t _u64div(uint64_t c, uint64_t n) {
 
 #if 0
   /* AArch64 */
-  /* https://www.pure.ed.ac.uk/ws/portalfiles/portal/412503872/Concurrency_and_Computation_-_2023_-_Jesus_-_Vectorizing_and_distributing_number_theoretic_transform_to_count_Goldbach.pdf /*
+  /* https://www.pure.ed.ac.uk/ws/portalfiles/portal/412503872/Concurrency_and_Computation_-_2023_-_Jesus_-_Vectorizing_and_distributing_number_theoretic_transform_to_count_Goldbach.pdf */
   /* https://era.ed.ac.uk/server/api/core/bitstreams/ed9176f7-d8ed-4af9-aa20-3a82c5f8e353/content */
 
 #define umul128(ph, pl, m0, m1) do { \

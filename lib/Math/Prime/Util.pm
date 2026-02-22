@@ -3403,21 +3403,24 @@ All values must be defined and integers.
 They may be any mix of native IV, native UV, strings, bigints.
 
 Perl's built-in numerical sort can sometimes give incorrect results for
-our usage.  Prior to version 5.26 (2017), large 64-bit integers were turned
-into NV (floating point) types.  With all versions, strings are turned into
-NV types even if they are the text of a 64-bit integer.
+typical cases we encounter.  Prior to version 5.26 (2017), large 64-bit
+integers were turned into NV (floating point) types.  With all current
+versions of Perl, strings are turned into NV types even if they are the
+text of a 64-bit integer.
 
 In scalar context, C<vecsort> returns the number of items without sorting
-(but after input validation).  This is both not surprising as well as
-typically what we want -- if we only want the number of divisors, we call
-in scalar context and get the number without needing to sort them.
+(but after input validation).  This should be expected and what we typically
+want.  E.g. if we only want the number of divisors, we call in scalar
+context and get the number without requiring actual sorting.
 Having the same results from
 C<$x = vecsort(5,6,7)> and <@v = vecsort(5,6,7); $x=@v;>
 is what we want.
-This contrasts with Perl's built-in C<sort> which has B<undefined> behaviour
-in scalar context (in all current versions of C<perl> it returns undef).
+This contrasts with Perl's built-in C<sort> which in scalar context has
+B<undefined> behaviour (in all current versions of C<perl> it returns undef).
 In particular this forces all programs to use a workaround if they want to
-return a sorted array using Perl's C<sort>.
+return the results of sorting an array.
+See L<Perl 5 issue 1280|3https://github.com/Perl/perl5/issues/12803> for
+some discussion with no resolution.
 
 Using an array reference as input is slightly faster.
 
@@ -7528,20 +7531,22 @@ L<Sort::XS> has a variety of algorithms.
 However there is no option for unsigned (UV), only signed integers (IV).
 Sort::Key offers a variety of interfaces including unsigned and signed
 integers, as well as in-place versions.
-The following table compares sorting random 64-bit elements and is shown
-as speedup relative to Perl's sort (higher is faster).
+The following table compares sorting random 64-bit unsigned integers and
+is shown as speedup relative to Perl's sort (higher is faster, v5.43.7).
 
                               10    100   1000  10000 100000     1M
-  vecsort                   2.2x   2.3x   4.8x   5.1x   6.7x   9.7x
-  Sort::Key::Radix usort    1.4x   1.9x   3.0x   2.7x   4.3x   3.0x
-  Sort::XS::quick_sort      1.1x   1.5x   1.8x   2.0x   2.1x   2.7x
-  Sort::Key usort           1.2x   1.3x   1.3x   1.3x   1.3x   1.4x
+  vecsort                   2.0x   2.3x   4.7x   6.2x   6.9x   9.7x
+  Sort::Key::Radix usort    1.4x   2.3x   3.4x   3.4x   4.7x   2.7x
+  Sort::XS::quick_sort      1.2x   1.5x   1.8x   1.9x   2.0x   2.7x
+  Sort::Key usort           1.2x   1.3x   1.3x   1.3x   1.3x   1.3x
   sort                      1.0x   1.0x   1.0x   1.0x   1.0x   1.0x
-  List::MoreUtils::qsort    0.7x   0.5x   0.4x   0.5x   0.5x   0.6x
+  List::MoreUtils::qsort    0.6x   0.5x   0.4x   0.4x   0.4x   0.3x
 
 The implementation does not currently try to exploit patterns.
 Regarding the above timing, when given sorted or reverse sorted data,
-Perl's sort is much faster versus the random values used above.
+Perl's sort is much faster versus the random values used above, though
+still not faster than L</vecsort> and L<Sort::Key::Radix::usort> (both
+of which use a radix sort).
 
 List::MoreUtils::qsort has very different goals in mind than standard
 sorting of integer lists, as mentioned in their documentation.

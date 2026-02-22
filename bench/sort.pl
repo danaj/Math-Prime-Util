@@ -21,7 +21,9 @@ for my $len (10,100,1000,10000,100000,1000000) {
   for (1..20) {
     my @ints;
     for (0..$narrays-1) {
-      $ints[$_] = [map { irand64 } 1..$len];
+      #$ints[$_] = [map { irand } 1..$len];          # 32-bit random
+      $ints[$_] = [map { irand64 } 1..$len];         # 64-bit random
+      #$ints[$_] = [map { 1..3 } 1..divint($len,3)]; # sawtooth
     }
     $times[0] += time_sort(\@ints);
     $times[1] += time_sortxsq(\@ints);

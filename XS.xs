@@ -1160,16 +1160,16 @@ static int del_from_set(pTHX_ AV* ava, int bstatus, UV b) {
   {
     SV **arr = AvARRAY(ava);
     SV *savep = arr[index-1];
-    Size_t alen = av_count(ava);
-    if (index > alen/2) {
-      if (index < alen) {
-        memmove(arr+index-1, arr+index, sizeof(SV*) * (alen-index));
+    Size_t pos = index, alen = av_count(ava);
+    if (pos > alen/2) {
+      if (pos < alen) {
+        memmove(arr+pos-1, arr+pos, sizeof(SV*) * (alen-pos));
         arr[alen-1] = savep;
       }
       SvREFCNT_dec_NN(av_pop(ava));
     } else {
-      if (index > 1) {
-        memmove(arr+1, arr+0, sizeof(SV*) * (index-1));
+      if (pos > 1) {
+        memmove(arr+1, arr+0, sizeof(SV*) * (pos-1));
         arr[0] = savep;
       }
       SvREFCNT_dec_NN(av_shift(ava));
@@ -4784,9 +4784,9 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
       Size_t i, j;
       GV *agv, *bgv;
       SV *asv, *bsv;
-      int status;
       UV ret;
       CV *subcv;
+      int status = 0;
 
       SETSUBREF(subcv, block);
 
@@ -5355,8 +5355,8 @@ void toset(...)
   PROTOTYPE: @
   PREINIT:
     int type;
-    size_t i, len;
-    UV n, *L;
+    size_t len;
+    UV *L;
   PPCODE:
     if (items == 0) RETURN_EMPTY_SET_REF();
     type = array_to_int_array(aTHX_ &len, &L, 1, &ST(0), items);
@@ -5371,7 +5371,7 @@ void vecsort(...)
   PROTOTYPE: @
   PREINIT:
     int type;
-    size_t i, len;
+    size_t len;
     UV *L;
   PPCODE:
     if (items == 0)
@@ -6449,7 +6449,7 @@ void forsetproduct (SV* block, ...)
       USE_ARREF(inav, ST(i+1), SUBNAME, AR_READ);
       arlen[i] = len_inav;
       New(0, arsvs[i], len_inav, SV*);
-      for (j = 0; j < len_inav; j++) {
+      for (j = 0; j < (SSize_t)len_inav; j++) {
         SV* v = FETCH_ARREF(inav,j);
         arsvs[i][j] = v ? v : &PL_sv_undef;;
       }
