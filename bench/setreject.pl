@@ -56,6 +56,13 @@ cmpthese -2, {
         }
         return 1
     },
+    Lsetcontains => sub {
+        my @matches = ($data =~ /^(\d+) (\d+)/mg);
+        while (my ($c,$r) = splice @matches,0,2) {
+            next if setcontains(\@skip,$c) || setcontains(\@skip,$r);
+        }
+        return 1
+    },
     # Here we force the input into a numerical value so parsing is very fast.
     setcontains0 => sub {
         while ( $data =~ /^(\d+) (\d+)/mg ) {

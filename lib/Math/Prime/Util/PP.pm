@@ -9584,8 +9584,7 @@ sub trial_factor {
     return @factors if $n == 1;
     return (@factors,$n) if $limit < 59;
 
-    push @_primes_small, @{Mprimes($_primes_small[-1]+1, $limit+72)}
-      if $limit > $_primes_small[-1];
+    _expand_prime_cache($limit+72) if $limit > $_primes_small[-1];;
 
     for my $i (17 .. $#_primes_small) {
       my $p = $_primes_small[$i];
@@ -9623,9 +9622,8 @@ sub trial_factor {
   $limit = Msqrtint($n) if !defined $limit || $limit*$limit > $n;
 
   # Add more primes if we might use them.  Maybe wait until needed?
-  push @_primes_small, @{Mprimes($_primes_small[-1]+1, 100_003)}
-    if $_primes_small[-1] < 100_000
-    && $limit > $_primes_small[-1];
+  _expand_prime_cache(100_003)
+    if $_primes_small[-1] < 100_000 && $limit > $_primes_small[-1];
 
   my $I = 2;  # small prime index, start at p=3
 
