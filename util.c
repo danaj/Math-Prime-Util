@@ -2349,7 +2349,7 @@ bool binomialmod(UV *res, UV n, UV k, UV m) {
         bin[i] = _binomial_lucas_mod_prime(n, k, mf.f[i]);
         mod[i] = mf.f[i];
       } else {
-        /* bin[i] = _binomial_mod_prime_power(n, k, fac[i], exp[i]); */
+        /* bin[i] = _binomial_mod_prime_power(n, k, mf.f[i], mf.e[i]); */
         /* Use generalized Lucas */
         bin[i] = _binomial_lucas_mod_prime_power(n, k, mf.f[i], mf.e[i]);
         mod[i] = ipow(mf.f[i], mf.e[i]);

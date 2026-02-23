@@ -8001,7 +8001,7 @@ sub binomial {
     $R = Math::BigInt::bnok("$n","$k");
   }
   $R = -$R if $negate;
-  return $R <= INTMAX && $R <= INTMIN            ?  _bigint_to_int($R)
+  return $R <= INTMAX && $R >= INTMIN            ?  _bigint_to_int($R)
        : defined $_BIGINT && $_BIGINT eq ref($R) ?  $R
        :                                            tobigint($R);
 }

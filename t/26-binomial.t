@@ -33,6 +33,12 @@ my @binomials = (
 
 plan tests => 6 + 3+ scalar(@binomials);
 
+#
+# https://pdf.sciencedirectassets.com/271536/1-s2.0-S0012365X08X00172/1-s2.0-S0012365X07007443/main.pdf
+# Sprugnoli 2008, Table 1, Extended Pascal Array
+# mpu 'for my $n (-5..5) { say sprintf("%2d",$n),": ",join(" ",map{sprintf("%4d",binomial($n,$_))}-5..5); }'
+#
+
 {
   my @bin; for my $n (0..10) { for my $k (0..10) { push @bin, [$n,$k]; } }
   is_deeply( [map { binomial($_->[0],$_->[1]) } @bin],

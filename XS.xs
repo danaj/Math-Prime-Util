@@ -222,6 +222,7 @@ static const gmp_info_t gmp_info[] = {
   {                "muladdmod", 53, 1, R_BIGINT },
   {                "mulsubmod", 53, 1, R_BIGINT },
   {             "factorialmod", 53, 1, R_BIGINT }, /* 47 with m > 0 */
+  {              "binomialmod", 53, 1, R_BIGINT },
   {                  "sqrtmod", 53, 1, R_BIGINT }, /* 53 for composites */
   {                   "divrem", 52, 2, R_BIGINT },
   {                  "tdivrem", 52, 2, R_BIGINT },
@@ -3817,7 +3818,7 @@ void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
       if (kstatus == -1) k = n - k;
       if (nstatus == -1) n = neg_iv(n) + k - 1;
       if (binomialmod(&ret, n, k, m)) {
-        if ((nstatus == -1) && (k & 1)) ret = (ret==0) ? 0 : m-ret;
+        if ((nstatus == -1) && (k & 1) && ret != 0) ret = m-ret;
         XSRETURN_UV(ret);
       }
     }
