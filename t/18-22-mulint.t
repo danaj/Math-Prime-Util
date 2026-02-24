@@ -38,7 +38,7 @@ plan tests => 2;
   for my $a (-3 .. 3) {
     for my $b (-3 .. 3) {
       push @got, mulint($a,$b);
-      push @exp, ($a == 0 || $b == 0) ? 0 : $a*$b;  # Perl 5.6: -1*0 = -0
+      push @exp, $a == 0 || $b == 0 ? 0 : $a*$b;  # Perl 5.6: -1*0 = -0
     }
   }
   is_deeply( \@got, \@exp, "mulint( -3 .. 3, -3 .. 3)" );

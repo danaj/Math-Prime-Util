@@ -116,12 +116,13 @@ use bigint;                            # <-------- large numbers ahead!  > 2^64
 use Math::BigFloat;
 
 my $usegmp = Math::Prime::Util::prime_get_config->{gmp};
-my $bignumver = $bigint::VERSION;
-my $bigintver = $Math::BigInt::VERSION;
-my $bigintlib = Math::BigInt->config()->{lib};
-   $bigintlib =~ s/^Math::BigInt:://;
+my $bigintver  = $bigint::VERSION;
+my $mbigintver = $Math::BigInt::VERSION;
+my $mbigfltver = $Math::BigFloat::VERSION;
+my $bigintlib  = Math::BigInt->config()->{lib};
+   $bigintlib  =~ s/^Math::BigInt:://;
 my $mpugmpver = $usegmp ? $Math::Prime::Util::GMP::VERSION : "<none>";
-diag "BigInt $bignumver/$bigintver, lib: $bigintlib.  MPU::GMP $mpugmpver\n";
+diag "BigInt $bigintver/$mbigintver/$mbigfltver, lib: $bigintlib.  MPU::GMP $mpugmpver\n";
 
 # Turn off use of BRS - ECM tries to use this.
 # prime_set_config( irand => sub { int(rand(4294967296)) } );

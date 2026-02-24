@@ -27,6 +27,9 @@ Revision history for Perl module Math::Prime::Util
 
     - bernfrac and harmfrac return values are only bigints if needed.
 
+    - The real functions no longer modify their behavior based on whether the
+      "bignum" package was loaded, whether in scope or not.
+
     [ADDED]
 
     - powersum(n,k)                   sum of k-th powers of positive ints <= n

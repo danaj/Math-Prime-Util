@@ -634,8 +634,7 @@ sub RiemannZeta {
 
   return $n-$n if $n > 10_000_000;   # Over 3M leading zeros
 
-  return _XS_RiemannZeta($n)
-  if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+  return _XS_RiemannZeta($n) if !ref($n) && $_Config{'xs'};
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::RiemannZeta($n);
@@ -645,8 +644,7 @@ sub RiemannR {
   my($n) = @_;
   croak("Invalid input to RiemannR:  x must be > 0") if $n <= 0;
 
-  return _XS_RiemannR($n)
-  if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+  return _XS_RiemannR($n) if !ref($n) && $_Config{'xs'};
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::RiemannR($n);
@@ -658,8 +656,7 @@ sub ExponentialIntegral {
   return 0              if $n == $_Neg_Infinity;
   return $_Infinity     if $n == $_Infinity;
 
-  return _XS_ExponentialIntegral($n)
-  if !defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'};
+  return _XS_ExponentialIntegral($n) if !ref($n) && $_Config{'xs'};
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::ExponentialIntegral($n);
@@ -673,7 +670,7 @@ sub LogarithmicIntegral {
 
   croak("Invalid input to LogarithmicIntegral:  x must be >= 0") if $n <= 0;
 
-  if (!defined $bignum::VERSION && ref($n) ne 'Math::BigFloat' && $_Config{'xs'}) {
+  if (!ref($n) && $_Config{'xs'}) {
     return 1.045163780117492784844588889194613136522615578151 if $n == 2;
     return _XS_LogarithmicIntegral($n);
   }
@@ -685,10 +682,7 @@ sub LogarithmicIntegral {
 sub LambertW {
   my($x) = @_;
 
-  return _XS_LambertW($x)
-  if !defined $bignum::VERSION && ref($x) ne 'Math::BigFloat' && $_Config{'xs'};
-
-  # TODO: Call GMP function here directly
+  return _XS_LambertW($x) if !ref($x) && $_Config{'xs'};
 
   require Math::Prime::Util::PP;
   return Math::Prime::Util::PP::LambertW($x);
@@ -6367,13 +6361,10 @@ Given a non-zero floating point input C<x>, this returns the real-valued
 exponential integral of C<x>, defined as the integral of C<e^t/t dt>
 from C<-infinity> to C<x>.
 
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-For non-BigInt/BigFloat inputs, the result should be accurate to at least 14
+For non-BigFloat inputs, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat inputs, full accuracy and performance is obtained
+For BigFloat inputs, full accuracy and performance is obtained
 only if L<Math::Prime::Util::GMP> is installed.
 If this module is not available, then other methods are used and give
 at least 14 digits of accuracy:
@@ -6381,7 +6372,7 @@ continued fractions (C<< x < -1 >>),
 rational Chebyshev approximation (C<< -1 < x < 0 >>),
 a convergent series (small positive C<x>),
 or an asymptotic divergent series (large positive C<x>).
-
+The accuracy() setting of the input is used to determine the output accuracy.
 
 =head2 LogarithmicIntegral
 
@@ -6399,42 +6390,36 @@ term C<li0> for this function, and define C<li(x) = Li0(x) - li0(2)>.  Due to
 this terminology confusion, it is important to check which exact definition is
 being used.
 
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+For non-BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat inputs, full accuracy and performance is obtained
+For BigFloat inputs, full accuracy and performance is obtained
 only if L<Math::Prime::Util::GMP> is installed.
-
+The accuracy() setting of the input is used to determine the output accuracy.
 
 =head2 RiemannZeta
 
   my $z = RiemannZeta($s);
 
-Given a floating point input C<s> where C<< s >= 0 >>, returns the floating
+Given a non-negative floating point input C<s>, returns the floating
 point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
 subtracted to ensure maximum precision for large values of C<s>.  The zeta
 function is the sum from k=1 to infinity of C<1 / k^s>.  This function only
-uses real arguments, so is basically the Euler Zeta function.
+uses real arguments, so is more properly the Euler Zeta function.
 
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+For non-BigFloat objects, the result should be accurate to at least 14
 digits.  The XS code uses a rational Chebyshev approximation between 0.5 and 5,
 and a series for other values.  The PP code uses an identical series for all
 values.
 
-For BigInt / BigFloat inputs, full accuracy and performance is obtained
+For BigFloat inputs, full accuracy and performance is obtained
 only if L<Math::Prime::Util::GMP> is installed.
 If this module is not available, then other methods are used and give
 at least 14 digits of accuracy:
 Either Borwein (1991) algorithm 2, or the basic series.
 Math::BigFloat L<RT 43692|https://rt.cpan.org/Ticket/Display.html?id=43692>
 can produce incorrect high-accuracy computations when GMP is not used.
-
+The accuracy() setting of the input is used to determine the output accuracy.
 
 =head2 RiemannR
 
@@ -6444,16 +6429,13 @@ Given a positive non-zero floating point input, returns the floating
 point value of Riemann's R function.  Riemann's R function gives a very close
 approximation to the prime counting function.
 
-If the bignum module has been loaded, all inputs will be treated as if they
-were Math::BigFloat objects.
-
-For non-BigInt/BigFloat objects, the result should be accurate to at least 14
+For non-BigFloat objects, the result should be accurate to at least 14
 digits.
 
-For BigInt / BigFloat inputs, full accuracy and performance is obtained
+For BigFloat inputs, full accuracy and performance is obtained
 only if L<Math::Prime::Util::GMP> is installed.
 If this module are not available, accuracy should be 35 digits.
-
+The accuracy() setting of the input is used to determine the output accuracy.
 
 =head2 LambertW
 
@@ -6462,17 +6444,19 @@ Given a value C<k> this solves for C<W> in the equation C<k = We^W>.  The
 input must not be less than C<-1/e>.  This corresponds to Pari's C<lambertw>
 function and Mathematica's C<ProductLog> / C<LambertW> function.
 
-This function handles all real value inputs with non-complex return values.
-This is a superset of Pari's C<lambertw> which is similar but only for
-positive arguments.  Mathematica's function is much more detailed, with
-both branches, complex arguments, and complex results.
+This function handles all real value inputs with non-complex return values
+from the principle branch.
+Pari/GP's C<lambertw> previous to 2.15 (2022) was a subset of this.
+Recent Pari/GP and Mathematica both have more complete functions with
+both branches, and support for complex arguments and results.
 
 Calculation will be done with C long doubles if the input is a standard
-scalar, but if bignum is in use or if the input is a BigFloat type, then
-extended precision results will be used.
+scalar, but if the input is a BigFloat type, then
+extended precision results will be generated.
+The accuracy() setting of the input is used to determine the output accuracy.
 
 Speed of the native code is about half of the fastest native code
-(Veberic's C++), and about 30x faster than Pari/GP.  However the bignum
+(Veberic's C++), and about 10x faster than Pari/GP.  However the bignum
 calculation is slower than Pari/GP.
 
 =head2 Pi
@@ -6488,7 +6472,7 @@ object otherwise.
 
 For sizes over 10k digits, having either
 L<Math::Prime::Util::GMP> or L<Math::BigInt::GMP> installed will help
-performance.  For sizes over 50k the one is highly recommended.
+performance.  For sizes over 50k, GMP is highly recommended.
 
 
 =head1 EXAMPLES

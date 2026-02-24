@@ -211,18 +211,22 @@ sub _find_big_acc {
   $b = $x->accuracy() if ref($x) =~ /^Math::Big/;
   return $b if defined $b;
 
-  my ($i,$f) = (Math::BigInt->accuracy(), Math::BigFloat->accuracy());
+  my($i,$f);
+  $i = Math::BigInt->accuracy();
+  $f = defined $Math::BigFloat::VERSION ? Math::BigFloat->accuracy() : undef;
   return (($i > $f) ? $i : $f)   if defined $i && defined $f;
   return $i if defined $i;
   return $f if defined $f;
 
-  ($i,$f) = (Math::BigInt->div_scale(), Math::BigFloat->div_scale());
+  $i = Math::BigInt->div_scale();
+  $f = defined $Math::BigFloat::VERSION ? Math::BigFloat->div_scale() : undef;
   return (($i > $f) ? $i : $f)   if defined $i && defined $f;
   return $i if defined $i;
   return $f if defined $f;
   return 18;
 }
 
+# Only used by RiemannZeta.  TODO: refactor to remove this.
 sub _bfdigits {
   my($wantbf, $xdigits) = (0, 17);
   if (defined $bignum::VERSION || ref($_[0]) =~ /^Math::Big/) {
@@ -322,10 +326,27 @@ sub _validate_integer_abs {
 
 # If we try to call the function in any normal way, just loading this module
 # will auto-vivify an empty sub.  So we do a string eval to keep it hidden.
+# TODO: must find a reproducible case to justify this
 sub _gmpcall {
   my($fname, @args) = @_;
+  $fname =~ s/\W//g;
   my $call = "Math::Prime::Util::GMP::$fname(".join(",",map {"\"$_\""} @args).");";
   return eval $call ## no critic qw(ProhibitStringyEval)
+}
+sub _try_real_gmp_func {
+  my($fref, $ver, $x) = @_;
+  return undef unless defined $Math::Prime::Util::GMP::VERSION &&
+                      $Math::Prime::Util::GMP::VERSION >= $ver;
+
+  # For Math::BigInt input we could return Mtoint($str), FP, or full BigFloat.
+
+  if (!ref($x) || ref($x) eq 'Math::BigInt') {
+    my $fr = 0.0 + $fref->($x, 40);  # enough for full long double
+    return $fr if !ref($x) || ($fr < 1e15 && $fr > -1e15);
+  }
+  my $dig = _find_big_acc($x);
+  my $str = $fref->($x, $dig);
+  return _upgrade_to_float($str);
 }
 
 sub _binary_search {
@@ -10661,14 +10682,18 @@ sub ExponentialIntegral {
   return 0              if $x == - MPU_INFINITY;
   return MPU_INFINITY   if $x == MPU_INFINITY;
 
-  if ($Math::Prime::Util::_GMPfunc{"ei"}) {
-    $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
-    return 0.0 + Math::Prime::Util::GMP::ei($x,40) if !ref($x);
-    my $str = Math::Prime::Util::GMP::ei($x, _find_big_acc($x));
-    return $x->copy->bzero->badd($str);
-  }
+  # We are going to ignore bignum, as it's:
+  #   1) unclear what we should do different
+  #   2) hard to tell if it's active in scope
+  # We do have to care in regards to giving correct results.  But we're not
+  # going to actively promote things based on it.
 
-  $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
+  if ($Math::Prime::Util::_GMPfunc{"ei"}) {
+    my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::ei, $x<100?0.49:0.53, $x);
+    return $r if defined $r;
+  }
+  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
+  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
 
   my $tol = 1e-16;
   my $sum = 0.0;
@@ -10741,18 +10766,15 @@ sub ExponentialIntegral {
 }
 
 sub LogarithmicIntegral {
-  my($x,$opt) = @_;
+  my($x) = @_;
   return 0              if $x == 0;
   return - MPU_INFINITY if $x == 1;
   return MPU_INFINITY   if $x == MPU_INFINITY;
   croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
-  $opt = 0 unless defined $opt;
 
   if ($Math::Prime::Util::_GMPfunc{"li"}) {
-    $x = Math::BigFloat->new("$x") if defined $bignum::VERSION && ref($x) ne 'Math::BigFloat';
-    return 0.0 + Math::Prime::Util::GMP::li($x,40) if !ref($x);
-    my $str = Math::Prime::Util::GMP::li($x, _find_big_acc($x));
-    return $x->copy->bzero->badd($str);
+    my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::li, 0.49, $x);
+    return $r if defined $r;
   }
 
   if ($x == 2) {
@@ -10760,17 +10782,9 @@ sub LogarithmicIntegral {
     return $li2const;
   }
 
-  if (defined $bignum::VERSION) {
-    # If bignum is on, always use Math::BigFloat.
-    $x = Math::BigFloat->new("$x") if ref($x) ne 'Math::BigFloat';
-  } elsif (ref($x)) {
-    # bignum is off, use native if small, BigFloat otherwise.
-    if ($x <= 1e16) {
-      $x = _bigint_to_int($x);
-    } else {
-      $x = _upgrade_to_float($x) if ref($x) ne 'Math::BigFloat';
-    }
-  }
+  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
+  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
+
   # Make sure we preserve whatever accuracy setting the input was using.
   $x->accuracy($_[0]->accuracy) if ref($x) && ref($_[0]) =~ /^Math::Big/ && $_[0]->accuracy;
 
@@ -10934,7 +10948,7 @@ sub RiemannZeta {
   }
 
   # If we need a bigfloat result, then call our PP routine.
-  if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+  if (ref($x) =~ /^Math::Big/) {
     require Math::Prime::Util::ZetaBigFloat;
     return Math::Prime::Util::ZetaBigFloat::RiemannZeta($x);
   }
@@ -10991,12 +11005,12 @@ sub RiemannR {
 
   croak "Invalid input to ReimannR:  x must be > 0" if $x <= 0;
 
-  # With MPU::GMP v0.49 this is fast.
   if ($Math::Prime::Util::_GMPfunc{"riemannr"}) {
-    my($wantbf,$xdigits) = _bfdigits($x);
-    my $strval = Math::Prime::Util::GMP::riemannr($x, $xdigits);
-    return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
+    my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::riemannr, 0.41, $x);
+    return $r if defined $r;
   }
+  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
+  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
 
 
 # TODO: look into this as a generic solution
@@ -11030,7 +11044,7 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
   return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
 }
 
-  if (defined $bignum::VERSION || ref($x) =~ /^Math::Big/) {
+  if (ref($x) =~ /^Math::Big/) {
     require Math::Prime::Util::ZetaBigFloat;
     return Math::Prime::Util::ZetaBigFloat::RiemannR($x);
   }
@@ -11066,16 +11080,16 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
 sub LambertW {
   my($x) = @_;
   croak "Invalid input to LambertW:  x must be >= -1/e" if $x < -0.36787944118;
-  $x = _upgrade_to_float($x) if ref($x) eq 'Math::BigInt';
-  my $xacc = ref($x) ? _find_big_acc($x) : 0;
-  my $w;
 
   if ($Math::Prime::Util::_GMPfunc{"lambertw"}) {
-    my $w = (!$xacc)
-          ? 0.0 + Math::Prime::Util::GMP::lambertw($x)
-          : $x->copy->bzero->badd(Math::Prime::Util::GMP::lambertw($x, $xacc));
-    return $w;
+    my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::lambertw, 0.42, $x);
+    return $r if defined $r;
   }
+  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
+  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
+
+  my $xacc = ref($x) ? _find_big_acc($x) : 0;
+  my $w;
 
   # Approximation
   if ($x < -0.06) {
@@ -11113,25 +11127,14 @@ sub LambertW {
   #   $w -= $f / ($w*$e+$e - ($w+2)*$f/(2*$w+2));
   #
   # Also see https://arxiv.org/pdf/2008.06122
-
-  if (!$xacc) {
-    my $eps = 1.054e-8;  # sqrt(double eps)
-    for (1 .. 200) {
-      last if $w == 0;
-      my $w1 = $w + 1;
-      my $zn = log($x/$w) - $w;
-      my $qn = $w1 * 2 * ($w1+(2*$zn/3));
-      my $en = ($zn/$w1) * ($qn-$zn)/($qn-$zn*2);
-      my $wen = $w * $en;
-      $w += $wen;
-      last if abs($en) < $eps;
-    }
-    return $w;
-  }
+  #          https://people.eecs.berkeley.edu/~wkahan/Math273/LmbrtsW.pdf
 
   # Fritsch converges quadratically, so tolerance could be 4x smaller.  Use 2x.
-  my $tol = 10**(-int(1+$xacc/2));
-  $w->accuracy($xacc+15);
+  my $tol = 1.054e-8;  # sqrt(double eps)
+  if ($xacc) {
+    $tol = 10**(-int(1+$xacc/2));
+    $w->accuracy($xacc+15);
+  }
   for (1 .. 200) {
     last if $w == 0;
     my $w1 = $w + 1;
@@ -11142,8 +11145,8 @@ sub LambertW {
     $w += $wen;
     last if abs($wen) < $tol;
   }
-  $w->accuracy($xacc);
-  $w;
+  $w->accuracy($xacc) if $xacc;
+  return $w;
 }
 
 my $_Pi = "3.141592653589793238462643383279503";
