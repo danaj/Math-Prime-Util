@@ -264,17 +264,13 @@ sub _validate_integer {
     $_[0] = $_[0]->();
     return _validate_integer($_[0]);
   } elsif ($refn !~ /^Math::/) {
-     $_[0] = "$_[0]";
-     return _validate_integer($_[0]);
+    $_[0] = "$_[0]";
+    return _validate_integer($_[0]);
+  } elsif ($refn eq 'Math::BigInt') {
+    if ($n->is_negative) { $_[0]=_bigint_to_int($_[0]) if $n >= INTMIN; }
+    else                 { $_[0]=_bigint_to_int($_[0]) if $n <= INTMAX; }
   } else {
-    if ($refn =~ /^Math::Big(Int|Float)$/ && !OLD_PERL_VERSION) {
-      croak "Parameter '$n' must be an integer" unless $n->is_int();
-      my $bits = length($n->as_bin)-2;
-      $_[0] = _bigint_to_int($_[0])
-        if $bits <= MPU_MAXBITS || ($bits == MPU_MAXBITS+1 && $n == INTMIN);
-    } else {
-      $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
-    }
+    $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
   }
   $_[0]->upgrade(undef) if ref($_[0]) eq 'Math::BigInt' && $_[0]->upgrade();
   1;
@@ -7621,6 +7617,7 @@ sub stirling {
   if ($type == 3) {
     $s = Mvecprod( Mbinomial($n,$m), Mbinomial($n-1,$m-1), Mfactorial($n-$m) );
   } elsif ($type == 2) {
+    return Mbinomial($n,2) if $m==$n-1;
     my @terms;
     for my $j (1 .. $m) {
       my $t = Mmulint(
@@ -7630,19 +7627,24 @@ sub stirling {
       $t = Mnegint($t) if ($m-$j) & 1;
       push @terms, $t;
     }
-    $s = Mvecsum(@terms) / Mfactorial($m);
+    $s = Mdivint(vecsum(@terms),Mfactorial($m));
   } else {
-    my @terms;
-    for my $k (1 .. $n-$m) {
-      my $t = Mvecprod(
-        Mbinomial($k + $n - 1, $k + $n - $m),
-        Mbinomial(2 * $n - $m, $n - $k - $m),
-        Mstirling($k - $m + $n, $k, 2),
-      );
-      $t = Mnegint($t) if $k & 1;
-      push @terms, $t;
+    my $M = $n-$m;
+    # Both work on all inputs, but perform differently.  Select one.
+    if ($n <= 21 || $m < $M) {    # Simple direct (see Arndt)
+      my @S = (0)x($n+1);
+      $S[1]=1;
+      for my $k (2 .. $n) {
+        $S[$_] = addint($S[$_-1],mulint($k-1,$S[$_])) for reverse(1..$k);
+      }
+      $s = $S[$m];
+    } else {                      # Concrete Mathematics, eq 6.27
+      my @terms = map { Mvecprod( Mbinomial($M-$n, $M+$_),
+                                  Mbinomial($M+$n, $M-$_),
+                                  Mstirling($M+$_, $_, 2) ) } 1 .. $M;
+      $s = vecsum(@terms);
     }
-    $s = Mvecsum(@terms);
+    $s = Mnegint($s) if is_odd($n-$m);
   }
   $s;
 }

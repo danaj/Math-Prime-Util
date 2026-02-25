@@ -339,6 +339,8 @@ Revision history for Perl module Math::Prime::Util
 
     - forsetproduct handles tied input arrays.
 
+    - stirling first kind without GMP is faster for some inputs.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our
