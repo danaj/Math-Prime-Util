@@ -1941,9 +1941,20 @@ sub powerful_count {
 
   if ($k == 2) {
     my $sum = 0;
-    for my $i (1 .. Mrootint($n,3)) {
-      $sum += Msqrtint(Mdivint($n,Mpowint($i,3)))  if Mis_square_free($i);
+    # Simple but very slow for n > 2^64.
+    # Math::Prime::Util::forsquarefreeint(
+    #   sub { $sum += Msqrtint(Mdivint($n,Mpowint($_,3))); },
+    #   Mrootint($n,3)
+    # );
+    my($l,$j) = (0,Msqrtint($n));
+    while ($j > 1) {
+      my $k2 = Mrootint(Mdivint($n,Mmulint($j,$j)),3)+1;
+      my $w = Math::Prime::Util::powerfree_count($k2-1,2);
+      $sum += Mmulint($j,Msubint($w,$l));
+      $l = $w;
+      $j = Msqrtint(Mdivint($n,Mpowint($k2,3)));
     }
+    $sum += Math::Prime::Util::powerfree_count(Mrootint($n,3)) - $l;
     return $sum;
   }
 
