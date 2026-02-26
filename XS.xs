@@ -396,7 +396,7 @@ static int _is_sv_bigint(pTHX_ SV* n)
   if (sv_isobject(n)) {
     const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
     if (hvname != 0) {
-      if (strEQ(hvname, "Math::BigInt") || strEQ(hvname, "Math::BigFloat") ||
+      if (strEQ(hvname, "Math::BigInt") || /* BigFloat not here, force to PP */
           strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
           strEQ(hvname, "Math::GMPq")   || strEQ(hvname, "Math::AnyNum") ||
           strEQ(hvname, "Math::Pari")   || strEQ(hvname, "Math::BigInt::Lite"))
