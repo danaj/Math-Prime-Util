@@ -9,12 +9,22 @@
  * is defined in C89 (ISO C).  Note that 'long double' on many platforms is
  * identical to 'double so it may buy us nothing.  But it's worth trying.
  *
- * While the type was in C89, math functions using it are in C99.  Some
- * systems didn't really get it right (e.g. NetBSD which left out some
- * functions for 13 years).
+ * While the type was in C89, math functions using it are in C99.  A few
+ * systems lacked support for years (e.g. NetBSD and FreeBSD).
  */
 
-#if _MSC_VER || defined(__IBMC__) | defined(__IBMCPP__) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+#undef HAS_LDBL_FUNCS
+#if defined(__FreeBSD__) && (__FreeBSD_version < 1000034)
+  /* Added in 2013. */
+#elif _MSC_VER || defined(__IBMC__) || defined(__IBMCPP__)
+#  define HAS_LDBL_FUNCS 1
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#  define HAS_LDBL_FUNCS 1
+#else
+  /* We don't have them */
+#endif
+
+#ifdef HAS_LDBL_FUNCS
   /* math.h should give us these as functions or macros.
    *
    *  extern long double fabsl(long double);
