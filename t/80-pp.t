@@ -711,9 +711,9 @@ subtest 'real (float) functions', sub {
   cmp_closeto( LambertW(6588), 6.86636957140619, 0.000000001, "LambertW(6588)");
   if ($extra) {
     my ($n, $zin);
-    ($n, $zin) = (4.5, $rzvals{4.5});
+    ($n, $zin) = (2, $rzvals{2});
     cmp_closeto( RiemannZeta(Math::BigFloat->new($n)), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
-    ($n, $zin) = (20.6, $rzvals{20.6});
+    ($n, $zin) = (4.5, $rzvals{4.5});
     cmp_closeto( RiemannZeta(Math::BigFloat->new($n)), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
     ($n, $zin) = (80, $rzvals{80});
     cmp_closeto( RiemannZeta(Math::BigFloat->new($n)), $zin, 0.00000001 * abs($zin), "Zeta($n) ~= $zin");
