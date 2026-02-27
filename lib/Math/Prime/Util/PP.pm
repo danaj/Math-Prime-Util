@@ -2024,14 +2024,27 @@ sub _sumpowerful {
 
   return Mmulint($m, Mpowersum($rootdiv, $k))  if $r == $k;
 
-  # Generating then summing the list turns out to be MUCH faster than
-  # summing as we go.
-  my @v;
-  for my $i (1 .. $rootdiv) {
-    if (Mgcd($m,$i) == 1 && Mis_square_free($i)) {
-      push @v, _sumpowerful(Mmulint($m, Mpowint($i,$r)), $r-1, $n, $k);
-    }
+  # Faster to generate the terms and add at the end
+  my $R = $r-1;
+  my @v = (_sumpowerful($m, $R, $n, $k));
+  for my $i (2 .. $rootdiv) {
+    next unless Mgcd($m,$i) == 1 && Mis_square_free($i);
+    my $M = Mmulint($m, Mpowint($i,$r));
+    push @v, $R == $k ? Mmulint($M,Mpowersum(Mrootint(Mdivint($n,$M),$k),$k))
+                      : _sumpowerful($M, $R, $n, $k);
   }
+  Mvecsum(@v);
+}
+
+sub _sumpowerful2 {
+  my($n) = @_;
+  my($lR,$lPS,@v) = (0,0);
+  Math::Prime::Util::forsquarefreeint(sub {
+    my $M = Mpowint($_,3);
+    my $R = Msqrtint(Mdivint($n, $M));
+    ($lR,$lPS) = ($R,Mpowersum($R,2)) if $R != $lR;
+    push @v, Mmulint($M, $lPS);
+  },Mrootint($n,3));
   Mvecsum(@v);
 }
 
@@ -2042,6 +2055,8 @@ sub sumpowerful {
 
   return $n if $n <= 1;
   return Mrshiftint(Mmulint($n,Madd1int($n))) if $k <= 1;
+
+  return _sumpowerful2($n) if $k == 2;
 
   # Alternate method for testing.
   # my @a;  _genpowerful(1, 2*$k-1, $n, $k, \@a);  return Mvecsum(@a);
@@ -5610,7 +5625,7 @@ sub chinese {
 sub _from_128 {
   my($hi, $lo) = @_;
   return 0 unless defined $hi && defined $lo;
-  Maddint(tobigint("$hi") << MPU_MAXBITS, $lo);
+  Maddint(Mlshiftint($hi,MPU_MAXBITS), $lo);
 }
 
 sub vecsum {
@@ -5623,8 +5638,9 @@ sub vecsum {
     $sum += $v;
     if ($sum > (INTMAX-250) || $sum < (INTMIN+250)) {
       # Sum again from the start using bigint sum
-      $sum = 0;
-      $sum = Maddint($sum,$_) for @_;
+      $sum = tobigint(0);
+      $sum += $_ for @_;
+      $sum = _bigint_to_int($sum) if $sum <= INTMAX && $sum >= INTMIN;
       return $sum;
     }
   }

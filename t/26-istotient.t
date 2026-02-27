@@ -33,7 +33,7 @@ is( is_totient("9671406556917033397649496"), 1, "is_totient(2^83+88)" );
 SKIP: {
   skip "Skipping is_totient for 2^83 + ...", 2 unless $extra;
   is( is_totient("9671406556917033397649458"), 0, "is_totient(2^83+50)" );
-  is( is_totient("9671406556917033397649472"), 1, "is_totient(2^83+64)" );
+  is( is_totient("9671406556917033397649492"), 1, "is_totient(2^83+84)" );
 }
 
 # trizen found this error in 2019
