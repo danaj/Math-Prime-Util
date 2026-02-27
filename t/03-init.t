@@ -12,14 +12,16 @@ use Test::More  tests => 3 + 3 + 3 + 6;
 
 can_ok( 'Math::Prime::Util', 'prime_get_config' );
 
-my $diag = "Using " .
-  ((Math::Prime::Util::prime_get_config->{xs})
-    ? "XS"
-    : "PP") .
+{ my $x = Math::Prime::Util::_to_bigint(0); }
+my $biclass = Math::Prime::Util::prime_get_config->{bigintclass};
+
+my $diag = "" .
+  ((Math::Prime::Util::prime_get_config->{xs}) ? "XS" : "PP") .
   ((Math::Prime::Util::prime_get_config->{gmp})
-    ? " with MPU::GMP version $Math::Prime::Util::GMP::VERSION."
-    : ".") .
-  "\n";
+    ? ", MPU::GMP $Math::Prime::Util::GMP::VERSION"
+    : "") .
+  ($biclass ? ", BI $biclass" : "") .
+  ".\n";
 diag $diag;
 
 my $init_size = prime_get_config->{'precalc_to'};

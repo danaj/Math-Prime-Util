@@ -135,7 +135,7 @@ our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
 push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor cheb_factor ecm_factor rand srand/);
 
 my %_Config;
-my %_GMPfunc;  # List of available MPU::GMP functions
+my %_GMPfunc;  # Available MPU::GMP functions
 
 # Similar to how boolean handles its option
 sub import {
@@ -145,7 +145,6 @@ sub import {
       ${"${pkg}::a"} = ${"${pkg}::a"};
       ${"${pkg}::b"} = ${"${pkg}::b"};
     }
-    # TODO: trybigint=>Math::GMPz
     foreach my $opt (qw/nobigint secure/) {
       my @options = grep $_ ne "-$opt", @_;
       $_Config{$opt} = 1 if @options != @_;
@@ -236,11 +235,6 @@ $_Config{'assume_rh'}   = 0;
 $_Config{'verbose'}     = 0;
 $_Config{'bigintclass'} = undef;
 
-# For testing, we could start with something else.
-# This helps find out what parts assume Math::BigInt
-#use Math::GMP;
-#$_Config{'bigintclass'} = 'Math::GMP';
-
 # used for code like:
 #    return _XS_foo($n)  if $n <= $_XS_MAXVAL
 # which builds into one scalar whether XS is available and if we can call it.
@@ -285,21 +279,12 @@ sub prime_set_config {
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
     } elsif ($param eq 'bigint' || $param eq 'trybigint') {
-      my $ok = 1;
-      my $class = ref($value);
-      if (!$class) {  # We were given a class name
-        $class = $value;
-        (my $cfname="$class.pm")=~s|::|/|g; # Foo::Bar::Baz => Foo/Bar/Baz.pm
-        $ok = eval { require $cfname; $class->import(); 1; };
-      }
-      if ($ok) {  # Check we can use it
-        $ok = eval { $class->new(1) == 1 };
-      }
-      if ($ok) { # Loaded correctly.
+      my $class = _load_bigint_class($value);
+      if (defined $class) {
         $_BIGINT = $_Config{'bigintclass'} = $class;
       } else {
-        # Couldn't load.  Leave config alone.  Complain.
-        carp "ntheory bigint could not load '$value'" unless $param =~ /try/;
+        carp "ntheory could not load bigint class from '$value'"
+          unless $param =~ /try/;
       }
     } elsif ($param eq 'secure') {
       croak "Cannot disable secure once set" if !$value && $_Config{'secure'};
@@ -328,22 +313,37 @@ sub prime_set_config {
   1;
 }
 
+# Input:  object, or comma separated list of class names
+# Output: class name or undef
+sub _load_bigint_class {
+  my($val) = @_;
+
+  my $class = undef;
+  if (ref($val)) {      # We are given an object, e.g. a Math::GMPz number
+    $class = ref($val);
+  } else {              # Comma separated list of class names
+    for my $name (split /,/, $val) {
+      $name =~ s/^\s+|\s+$//g;
+      (my $cfname="$name.pm")=~s|::|/|g; # Foo::Bar::Baz => Foo/Bar/Baz.pm
+      if ($INC{$cfname} || eval { require $cfname; $name->import(); 1; }) {
+        $class = $name;
+        last;
+      }
+    }
+  }
+  if ($class) {         # Check we can make a number with it
+    $class = undef unless eval { $class->new(1) == 1 };
+  }
+  return $class;
+}
+
 # This is for loading the default bigint class the very first time.
 sub _load_bigint {
   return $_BIGINT if defined $_BIGINT;
 
-  # This is what we'd like to do in the future.  Use the best available.
-  #
-  #if (defined $Math::GMPz::VERSION || eval {require Math::GMPz; Math::GMPz->import(); 1;}) {
-  #  $_BIGINT = $_Config{'bigintclass'} = 'Math::GMPz';
-  #} elsif (defined $Math::GMP::VERSION || eval {require Math::GMP; Math::GMP->import(); 1;}) {
-  #  $_BIGINT = $_Config{'bigintclass'} = 'Math::GMP';
-  #} else {
-  #  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
-  #  $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
-  #}
-
-  # For now, the old behaviour of using Math::BigInt.
+  # TODO: turn this on for next release
+  #prime_set_config( trybigint => 'Math::GMPz,Math::GMP' );
+  #return $_BIGINT if defined $_BIGINT;
 
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
   $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
@@ -357,29 +357,40 @@ sub _to_bigint {
   return undef unless defined($_[0]);
   _load_bigint() unless defined $_BIGINT;
   # We don't do any validation other than that the class is happy.
-  my $n = (ref($_[0]) eq $_BIGINT) ? $_[0] : $_BIGINT->new("$_[0]");
+  my $n;
+  if (ref($_[0]) eq $_BIGINT) {
+    $n = $_[0];
+  } elsif (ref($_[0]) eq 'Math::BigFloat' && !$_[0]->is_int()) {
+    $n = Math::BigInt->bnan;
+  } else {
+    $n = $_BIGINT->new("$_[0]");
+  }
   croak "Parameter '$_[0]' must be an integer" unless $_BIGINT ne 'Math::BigInt' || $n->is_int();
   $n;
 }
 sub _to_bigint_nonneg {
   return undef unless defined($_[0]);
   _load_bigint() unless defined $_BIGINT;
-  my $n = (ref($_[0]) eq $_BIGINT) ? $_[0] : $_BIGINT->new("$_[0]");
-  croak "Parameter '$_[0]' must be a non-negative integer" unless $n >= 0 && ($_BIGINT ne 'Math::BigInt' || $n->is_int());
+  my $n;
+  if (ref($_[0]) eq $_BIGINT) {
+    $n = $_[0];
+  } elsif (ref($_[0]) eq 'Math::BigFloat' && !$_[0]->is_int()) {
+    $n = Math::BigInt->bnan;
+  } else {
+    $n = $_BIGINT->new("$_[0]");
+  }
+  croak "Parameter '$_[0]' must be a non-negative integer" unless ($_BIGINT ne 'Math::BigInt' || $n->is_int()) && $n >= 0;
   $n;
 }
 sub _to_bigint_abs {
   return undef unless defined($_[0]);
-  _load_bigint() unless defined $_BIGINT;
-  my $n = (ref($_[0]) eq $_BIGINT) ? $_[0] : $_BIGINT->new("$_[0]");
-  croak "Parameter '$_[0]' must be an integer" unless $_BIGINT ne 'Math::BigInt' || $n->is_int();
+  my $n = _to_bigint($_[0]);
   return ($n < 0) ? -$n : $n;
 }
 sub _to_bigint_if_needed {
   return $_[0] if !defined $_[0] || ref($_[0]);
   if ($_[0] >= INTMAX || $_[0] <= INTMIN) {    # Probably a bigint
-    _load_bigint() unless defined $_BIGINT;
-    my $n = $_BIGINT->new("$_[0]");
+    my $n = _to_bigint($_[0]);
     return $n if $n > INTMAX || $n < INTMIN;   # Definitely a bigint
   }
   $_[0];
@@ -6115,12 +6126,14 @@ Allows setting of some parameters.  Currently the only parameters are:
                Factoring large numbers is another place where verbose
                settings can give progress indications.
 
-  bigint       You can give either a class name (e.g. "Math::GMPz")
-               or object.  We will try to use this type in all operations
-               that need a bigint.
+  bigint       You can give either a single object (e.g. a value of the
+               class you want), or a comma separated list of class names.
+               The first class we can load will be used for all operations
+               that use a bigint.
+               A warning will be produced if one was not found.
 
-  trybigint    Exactly the same behavior as C<bigint> but will silently
-               fail if the class isn't found.
+  trybigint    Exactly the same behavior as C<bigint> but no warning
+               will be output if we couldn't load anything from the list.
 
   xs           Allows turning off the XS code, forcing the Pure Perl
                code to be used.  Set to 0 to disable XS, set to 1 to
