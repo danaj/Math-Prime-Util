@@ -1105,7 +1105,7 @@ sub nth_ramanujan_prime {
 sub next_prime {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return $_prime_next_small[$n] if $n <= $#_prime_next_small;
+  return $_prime_next_small[$n] if $n <= 0+$#_prime_next_small;
   # This turns out not to be faster.
   # return $_primes_small[1+_tiny_prime_count($n)] if $n < $_primes_small[-1];
 
@@ -1291,7 +1291,7 @@ sub lucky_count_lower {
 sub nth_lucky {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  return $_small_lucky[$n] if $n <= 0+$#_small_lucky;
   my $k = $n-1;
   my $ln = lucky_numbers($n);
   shift @$ln;
@@ -1301,7 +1301,7 @@ sub nth_lucky {
 sub nth_lucky_approx {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  return $_small_lucky[$n] if $n <= 0+$#_small_lucky;
   $n = "$n" if ref($n);
   my($logn, $loglogn, $mult) = (log($n), log(log($n)), 1);
   if ($n <= 80000) {
@@ -1317,14 +1317,14 @@ sub nth_lucky_approx {
 sub nth_lucky_upper {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  return $_small_lucky[$n] if $n <= 0+$#_small_lucky;
   my $c = ($n <= 100) ? 1.05 : ($n <= 300) ? 1.03 : ($n <= 800) ? 1.01 : 1.0033;
   return 1 + int( $c * nth_lucky_approx($n) + 0.5 );
 }
 sub nth_lucky_lower {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return $_small_lucky[$n] if $n <= $#_small_lucky;
+  return $_small_lucky[$n] if $n <= 0+$#_small_lucky;
   my $c = ($n <= 130) ? 0.985 : ($n <= 1000) ? 0.992 : 0.996;
   return int( $c * nth_lucky_approx($n) );
 }
@@ -1657,7 +1657,7 @@ sub euler_phi_range {
 
 sub _sumtot {
   my($n, $cdata, $ecache) = @_;
-  return $cdata->[$n] if $n <= $#$cdata;
+  return $cdata->[$n] if $n <= 0+$#$cdata;
   return $ecache->{$n} if defined $ecache->{$n};
 
   my $sum = Mmulint($n, $n+1) >> 1;
@@ -1668,14 +1668,14 @@ sub _sumtot {
   $sum -= Mmulint($x - $nextx, $cdata->[1]);
   for my $k (2 .. $lim) {
     ($x,$nextx) = ($nextx, Mdivint($n,$k+1));
-    $sum -= ($x <= $#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache);
+    $sum -= ($x <= 0+$#$cdata) ? $cdata->[$x] : _sumtot($x, $cdata, $ecache);
     $sum -= Mmulint($x - $nextx,
                     ($k <= $#$cdata) ? $cdata->[$k] : _sumtot($k, $cdata, $ecache));
   }
   if ($s > $lim) {
     ($x,$nextx) = ($nextx, Mdivint($n,$s+1));
     $sum -= Mmulint($x - $nextx,
-                    ($s <= $#$cdata) ? $cdata->[$s] : _sumtot($s, $cdata, $ecache));
+                    ($s <= 0+$#$cdata) ? $cdata->[$s] : _sumtot($s, $cdata, $ecache));
   }
   $ecache->{$n} = $sum;
   $sum;
@@ -3570,7 +3570,7 @@ sub nth_prime {
   validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
-  return $_primes_small[$n] if $n <= $#_primes_small;
+  return $_primes_small[$n] if $n <= 0+$#_primes_small;
 
   $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
@@ -3616,7 +3616,7 @@ sub nth_prime_upper {
   validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
-  return $_primes_small[$n] if $n <= $#_primes_small;
+  return $_primes_small[$n] if $n <= 0+$#_primes_small;
 
   $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
@@ -3649,7 +3649,7 @@ sub nth_prime_lower {
   validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
-  return $_primes_small[$n] if $n <= $#_primes_small;
+  return $_primes_small[$n] if $n <= 0+$#_primes_small;
 
   $n = _upgrade_to_float($n) if ref($n) || $n > MPU_MAXPRIMEIDX || $n > 2**45;
 
@@ -3746,7 +3746,7 @@ sub nth_prime_approx {
   validate_integer_nonneg($n);
 
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
-  return $_primes_small[$n] if $n <= $#_primes_small;
+  return $_primes_small[$n] if $n <= 0+$#_primes_small;
 
   # Once past 10^12 or so, inverse_li gives better results.
   return Math::Prime::Util::inverse_li($n) if $n > 1e12;
