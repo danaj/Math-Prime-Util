@@ -84,6 +84,10 @@ typedef __int8 int8_t;
 
 #else
 
+#if defined(__clang__) && defined(__clang_major__) && __clang_major__ > 11
+#pragma clang diagnostic ignored "-Wcompound-token-split-by-macro"
+#endif
+
 #include "EXTERN.h"
 #include "perl.h"
 
