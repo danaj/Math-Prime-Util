@@ -5474,13 +5474,18 @@ sub powersum {
   return Mmulint($a,$a) if $k == 3;
   return Mdivint(Msubint(Mmulint(4,Mpowint($a,3)),Mmulint($a,$a)),3) if $k == 5;
 
+  my @v;
   if ($k < $n) {
-    return Mvecsum( map { Mvecprod( Mfactorial($_),
-                                    Mbinomial($n+1,$_+1),
-                                    Mstirling($k,$_,2)     ) } 1..$k );
+    for my $j (1..$k) {
+      my $F = Mfactorial($j);
+      my $B = Mbinomial($n+1,$j+1);
+      my $S = Mstirling($k,$j,2);
+      push @v, Mvecprod($F,$B,$S);
+    }
+  } else {
+    @v = map { Mpowint($_,$k) } 1..$n;
   }
-
-  Mvecsum(map { Mpowint($_,$k) } 1..$n);
+  Mvecsum(@v);
 }
 
 # Make sure to work around RT71548, Math::BigInt::Lite,
@@ -5648,6 +5653,7 @@ sub vecsum {
   return reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_))
     if $Math::Prime::Util::_GMPfunc{"vecsum"};
   my $sum = 0;
+  if (OLD_PERL_VERSION) { $_="$_" for @_ };
   foreach my $v (@_) {
     $sum += $v;
     if ($sum > (INTMAX-250) || $sum < (INTMIN+250)) {
