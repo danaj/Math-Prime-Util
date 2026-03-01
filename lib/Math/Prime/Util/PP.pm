@@ -324,15 +324,6 @@ sub _validate_integer_abs {
   _validate_integer($_[0]);
 }
 
-# If we try to call the function in any normal way, just loading this module
-# will auto-vivify an empty sub.  So we do a string eval to keep it hidden.
-# TODO: must find a reproducible case to justify this
-sub _gmpcall {
-  my($fname, @args) = @_;
-  $fname =~ s/\W//g;
-  my $call = "Math::Prime::Util::GMP::$fname(".join(",",map {"\"$_\""} @args).");";
-  return eval $call ## no critic qw(ProhibitStringyEval)
-}
 sub _try_real_gmp_func {
   my($fref, $ver, $x) = @_;
   return undef unless defined $Math::Prime::Util::GMP::VERSION &&
@@ -1839,7 +1830,7 @@ sub is_powerful {
   return 0 if $n < 1;
   return 1 if $n == 1 || $k <= 1;
 
-  return _gmpcall("is_powerful",$n,$k)
+  return Math::Prime::Util::GMP::is_powerful($n,$k)
     if $Math::Prime::Util::_GMPfunc{"is_powerful"};
 
   # First quick checks for inadmissibility.
@@ -8112,8 +8103,7 @@ sub binomialmod {
   validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
-  # Best if we have it.
-  return reftyped($_[2], _gmpcall("binomialmod",$n,$k,$m))
+  return reftyped($_[0], Math::Prime::Util::GMP::binomialmod($n,$k,$m))
     if $Math::Prime::Util::_GMPfunc{"binomialmod"};
 
   # Avoid the possible enormously slow bigint creation.
@@ -10443,11 +10433,13 @@ sub ecm_factor {
   my @b2primes = ($B2 > $B1) ? @{Mprimes($B1+1, $B2)} : ();
 
   foreach my $curve (1 .. $ncurves) {
-    my $sigma = Murandomm($n-6) + 6;
+    my $sigma = tobigint(Murandomm($n-6)) + 6;
+
     my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
     my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
     my $cb = (4 * $x * $v) % $n;
     my $ca = ( (($v-$u)**3) * (3*$u + $v) ) % $n;
+
     my $f = Mgcd( $cb, $n );
     $f = Mgcd( $z, $n ) if $f == 1;
     next if $f == $n;
