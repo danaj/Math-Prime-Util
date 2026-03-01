@@ -2,13 +2,13 @@
   * Test all functions return either native or bigints.  Functions that
     return raw MPU::GMP results will return strings, which isn't right.
   * Valgrind, coverage
-  * use:  -O2 -g -Wall -Wextra -Wdeclaration-after-statement -fsigned-char
+  * use:  -O2 -g -Wall -Wextra -Werror=vla -Wdeclaration-after-statement -fsigned-char
   * Test on 32-bit Perl, Cygwin, Win32.
   * Test on gcc70 (NetBSD), gcc119 (AIX/Power8), gcc22 (MIPS64), gcc115 (aarch)
   * prove -b -I../Math-Prime-Util-GMP/blib/lib -I../Math-Prime-Util-GMP/blib/arch
 
 - For new functions:
-  XS, .h, .c, PP, PPFE, export, t 92 and 02, lib/ntheory.pm, Changes, doc, test
+  XS, .h, .c, PP, PPFE, export, t 02+92, lib/ntheory.pm, Changes, doc, test(2)
 
 
 - Move .c / .h files into separate directory.
@@ -76,18 +76,13 @@
 
 - consider using Ramanujan Li for PP code.
 
-- xt/pari-compare:  add chinese, factorial, vecmin, vecmax,
+- xt/pari-compare:  add chinese2, factorial, vecmin, vecmax,
                         bernfrac, bernreal, LambertW.
 
 - Proth test using LLR.  Change mersenne test file to test both.
   Note: what does this mean?  Both LLR and Proth are in GMP now.
 
 - harmreal and harmfrac for general $k
-
-- For PP, do something like the fibprime examples.  At load time, look for
-  the best library (GMPz, GMP, Pari, BigInt) and set $BICLASS.  Then we
-  should use that class for everything.  Go ahead and return that type.
-  Make a config variable to allow get/set.
 
 - Support FH for print_primes.  PerlIO_write is giving me fits.
 
@@ -121,14 +116,13 @@
 - compare wheel_t with primes separated and possibly cached.
 
 - urandomm with bigints could be faster.
-   7.7s  my $f=factorial(144); urandomm($f) for 1..5e5;
-   6.2s  my $f=factorial(144); urandomm("$f") for 1..5e5;
-   4.8s  my $f="".factorial(144); urandomm($f) for 1..5e5;
-   5.3s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
-   1.7s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
-  In the first case, we're calling ""->bstr->_str once for validation in MPU
-  and and once for use in MPU::GMP.
-  The last case is all strings with no read/write bigint objects anywhere.
+  2024 May on Macbook.  Some improvements to validation.
+   3.4s  my $f=factorial(144); urandomm($f) for 1..5e5;
+   7.6s  my $f=factorial(144); urandomm("$f") for 1..5e5;
+   6.8s  my $f="".factorial(144); urandomm($f) for 1..5e5;
+   2.2s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
+   0.7s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
+  2026 we're slow again, 8.2s for the first.  triage this.
 
 - Destroy csprng context on thread destruction.
 
@@ -143,6 +137,8 @@
 - add back formultiperm optimization if we can get around lastfor issue.
 
 - make a uint128_t version of montmath.  Needs to handle 64-bit.
+  also see:
+  https://github.com/int128-libraries/curtint128/blob/master/include/cuda_uint128.h
 
 - sieve_range does trial division
 
@@ -154,6 +150,14 @@
 - _reftyped as XS call
 
 - update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
+  also from Dusart (2018).
+  https://piyanit.nl/wp-content/uploads/2020/10/art_10.1007_s11139-016-9839-4.pdf
+
+- update prime counts from Axler 2022:  https://arxiv.org/pdf/2203.05917.pdf
+  This not only improves the 2014 results, but has promising looking results
+  at all sizes.
+
+- nth_prime and bounds, updates from Dusart (2018) and Axler (2022)
 
 - urandomr
 
@@ -180,7 +184,7 @@
 
 - add b125527.txt to oeis 125527.  (semiprime counts 2^n)
 
-- limit for twin prime and ramanujan prime
+- improve 64-bit limit estimates for twin prime and ramanujan prime.
 
 - add to A033843 (twin prime count < 2^n).  Oliviera e Silva has good data.
 
@@ -192,12 +196,12 @@
 
 - Add aliquot sum
 
-- split 80-PP into multiple tests: random, float, numeric, factor, prime, etc.
-
 - testing:  lehman_factor, print_primes, aks
 
-- powint, divint, mulint, addint:
-  - optimize XS for (1) both neg, (2) either neg
+
+- new function:  toint or asint or intify.  Takes generic input, returns integer
+- similar, but how to decide on floor, ceil, trunc?  name floorint is weird
+  Math::GMP calls it intify.
 
 - factor, factor_exp should accept negative inputs
 
@@ -205,13 +209,8 @@
 
 - NEGMAXINT input in XS.
 
-- Looks like lots of dodgy cases with -(2**63+1) and higher.
-  Build in the svn conversion as well?  stat = get(&n, svn, flags);
-  We're now restricting negative inputs to -ivmax, which is better, but
-  means we're skipping optimizations for where we want abs(n) or just want
-  to know if it is negative.
-  If we built this into the flags, it would be slightly messy but now in
-  exactly one place instead of all over.
+- In theory IFLAG_ABS in _validate_and_set should allow up to neg(~0).
+  Looks a bit messy but possible.
 
 - euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
 
@@ -244,6 +243,7 @@
   11 http://oeis.org/A120052
   12 http://oeis.org/A120053
   4^n https://oeis.org/A116426
+      mpu 'for (0..60) { say "$_ ",almost_prime_count($_,powint(4,$_)); }'
   6^n https://oeis.org/A116427
   8^n https://oeis.org/A116428
   9^n https://oeis.org/A116429
@@ -259,34 +259,27 @@
 
 
 - Almost primes things:
-  - Once we have a range bigomega, use it in PP almost_primes.
-  - XS almost_primes should call this in segments, use count_approx for seg size
-  - more work on verifying count_upper for k=5+
-  - more work on verifying count_lower for k=5+
-  - max_almost_prime_count fill in k=5-9.
     almost_prime_count(n,~0): n=17   23m   n=16   41m   n=15  71m   n=14  127m
                               n=13  225m   n=12  397m   n=11 699m   n=10 1217m
-    We could estimate n=9 at 38 hours, n=8 at 66 hours, n=7 at 116 hours.
-    Note this is *significantly* faster than when this was first written.
-  - max_almost_prime_count improve k=2,3,4.  Somehow.
+                              n=9    42hr  n=8    73hr  n=7  123hr  n=6  185hr
+                              n=5   256hr  n=4   288hr  n=3  209hr  n=2   10hr
+
   - optimize PP is_almost_prime
   - better PP almost_prime_count bounds for k > 3
   - optimize PP nth_almost_prime and bounds (this is super slow)
-  - optimize PP almost_primes() (uses forfactored)
   - Consider getting rid of the unused construction code.
-  - foralmostprimes k reduction in PP
-  - foralmostprimes XS tuning (size, when to do incremental, etc.)
-  - rethink the structure for foralmostprimes: iterator?  smart segment size?
-  - foralmostprimes ssize, maybe use approx counts?
   - almost_prime_count(k,beg,end)
+  - almost_prime_count_approx revisit weighting.
+
+- almost_prime_count lower/upper
+  mmpu '$n=subint(powint(2,64),1); ($k,$c)=(26,3323560145881); for (0..100000000) { $c-- if is_almost_prime($k,$n); $n--; die "$n $c" if almost_prime_count_lower($k,$n) > $c; }'
 
 - optimize nth_powerful, both in C and PP.
 
 - Add OEIS sequence, a(n) = the k-th k-powerful number
   mpu 'for my $k (1..40) { say "$k ",nth_powerful($k,$k); }'
 
-- Improve inverse_interpolation.  We're using linear interpolation.
-  Consider 2nd order or Aitken's method.  Dubiously useful here.
+- Better inverse interpolation in PP.
 
 - For almost primes in PP, maybe use Lagrange estimator to start, given
   that we have no bounds.
@@ -294,10 +287,9 @@
 - omega primes, work on figuring out formula for omega_prime_count
   better construction and counting
   OEIS sequence for omega k=3 counts for 10^i
+  look into the code for omega prime count k=2, especially overflow pr[]
 
 - There might be a better method for _sqrtmod_prime_power.
-
-- PP submod native ints should be streamlined.
 
 - extend qnr with optional root argument, cubic non-residue, etc.
 
@@ -308,31 +300,32 @@
 
 - consider forprimepowers { ... } beg,end
 
-- PP next_prime_power, prev_prime_power: skip evens.
+- sum_prime_powers(start,end)  or  prime_power_sum(start, end)
+  Look at sum_primes and do similar 128-bit
+  See Sidef for implementation
 
 - test coverage for PP.
 
 - Revisit AKS in PP.  Essentially all the time is spent in two lines of
-  poly_mod_mul.  (1) Move to Bern 4.1, (2) try using bigint multiply
-  (Kronecker) like we do in GMP.
-
-- 81-bignum.t takes too much time with PP
-
-- PP random_safe_prime(180) is very slow.  GMP algorithm doesn't help.
+  poly_mod_mul.  (2) try using bigint multiply (Kronecker) like we do in GMP.
 
 - any way to make non-GMP random_strong_prime faster
-
-- sum_primes128, try using Meissel.
 
 - Speed up XS RiemannR with quadmath.
 
 - binomialmod:
    - PP implementation for primes, squarefree, and general composites.
+   - better factorialmod_without_p.  E.g.
+       binomialmod(powint(10,18),5*powint(10,17),powint(2,60))'
+       binomialmod(1234567890123456789,123456789012345678,powint(999979,3)
 
 - Possible new:
   - checksums?  Rather than print | md5sum.  adler32, sha1/2/3, blake2 (b2sum)
 
 - inverse sigma.  Better, determine how to generalize this somehow.
+
+- consider negative k in sigma:
+  https://github.com/trizen/sidef/commit/00f083f4645b810292f9fbf4020e762279fdb4d4
 
 - stronger BPSW test:  https://arxiv.org/abs/2006.14425
 
@@ -352,8 +345,8 @@
 
 - gcdext, see Sorenson, Jabelean, and kernel/none/gcdll.c.
 
-- Add optional base to is_delicate_prime(n,base=10).  This should be relatively
-  easy in C, but we'll need to put the math back in PP.
+- OEIS A186995
+  mmpu 'for $b (2..29) { forprimes { if (is_delicate_prime($_,$b)) { say "$b $_"; lastfor(); } } 1e13; }'
 
 - refactor lucas code.
   split out all the different codes, benchmark them all.
@@ -361,13 +354,9 @@
 - Complete reviewing docs for positive vs. non-negative, and comparing
   to XS.xs.  Everything after modular functions was not reviewed.
 
-
-- new XS function to return best int/bigint form of result for PP post-calc.
-
 - PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
   wrong.  We can use max/min.  Better come up with something more consistent.
   Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
-
 
 - GMP
   - rootmod, binomialmod
@@ -383,13 +372,12 @@
   - qnr
   - fdivrem
 
-
 - consider (in GMP 0.53):
   - setbit, clrbit, combit, tstbit
   - bitand, bitor, bitxor, bitcom
 
 - other *int functions?  See overload and GMP for possible things we want.
-  is_divisible, remove_factors, clzint, ctzint (scan0,scan1), is_even, is_odd
+  remove_factors, clzint, ctzint (scan0,scan1)
 
 - an overload option or module, to call our *int functions.
   have: add, sub, mul, pow, div, rem, neg, ++, --, <<, >>, <=>
@@ -404,7 +392,278 @@
 
 - incremental factoring.  Maybe a stateful iterator?
 
+- consider forfactors { } n.  Iterate through factors using iterator.
+  Allows convenient early exit.
+
 - new semiprime approximations should be used in PP.
 
-- is_chen_prime, next_chen_prime
-  PP, PPFE, test
+- semiprime bounds (for count or nth, inverse for the other)
+
+- twin prime bounds (for count or nth, inverse for the other)
+
+- omega prime bounds (for count or nth, inverse for the other)
+
+- omega prime approx (for count or nth, inverse for the other)
+
+- faster squarefree count in PP.
+
+- faster squarefree sieving.   https://arxiv.org/pdf/2411.01964
+
+- PP lucky number functions should be improved.
+
+- 64-bit max lucky index should be improved if possible
+
+OEIS lucky numbers:
+  - add program
+  - add link to file
+
+- OEIS https://oeis.org/A161170
+  We can use approx and limits to create a small window containing the
+  crossover.  Then use forfactored to find the exact point, or binary search.
+  mmpu '$n = 1e10; while (1) { $c=prime_count_approx($n); $C=almost_prime_count_approx(8,$n); if ($c < $C) { die "$n $c $C\n"; } $n = int($n * 1.001); }'
+
+- make GMPFE.pm.  No validation, just call GMP and objectify.
+  Use _gmpcall consistently to prevent auto-vivify
+  XS should call it if possible.  Maybe gmpobj?
+  PPFE should direct to it after validation.
+  PP.pm should remove the first-thing GMP checks
+  included by PPFE and in the XS call.  Not by default.
+  See about moving more GMP related things to that file.
+  If/when the GMP backend finally does objects, remove it all.
+
+- faster next_prime_power / prev_prime_power?
+- PP next_prime_power, prev_prime_power: skip evens.
+
+- prime sum bounds and approx
+  https://arxiv.org/pdf/2309.16007.pdf
+
+- prime_count_cache.c:
+  - direct cache should not skip 0,1.  Removes a test
+  - try cache with wheel30 instead of odds.  240/128 fewer entries.
+
+- test Brent and/or Chandrupatla with inverse interp
+  https://www.embeddedrelated.com/showarticle/855.php
+  also see May 2025 email about this
+
+- is_congruent_number
+
+  A006991
+  tmmpu 'forsquarefreeint { say if ($_%8) < 4 && is_congruent_number($_) } 1e7;' >/tmp/prim-cn.txt
+
+  A274264:  tmmpu 'forsquarefreeint { $n++ if ($_%8)>4; } 1e7; say $n;'
+
+  A274403:
+  3039648+213318
+  or:  mpu 'forsquarefreeint { $n++ if is_congruent_number($_) } 1e7; say $n;'
+
+  A290449:
+  mpu 'sub a { vecfirst { is_congruent_number($_*$_[0]) } (1,2,3,5); } say "$_ ",a($_) for 1..100000'
+
+- R\'edei symbol, Borromean primes
+  https://arxiv.org/pdf/2403.17957.pdf
+  http://www.rnta.eu/4MSRNTA/PROC4MSRNTA.pdf
+  https://arxiv.org/pdf/1806.06250.pdf
+  https://www.researchgate.net/publication/367529395_Primes_knots_and_periodic_orbits
+  (p,q,r), each 1 mod 4, (p|q)=(p|r)=(q|r)=1, [p,q,r]=-1
+  Really not clear how we would do this.
+
+- cornacchia negative d?
+
+- nonpowerfree:    is_npf, mpf_count, npf_sum, nth_npf
+- pf_numbers(lo,hi,k), npf_numbers(lo,hi,k)
+
+- mertens(lo,hi) = mertens(hi) - mertens(lo-1)
+
+- consider moving leaf PP functions to new file, so PP loads faster
+
+- find a proper BigInt workaroud for binomial with bigint n.  bnok
+  powersum uses binomial
+  stirling uses binomial
+  falling_factorial and rising_factorial uses binomial for m >= 250
+  subfactorial uses binomial
+  can use falling_factorial and factorial
+
+- factor_range.  Get rid of N[i].  Always complete sieve.
+  Get the last factor when we return the value in next (n-vecprod(factors).
+
+- rewrite parts of RandomPrimes using our math
+- remove Math::BigInt assumptions
+- rewrite _random_prime using our math functions
+
+- is there any desire for perfect power count on negative ranges?
+
+- Look at things that loop over floor(n/i).
+  https://math.stackexchange.com/a/1740370/117584
+
+- XS for setinvert
+
+- toint
+
+== almost_prime_count bounds verify
+   DONE 2^20 - 2^32 complete
+   DONE 2^32 - 2^37 complete 2.5+5+11+23+46 hours
+        2^37 - 2^38 k=2-63 (est 4 days)
+        2^38 - 2^39 k=2-63 (est 8 days)
+        2^39 - 2^40 k=2-63 (est 16 days)
+
+== almost_prime_count_approx revisit weighting (e.g. 6,1<<56)
+   Perhaps use one or two linear interpolations for weight.
+   Different behavior for high k
+
+- omega primes, work on figuring out formula for omega_prime_count
+= omega primes construction, single call routine and construct primes
+  tmmpu 'omega_primes(8,powint(10,14), powint(10,14) + 1e6)'
+
+- A253595, should clean this code:
+  mmpu '@cyc = grep { is_cyclic($_) } 0..10000; for $i (3..100) { $n = $cyc[$i-1]; for $t (1..1e10) { next unless is_carmichael($n*$t); say "$i $n ",$n*$t; last; } }'
+
+- we should have an extra debug mode for asserts.
+
+- contfrac with negative inputs in XS
+- cfrac_add, cfrac_sub, cfrac_mul, cfrac_div
+
+- C99 designated initializers
+
+- consider inversions, see 22 Apr 2025 email
+
+- we could split reading arrays into signed and unsigned parts, possibly
+  putting them into the same array front/back.
+
+- trizen sigma_sum, pillai_sum, etc.
+
+- more efficient kth_farey in PP
+
+= OEIS sequence for omega k=3 counts for 10^i
+= cheb_factor in GMP
+
+= taupower
+= rtau
+
+= chacha update to rfc8439
+- more tests
+- compare with https://github.com/DavyLandman/portable8439
+               https://github.com/smuellerDD/chacha20_drng
+
+- chacha
+  - init_context
+  - neon+sse
+  - refill return have
+  - refill not zero key from buf
+
+- congruent_numbers
+  - permuted factors
+
+= lobby email
+  - almost_prime_count ranged
+
+= gmp cmpint
+
+- totient sum, look at paper from Sukhoy and Stoytchev (s41598-021-99545-w.pdf)
+  Better:  https://arxiv.org/pdf/2506.07386
+
+= tot sum
+     0.049   1e10  8.8x
+     0.155   1e11  9.3x
+     0.636   1e12  8.9x
+     3.140   1e13  7.5x
+    21.084   1e14  5.0x
+   201.467   1e15  2.4x
+  2061.928   1e16  1.1x
+
+  https://github.com/lucasaugustus/mertens
+  https://github.com/lucasaugustus/labmath3/
+  https://github.com/lucasaugustus/oeis/
+  A064018
+     0.433   1e10
+     1.448   1e11
+     5.645   1e12
+    23.472   1e13
+   105.522   1e14
+   483.986   1e15
+  2293.631   1e16
+
+  pypy3.10 src/lucasa-oeis/A064018.py
+
+- moebius_iterator
+  generate a batch, dole it out, make the next, etc.
+  primes to sqrt(n)
+
+  Also test it using a sliding window so we generate monolithic
+  see how that performs vs. range_moebius or windowed range_moebius
+
+- objectify based on gmp_info
+- array of bigints:
+  - sieve_range
+  - sieve_cluster
+  - factor
+- special
+  - factorial
+- merge vcallsubn into dispatch_external
+
+- find_gmp_info replace linear scan with hash?
+
+- use amagic_call for simple addint etc.  See List::Util::XS
+  save/XS.xs-amagic1
+
+- consider my_svuv redefined, like in validate_int.  Call sv_2uv if needed.
+  See https://github.com/Perl/perl5/issues/22653
+  We avoid this most of the time already.
+
+- harmfrac for negative n
+  https://mathworld.wolfram.com/HarmonicNumber.html
+
+- default bigint to better package
+- revisit PP factorial
+
+- t/81-bignum should try different bigint classes
+
+- ecm
+
+- waring_goldbach(n,k,t)  {p1}^k + {p2}^k + ... + {pt}^k
+
+- add pillai composite sequence to OEIS
+  mpu 'forcomposites { say ++$n," $_"  if is_pillai($_) } 100000;'
+
+- rosettacode Calin-Wilf needs this line:
+     splice @f, 0, 1, 1, $f[0]-1 if $#f & 1;
+
+- nth_ramanujan_lower, should be redone like upper.
+
+- calculate primecount 24^14 and use it in t/81-bignum.t.
+
+- vecwindow incr,len {... @_ ...} @list
+  This is slideatatime
+  incr==len is natatime
+- vecpairwise {... $a,$b ...} \@A,\@B
+  List::MoreUtils::pairwise
+
+- primality
+  https://arxiv.org/pdf/2411.01638  (Pell Cubic)
+  https://eprint.iacr.org/2025/2083.pdf (BFW extension to BPSW, SuperBFW)
+  https://arxiv.org/pdf/1908.06964 (Phatak, similar to Khashin)
+  1. Different QNR selection (faster?)
+  2. Adds Euler test
+  3. Khashin:  (1+q)^n = 1-q  or (2+q)^n = 2-q
+     Phatak:   (1+q)^n - 1 - q^n = 0  =>  (1+q)^n = 1 + q^n
+  https://arxiv.org/pdf/2505.02167
+- sqrtmod_prime
+  https://eprint.iacr.org/2025/2083.pdf
+
+- move to 5.10.1 minimum
+
+- we're flakey about return types with different bigint type
+  powmod returns typeof($n), but invmod returns $_BIGINT.  Usually.
+
+- should vecsort have a code block option?
+  usort does not.  Time to add list reverse is negligible.
+
+- second parameter for Real functions, and/or default precision.
+  Get rid of looking at input accuracy.
+
+- put all real funcs in separate Real.pm file.
+  ei       ExponentialIntegral
+  li       LogarithmicIntegral
+  lambertw LambertW
+  riemannr RiemannR
+  zeta     RiemannZeta
+  plus Pi(n) and Schoenfeld distance
