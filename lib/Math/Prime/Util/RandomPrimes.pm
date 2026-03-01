@@ -281,7 +281,7 @@ my $_random_prime = sub {
 
     my $rpart = urandomm($nparts+1);
 
-    my $primelow = $low + 2 * $binsize * $rpart;
+    my $primelow = addint($low,vecprod(2,$binsize,$rpart));
     my $partsize = ($rpart < $nparts) ? $binsize
                                       : $oddrange - ($nparts * $binsize);
     $partsize = _bigint_to_int($partsize) if ref($partsize);
@@ -776,10 +776,10 @@ sub _ST_Random_prime {  # From FIPS 186-4
   }
   my $x = tobigint(fromdigits($xstr,16));
   $x = $k2 + ($x % $k2);
-  my $t = ($x + 2*$c0 - 1) / (2*$c0);
+  my $t = divint($x + 2*$c0 - 1, 2*$c0);
   _make_big_gcds() if $_big_gcd_use < 0;
   while (1) {
-    if (2*$t*$c0 + 1 > 2*$k2) { $t = ($k2 + 2*$c0 - 1) / (2*$c0); }
+    if (2*$t*$c0 + 1 > 2*$k2) { $t = divint($k2 + 2*$c0 - 1, 2*$c0); }
     my $c = 2*$t*$c0 + 1;
     $prime_gen_counter++;
 
@@ -807,8 +807,8 @@ sub _ST_Random_prime {  # From FIPS 186-4
         $astr = Digest::SHA::sha256_hex($seed) . $astr;
         $seed = _seed_plus_one($seed);
       }
-      my $a = tobigint(fromdigits($astr,16));
-      $a = ($a % ($c-3)) + 2;
+      my $a = fromdigits($astr,16);
+      $a = addint(modint($a,$c-3),2);
       my $z = powmod($a, 2*$t, $c);
       if (gcd($z-1,$c) == 1 && powmod($z, $c0, $c) == 1) {
         croak "Shawe-Taylor random prime failure at ($k): $c not prime"

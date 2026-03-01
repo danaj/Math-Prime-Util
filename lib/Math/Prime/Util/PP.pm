@@ -5207,13 +5207,18 @@ sub _tquotient {
     $b = Math::GMP->new($b) unless $refb eq 'Math::GMP';
     # op_div => mpz_div function (obsolete!).  bdiv => tdiv_qr
     ($q) = $a->bdiv($b);
+  } elsif ($refa eq 'Math::Pari' || $refb eq 'Math::Pari') {
+    $a = Math::Pari->new("$a") unless $refa eq 'Math::Pari';
+    $b = Math::Pari->new("$b") unless $refb eq 'Math::Pari';
+    $q = Math::Pari::gdivent(abs($a),abs($b));
+    $q = Math::Pari::gneg($q) if ($a < 0) != ($b < 0);
   } else {
     # Force no upgrade so 'use bignum' won't screw us over.
     my $A = Math::BigInt->new("$a")->upgrade(undef);
     my $B = Math::BigInt->new("$b")->upgrade(undef);
     $q = abs($a) / abs($b);
     $q = -$q if ($a < 0) != ($b < 0);
-    $q = $refa->new($q) if $refa ne 'Math::BigInt' && $refb ne 'Math::BigInt';
+    $q = $refa->new("$q") if $refa ne 'Math::BigInt' && $refb ne 'Math::BigInt';
   }
   $q;
   #return $q <= INTMAX && $q >= INTMIN  ?  _bigint_to_int($q)  :  $q;
@@ -5316,14 +5321,17 @@ sub divint {
 }
 sub _posmodint {   # Simple no-error all positive case
   #croak "Invalid call to _posmodint(@_)" unless $_[1] > 0 && $_[0] >= 0;
+  my($a,$b) = @_;
+  validate_integer($a);
+  validate_integer($b);
   my $r;
-  if (ref($_[1]) || ref($_[0])) {
-    $r = $_[0] % $_[1];
+  if (ref($b) || ref($a)) {
+    $r = $a % $b;
     $r = _bigint_to_int($r) if $r <= INTMAX;
-  } elsif ($_[1] < INTMAX && $_[0] < INTMAX) {
-    $r = $_[0] % $_[1];
+  } elsif ($b < INTMAX && $a < INTMAX) {
+    $r = $a % $b;
   } else {
-    $r = tobigint($_[0]) % tobigint($_[1]);
+    $r = tobigint($a) % tobigint($b);
     $r = _bigint_to_int($r) if $r <= INTMAX;
   }
   $r;
@@ -5353,6 +5361,8 @@ sub modint {
 sub cdivint {
   if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
     my($a,$b) = @_;
+    validate_integer($a);
+    validate_integer($b);
     my $q;
     if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
       use integer; $q = $a / $b;
@@ -5384,8 +5394,11 @@ sub negint {
 sub signint {
   my($n) = @_;
   validate_integer($n);
-  # Native ints, Math::BigInt, and Math::GMP work as-is, but some others don't.
+  # -1,0,1        Native ints, Math::BigInt, Math::GMP, Math::GMPz 0.68+
+  # neg,0,pos     Math::GMPz 0.67 and earlier
+  # -1 or 4294967295, 0, 1   Math::Pari
   my $r = $n <=> 0;
+  $r = -1 if $r == 4294967295 && ref($n) eq 'Math::Pari';
   return $r < 0 ? -1 : $r > 0 ? 1 : 0;
 }
 sub cmpint {
@@ -5393,6 +5406,7 @@ sub cmpint {
   validate_integer($a);
   validate_integer($b);
   my $r = $a <=> $b;
+  $r = -1 if $r == 4294967295 && (ref($a) eq 'Math::Pari' || ref($b) eq 'Math::Pari');
   return $r < 0 ? -1 : $r > 0 ? 1 : 0;
 }
 
@@ -6588,7 +6602,9 @@ sub addmod {
           :                ($b-$n)+$a;
   }
   # Impl 1.  Make $a a bigint and let things promote.  Fastest.
-  my $r = (tobigint($a) + $b) % $n;
+  $a = tobigint($a);
+  $b = tobigint($b) if ref($a) eq 'Math::Pari';
+  my $r = ($a + $b) % $n;
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
 
   # Impl 2.  Use Maddint but mod with a $n as a bigint.
@@ -6676,6 +6692,11 @@ sub _bi_powmod {
   } elsif ($refn eq 'Math::BigInt') {
     $r->bmod($n) if $BIGINTVERSION < 1.999;
     $r->bmodpow($b,$n);
+  } elsif ($refn eq 'Math::Pari') {
+    if ($n <= 4294967295 && $b > 4294967295) {
+      $b = $b % Math::Prime::Util::carmichael_lambda($n);
+    }
+    $r = Math::Pari::lift(Math::Pari::gpow(Math::Pari::Mod($a,$n),$b));
   } else {
     $r->bmodpow("$b","$n");
   }
@@ -6813,6 +6834,9 @@ sub invmod {
   } elsif ($refn eq 'Math::GMP') {
     $I = $a->gmp_copy->bmodinv($n);
     $I = undef if defined $I && $I == 0;
+  } elsif ($refn eq 'Math::Pari') {
+    $I = eval{1/Math::Pari::Mod($a,$n)};
+    $I = defined $I && $I != 0  ?  Math::Pari::lift($I)  :  undef;
   } else {
     $I = Math::BigInt->new("$a")->bmodinv("$n");
     $I = undef if defined $I && !$I->is_int();
@@ -8044,7 +8068,7 @@ sub binomial {
   if (defined $Math::GMPz::VERSION) {
     $R = Math::GMPz->new();
     Math::GMPz::Rmpz_bin_ui($R, Math::GMPz->new($n), $k);
-  } elsif (defined $Math::GMP::VERSION && $n < 4294967296) {
+  } elsif (defined $Math::GMP::VERSION && $Math::GMP::VERSION >= 2.23 && $n < 4294967296) {
     # This will silently coerce inputs to C 'long' type.
     $R = Math::GMP::bnok("$n","$k");
   } elsif ($n > INTMAX && $k < 100) {
@@ -10403,12 +10427,11 @@ sub ecm_factor {
     my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
     my $cb = (4 * $x * $v) % $n;
     my $ca = ( (($v-$u)**3) * (3*$u + $v) ) % $n;
-    my $f = Math::BigInt::bgcd( $cb, $n );
-    $f = Math::BigInt::bgcd( $z, $n ) if $f == 1;
+    my $f = Mgcd( $cb, $n );
+    $f = Mgcd( $z, $n ) if $f == 1;
     next if $f == $n;
     return _found_factor($f,$n, "ECM B1=$B1 curve $curve", @factors) if $f != 1;
-    $cb = Math::BigInt->new("$cb") unless ref($cb) eq 'Math::BigInt';
-    $u = $cb->copy->bmodinv($n);
+    $u = Minvmod($cb,$n);
     $ca = (($ca*$u) - 2) % $n;
 
     my $ECP = Math::Prime::Util::ECProjectivePoint->new($ca, $n, $x, $z);
@@ -10420,15 +10443,15 @@ sub ecm_factor {
       $ECP->mul($k);
       $fm = ($fm * $ECP->x() ) % $n;
       if ($i++ % 32 == 0) {
-        $f = Math::BigInt::bgcd($fm, $n);
+        $f = Mgcd($fm, $n);
         last if $f != 1;
       }
     }
-    $f = Math::BigInt::bgcd($fm, $n);
+    $f = Mgcd($fm, $n);
     next if $f == $n;
 
     if ($f == 1 && $B2 > $B1) { # BEGIN STAGE 2
-      my $D = int(sqrt($B2/2));  $D++ if $D % 2;
+      my $D = Msqrtint($B2 >> 1);  $D++ if $D % 2;
       my $one = $n - $n + 1;
       my $g = $one;
 
@@ -10452,9 +10475,9 @@ sub ecm_factor {
         }
         $nqx[$i] = $x2;
         #($f, $u, undef) = _extended_gcd($z2, $n);
-        $f = Math::BigInt::bgcd( $z2, $n );
+        $f = Mgcd( $z2, $n );
         last if $f != 1;
-        $u = $z2->copy->bmodinv($n);
+        $u = Minvmod($z2,$n);
         $nqx[$i] = ($x2 * $u) % $n;
       }
       if ($f != 1) {
@@ -10469,7 +10492,7 @@ sub ecm_factor {
         if ($m != 1) {
           my $oldx = $S2x;
           my ($x1, $z1) = Math::Prime::Util::ECProjectivePoint::_addx($nqx[2*$D], $S2x, $x, $n);
-          $f = Math::BigInt::bgcd( $z1, $n );
+          $f = Mgcd( $z1, $n );
           last if $f != 1;
           $u = $z1->copy->bmodinv($n);
           $S2x = ($x1 * $u) % $n;
@@ -10487,7 +10510,7 @@ sub ecm_factor {
             next if $i > ($m+$m) || is_prime($m+$m-$i);
             $g = ($g * ($S2x - $nqx[$i-$m])) % $n;
           }
-          $f = Math::BigInt::bgcd($g, $n);
+          $f = Mgcd($g, $n);
           #warn "ECM S2 3: found $f in stage 2\n" if $f != 1;
           last if $f != 1;
         }
