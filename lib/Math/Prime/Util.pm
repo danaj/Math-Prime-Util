@@ -362,6 +362,11 @@ sub _to_bigint {
     $n = $_[0];
   } elsif (ref($_[0]) eq 'Math::BigFloat' && !$_[0]->is_int()) {
     $n = Math::BigInt->bnan;
+  } elsif ($_BIGINT eq 'Math::Pari' && $_[0] =~ /^0[bx]/) {
+    # Pari added support for this in 2.8, so not in Math::Pari
+    do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
+    $n = Math::BigInt->new("$_[0]");
+    $n = $_BIGINT->new("$n");
   } else {
     $n = $_BIGINT->new("$_[0]");
   }

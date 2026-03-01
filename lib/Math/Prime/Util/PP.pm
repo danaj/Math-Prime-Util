@@ -5653,7 +5653,8 @@ sub vecsum {
     if ($sum > (INTMAX-250) || $sum < (INTMIN+250)) {
       # Sum again from the start using bigint sum
       $sum = tobigint(0);
-      $sum += $_ for @_;
+      if (ref($sum) eq 'Math::Pari') { $sum += "$_" for @_; }
+      else                           { $sum += $_   for @_; }
       $sum = _bigint_to_int($sum) if $sum <= INTMAX && $sum >= INTMIN;
       return $sum;
     }
@@ -6630,7 +6631,9 @@ sub submod {
           : $a > $b     ?  ($a-$n)+$b
           :                ($b-$n)+$a;
   }
-  my $r = (tobigint($a) - $b) % $n;
+  $a = tobigint($a);
+  $b = tobigint($b) if ref($a) eq 'Math::Pari';
+  my $r = ($a - $b) % $n;
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
 
@@ -6693,6 +6696,8 @@ sub _bi_powmod {
     $r->bmod($n) if $BIGINTVERSION < 1.999;
     $r->bmodpow($b,$n);
   } elsif ($refn eq 'Math::Pari') {
+    $a = $refn->new("$a") unless ref($a) eq $refn;
+    $b = $refn->new("$b") unless ref($b) eq $refn;
     if ($n <= 4294967295 && $b > 4294967295) {
       $b = $b % Math::Prime::Util::carmichael_lambda($n);
     }
@@ -6765,7 +6770,12 @@ sub muladdmod {
     if $Math::Prime::Util::_GMPfunc{"muladdmod"};
 
   $n = tobigint($n) unless ref($n);
-  $a = tobigint($a) unless ref($a) || ref($b);
+  if (ref($n) eq 'Math::Pari') {
+    $a = tobigint("$a") unless ref($a) eq 'Math::Pari';
+    $b = tobigint("$b") unless ref($b) eq 'Math::Pari';
+  } else {
+    $a = tobigint($a) unless ref($a) || ref($b);
+  }
   $c = tobigint($c) unless ref($c);
   my $r = (($a * $b) + $c) % $n;
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
@@ -6792,7 +6802,12 @@ sub mulsubmod {
   # return Msubmod(Mmulmod($a,$b,$n),$c,$n);
 
   $n = tobigint($n) unless ref($n);
-  $a = tobigint($a) unless ref($a) || ref($b);
+  if (ref($n) eq 'Math::Pari') {
+    $a = tobigint("$a") unless ref($a) eq 'Math::Pari';
+    $b = tobigint("$b") unless ref($b) eq 'Math::Pari';
+  } else {
+    $a = tobigint($a) unless ref($a) || ref($b);
+  }
   $c = tobigint($c) unless ref($c);
   my $r = (($a * $b) - $c) % $n;
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
