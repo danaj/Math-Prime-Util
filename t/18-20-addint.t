@@ -58,16 +58,16 @@ plan tests =>
 }
 
 subtest 'selected test values', sub {
-  is_deeply( [map { addint($_->[0],$_->[1]) } @vals],
+  is_deeply( [map { "".addint($_->[0],$_->[1]) } @vals],
              [map { $_->[2] } @vals],
              "addint a+b=c" );
-  is_deeply( [map { addint($_->[1],$_->[0]) } @vals],
+  is_deeply( [map { "".addint($_->[1],$_->[0]) } @vals],
              [map { $_->[2] } @vals],
              "addint b+a=c" );
-  is_deeply( [map { subint($_->[2],$_->[1]) } @vals],
+  is_deeply( [map { "".subint($_->[2],$_->[1]) } @vals],
              [map { $_->[0] } @vals],
              "subint c-b=a" );
-  is_deeply( [map { subint($_->[2],$_->[0]) } @vals],
+  is_deeply( [map { "".subint($_->[2],$_->[0]) } @vals],
              [map { $_->[1] } @vals],
              "subint c-a=b" );
 };
@@ -79,6 +79,6 @@ subtest 'selected test values', sub {
            "9223372036854775807", "9223372036854775808", "9223372036854775809",
            "18446744073709551615", "18446744073709551616", "18446744073709551617",
            "158456325028528675187087900671");
-  is_deeply([map { add1int($_) } @N], [map { addint($_,1) } @N], "add1int");
-  is_deeply([map { sub1int($_) } @N], [map { subint($_,1) } @N], "sub1int");
+  is_deeply([map {"".add1int($_)} @N], [map {"".addint($_,1)} @N], "add1int");
+  is_deeply([map {"".sub1int($_)} @N], [map {"".subint($_,1)} @N], "sub1int");
 }

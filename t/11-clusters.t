@@ -97,8 +97,8 @@ if ($usegmp) {
 {
   my $beg = $mbeg;
   my $end = $extra ? $mend : $mbeg + 1000;
-  my @sieve = sieve_prime_cluster($beg,$end,2);
-  my @tuple = ktuple($beg,$end,$pcache[1],2);
+  my @sieve = map {"$_"} sieve_prime_cluster($beg,$end,2);
+  my @tuple = map {"$_"} ktuple($beg,$end,$pcache[1],2);
   my $num = scalar(@tuple);
   is_deeply( \@sieve, \@tuple, "Pattern [2] $num in range $beg .. $end");
 }
@@ -118,8 +118,8 @@ for my $pat (@patterns) {
 for my $pat (@patterns) {
   my @pat = @$pat;
   shift @pat if $pat[0] == 0;
-  my @sieve = sieve_prime_cluster($mbeg,$mend,@pat);
-  my @tuple = ktuple($mbeg,$mend,$pcache[1],@pat);
+  my @sieve = map {"$_"} sieve_prime_cluster($mbeg,$mend,@pat);
+  my @tuple = map {"$_"} ktuple($mbeg,$mend,$pcache[1],@pat);
   my $num = scalar(@tuple);
 
   is_deeply( \@sieve, \@tuple, "Pattern [@pat] $num in range $mbeg .. $mend");

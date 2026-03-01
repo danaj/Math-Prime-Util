@@ -43,6 +43,6 @@ plan tests => 2;
   }
   is_deeply( \@got, \@exp, "mulint( -3 .. 3, -3 .. 3)" );
 }
-is_deeply( [map { mulint($_->[0],$_->[1]) } @vals],
+is_deeply( [map{"$_"}map { mulint($_->[0],$_->[1]) } @vals],
            [map { $_->[2] } @vals],
            "mulint a*b=c" );

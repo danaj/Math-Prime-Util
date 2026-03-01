@@ -200,8 +200,8 @@ while (my($params, $expect) = each (%lucas_sequences)) {
   my($n,$P,$Q,$k) = split(' ', $params);
 
   is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "lucasuvmod($P,$Q,$k,$n)" );
-  is_deeply( lucasumod($P,$Q,$k,$n), $expect->[0], "lucasumod($P,$Q,$k,$n)" );
-  is_deeply( lucasvmod($P,$Q,$k,$n), $expect->[1], "lucasvmod($P,$Q,$k,$n)" );
+  is( lucasumod($P,$Q,$k,$n), $expect->[0], "lucasumod($P,$Q,$k,$n)" );
+  is( lucasvmod($P,$Q,$k,$n), $expect->[1], "lucasvmod($P,$Q,$k,$n)" );
 
   # Don't run these through lucasuv, lucasu, lucasv
 }
@@ -211,13 +211,13 @@ my %allcheck = (%lucas_dcheck, %lucas_large);
 while (my($params, $expect) = each %allcheck) {
   my($n,$P,$Q,$k) = split(' ', $params);
 
-  is_deeply( [lucasuvmod($P,$Q,$k,$n)], $expect, "lucasuvmod($P,$Q,$k,$n)" );
-  is_deeply( lucasumod($P,$Q,$k,$n), $expect->[0], "lucasumod($P,$Q,$k,$n)" );
-  is_deeply( lucasvmod($P,$Q,$k,$n), $expect->[1], "lucasvmod($P,$Q,$k,$n)" );
+  is_deeply( [map{"$_"}lucasuvmod($P,$Q,$k,$n)], $expect, "lucasuvmod($P,$Q,$k,$n)" );
+  is( "".lucasumod($P,$Q,$k,$n), $expect->[0], "lucasumod($P,$Q,$k,$n)" );
+  is( "".lucasvmod($P,$Q,$k,$n), $expect->[1], "lucasvmod($P,$Q,$k,$n)" );
 
-  is_deeply( [map { $_ % $n } lucasuv($P,$Q,$k)], $expect, "lucasuv($P,$Q,$k) % $n" );
-  is_deeply( lucasu($P,$Q,$k) % $n, $expect->[0], "lucasu($P,$Q,$k) % $n" );
-  is_deeply( lucasv($P,$Q,$k) % $n, $expect->[1], "lucasv($P,$Q,$k) % $n" );
+  is_deeply( [map {"$_"} map { $_ % $n } lucasuv($P,$Q,$k)], $expect, "lucasuv($P,$Q,$k) % $n" );
+  is( "".lucasu($P,$Q,$k) % $n, $expect->[0], "lucasu($P,$Q,$k) % $n" );
+  is( "".lucasv($P,$Q,$k) % $n, $expect->[1], "lucasv($P,$Q,$k) % $n" );
 }
 
 
@@ -243,12 +243,10 @@ for my $i (@issue47) {
 }
 
 # Arbitrary large inputs
-is_deeply( [lucasuvmod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237")],
-           [qw/281234951900970815965553779 286001090644956921206996074/],
-           "lucasuvmod with all large bigint inputs" );
-is_deeply( [lucasumod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237")],
-           [qw/281234951900970815965553779/],
-           "lucasumod with all large bigint inputs" );
-is_deeply( [lucasvmod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237")],
-           [qw/286001090644956921206996074/],
-           "lucasvmod with all large bigint inputs" );
+is_deeply([map{"$_"}lucasuvmod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237")],
+          [qw/281234951900970815965553779 286001090644956921206996074/],
+          "lucasuvmod with all large bigint inputs" );
+is("".lucasumod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237"),
+   "281234951900970815965553779", "lucasumod with all large bigint inputs" );
+is("".lucasvmod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237"),
+   "286001090644956921206996074", "lucasvmod with all large bigint inputs" );

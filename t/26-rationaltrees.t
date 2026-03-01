@@ -97,8 +97,8 @@ plan tests => 3 + 3 + 2*scalar(@ex) + 2
 
 for my $t (@ex) {
   my($n,$d,$cwidx,$sbidx) = @$t;
-  is_deeply( [calkin_wilf_n($n,$d),[nth_calkin_wilf($cwidx)]], [$cwidx,[$n,$d]], "calkin_wilf_n($n,$d) and nth_calkin_wilf($cwidx)" );
-  is_deeply( [stern_brocot_n($n,$d),[nth_stern_brocot($sbidx)]], [$sbidx,[$n,$d]], "stern_brocot_n($n,$d) and nth_stern_brocot($sbidx)" );
+  is_deeply( ["".calkin_wilf_n($n,$d),[nth_calkin_wilf($cwidx)]], [$cwidx,[$n,$d]], "calkin_wilf_n($n,$d) and nth_calkin_wilf($cwidx)" );
+  is_deeply( ["".stern_brocot_n($n,$d),[nth_stern_brocot($sbidx)]], [$sbidx,[$n,$d]], "stern_brocot_n($n,$d) and nth_stern_brocot($sbidx)" );
 }
 
 ##### Stern diatomic

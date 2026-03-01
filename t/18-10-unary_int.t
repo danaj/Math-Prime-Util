@@ -44,11 +44,11 @@ plan tests => 3 + 2 + 2 + 2 + 2;
 is_deeply( [absint(0), negint(0), signint(0)], [0,0,0], "absint(0), negint(0), signint(0)" );
 is_deeply( [absint(-0), negint(-0), signint(-0)], [0,0,0], "absint(-0), negint(-0), signint(-0)" );
 
-is_deeply([map { absint($_) } @pos], \@pos, "absint with positive inputs");
-is_deeply([map { absint($_) } @neg], \@pos, "absint with negative inputs");
+is_deeply([map{"$_"}map { absint($_) } @pos], \@pos, "absint with positive inputs");
+is_deeply([map{"$_"}map { absint($_) } @neg], \@pos, "absint with negative inputs");
 
-is_deeply([map { negint($_) } @pos], \@neg, "negint with positive inputs");
-is_deeply([map { negint($_) } @neg], \@pos, "negint with negative inputs");
+is_deeply([map{"$_"}map { negint($_) } @pos], \@neg, "negint with positive inputs");
+is_deeply([map{"$_"}map { negint($_) } @neg], \@pos, "negint with negative inputs");
 
 is_deeply([map {signint($_)} @pos], [map { 1} @pos], "signint with positive inputs");
 is_deeply([map {signint($_)} @neg], [map {-1} @neg], "signint with negative inputs");

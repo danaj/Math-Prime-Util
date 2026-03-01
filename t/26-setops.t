@@ -150,17 +150,17 @@ subtest 'toset', sub {
   is_deeply( toset(qw/1 -2147483647 3 2 2147483648/),
              [qw/-2147483647 1 2 3 2147483648/],
              "toset: 32-bit mix of sign and unsigned" );
-  is_deeply( toset(qw/1 -9223372036854775807 3 2 9223372036854775808/),
+  is_deeply( stoset(qw/1 -9223372036854775807 3 2 9223372036854775808/),
              [qw/-9223372036854775807 1 2 3 9223372036854775808/],
              "toset: 64-bit mix of sign and unsigned" );
-  is_deeply( toset(qw/9223372036854775812 9223372036854775809 9223372036854775810 9223372036854775811/),
+  is_deeply( stoset(qw/9223372036854775812 9223372036854775809 9223372036854775810 9223372036854775811/),
              [qw/9223372036854775809 9223372036854775810 9223372036854775811 9223372036854775812/],
              "toset: 63-bit values should be sorted correctly" );
   {
     my $b = powint(2,129);
     my @L = map { addint($b,$_) } (-2,3,0,0,-2,0,3);
-    my @R = map { addint($b,$_) } (-2,0,3);
-    is_deeply( toset(@L), \@R, "toset: 129-bit unsigned inputs" );
+    my @R = map { "".addint($b,$_) } (-2,0,3);
+    is_deeply( stoset(@L), \@R, "toset: 129-bit unsigned inputs" );
   }
 };
 
@@ -358,9 +358,9 @@ subtest 'setinsert', sub {
   );
   for my $test (@insert_refs) {
     my($s,$v,$what) = @$test;
-    my $exp = toset(@$s,@$v);
+    my $exp = stoset(@$s,@$v);
     setinsert($s,$v);
-    is_deeply( $s, $exp, "insert a set: $what" );
+    is_deeply( [map{"$_"}@$s], $exp, "insert a set: $what" );
   }
   my @insert_lists = (
     [ [], [], "insert nothing into nothing" ],
@@ -379,9 +379,9 @@ subtest 'setinsert', sub {
   );
   for my $test (@insert_lists) {
     my($s,$v,$what) = @$test;
-    my $exp = toset(@$s,@$v);
+    my $exp = stoset(@$s,@$v);
     setinsert($s,@$v);
-    is_deeply( $s, $exp, "insert a list: $what" );
+    is_deeply( [map{"$_"}@$s], $exp, "insert a list: $what" );
   }
 
   {
@@ -531,3 +531,6 @@ subtest 'setinvert', sub {
     is_deeply( [$res,$A], [$exp,$NEWA], $what );
   }
 };
+
+
+sub stoset { return [map {"$_"} @{toset(@_)}]; }   # stringify the set

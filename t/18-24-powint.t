@@ -31,7 +31,7 @@ for my $a (-3 .. 3) {
   is_deeply( \@got, \@exp, "powint($a,0..3) = [@got] expect [@exp]" );
 }
 
-is_deeply( [map { powint($_->[0],$_->[1]) } @vals],
+is_deeply( [map { "".powint($_->[0],$_->[1]) } @vals],
            [map { $_->[2] } @vals],
            "powint a**b=c" );
 

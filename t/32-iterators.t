@@ -474,39 +474,39 @@ subtest 'for<...> with bigint ranges', sub {
   }
 
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{primes});
-    forprimes { push @r,$_ } $arg1, $arg2;
+    forprimes { push @r,"$_" } $arg1, $arg2;
     is_deeply(\@r, \@res, "forprimes {} 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{semi});
-    forsemiprimes { push @r,$_ } $arg1, $arg2;
+    forsemiprimes { push @r,"$_" } $arg1, $arg2;
     is_deeply(\@r, \@res, "forsemiprimes {} 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{almost});
-    foralmostprimes { push @r,$_ } 3, $arg1, $arg2;
+    foralmostprimes { push @r,"$_" } 3, $arg1, $arg2;
     is_deeply(\@r, \@res, "foralmostprimes {} 3, 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{comp});
-    forcomposites { push @r,$_ } $arg1, $arg2;
+    forcomposites { push @r,"$_" } $arg1, $arg2;
     is_deeply(\@r, \@res, "forcomposites {} 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{oddcomp});
-    foroddcomposites { push @r,$_ } $arg1, $arg2;
+    foroddcomposites { push @r,"$_" } $arg1, $arg2;
     is_deeply(\@r, \@res, "foroddcomposites {} 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{sf});
-    forsquarefree { push @r,$_,[@_] } $arg1, $arg2;
+    forsquarefree { push @r,"$_",[map{"$_"}@_] } $arg1, $arg2;
     is_deeply(\@r, \@res, "forsquarefree {} 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{sfint});
-    forsquarefreeint { push @r,$_ } $arg1, $arg2;
+    forsquarefreeint { push @r,"$_" } $arg1, $arg2;
     is_deeply(\@r, \@res, "forsquarefreeint {} 2^$E+$a1, 2^$E+$a2");
   }
   { my @r=();  my($a1,$a2,$arg1,$arg2,@res) = split_d($E,$d{factored});
-    forfactored { push @r,$_,[@_] } $arg1, $arg2;
+    forfactored { push @r,"$_",[map{"$_"}@_] } $arg1, $arg2;
     is_deeply(\@r, \@res, "forfactored {} 2^$E+$a1, 2^$E+$a2");
   }
 
-  @r=(); fordivisors { push @r,$_ } "73786976294838225404";
+  @r=(); fordivisors { push @r,"$_" } "73786976294838225404";
   is_deeply(\@r, [qw/1 2 4 137 274 548 134647766961383623 269295533922767246 538591067845534492 18446744073709556351 36893488147419112702 73786976294838225404/], "fordivisors {} 2^66+18940");
 };
 

@@ -142,22 +142,23 @@ is( join(" ",cdivrem(3, "12844039487317506779")), "1 -12844039487317506776", "cd
 for my $s (@quotients) {
   my($signs, $n, $m, $qt, $qf, $qc, $qe) = @$s;
   my($bn,$bm) = map { Math::BigInt->new($_) } ($n,$m);
-  my($rt, $rf, $rc, $re) = map { $bn - $bm * $_ } ($qt, $qf, $qc, $qe);
+  my($rt, $rf, $rc, $re) = map{"$_"}map { $bn - $bm * $_ } ($qt, $qf, $qc, $qe);
 
-  #is( divint($n, $m), $qf, "large divint  $signs" );
-  #is( modint($n, $m), $rf, "large modint  $signs" );
-  #is( cdivint($n, $m), $qc, "large cdivint  $signs" );
-  #is_deeply( [divrem($n, $m)], [$qe, $re], "large divrem  $signs" );
-  #is_deeply( [tdivrem($n, $m)], [$qt, $rt], "large tdivrem $signs" );
-  #is_deeply( [fdivrem($n, $m)], [$qf, $rf], "large fdivrem $signs" );
-  #is_deeply( [cdivrem($n, $m)], [$qc, $rc], "large cdivrem $signs" );
+  #is( "".divint($n, $m), $qf, "large divint  $signs" );
+  #is( "".modint($n, $m), $rf, "large modint  $signs" );
+  #is( "".cdivint($n, $m), $qc, "large cdivint  $signs" );
+  #is_deeply( [map{"$_"}divrem($n, $m)], [$qe, $re], "large divrem  $signs" );
+  #is_deeply( [map{"$_"}tdivrem($n, $m)], [$qt, $rt], "large tdivrem $signs" );
+  #is_deeply( [map{"$_"}fdivrem($n, $m)], [$qf, $rf], "large fdivrem $signs" );
+  #is_deeply( [map{"$_"}cdivrem($n, $m)], [$qc, $rc], "large cdivrem $signs" );
 
-  is_deeply( [divint($n,$m), cdivint($n,$m), modint($n,$m)],
-             [$qf,           $qc,            $rf,         ],
+  is_deeply( ["".divint($n,$m), "".cdivint($n,$m), "".modint($n,$m)],
+             [   $qf,              $qc,               $rf,         ],
              "$signs   divint, cdivint, modint" );
 
-  is_deeply( [[divrem($n,$m)], [tdivrem($n,$m)], [fdivrem($n,$m)], [cdivrem($n,$m)]],
-             [[$qe,$re],       [$qt,$rt],        [$qf,$rf],        [$qc,$rc]       ],
+  is_deeply( [[map{"$_"} divrem($n,$m)], [map{"$_"}tdivrem($n,$m)],
+              [map{"$_"}fdivrem($n,$m)], [map{"$_"}cdivrem($n,$m)]],
+             [[$qe,$re], [$qt,$rt], [$qf,$rf], [$qc,$rc]],
              "$signs   divrem, tdivrem, fdivrem, cdivrem" );
 }
 

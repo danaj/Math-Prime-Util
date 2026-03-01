@@ -136,9 +136,9 @@ subtest 'arithmetic ops', sub {
   # The test numbers used are randomly chosen, nothing special about them
   my $n = 29326327445836963809762302067795652280;
   my $negn = negint($n);
-  is($negn, -29326327445836963809762302067795652280, "negint(n)");
-  is(negint($negn), $n, "negint(negint(n))");
-  is(absint($negn), $n, "absint(negint(n))");
+  is("".$negn, -29326327445836963809762302067795652280, "negint(n)");
+  is("".negint($negn), $n, "negint(negint(n))");
+  is("".absint($negn), $n, "absint(negint(n))");
   is(signint($n), 1, "signint(n)");
   is(signint($negn), -1, "signint(negint(n))");
   is(cmpint($n,$n),0,"cmpint(n,n) = 0");
@@ -147,72 +147,72 @@ subtest 'arithmetic ops', sub {
 
   my $n2 = 58652654891673927619524604135591304560;
   my $n3 = 87978982337510891429286906203386956840;
-  is(addint($n,$n),$n2,"addint(n,n) = 2n");
-  is(addint($n,$n2),$n3,"addint(2*n,n) = 3n");
+  is("".addint($n,$n),$n2,"addint(n,n) = 2n");
+  is("".addint($n,$n2),$n3,"addint(2*n,n) = 3n");
   is(addint($negn,$n),"0","addint(-n,n) = 0");
-  is(subint($n3,$n2),$n,"subint(3n,2n) = n");
-  is(subint($n,$negn),$n2,"subint(n,-n) = 2n");
-  is(add1int(19437056586806593268),19437056586806593269,"add1int(n) = n+1");
-  is(sub1int(19437056586806593268),19437056586806593267,"sub1int(n) = n-1");
+  is("".subint($n3,$n2),$n,"subint(3n,2n) = n");
+  is("".subint($n,$negn),$n2,"subint(n,-n) = 2n");
+  is("".add1int(19437056586806593268),19437056586806593269,"add1int(n) = n+1");
+  is("".sub1int(19437056586806593268),19437056586806593267,"sub1int(n) = n-1");
 
   my $nsqr = 860033481460450377515108424533203603187404404374382196284947588070669198400;
   my $ncub = 25221623491692321487348209824650128345904008945462108558207852225847625066929594776910302455742481841632732352000;
-  is(mulint(2,$n),$n2,"mulint(2,n) = 2n");
-  is(mulint($n,3),$n3,"mulint(n,3) = 3n");
-  is(mulint($n,-3),negint($n3),"mulint(n,-3) = -3n");
-  is(mulint($n,$n),$nsqr,"mulint(n,n) = n^2");
+  is("".mulint(2,$n),$n2,"mulint(2,n) = 2n");
+  is("".mulint($n,3),$n3,"mulint(n,3) = 3n");
+  is("".mulint($n,-3),"".negint($n3),"mulint(n,-3) = -3n");
+  is("".mulint($n,$n),$nsqr,"mulint(n,n) = n^2");
   is(powint($n,0),"1","powint(n,0) = 1");
-  is(powint($n,1),$n,"powint(n,1) = n");
-  is(powint($n,2),$nsqr,"powint(n,2) = n^2");
-  is(powint($n,3),$ncub,"powint(n,3) = n^3");
+  is("".powint($n,1),"$n","powint(n,1) = n");
+  is("".powint($n,2),$nsqr,"powint(n,2) = n^2");
+  is("".powint($n,3),$ncub,"powint(n,3) = n^3");
   is(powint($negn,0),"1","powint(-n,0) = 1");
-  is(powint($negn,1),$negn,"powint(-n,1) = -n");
-  is(powint($negn,2),$nsqr,"powint(-n,2) = n^2");
-  is(powint($negn,3),negint($ncub),"powint(-n,3) = -n^3");
+  is("".powint($negn,1),"$negn","powint(-n,1) = -n");
+  is("".powint($negn,2),$nsqr,"powint(-n,2) = n^2");
+  is("".powint($negn,3),"".negint($ncub),"powint(-n,3) = -n^3");
 
-  is(lshiftint($n),$n2,"lshiftint(n) = 2n");
-  is(lshiftint($n3,14),1441447646617778445177436671236291900866560,"lshiftint(3n,14) = 3n * 2^14");
-  is(rshiftint($n2),$n,"rshiftint(2n) = n");
-  is(rshiftint($n,7),229111933170601279763767984904653533,"rshiftint(n,7) = n / 2^7");
-  is(rshiftint($negn,7),-229111933170601279763767984904653533,"rshiftint(-n,7) = -(n >> 7)");
-  is(rashiftint($negn,7),-229111933170601279763767984904653534,"rashiftint(-n,7) = (fdivrem(n,2**7))[0] [Python right shift]");
+  is("".lshiftint($n),$n2,"lshiftint(n) = 2n");
+  is("".lshiftint($n3,14),1441447646617778445177436671236291900866560,"lshiftint(3n,14) = 3n * 2^14");
+  is("".rshiftint($n2),$n,"rshiftint(2n) = n");
+  is("".rshiftint($n,7),229111933170601279763767984904653533,"rshiftint(n,7) = n / 2^7");
+  is("".rshiftint($negn,7),-229111933170601279763767984904653533,"rshiftint(-n,7) = -(n >> 7)");
+  is("".rashiftint($negn,7),-229111933170601279763767984904653534,"rashiftint(-n,7) = (fdivrem(n,2**7))[0] [Python right shift]");
 
-  is(divint($n2,2),$n,"divint(2n,2) = n");
-  is(divint(negint($n3),3),$negn,"divint(-3n,3) = -n");
+  is("".divint($n2,2),$n,"divint(2n,2) = n");
+  is("".divint(negint($n3),3),"$negn","divint(-3n,3) = -n");
   is(modint($n3,$n),"0","mod(3n,n) = 0");
   is(modint($n,1),"0","mod(n,1) = 0");
   is(modint($n,29),"5","mod(n,29)");
   is(modint($negn,37),"30","mod(-n,37)");
-  is(divint($negn,511),-57390073279524391017147362167897559,"divint(-n,511)");
-  is(cdivint($negn,511),-57390073279524391017147362167897558,"cdivint(-n,511)");
+  is("".divint($negn,511),-57390073279524391017147362167897559,"divint(-n,511)");
+  is("".cdivint($negn,511),-57390073279524391017147362167897558,"cdivint(-n,511)");
 
   my $m = -891149066616685318069719273514027361488599736308638170770;
   my $d = 11081041228439474651;
-  is_deeply([divrem($m,$d)],
+  is_deeply([map{"$_"}divrem($m,$d)],
             [-80421058657335617430773462550803594698,5116452384810829628],
             "divrem(-m,d)");
-  is_deeply([fdivrem($m,$d)],
+  is_deeply([map{"$_"}fdivrem($m,$d)],
             [-80421058657335617430773462550803594698,5116452384810829628],
             "fdivrem(-m,d)");
-  is_deeply([cdivrem($m,$d)],
+  is_deeply([map{"$_"}cdivrem($m,$d)],
             [-80421058657335617430773462550803594697,-5964588843628645023],
             "cdivrem(-m,d)");
-  is_deeply([tdivrem($m,$d)],
+  is_deeply([map{"$_"}tdivrem($m,$d)],
             [-80421058657335617430773462550803594697,-5964588843628645023],
             "tdivrem(-m,d)");
 
-  is(sqrtint($nsqr),$n,"sqrtint(n^2) = n");
-  is(sqrtint($ncub),158813171656800310523242313199648286862899164761029420165,"sqrtint(n^3) = n^(3/2)");
+  is("".sqrtint($nsqr),$n,"sqrtint(n^2) = n");
+  is("".sqrtint($ncub),158813171656800310523242313199648286862899164761029420165,"sqrtint(n^3) = n^(3/2)");
 
   {
     my($r,$v,$e);
     $r = rootint($ncub, 7, \$v);
     $e = 11412903582751672;
-    is_deeply([$r,$v], [$e,powint($e,7)], "rootint(n^3,7,\\\$r)");
+    is_deeply(["$r","$v"], [$e,"".powint($e,7)], "rootint(n^3,7,\\\$r)");
 
     $r = logint($n, 18, \$v);
     $e = 29;
-    is_deeply([$r,$v], [$e,powint(18,$e)], "logint(n,18,\\\$r)");
+    is_deeply(["$r","$v"], [$e,"".powint(18,$e)], "logint(n,18,\\\$r)");
   }
 };
 
@@ -225,17 +225,17 @@ subtest 'basic mod ops', sub {
   my $D  = 95045564778113305157;   # a prime
   my $Da = 95045564778113305482;   # a non-squarefree composite
 
-  is(negmod($A,$D),12736484928456701970,"negmod");
-  is(addmod($A,$B,$C),15656969117801514554,"addmod");
-  is(submod($A,$B,$C),74721010532486795616,"submod");
-  is(mulmod($A,$B,$C),4443724024613552983,"mulmod");
-  is(muladdmod($A,$B,$D,$C),99489288802726858140,"muladdmod");
-  is(mulsubmod($A,$B,$D,$C),40115093365057097768,"mulsubmod");
-  is(divmod($A,$B,$C),71001221878922773879,"divmod");
-  is(powmod($A,$B,$C),80999932714432421083,"powmod");
-  is(invmod($A,$C),33944411285878109917,"invmod");
+  is("".negmod($A,$D),12736484928456701970,"negmod");
+  is("".addmod($A,$B,$C),15656969117801514554,"addmod");
+  is("".submod($A,$B,$C),74721010532486795616,"submod");
+  is("".mulmod($A,$B,$C),4443724024613552983,"mulmod");
+  is("".muladdmod($A,$B,$D,$C),99489288802726858140,"muladdmod");
+  is("".mulsubmod($A,$B,$D,$C),40115093365057097768,"mulsubmod");
+  is("".divmod($A,$B,$C),71001221878922773879,"divmod");
+  is("".powmod($A,$B,$C),80999932714432421083,"powmod");
+  is("".invmod($A,$C),33944411285878109917,"invmod");
 
-  is(sqrtmod($C,$D),8765086989354512719,"sqrtmod [prime modulus]");
+  is("".sqrtmod($C,$D),8765086989354512719,"sqrtmod [prime modulus]");
   my @all2 = (2960938399489571940,22255231847764978494,72790332930348326988,92084626378623733542);
   ok(is_one_of(sqrtmod($C,$Da),@all2), "sqrtmod [composite modulus]");
   SKIP: {
@@ -244,12 +244,12 @@ subtest 'basic mod ops', sub {
     ok(is_one_of(sqrtmod($D,$Ca),@all1), "sqrtmod [composite modulus]");
   }
 
-  is(rootmod($C,5,$D),81379717162684976939,"rootmod(C,5,D) [prime modulus]");
-  my @all3 =(1653087340990329197,15231025166435087123,28808962991879845049,42386900817324602975,55964838642769360901,69542776468214118827,83120714293658876753);
+  is("".rootmod($C,5,$D),81379717162684976939,"rootmod(C,5,D) [prime modulus]");
+  my @all3 = qw/1653087340990329197 15231025166435087123 28808962991879845049 42386900817324602975 55964838642769360901 69542776468214118827 83120714293658876753/;
   ok(is_one_of(rootmod($D,35,$Da),@all3),"rootmod(C,35,Da) [composite modulus]");
 
-  is_deeply([allsqrtmod($C,$D)],[8765086989354512719,86280477788758792438],"allsqrtmod");
-  is_deeply([allrootmod($D,35,$Da)], \@all3, "allrootmod");
+  is_deeply([map{"$_"}allsqrtmod($C,$D)],[8765086989354512719,86280477788758792438],"allsqrtmod");
+  is_deeply([map{"$_"}allrootmod($D,35,$Da)], \@all3, "allrootmod");
 };
 
 subtest 'other mod ops', sub {
@@ -269,14 +269,14 @@ subtest 'other mod ops', sub {
   is(is_primitive_root(3,$N),1,"is_primitive_root");
   is(is_primitive_root(7,$N),0,"is_primitive_root");
 
-  is(factorialmod(777, $C), 27183400742691213580, "factorialmod");
-  is(factorialmod(36893488147432436565, $C), "0", "factorialmod");
+  is("".factorialmod(777, $C), 27183400742691213580, "factorialmod");
+  is("".factorialmod(36893488147432436565, $C), "0", "factorialmod");
 
-  is(binomialmod($C,73,$B),8314965924716374520974024285356149070687,"binomialmod");
+  is("".binomialmod($C,73,$B),8314965924716374520974024285356149070687,"binomialmod");
 
   # lucasumod lucasvmod lucasuvmod done in t/25-lucas_sequences.t
-  is(lucasumod(17,1,7777777778888999,$B),363910679494422198934676182699576192782510,"lucasumod with Q=1");
-  is(lucasvmod(17,1,7777777778888999,$B),68398397794084099557151356283528547714286,"lucasvmod with Q=1");
+  is("".lucasumod(17,1,7777777778888999,$B),363910679494422198934676182699576192782510,"lucasumod with Q=1");
+  is("".lucasvmod(17,1,7777777778888999,$B),68398397794084099557151356283528547714286,"lucasvmod with Q=1");
 };
 
 subtest 'gcd and lcm', sub {
@@ -290,7 +290,7 @@ subtest 'gcd and lcm', sub {
 
 subtest 'gcdext and chinese', sub {
   # Work around a Math::BigInt::Lite issue
-  is_deeply( [gcdext(803028077895224634710139483024654235947,101394830246542359478030280778952246347)], [7687627417944666569835322284775478836, -60884570288210047004733169112173096587, "3"], "gcdext(a,b)" );
+  is_deeply( [map{"$_"}gcdext(803028077895224634710139483024654235947,101394830246542359478030280778952246347)], [7687627417944666569835322284775478836, -60884570288210047004733169112173096587, "3"], "gcdext(a,b)" );
   is( chinese([26,17179869209],[17,34359738421]), 103079215280, "chinese([26,17179869209],[17,34359738421] = 103079215280" );
 };
 
@@ -338,11 +338,11 @@ subtest 'primality', sub {
 
 subtest 'range primes', sub {
   # Used to be (2**66, 2**66+100), but old ActiveState chokes for some reason.
-  is_deeply( primes(73786976294838206464, 73786976294838206564),
+  is_deeply( [map{"$_"}@{primes(73786976294838206464, 73786976294838206564)}],
              [73786976294838206473,73786976294838206549],
              "primes( 2^66, 2^66 + 100 )" );
 
-  is_deeply( twin_primes(18446744073760736000,18446744073760737000),
+  is_deeply( [map{"$_"}@{twin_primes(18446744073760736000,18446744073760737000)}],
              [18446744073760736057,18446744073760736717],
              "twin_primes(18446744073760736000,+1000)" );
 };
@@ -350,15 +350,15 @@ subtest 'range primes', sub {
 ###############################################################################
 
 subtest 'next and prev', sub {
-  is( next_prime(777777777777777777777777), 777777777777777777777787, "next_prime(777777777777777777777777)");
-  is( prev_prime(777777777777777777777777), 777777777777777777777767, "prev_prime(777777777777777777777777)");
+  is( "".next_prime(777777777777777777777777), 777777777777777777777787, "next_prime(777777777777777777777777)");
+  is( "".prev_prime(777777777777777777777777), 777777777777777777777767, "prev_prime(777777777777777777777777)");
 };
 
 ###############################################################################
 
 subtest 'prime iterator', sub {
   my $it = prime_iterator(10**24+910);
-  is_deeply( [map { $it->() } 1..3],
+  is_deeply( [map {"$_"} map { $it->() } 1..3],
              [1000000000000000000000921,1000000000000000000000931,1000000000000000000000949],
              "iterator 3 primes starting at 10^24+910" );
 };
@@ -395,7 +395,7 @@ subtest 'factoring', sub {
   ($n,@f) = (23489223467134234890234680, 2,2,2,5,4073,4283,33662485846146713);
   is_deeply([factor_exp($n)],[linear_to_exp(@f)],"factor_exp($n)");
 
-  is_deeply([divisors(23489223467134234890234680)],
+  is_deeply([map {"$_"} divisors(23489223467134234890234680)],
             [qw/1 2 4 5 8 10 20 40 4073 4283 8146 8566 16292 17132 20365 21415 32584 34264 40730 42830 81460 85660 162920 171320 17444659 34889318 69778636 87223295 139557272 174446590 348893180 697786360 33662485846146713 67324971692293426 134649943384586852 168312429230733565 269299886769173704 336624858461467130 673249716922934260 1346499433845868520 137107304851355562049 144176426879046371779 274214609702711124098 288352853758092743558 548429219405422248196 576705707516185487116 685536524256777810245 720882134395231858895 1096858438810844496392 1153411415032370974232 1371073048513555620490 1441764268790463717790 2742146097027111240980 2883528537580927435580 5484292194054222481960 5767057075161854871160 587230586678355872255867 1174461173356711744511734 2348922346713423489023468 2936152933391779361279335 4697844693426846978046936 5872305866783558722558670 11744611733567117445117340 23489223467134234890234680/],
             "divisors(23489223467134234890234680)");
 };

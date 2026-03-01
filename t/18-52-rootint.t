@@ -68,7 +68,7 @@ is(rootint("266667176579895999",3), 643659, "integer third root of 2666671765798
     push @expected, [$b,$n];
     my $rk;
     my $r = rootint($n,$k,\$rk);
-    push @got, [$r,$rk];
+    push @got, ["$r","$rk"];
   }
   is_deeply( \@got, \@expected, "rootint on perfect powers where log fails" );
 }
@@ -77,7 +77,7 @@ is(rootint("266667176579895999",3), 643659, "integer third root of 2666671765798
   for my $arr (@rootints) {
     my($n, $k, $exp) = @$arr;
     push @expected, $exp;
-    push @got, rootint($n,$k);
+    push @got, map{"$_"} rootint($n,$k);
   }
   is_deeply( \@got, \@expected, "rootint on selected 64-bit values" );
 }

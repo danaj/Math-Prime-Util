@@ -51,13 +51,13 @@ is_deeply([map { lshiftint($_,5) } -65 .. 65], [map { $_ * 32 } -65 .. 65], "lsh
 # lshiftint for native size k is:  mulint($n, 1 << $k)
 # but for testing we want to avoid using our other functions.
 
-is_deeply( [map { lshiftint($_->[0], $_->[1]) } @negshifts],
+is_deeply( [map { "".lshiftint($_->[0], $_->[1]) } @negshifts],
            [map { $_->[2] } @negshifts],
            "left shift negative inputs" );
-is_deeply( [map { rshiftint($_->[0], $_->[1]) } @negshifts],
+is_deeply( [map { "".rshiftint($_->[0], $_->[1]) } @negshifts],
            [map { $_->[3] } @negshifts],
            "right shift negative inputs" );
-is_deeply( [map { rashiftint($_->[0], $_->[1]) } @negshifts],
+is_deeply( [map { "".rashiftint($_->[0], $_->[1]) } @negshifts],
            [map { $_->[4] } @negshifts],
            "signed arithmetic right shift negative inputs" );
 

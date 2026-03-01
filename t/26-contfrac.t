@@ -67,7 +67,7 @@ plan tests => 2 * (scalar(@ex) + scalar(@pi))
 for my $t (@ex, @pi) {
   my($n,$d,$exp) = @$t;
   is_deeply( [contfrac($n,$d)], $exp, "contfrac($n,$d) = (@$exp)" );
-  is_deeply( [from_contfrac(@$exp)], [$n,$d], "from_contfrac(@$exp) = ($n,$d)" );
+  is_deeply( [map{"$_"}from_contfrac(@$exp)], [$n,$d], "from_contfrac(@$exp) = ($n,$d)" );
 }
 
 for my $t (@notcoprime) {

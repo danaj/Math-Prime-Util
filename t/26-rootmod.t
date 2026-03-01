@@ -127,8 +127,8 @@ foreach my $r (@sqrtmods) {
     is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = <undef>");
     is_deeply( [allsqrtmod($a,$n)], [], "allsqrtmod($a,$n) = ()");
   } elsif (!ref($exp)) {
-    is( sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = $exp");
-    is_deeply( [allsqrtmod($a,$n)], [$exp], "allsqrtmod($a,$n) = ($exp)");
+    is( "".sqrtmod($a,$n), $exp, "sqrtmod($a,$n) = $exp");
+    is_deeply( [map{"$_"}allsqrtmod($a,$n)], [$exp], "allsqrtmod($a,$n) = ($exp)");
   } else {
     my $val = sqrtmod($a,$n);
     if ($prime) {
@@ -137,7 +137,7 @@ foreach my $r (@sqrtmods) {
     } else {
         ok( is_one_of($val, @$exp), "sqrtmod($a,$n) = $val, roots [@$exp]" );
     }
-    is_deeply([allsqrtmod($a,$n)], $exp, "allsqrtmod($a,$n) = (@$exp)");
+    is_deeply([map{"$_"}allsqrtmod($a,$n)], $exp, "allsqrtmod($a,$n) = (@$exp)");
   }
 }
 
@@ -173,12 +173,12 @@ foreach my $r (@rootmods) {
     is( rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = <undef>");
     is_deeply( [allrootmod($a,$k,$n)], [], "allrootmod($a,$k,$n) = ()");
   } elsif (!ref($exp)) {
-    is( rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = $exp");
-    is_deeply( [allrootmod($a,$k,$n)], [$exp], "allrootmod($a,$k,$n) = ($exp)");
+    is( "".rootmod($a,$k,$n), $exp, "rootmod($a,$k,$n) = $exp");
+    is_deeply( [map{"$_"}allrootmod($a,$k,$n)], [$exp], "allrootmod($a,$k,$n) = ($exp)");
   } else {
     my $val = rootmod($a,$k,$n);
     ok( is_one_of($val, @$exp), "rootmod($a,$k,$n) = $val, roots [@$exp]" );
-    is_deeply([allrootmod($a,$k,$n)], $exp, "allrootmod($a,$k,$n) = (@$exp)");
+    is_deeply([map{"$_"}allrootmod($a,$k,$n)], $exp, "allrootmod($a,$k,$n) = (@$exp)");
   }
 }
 

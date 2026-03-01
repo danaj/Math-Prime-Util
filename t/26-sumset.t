@@ -57,14 +57,14 @@ testsumset([-6,2], [-3,4], "sumset NEG NEG with sumset NEG");
 testsumset([-6,-2], [-4,-3], "sumset NEG NEG with sumset NEG");
 
 # bigint
-is_deeply( sumset([1,2],[3,4,"73786976294838206464"]),
+is_deeply( [map{"$_"}@{sumset([1,2],[3,4,"73786976294838206464"])}],
            [qw/4 5 6 73786976294838206465 73786976294838206466/],
            "sumset with bigint element" );
 
 sub testsumset {
   my($ra, $rb, $name) = @_;
 
-  my $sumset1 = sumset($ra,$rb);
-  my $sumset2 = setbinop { addint($a,$b) } $ra, $rb;
+  my $sumset1 = [map {"$_"} @{  sumset($ra,$rb)  }];
+  my $sumset2 = [map {"$_"} @{  setbinop(sub{addint($a,$b)}, $ra, $rb)  }];
   is_deeply($sumset1, $sumset2, $name);
 }

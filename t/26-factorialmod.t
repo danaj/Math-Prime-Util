@@ -13,7 +13,7 @@ plan tests => 4;
 
 {
   my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 40;
-  my @expect = map { my $m=$_; map { factorial($_) % $m; } 0..$m-1; } 1 .. 40;
+  my @expect = map { my $m=$_; map { "".(factorial($_) % $m); } 0..$m-1; } 1 .. 40;
   is_deeply( \@result, \@expect, "factorialmod n! mod m for m 1 to 50, n 0 to m" );
 }
 
@@ -25,5 +25,5 @@ SKIP: {
 
 SKIP: {
   skip "large value without EXTENDED_TESTING on 64-bit",1 unless $extra && $use64;
-  is( factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
+  is( "".factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
 }

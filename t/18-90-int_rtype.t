@@ -90,7 +90,7 @@ sub addsub1 {
   elsif ($a ==  1) { $sum = add1int($b); }
   elsif ($a == -1) { $sum = sub1int($b); }
   my $sum_is_ref = ref($sum) ? 1 : 0;
-  [$sum, $sum_is_ref];
+  ["$sum", $sum_is_ref];
 }
 
 is_deeply( [map { addsub1($_->[0],$_->[1]) } @tests],
@@ -98,14 +98,14 @@ is_deeply( [map { addsub1($_->[0],$_->[1]) } @tests],
            "add1int and sub1int return correct types" );
 
 
-my $m2 = addint($m,$m);
+my $m2 = "".addint($m,$m);
 my @mulres = (
   [mulint($m,1),$m,0],      # native => native
   [mulint($m,2),$m2,1],     # native => bigint
   [mulint($mp1,1),$mp1,1],  # bigint => bigint
   [mulint($mp1,0),0,0],     # bigint => native
 );
-is_deeply( [map { $_->[0], ref($_->[0]) ? 1 : 0 } @mulres],
+is_deeply( [map { "".$_->[0], ref($_->[0]) ? 1 : 0 } @mulres],
            [map { $_->[1], $_->[2] } @mulres],
            "mulint returns correct types" );
 

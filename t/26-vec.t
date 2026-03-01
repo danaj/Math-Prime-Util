@@ -336,9 +336,10 @@ subtest 'vecfreq', sub {
 subtest 'vecsort', sub {
   foreach my $r (@vecsorts) {
     my($in, $out, $str) = @$r;
-    my @got1 = vecsort(@$in);
-    my @got2 = vecsort($in);
+    my @got1 = map{"$_"}vecsort(@$in);
+    my @got2 = map{"$_"}vecsort($in);
     vecsorti($in);
+    $_ = "$_" for @$in;
     is_deeply( [ \@got1, \@got2, $in ],
                [ $out, $out, $out ],
                "vecsort list, ref, in-place [$str]" );
