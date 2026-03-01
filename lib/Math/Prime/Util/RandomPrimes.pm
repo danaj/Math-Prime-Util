@@ -740,7 +740,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
       or do { croak "Must have Digest::SHA 4.00 or later"; };
   }
 
-  my $k2 = tobigint(powint(2,$k-1));
+  my $k2 = tobigint(powint(2,$k-1));    # $k2 is a bigint
 
   if ($k < 33) {
     my $seed = $input_seed;
@@ -769,18 +769,22 @@ sub _ST_Random_prime {  # From FIPS 186-4
          ?  ""  :  _strip_proof_header($cert);
   my $iterations = int(($k + 255) / 256) - 1;  # SHA256 generates 256 bits
   my $old_counter = $prime_gen_counter;
+  my $c02 = lshiftint($c0);  # $c02 = 2*$c0
   my $xstr = '';
   for my $i (0 .. $iterations) {
     $xstr = Digest::SHA::sha256_hex($seed) . $xstr;
     $seed = _seed_plus_one($seed);
   }
-  my $x = tobigint(fromdigits($xstr,16));
+  my $x = fromdigits($xstr,16);
   $x = $k2 + ($x % $k2);
-  my $t = divint($x + 2*$c0 - 1, 2*$c0);
+  my $t = cdivint($x, $c02);
   _make_big_gcds() if $_big_gcd_use < 0;
   while (1) {
-    if (2*$t*$c0 + 1 > 2*$k2) { $t = divint($k2 + 2*$c0 - 1, 2*$c0); }
-    my $c = 2*$t*$c0 + 1;
+    my $c = add1int(mulint($t,$c02));
+    if ($c > 2*$k2) {
+      $t = cdivint($k2, $c02);
+      $c = add1int(mulint($t,$c02));
+    }
     $prime_gen_counter++;
 
     # Don't do the Pocklington check unless the candidate looks prime
@@ -809,7 +813,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
       }
       my $a = fromdigits($astr,16);
       $a = addint(modint($a,$c-3),2);
-      my $z = powmod($a, 2*$t, $c);
+      my $z = powmod($a, lshiftint($t), $c);
       if (gcd($z-1,$c) == 1 && powmod($z, $c0, $c) == 1) {
         croak "Shawe-Taylor random prime failure at ($k): $c not prime"
           unless is_prob_prime($c);
