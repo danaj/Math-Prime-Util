@@ -1476,6 +1476,8 @@ sub frobenius_number {
 
 sub jordan_totient {
   my($k, $n) = @_;
+  validate_integer_nonneg($k);
+  validate_integer_nonneg($n);
   return ($n == 1) ? 1 : 0  if $k == 0;
   return Mtotient($n)       if $k == 1;
   return ($n == 1) ? 1 : 0  if $n <= 1;
@@ -1742,7 +1744,8 @@ sub is_odd {
   #    1.0    $n % 2 ? 1 : 0
   #    1.5    is_odd($n)
   my $R = ref($n);
-  return $n->is_odd() if defined $R && $R eq 'Math::BigInt';
+  return $n->is_odd() ? 1 : 0 if $R eq 'Math::BigInt';
+  return Math::GMPz::Rmpz_odd_p($n) ? 1 : 0 if $R eq 'Math::GMPz';
   return (my $k = substr("$n",-1,1)) =~ tr/13579/13579/ if OLD_PERL_VERSION;
   return $n % 2 ? 1 : 0;
 }
@@ -1750,7 +1753,8 @@ sub is_even {
   my($n) = @_;
   validate_integer($n);
   my $R = ref($n);
-  return $n->is_even() if defined $R && $R eq 'Math::BigInt';
+  return $n->is_even() ? 1 : 0 if $R eq 'Math::BigInt';
+  return Math::GMPz::Rmpz_even_p($n) ? 1 : 0 if $R eq 'Math::GMPz';
   return (my $k = substr("$n",-1,1)) =~ tr/02468/02468/ if OLD_PERL_VERSION;
   return $n % 2 ? 0 : 1;
 }
@@ -2320,7 +2324,7 @@ sub powerfree_part_sum {
 sub squarefree_kernel {
   my($n) = @_;
   validate_integer($n);
-  return -1 * Mlcm(Mfactor(-$n)) if $n < 0;
+  return Mnegint(Mlcm(Mfactor(Mnegint($n)))) if $n < 0;
   Mlcm(Mfactor($n));
 }
 
@@ -2643,6 +2647,8 @@ sub nth_prime_power {
 
 sub smooth_count {
   my($n, $k) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_nonneg($k);
   return 0 if $n < 1;
   return 1 if $k <= 1;
   return $n if $k >= $n;
@@ -2681,6 +2687,8 @@ sub smooth_count {
 
 sub rough_count {
   my($n, $k) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_nonneg($k);
   return $n if $k <= 2;
   return $n-($n>>1) if $k <= 3;
   Math::Prime::Util::legendre_phi($n, Mprime_count($k-1));
@@ -3075,6 +3083,7 @@ sub _rmertens {
 
 sub mertens {
   my($n) = @_;
+  validate_integer_nonneg($n);
 
   return _omertens($n) if $n < 20000;
 
@@ -3092,6 +3101,8 @@ sub mertens {
 
 sub ramanujan_sum {
   my($k,$n) = @_;
+  validate_integer_nonneg($k);
+  validate_integer_nonneg($n);
   return 0 if $k < 1 || $n <  1;
   my $g = $k / Mgcd($k,$n);
   my $m = Mmoebius($g);
@@ -3101,12 +3112,13 @@ sub ramanujan_sum {
 
 sub liouville {
   my($n) = @_;
-  my $l = (-1) ** scalar Mfactor($n);
-  return $l < 0 ? -1 : $l > 0 ? 1 : 0;
+  validate_integer_nonneg($n);
+  return (scalar Mfactor($n)) & 1  ?  -1  :  1;
 }
 
 sub sumliouville {
   my($n) = @_;
+  validate_integer_nonneg($n);
   return (0,1,0,-1,0,-1,0,-1,-2,-1,0,-1,-2,-3,-2,-1)[$n] if $n < 16;
 
   # Build the Mertens lookup info once.
@@ -3132,30 +3144,24 @@ sub sumliouville {
 # Return p if n = p^m [p prime, m >= 1], 1 otherwise.
 sub exp_mangoldt {
   my($n) = @_;
-  my $p;
-  return 1 unless Mis_prime_power($n,\$p);
-  $p;
+  validate_integer_nonneg($n);
+  return 1 if $n <= 1;
+  if (Mis_prime_power($n, \my $p)) {
+    return $p;
+  }
+  1;
 }
 
 sub carmichael_lambda {
   my($n) = @_;
+  validate_integer_nonneg($n);
   return Mtotient($n) if $n < 8;           # = phi(n) for n < 8
   return $n >> 2 if ($n & ($n-1)) == 0;    # = phi(n)/2 = n/4 for 2^k, k>2
 
   my @pe = Mfactor_exp($n);
   $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
 
-  my $lcm;
-  if (!ref($n)) {
-    $lcm = Mlcm(
-      map { ($_->[0] ** ($_->[1]-1)) * ($_->[0]-1) } @pe
-    );
-  } else {
-    $lcm = Mlcm(
-      map { Mmulint(Mpowint($_->[0],$_->[1]-1),$_->[0]-1) } @pe
-    );
-  }
-  $lcm;
+  Mlcm( map { Mmulint(Mpowint($_->[0],$_->[1]-1),$_->[0]-1) } @pe );
 }
 
 sub is_cyclic {
@@ -5525,7 +5531,7 @@ sub lcm {
   my $lcm = Mabsint(shift);
   while (@_) {
     my $y = Mabsint(shift) || return 0;
-    $lcm = Mmulint($lcm, $y / Mgcd($lcm,$y));
+    $lcm = Mmulint($lcm, Mdivint($y, Mgcd($lcm,$y)));
   }
   return $lcm;
 }
@@ -5570,16 +5576,9 @@ sub chinese2 {
   my($lcm, $sum);
 
   if ($Math::Prime::Util::_GMPfunc{"chinese2"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-    ($sum,$lcm) = Math::Prime::Util::GMP::chinese2(@_);
-    if (defined $sum) {
-      $sum = tobigint($sum);
-      $sum = _bigint_to_int($sum) if ref($sum) && $sum <= INTMAX;
-    }
-    if (defined $lcm) {
-      $lcm = tobigint($lcm);
-      $lcm = _bigint_to_int($lcm) if ref($lcm) && $lcm <= INTMAX;
-    }
-    return ($sum,$lcm);
+    return maybetobigintall(
+             Math::Prime::Util::GMP::chinese2(@_)
+           );
   }
 
   # Validate, copy, and do abs on the inputs.
@@ -7327,10 +7326,27 @@ sub todigits {
   _splitdigits($n, $base, $len);
 }
 
+sub _tobinarystring {
+  my($n) = @_;
+  $n =~ s/^-//;
+  return "" if $n == 0;
+  return sprintf("%b",$n) if $n < INTMAX;
+  $n = tobigint($n) unless ref($n);
+  my $refn = ref($n);
+  return Math::GMPz::Rmpz_get_str($n,2) if $refn eq 'Math::GMPz';
+  return Math::GMP::get_str_gmp($n,2) if $refn eq 'Math::GMP';
+  if ($BIGINTVERSION >= 1.999814) {
+    $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
+    return $n->to_base(2);
+  }
+  return join("", _splitdigits($n, 2, -1));
+}
+
 sub todigitstring {
   my($n,$base,$len) = @_;
   validate_integer($n);
   $base = 10 unless defined $base;
+  return _tobinarystring($n) if $base == 2 && !defined $len;
   croak "Invalid base for string: $base" if $base < 2 || $base > 36;
   $len = -1 unless defined $len;
   $n =~ s/^-//;
@@ -7656,6 +7672,7 @@ sub _bernoulli_seidel {
 
 sub bernfrac {
   my($n) = @_;
+  validate_integer_nonneg($n);
   return (1,1) if $n == 0;
   return (1,2) if $n == 1;    # We're choosing 1/2 instead of -1/2
   return (0,1) if $n < 0 || $n & 1;
@@ -7728,6 +7745,7 @@ sub _harmonic_split { # From Fredrik Johansson
 
 sub harmfrac {
   my($n) = @_;
+  validate_integer_nonneg($n);
   return (0,1) if $n <= 0;
   my($p,$q) = _harmonic_split(1, Madd1int($n));
   my $gcd = Mgcd($p,$q);
@@ -10571,8 +10589,7 @@ sub divisors {
       eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\"); ";  ## no critic qw(ProhibitStringyEval)
       @d = grep { $_ <= $k } @d  if $k < $n;
     }
-    @d = map { $_ <= ~0 ? $_ : ref($n)->new($_) } @d   if ref($n);
-    return @d;
+    return maybetobigintall(@d);
   }
 
   my @pe = Mfactor_exp($n);
