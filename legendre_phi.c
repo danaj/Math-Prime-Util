@@ -3,8 +3,8 @@
 #include <string.h>
 
 #define FUNC_isqrt 1
-#include "util.h"
 #include "sieve.h"
+#include "util.h"
 #include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"

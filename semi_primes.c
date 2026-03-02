@@ -5,10 +5,9 @@
 #include "ptypes.h"
 #include "constants.h"
 #define FUNC_isqrt 1
-#define FUNC_ctz 1
-#include "util.h"
 #include "cache.h"
 #include "sieve.h"
+#include "util.h"
 #include "prime_counts.h"
 #include "inverse_interpolate.h"
 #include "semi_primes.h"

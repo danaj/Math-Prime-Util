@@ -1,28 +1,24 @@
 /******************************************************************************/
-/*                              ALMOST PRIMES                                 */
+/*                              OMEGA PRIMES                                  */
 /******************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#define FUNC_isqrt 1
 #include "ptypes.h"
 #include "constants.h"
-#define FUNC_isqrt 1
-#define FUNC_ctz 1
-#include "util.h"
-#include "sort.h"
 #include "cache.h"
 #include "sieve.h"
+#include "util.h"
+#include "sort.h"
 #include "prime_counts.h"
 #include "prime_powers.h"
 #include "factor.h"
 #include "inverse_interpolate.h"
 #include "omega_primes.h"
-
-/******************************************************************************/
-/*                              OMEGA PRIMES                                  */
-/******************************************************************************/
 
 bool is_omega_prime(uint32_t k, UV n) {
   if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }

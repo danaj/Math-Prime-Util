@@ -5,8 +5,8 @@
 
 #define FUNC_log2floor 1
 #include "ptypes.h"
-#include "util.h"
 #include "sieve.h"
+#include "util.h"
 #include "real.h"
 #include "mathl.h"
 

@@ -8,6 +8,7 @@
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1
 #define FUNC_clz 1
+#define FUNC_log2floor 1
 #include "ptypes.h"
 #include "factor.h"
 #include "sieve.h"
@@ -1272,7 +1273,9 @@ int lehman_factor(UV n, UV *factors, bool do_trial) {
     }
   }
 
+#if BITS_PER_WORD == 64
   if (n >= UVCONST(8796393022207)) return no_factor(n,factors);
+#endif
   Bred = B / (Tune * Tune * Tune);
   B2 = B*B;
   kN = 0;
@@ -1284,7 +1287,9 @@ int lehman_factor(UV n, UV *factors, bool do_trial) {
     if (k&1) { inc = 4; r = (k+n) % 4; }
     else     { inc = 2; r = 1; }
     kN += n;
+#if BITS_PER_WORD == 64
     if (kN >= UVCONST(1152921504606846976)) return no_factor(n,factors);
+#endif
     kN4 = kN*4;
 
     x = (k < SQR_TAB_SIZE) ? sqrtn * sqr_tab[k] : sqrt((double)kN);

@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ptypes.h"
 #define FUNC_log2floor 1
-#include "util.h"
 #define FUNC_is_prime_in_sieve 1
-#include "prime_counts.h"
+#include "ptypes.h"
 #include "sieve.h"
+#include "util.h"
+#include "prime_counts.h"
 #include "inverse_interpolate.h"
 #include "ramanujan_primes.h"
 

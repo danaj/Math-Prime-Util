@@ -2,14 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ptypes.h"
 #define FUNC_isqrt 1
-#define FUNC_ctz 1
 #define FUNC_ipow 1
-#include "util.h"
+#include "ptypes.h"
 #include "sort.h"
 #include "totients.h"
 #include "sieve.h"
+#include "util.h"
 #include "factor.h"
 #include "keyval.h"
 
@@ -129,7 +128,11 @@ UV* range_totient(UV lo, UV hi) {
 
 
 #define HAVE_SUMTOTIENT_128 (BITS_PER_WORD == 64 && HAVE_UINT128)
-#define MAX_TOTSUM ( (BITS_PER_WORD == 64) ? UVCONST(7790208950) : 118868 )
+#if BITS_PER_WORD == 64
+#  define MAX_TOTSUM UVCONST(7790208950)
+#else
+#  define MAX_TOTSUM 118868
+#endif
 /* sumtotient(7790208950) = 2^64 - 1664739356 */
 /* sumtotient(7790208951) = 2^64 + 2584983748 */
 
