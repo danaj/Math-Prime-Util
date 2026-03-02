@@ -147,8 +147,6 @@
 
 - Look at using Ramanujan series for PP Li.
 
-- _reftyped as XS call
-
 - update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
   also from Dusart (2018).
   https://piyanit.nl/wp-content/uploads/2020/10/art_10.1007_s11139-016-9839-4.pdf
@@ -653,6 +651,10 @@ OEIS lucky numbers:
 
 - we're flakey about return types with different bigint type
   powmod returns typeof($n), but invmod returns $_BIGINT.  Usually.
+
+- API change to use tobigint / maybetobigint instead of reftyped.
+  They can set the class now, so no need to keep trying to mix classes.
+  So we will expect to return $BIGINT class, not the input class.
 
 - should vecsort have a code block option?
   usort does not.  Time to add list reverse is negligible.
