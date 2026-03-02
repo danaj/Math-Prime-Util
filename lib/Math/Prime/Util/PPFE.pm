@@ -131,6 +131,8 @@ sub entropy_bytes {
 *omega_prime_count = \&Math::Prime::Util::PP::omega_prime_count;
 *ramanujan_prime_count = \&Math::Prime::Util::PP::ramanujan_prime_count;
 *lucky_count = \&Math::Prime::Util::PP::lucky_count;
+*smooth_count = \&Math::Prime::Util::PP::smooth_count;
+*rough_count = \&Math::Prime::Util::PP::rough_count;
 
 *sum_primes = \&Math::Prime::Util::PP::sum_primes;
 *print_primes = \&Math::Prime::Util::PP::print_primes;
@@ -179,6 +181,7 @@ sub entropy_bytes {
 *perfect_power_count = \&Math::Prime::Util::PP::perfect_power_count;
 *is_power = \&Math::Prime::Util::PP::is_power;
 *is_square_free = \&Math::Prime::Util::PP::is_square_free;
+*is_sum_of_squares = \&Math::Prime::Util::PP::is_sum_of_squares;
 *is_powerfree = \&Math::Prime::Util::PP::is_powerfree;
 *powerfree_count = \&Math::Prime::Util::PP::powerfree_count;
 *nth_powerfree = \&Math::Prime::Util::PP::nth_powerfree;
@@ -222,7 +225,11 @@ sub entropy_bytes {
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 *divisor_sum = \&Math::Prime::Util::PP::divisor_sum;
 *sumtotient = \&Math::Prime::Util::PP::sumtotient;
+*jordan_totient = \&Math::Prime::Util::PP::jordan_totient;
+*ramanujan_sum = \&Math::Prime::Util::PP::ramanujan_sum;
+*mertens = \&Math::Prime::Util::PP::mertens;
 *valuation = \&Math::Prime::Util::PP::valuation;
+*hammingweight = \&Math::Prime::Util::PP::hammingweight;
 *chinese = \&Math::Prime::Util::PP::chinese;
 *chinese2 = \&Math::Prime::Util::PP::chinese2;
 *cornacchia = \&Math::Prime::Util::PP::cornacchia;
@@ -231,6 +238,10 @@ sub entropy_bytes {
 *divisors = \&Math::Prime::Util::PP::divisors;
 *partitions = \&Math::Prime::Util::PP::partitions;
 *consecutive_integer_lcm = \&Math::Prime::Util::PP::consecutive_integer_lcm;
+*carmichael_lambda = \&Math::Prime::Util::PP::carmichael_lambda;
+*exp_mangoldt = \&Math::Prime::Util::PP::exp_mangoldt;
+*liouville = \&Math::Prime::Util::PP::liouville;
+*sumliouville = \&Math::Prime::Util::PP::sumliouville;
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
 *binomial = \&Math::Prime::Util::PP::binomial;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
@@ -244,6 +255,8 @@ sub entropy_bytes {
 *ramanujan_tau = \&Math::Prime::Util::PP::ramanujan_tau;
 *legendre_phi = \&Math::Prime::Util::PP::legendre_phi;
 
+*bernfrac = \&Math::Prime::Util::PP::bernfrac;
+*harmfrac = \&Math::Prime::Util::PP::harmfrac;
 *contfrac = \&Math::Prime::Util::PP::contfrac;
 *from_contfrac = \&Math::Prime::Util::PP::from_contfrac;
 *next_calkin_wilf = \&Math::Prime::Util::PP::next_calkin_wilf;
@@ -407,45 +420,6 @@ sub entropy_bytes {
 
 # We are doing the validation here so the PP code doesn't have to do it.
 
-sub jordan_totient {
-  my($k, $n) = @_;
-  _validate_integer_nonneg($k);
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::jordan_totient($k, $n);
-}
-sub ramanujan_sum {
-  my($k,$n) = @_;
-  _validate_integer_nonneg($k);
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::ramanujan_sum($k, $n);
-}
-sub carmichael_lambda {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::carmichael_lambda($n);
-}
-sub mertens {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::mertens($n);
-}
-sub liouville {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::liouville($n);
-}
-sub sumliouville {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::sumliouville($n);
-}
-sub exp_mangoldt {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return 1 if $n <= 1;
-  return Math::Prime::Util::PP::exp_mangoldt($n);
-}
-
 sub nth_twin_prime {
   my($n) = @_;
   _validate_integer_nonneg($n);
@@ -481,19 +455,6 @@ sub nth_omega_prime {
   _validate_integer_nonneg($n);
   return Math::Prime::Util::PP::nth_omega_prime($k,$n);
 }
-sub smooth_count {
-  my($n, $k) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::smooth_count($n, $k);
-}
-sub rough_count {
-  my($n, $k) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::rough_count($n, $k);
-}
-
 
 sub is_lucas_pseudoprime {
   my($n) = @_;
@@ -712,34 +673,10 @@ sub mulsubmod {
 }
 
 
-sub is_sum_of_squares {
-  my($n, $k) = @_;
-  _validate_integer_abs($n);
-  if (!defined $k) { $k = 2; } else { _validate_integer_nonneg($k); }
-  return Math::Prime::Util::PP::is_sum_of_squares($n, $k);
-}
-sub hammingweight {
-  my($n) = @_;
-  _validate_integer($n);
-  return Math::Prime::Util::PP::hammingweight($n);
-}
-
 sub Pi {
   my($digits) = @_;
   _validate_integer_nonneg($digits) if defined $digits;
   return Math::Prime::Util::PP::Pi($digits);
-}
-
-sub bernfrac {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return (0,1) if $n > 1 && ($n & 1);
-  return Math::Prime::Util::PP::bernfrac($n);
-}
-sub harmfrac {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::harmfrac($n);
 }
 
 #############################################################################
