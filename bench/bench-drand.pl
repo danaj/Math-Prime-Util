@@ -6,16 +6,21 @@ use Math::Random::ISAAC;           #           32-bit 2^32-1
 use Math::Random::MT;              #           32-bit 2^32
 use Math::Random::MT::Auto;        #           52-bit (x>>12)*2^-52+2^-53
 use Math::Random::Xorshift;        #           32-bit 2^32-1
-#use Math::Random::MTwist;          #  :rand    52-bit x*2^-53
+use Math::Random::MTwist;          #  :rand    53+bit x*2^-64
 use Math::Random::Secure;          #           32-bit 2^32
 use ntheory;                       #  :rand    NV bit x*2^-64
 use Math::Prime::Util::GMP;        #           53+bit x*2^-64
 use Crypt::PRNG;                   #           53?    (a*2^32+b)/2^53
+use Math::Random::PCG32;           #           32-bit 2^32
                                    #  core     48-bit strong periods
 # Could also use Data::Entropy::Algorithms but:
 #   1) its dependencies have been broken for a while
 #   2) it's really slow
 # It is a nice idea, using AES counters.  Doubles are filled with only 48 bits.
+
+# MTwist can be found here:
+#   https://metacpan.org/release/CGPAN/Math-Random-MTwist-0.23/view/lib/Math/Random/MTwist.pm
+
 
 my $trials = shift || -1;
 
@@ -28,6 +33,7 @@ Math::Random::Secure::srand($time.$time.$time.$time);
 my $isaac = Math::Random::ISAAC->new($time);
 my $mt = Math::Random::MT->new($time);
 my $xor = Math::Random::Xorshift->new($time);
+my $pcg32 = Math::Random::PCG32->new(int($time),1);
 
 use Math::Random::ISAAC::XS;  my $mrixs = Math::Random::ISAAC::XS->new($time);
 use Math::Random::ISAAC::PP;  my $mripp = Math::Random::ISAAC::PP->new($time);
@@ -51,25 +57,26 @@ use Math::Random::ISAAC::PP;  my $mripp = Math::Random::ISAAC::PP->new($time);
 cmpthese($trials, {
   # These are known to fail TestU01 SmallCrush
   'CORE::rand' => sub { CORE::rand for 1..1000 },
-  'M::R::Xorshift->rand' => sub { $xor->rand for 1..1000 },
-  'M::R::Xorshift::rand' => sub { Math::Random::Xorshift::rand for 1..1000 },
+  #'MR Xorshift->rand' => sub { $xor->rand for 1..1000 },
+  'Xorshift rand' => sub { Math::Random::Xorshift::rand for 1..1000 },
 
   # doubles with only 32-bits of random data
-  'M::R::ISAAC::XS' => sub { $mrixs->rand for 1..1000 },
-  'M::R::ISAAC::PP' => sub { $mripp->rand for 1..1000 },
-  'M::R::ISAAC->rand' => sub { $isaac->rand for 1..1000 },
-  'M::R::Secure::rand' => sub { Math::Random::Secure::rand for 1..1000 },
-  'M::R::MT->rand' => sub { $mt->rand for 1..1000 },
+  #'MR ISAAC XS' => sub { $mrixs->rand for 1..1000 },
+  #'MR ISAAC PP' => sub { $mripp->rand for 1..1000 },
+  #'MR ISAAC->rand' => sub { $isaac->rand for 1..1000 },
+  'MR Secure rand' => sub { Math::Random::Secure::rand for 1..1000 },
+  #'MR MT->rand' => sub { $mt->rand for 1..1000 },
+  'PCG32 rand' => sub { Math::Random::PCG32::rand($pcg32) for 1..1000 },
 
   # 52-bit, 53-bit doubles
-  'M::R::MT::A::rand' => sub { Math::Random::MT::Auto::rand for 1..1000 },
-  #'M::R::MTwist::rand' => sub { Math::Random::MTwist::_rand for 1..1000 },
-  'Crypt::PRNG::rand' => sub { Crypt::PRNG::rand for 1..1000 },
+  'MRMTA rand' => sub { Math::Random::MT::Auto::rand for 1..1000 },
+  'MTwist rand' => sub { Math::Random::MTwist::_rand for 1..1000 },
+  'CryptPRNG rand' => sub { Crypt::PRNG::rand for 1..1000 },
   # 53-bit or 64-bit NVs
-  'MPU::GMP' => sub { Math::Prime::Util::GMP::drand for 1..1000 },
+  'MPU GMP' => sub { Math::Prime::Util::GMP::drand for 1..1000 },
 
   # Fill all NV significand bits (24,53,64,113)
-  'ntheory::drand' => sub { ntheory::drand for 1..1000 },
+  'MPU drand' => sub { ntheory::drand for 1..1000 },
 });
 
 # TestU01 SmallCrush on floating point output

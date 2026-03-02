@@ -5,7 +5,7 @@ $| = 1;  # fast pipes
 
 use Math::Prime::Util qw/factor urandomm srand/;
 use Math::Factor::XS qw/prime_factors/;
-use Math::Pari qw/factorint/;
+#use Math::Pari qw/factorint/;
 use Benchmark qw/:all/;
 use Data::Dumper;
 use Config;
@@ -22,7 +22,8 @@ die "Digits has to be >= 2" unless $digits >= 2;
 die "Digits has to be <= 10" if (~0 == 4294967295) && ($digits > 10);
 die "Digits has to be <= 19" if $digits > 19;
 
-my $skip_mfxs = ($digits > 17);
+my $skip_mfxs = ($digits > 18);
+my $skip_pari = !defined $Math::Pari::VERSION;
 
 # Construct some semiprimes of the appropriate number of digits
 # There are much cleverer ways of doing this, using randomly selected
@@ -67,19 +68,23 @@ if (!$skip_mfxs) {
 } else {
   print "Math::Factor::XS is too slow for $digits digits.  Skipping.\n";
 }
-print "Verifying Math::Pari $Math::Pari::VERSION ...";
-foreach my $sp (@semiprimes) {
-  my @factors;
-  my ($pn,$pc) = @{factorint($sp)};
-  push @factors, (int($pn->[$_])) x $pc->[$_] for (0 .. $#{$pn});
-  die "wrong for $sp\n" unless ($#factors == 1) && ($factors[0] * $factors[1]) == $sp;
+if (!$skip_pari) {
+  print "Verifying Math::Pari $Math::Pari::VERSION ...";
+  foreach my $sp (@semiprimes) {
+    my @factors;
+    my ($pn,$pc) = @{factorint($sp)};
+    push @factors, (int($pn->[$_])) x $pc->[$_] for (0 .. $#{$pn});
+    die "wrong for $sp\n" unless ($#factors == 1) && ($factors[0] * $factors[1]) == $sp;
 }
-print "OK\n";
+  print "OK\n";
+} else {
+  print "No Math::Pari\n";
+}
 
 my %compare = (
     'MPU'   => sub { do { my @f = factor($_) } for @semiprimes; },
     'MFXS'  => sub { do { my @f = prime_factors($_) } for @semiprimes; },
-    'Pari'  => sub { do { my ($pn,$pc) = @{factorint($_)}; my @f = map { int($pn->[$_]) x $pc->[$_] } 0 .. $#$pn; } for @semiprimes; },
+    #'Pari'  => sub { do { my ($pn,$pc) = @{factorint($_)}; my @f = map { int($pn->[$_]) x $pc->[$_] } 0 .. $#$pn; } for @semiprimes; },
 );
 delete $compare{'MFXS'} if $skip_mfxs;
 

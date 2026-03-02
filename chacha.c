@@ -275,7 +275,7 @@ bool chacha_selftest(void) {
   return _test_qr() && _test_core() && _test_keystream();
 }
 #else
-int chacha_selftest(void) { return TRUE; }
+bool chacha_selftest(void) { return TRUE; }
 #endif
 
 /*****************************************************************************/

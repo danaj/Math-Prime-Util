@@ -706,6 +706,7 @@ Revision history for Perl module Math::Prime::Util
 
     - The 'irand' config option is removed, as we now use our own CSPRNG.
       It can be seeded with csrand() or srand().  The latter is not exported.
+      This removes the use of Bytes::Random::Secure::Tiny.
 
     - The 'primeinc' config option is deprecated and will go away soon.
 

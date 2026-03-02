@@ -1452,13 +1452,11 @@ UV irand()
   PREINIT:
     dMY_CXT;
   CODE:
-    if (ix == 0)
-      RETVAL = irand32(MY_CXT.randcxt);
-    else
-#if BITS_PER_WORD >= 64
-      RETVAL = irand64(MY_CXT.randcxt);
-#else /* TODO: should irand64 on 32-bit perl (1) croak, (2) return 32-bits */
-      RETVAL = irand32(MY_CXT.randcxt);
+#if BITS_PER_WORD == 32
+    /* TODO: what should irand64 on 32-bit perl do? */
+    RETVAL = irand32(MY_CXT.randcxt);
+#else
+    RETVAL = ix == 0  ?  irand32(MY_CXT.randcxt)  :  irand64(MY_CXT.randcxt);
 #endif
   OUTPUT:
     RETVAL
@@ -4769,7 +4767,8 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
     int atype, btype;
     UV *ra, *rb;
     Size_t alen, blen;
-  CODE:   /* Must be CODE and not PPCODE */
+  CODE:
+    /* Must be CODE and not PPCODE */
 #if PERL_VERSION_GE(5,10,1)
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setbinop arg 1");
     if (svb == 0 || atype == IARR_TYPE_BAD) {
