@@ -226,6 +226,8 @@ sub entropy_bytes {
 *randperm = \&Math::Prime::Util::PP::randperm;
 *shuffle = \&Math::Prime::Util::PP::shuffle;
 
+*lcm = \&Math::Prime::Util::PP::lcm;
+*gcdext = \&Math::Prime::Util::PP::gcdext;
 *prime_bigomega = \&Math::Prime::Util::PP::prime_bigomega;
 *prime_omega = \&Math::Prime::Util::PP::prime_omega;
 *moebius = \&Math::Prime::Util::PP::moebius;
@@ -593,17 +595,6 @@ sub gcd {
   my(@v) = @_;
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::gcd(@v);
-}
-sub lcm {
-  my(@v) = @_;
-  _validate_integer($_) for @v;
-  return Math::Prime::Util::PP::lcm(@v);
-}
-sub gcdext {
-  my($a,$b) = @_;
-  _validate_integer($a);
-  _validate_integer($b);
-  return Math::Prime::Util::PP::gcdext($a,$b);
 }
 sub vecsum {
   my(@v) = @_;

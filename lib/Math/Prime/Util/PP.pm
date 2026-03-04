@@ -5525,18 +5525,20 @@ sub gcd {
   $gcd;
 }
 sub lcm {
-  return 1 unless @_;
-  return Mabsint($_[0]) if @_==1;
-
-  my $lcm = Mabsint(shift);
-  while (@_) {
-    my $y = Mabsint(shift) || return 0;
-    $lcm = Mmulint($lcm, Mdivint($y, Mgcd($lcm,$y)));
+  my(@v) = @_;
+  return 1 unless @v > 0;
+  my $lcm;
+  for my $y (@v) {
+    validate_integer($y);
+    if ($y <= 0) { return 0 if $y == 0;  $y = Mabsint($y); }
+    $lcm = defined $lcm ? Mmulint($lcm, Mdivint($y, Mgcd($lcm,$y))) : $y;
   }
   return $lcm;
 }
 sub gcdext {
   my($x,$y) = @_;
+  validate_integer($x);
+  validate_integer($y);
   if ($x == 0) { return (0, (-1,0,1)[($y>=0)+($y>0)], abs($y)); }
   if ($y == 0) { return ((-1,0,1)[($x>=0)+($x>0)], 0, abs($x)); }
 
