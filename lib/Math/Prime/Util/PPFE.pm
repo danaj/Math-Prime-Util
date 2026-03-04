@@ -68,6 +68,7 @@ sub entropy_bytes {
   my $nvbits = (defined $Config{nvmantbits})  ? $Config{nvmantbits}
              : (defined $Config{usequadmath}) ? 112
              : 53;
+  my $nvdigits = int($nvbits / 3.322);
   my $uvbits = (~0 > 4294967295) ? 64 : 32;
   my $rsub;
   my $_tonv_32  = 1.0;        $_tonv_32 /= 2.0 for 1..32;
@@ -92,6 +93,13 @@ sub entropy_bytes {
     }
   }
   *rand = \&drand;
+
+  { my $ivsize = $Config{ivsize};   *_ivsize = sub { return $ivsize; }; }
+  { my $uvsize = $Config{uvsize};   *_uvsize = sub { return $uvsize; }; }
+  { my $uvbits = $Config{uvsize}*8; *_uvbits = sub { return $uvbits; }; }
+  { my $nvsize = $Config{nvsize};   *_nvsize = sub { return $nvsize; }; }
+  *_nvmantbits = sub { return $nvbits; };
+  *_nvmantdigits = sub { return $nvdigits; };
 }
 
 

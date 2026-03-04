@@ -1348,9 +1348,15 @@ PROTOTYPES: ENABLE
 BOOT:
 {
     int i;
-    SV * sv = newSViv(BITS_PER_WORD);
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
-    newCONSTSUB(stash, "_XS_prime_maxbits", sv);
+
+    newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
+    newCONSTSUB(stash, "_ivsize", newSViv(IVSIZE));
+    newCONSTSUB(stash, "_uvsize", newSViv(UVSIZE));
+    newCONSTSUB(stash, "_uvbits", newSViv(UVSIZE * 8));
+    newCONSTSUB(stash, "_nvsize", newSViv(NVSIZE));
+    newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
+    newCONSTSUB(stash, "_nvmantdigits", newSViv(NVMANTBITS / 3.322));
 
     {
       MY_CXT_INIT;
