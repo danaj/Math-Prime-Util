@@ -339,7 +339,7 @@ UV inverse_li(UV x) {
     while (Li(r-i) >= lx) r -= i;
     for (i = i/2; i > 0; i /= 2)
       if (Li(r-i) >= lx) r -= i;
-  } else if (Li(r+1) < lx) {
+  } else if (Li(r) < lx) {
     while (Li(r+i-1) < lx) r += i;
     for (i = i/2; i > 0; i /= 2)
       if (Li(r+i-1) < lx) r += i;
