@@ -132,14 +132,16 @@ subtest 'strong pseudoprimes (Miller-Rabin test)', sub {
   is( is_strong_pseudoprime(49117, 921211727), 1, "spsp(49117, 921211727)");
 
   { # Verify MR base 2 for all small numbers
-    my @got = map { is_strong_pseudoprime($_) } 2..4032;
-    my @exp = map { ($_==2047 || $_==3277 || is_prime($_)) ? 1 : 0 } 2..4032;
-    is_deeply(\@got, \@exp, "MR base 2 for 2..4032");
+    my $range = 4032;
+    my @got = map { is_strong_pseudoprime($_) } 2..$range;
+    my @exp = map { ($_==2047 || $_==3277 || is_prime($_)) ? 1 : 0 } 2..$range;
+    is_deeply(\@got, \@exp, "MR base 2 for 2..$range");
   }
 
   SKIP: {
     skip "base 2,3 without EXTENDED_TESTING",1 unless $extra;
-    my @tnum = vecsample(10000, 1..1373652);
+    my $range = 1373652;
+    my @tnum = vecsample(10000, 1..$range);
     my $fails = 0;
     for (@tnum) {
       $fails++ if !!is_strong_pseudoprime($_,2,3) != !!is_prime($_);

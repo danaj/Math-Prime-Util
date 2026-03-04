@@ -35,7 +35,8 @@ is_deeply( [grep { is_delicate_prime($_,11) } @{primes(3000,11500)}], [qw/3347 3
 if ($extra) {
   is(is_delicate_prime("999999999998832431"), 1, "is_delicate_prime(999999999998832431) = 1");
   is(is_delicate_prime("999999999999999543767"), 1, "is_delicate_prime(999999999999999543767) = 1");
-  is_deeply( [grep { is_delicate_prime($_) } 0..1062599], [grep { $_ <= 1062599 } @a050249], "is_practical(0 .. 1062599) returns first 6 delicate primes");
+  my $range = 1062599;
+  is_deeply( [grep { is_delicate_prime($_) } 0..$range], [grep { $_ <= $range } @a050249], "is_practical(0 .. $range) returns first 6 delicate primes");
 }
 
 #  500 digits: 2021 * powint(10, 500-4) + 7543997

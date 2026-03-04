@@ -75,7 +75,7 @@ SKIP: {
 }
 
 SKIP: {
-  skip "Your machine does not have NaN" unless $Config{d_isnan};
+  skip "Your machine does not have NaN", 1 unless $Config{d_isnan};
   no warnings 'numeric';
   my $nan = ($^O ne 'MSWin32') ? 0+'nan' : '1.#IND';
   $nan      = Math::BigInt->bnan()->numify() if $nan >= 0;
