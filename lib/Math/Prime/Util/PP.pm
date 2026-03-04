@@ -3707,7 +3707,7 @@ sub inverse_li {
     for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
       $t -= $inc if int(MLi($t-$inc)) >= $n;
     }
-  } else {
+  } elsif (int(MLi($t+1)) < $n) {
     $t += $inc while int(MLi($t+$inc-1)) < $n;
     for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
       $t += $inc if int(MLi($t+$inc-1)) < $n;
