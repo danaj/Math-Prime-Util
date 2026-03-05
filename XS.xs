@@ -1356,7 +1356,7 @@ BOOT:
     newCONSTSUB(stash, "_uvbits", newSViv(UVSIZE * 8));
     newCONSTSUB(stash, "_nvsize", newSViv(NVSIZE));
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
-    newCONSTSUB(stash, "_nvmantdigits", newSViv(NVMANTBITS / 3.322));
+    newCONSTSUB(stash, "_nvmantdigits", newSViv((NVMANTBITS+1) / 3.322));
 
     {
       MY_CXT_INIT;

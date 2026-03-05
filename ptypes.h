@@ -196,15 +196,20 @@ typedef __int8 int8_t;
 #endif
 
 /* Perl 5.23.0 added the very helpful definition.  Without it, guess. */
+/* Perl core standardized on not counting the implicit bit */
 #ifndef NVMANTBITS
   #if NVSIZE <= 8
-    #define NVMANTBITS ((NVSIZE <= 4) ? 24 : 53)
+    #define NVMANTBITS (NVSIZE <= 2 ? 10 : NVSIZE <= 4 ? 23 : 52)
   #elif defined(USE_QUADMATH)
     #define NVMANTBITS 112
   #elif defined(__LDBL_MANT_DIG__)
     #define NVMANTBITS __LDBL_MANT_DIG__
+  #elif NVSIZE == 16
+    #define NVMANTBITS 112
+  #elif NVSIZE == 32
+    #define NVMANTBITS 236
   #else
-    #define NVMANTBITS 64
+    #error Unknown NVSIZE, cannot guess at mantissa bits
   #endif
 #endif
 

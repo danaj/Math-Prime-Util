@@ -6493,6 +6493,53 @@ L<Math::Prime::Util::GMP> or L<Math::BigInt::GMP> installed will help
 performance.  For sizes over 50k, GMP is highly recommended.
 
 
+=head1 PLATFORM INTROSPECTION
+
+=head2 OVERVIEW
+
+We include a number of non-exported functions that are useful for internal
+use but can also be useful for users.  These functions are subject to
+change or deletion in future revisions.
+
+=head2 _uvsize
+
+Returns the size of a UV in bytes (typically 4 or 8).
+The size of the basic integer type used in Perl and the C library.
+
+=head2 _uvbits
+
+Returns the size of a UV in bits (typically 32 or 64).
+
+=head2 _ivsize
+
+Returns the size of an IV in bytes (typically 4 or 8).
+This is going to be the same as L</_uvsize>.
+
+=head2 _nvsize
+
+Returns the size of an NV in bytes (typically 4, 8, or 16).
+It's quite possible other sizes could be seen on non-standard
+configurations.  Usually we won't care about this directly.
+
+=head2 _nvmantbits
+
+Returns the size of the mantissa of Perl's NV floating point type, in bits.
+This can vary widely, with C<23, 52, 112> all possible from mainstream
+platforms and other numbers possible.
+
+This gives the actual mantissa bits, not counting the implicit 1.  The
+significand precision is therefore one higher than the value returned
+by this function.  A typical IEEE-754 double will report 52 here, which
+means integers up to C<2^53-1> are able to be accurately stored.
+
+Perl prior to 5.23 did not configure this at build time.  We will guess
+based on the byte size of the NV on an IEEE-754 machine.
+
+=head2 _nvmantdigits
+
+How many full decimal integer digits able to be stored in an NV.
+
+
 =head1 EXAMPLES
 
 Print Fibonacci numbers:
