@@ -1356,7 +1356,7 @@ BOOT:
     newCONSTSUB(stash, "_uvbits", newSViv(UVSIZE * 8));
     newCONSTSUB(stash, "_nvsize", newSViv(NVSIZE));
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
-    newCONSTSUB(stash, "_nvmantdigits", newSViv((NVMANTBITS+1) / 3.322));
+    newCONSTSUB(stash, "_nvmantdigits", newSViv((IV)((NVMANTBITS+1) / 3.322)));
 
     {
       MY_CXT_INIT;
@@ -2153,9 +2153,12 @@ is_perrin_pseudoprime(IN SV* svn, IN UV k = 0)
     ret = 0;
     if (status == 1) {
       switch (ix) {
-        case 0:  ret = is_perrin_pseudoprime(n, k); break;
-        case 1:  ret = is_almost_extra_strong_lucas_pseudoprime(n, (k < 1) ? 1 : k); break;
-        case 2:  ret = is_delicate_prime(n, (k<1) ? 10 : k);
+        case 0:  if (items == 1) k = 0;
+                 ret = is_perrin_pseudoprime(n, k); break;
+        case 1:  if (items == 1) k = 1;
+                 ret = is_almost_extra_strong_lucas_pseudoprime(n, k); break;
+        case 2:  if (items == 1) k = 10;
+                 ret = is_delicate_prime(n, k);
                  if (ret < 0) status = 0; break;
         default: break;
       }

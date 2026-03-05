@@ -3433,7 +3433,7 @@ This contrasts with Perl's built-in C<sort> which in scalar context has
 B<undefined> behaviour (in all current versions of C<perl> it returns undef).
 In particular this forces all programs to use a workaround if they want to
 return the results of sorting an array.
-See L<Perl 5 issue 1280|3https://github.com/Perl/perl5/issues/12803> for
+See L<Perl 5 issue 12803|https://github.com/Perl/perl5/issues/12803> for
 some discussion with no resolution.
 
 Using an array reference as input is slightly faster.
@@ -5690,6 +5690,7 @@ Returns a random 32-bit integer using the CSPRNG.
   $n64 = irand64;   # random 64-bit integer
 
 Returns a random 64-bit integer using the CSPRNG (on 64-bit Perl).
+On a 32-bit Perl, it returns the maximum UV bits, which will be only 32.
 
 =head2 drand
 

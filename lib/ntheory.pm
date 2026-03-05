@@ -36,7 +36,7 @@ See L<Math::Prime::Util> for complete documentation.
 =head1 QUICK REFERENCE
 
 Tags:
-  :all         to import almost all functions
+  :all         to import all functions (other than NON-EXPORTED below)
   :rand        to import rand, srand, irand, irand64
 
 =head2 PRIMALITY
@@ -147,7 +147,6 @@ Tags:
   divisor_sum(n)                      sum of divisors
   divisor_sum(n,k)                    sum of k-th power of divisors
   divisor_sum(n,sub{...})             sum of code run for each divisor
-  znlog(a, g, p)                      solve k in a = g^k mod p
 
 =head2 ITERATORS
 
@@ -167,14 +166,14 @@ Tags:
   formultiperm { ... } \@n            loop over multiset permutations
   forderange { ... } n                loop over derangements
   forsetproduct { ... } \@a[,...]     loop over Cartesian product of lists
-  prime_iterator                      returns a simple prime iterator
-  prime_iterator_object               returns a prime iterator object
+  prime_iterator([start])             returns a simple prime iterator
+  prime_iterator_object([start])      returns a prime iterator object
   lastfor                             stop iteration of for.... loop
 
 =head2 RANDOM NUMBERS
 
-  irand                               random 32-bit integer
-  irand64                             random 64-bit integer
+  irand()                             random 32-bit integer
+  irand64()                           random UV-bit integer (64 or 32)
   drand([limit])                      random NV in [0,1) or [0,limit)
   random_bytes(n)                     string with n random bytes
   entropy_bytes(n)                    string with n entropy-source bytes
@@ -238,7 +237,7 @@ Tags:
   setcontainsany(\@A,...)             are any list values in int set A
   setcontainsany(\@A,\@B)             is any value in B in int set A
   setbinop { ... } \@A[,\@B]          apply operation to all a,b [a:A,b:B]
-  sumset \@A[,\@B]                    apply a+b to all a,b [a:A,b:B]
+  sumset(\@A[,\@B])                    apply a+b to all a,b [a:A,b:B]
   setunion(\@A,\@B)                   union of two integer lists
   setintersect(\@A,\@B)               intersection of two integer lists
   setminus(\@A,\@B)                   difference of two integer lists
@@ -249,8 +248,8 @@ Tags:
   set_is_equal(\@A,\@B)               is set B equal to set A
   set_is_subset(\@A,\@B)              is set B a subset of set A
   set_is_proper_subset(\@A,\@B)       is set B a proper subset of set A
-  set_is_superset(\@A,\@B)            is set B a superet of set A
-  set_is_proper_superset(\@A,\@B)     is set B a proper superet of set A
+  set_is_superset(\@A,\@B)            is set B a superset of set A
+  set_is_proper_superset(\@A,\@B)     is set B a proper superset of set A
   set_is_proper_intersection(\@A,\@B) is set B a proper intersection of set A
 
 =head2 MATH
@@ -266,7 +265,7 @@ Tags:
   is_even(n)                          return 1 if n is even, 0 otherwise
   is_divisible(n,d)                   return 1 if n divisible by d
   is_congruent(n,c,d)                 return 1 if n is congruent to c mod d
-  is_qr(a,n)                          return 1 if a is quadratic non-res mod n
+  is_qr(a,n)                          return 1 if a is quadratic residue mod n
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
@@ -328,8 +327,8 @@ Tags:
   gcd(@list)                          greatest common divisor
   lcm(@list)                          least common multiple
   gcdext(x,y)                         return (u,v,d) where u*x+v*y=d
-  chinese([a,mod1],[b,mod2],...)      Chinese Remainder Theorem
-  chinese2([a,mod1],[b,mod2],...)     Chinese Remainder Theorem
+  chinese([a,mod1],[b,mod2],...)      CRT returning remainder
+  chinese2([a,mod1],[b,mod2],...)     CRT returning (remainder,LCM)
   frobenius_number(@list)             Frobenius Number of a set
   primorial(n)                        product of primes below n
   pn_primorial(n)                     product of first n primes
@@ -370,11 +369,12 @@ Tags:
   sumtotient(n)                       sum of Euler totient for 1 to n
   carmichael_lambda(n)                Carmichael's Lambda function
   ramanujan_sum(k,n)                  Ramanujan's sum
-  exp_mangoldt                        exponential of Mangoldt function
+  exp_mangoldt(n)                     exponential of Mangoldt function
   liouville(n)                        Liouville function
   sumliouville(n)                     sum of Liouville for 1 to n
   znorder(a,n)                        multiplicative order of a mod n
   znprimroot(n)                       smallest primitive root
+  znlog(a, g, p)                      solve k in a = g^k mod p
   qnr(n)                              least quadratic non-residue
   chebyshev_theta(n)                  first Chebyshev function
   chebyshev_psi(n)                    second Chebyshev function
@@ -468,6 +468,34 @@ Tags:
   prime_set_config(%hash)             sets parameters
   prime_memfree                       frees any cached memory
 
+=head2 ADDITIONAL NON-EXPORTED
+
+  trial_factor(n[,limit])             factor using only trial division
+  fermat_factor(n)                    factor using only Fermat's method
+  holf_factor(n[,rounds])             factor using only Hart's OLF
+  lehman_factor(n)                    factor using only Lehman (limited size)
+  squfof_factor(n[,rounds])           factor using only SQUFOF
+  prho_factor(n[,rounds])             factor using only Pollard's Rho
+  pbrent_factor(n[,rounds])           factor using only Brent/Pollard Rho
+  pminus1_factor(n[,B1[,B2]])         factor using only P-1
+  pplus1_factor(n[,B])                factor using only P+1
+  cheb_factor(n[,B1[,initx]])         factor using only Chebyshev
+  ecm_factor(n[,B1[,B2[,curves]]])    factor using only ECM
+  _uvbits                             size of UV in bits
+  _uvsize                             size of UV in bytes
+  _ivsize                             size of IV in bytes
+  _nvsize                             size of NV in bytes
+  _nvmantbits                         bits stored in NV mantissa
+  _nvmantdigits                       count of whole decimal digits in NV
+
+=head2 ADDITIONAL NON-EXPORTED C ONLY
+
+  _segment_pi(n)                      prime count using only sieving
+  _legendre_pi(n)                     prime count with Legendre method
+  _meissel_pi(n)                      prime count with Meissel method
+  _lehmer_pi(n)                       prime count with Lehmer method
+  _LMO_pi(n)                          prime count with LMO method
+  _LMOS_pi(n)                         prime count with extended LMO method
 
 =head1 COPYRIGHT
 

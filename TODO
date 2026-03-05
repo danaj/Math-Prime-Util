@@ -669,3 +669,5 @@ OEIS lucky numbers:
   riemannr RiemannR
   zeta     RiemannZeta
   plus Pi(n) and Schoenfeld distance
+
+- what should irand64() do on a 32-bit Perl?
