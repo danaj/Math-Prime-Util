@@ -29,7 +29,7 @@ __END__
 
 ntheory - Number theory utilities
 
-=head1 SEE
+=head1 SEE ALSO
 
 See L<Math::Prime::Util> for complete documentation.
 

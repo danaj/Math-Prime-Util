@@ -237,6 +237,8 @@ bool is_csprng_well_seeded(void *ctx)
  * and is easiest for ensuring we fill up all the bits.
  * It is similar to what Geoff Kuenning does in MTwist, though he computes
  * the constants at runtime to ensure a dodgy compiler won't munge them.
+ *
+ * As of C99 or MSVC 15.6, we could better write these as e.g. 0x1.0p-64.
  */
 #define TO_NV_32    2.3283064365386962890625000000000000000E-10L
 #define TO_NV_64    5.4210108624275221700372640043497085571E-20L

@@ -5699,12 +5699,10 @@ Returns a random 64-bit integer using the CSPRNG (on 64-bit Perl).
 Returns a random NV (Perl's native floating point) using the CSPRNG.  The
 API is similar to Perl's C<rand> but giving better results.
 
-The number of bits returned is equal to the number of significand bits of
-the NV type used in the Perl build. By default Perl uses doubles and the
-returned values have 53 bits (even on 32-bit Perl).  If Perl is built with
-long double or quadmath support, each value may have 64 or even 113 bits.
-On newer Perls, one can check the L<Config> variable C<nvmantbits> to see
-how many are filled.
+The number of actual random bits will be equal to the number of mantissa
+bits in the NV type.  For IEEE-754 doubles, this means 52 bits, and can
+go to 64 or 112 bits with long double / quadmath support.
+The L</_nvmantbits> function allows seeing how many bits are used.
 
 This gives I<substantially> better quality random numbers than the default Perl
 C<rand> function.  Among other things, on modern Perl's, C<rand> uses drand48,
