@@ -342,6 +342,7 @@ sub entropy_bytes {
 *setdelta = \&Math::Prime::Util::PP::setdelta;
 *setinsert = \&Math::Prime::Util::PP::setinsert;
 *setremove = \&Math::Prime::Util::PP::setremove;
+*setinvert = \&Math::Prime::Util::PP::setinvert;
 *setcontains = \&Math::Prime::Util::PP::setcontains;
 *setcontainsany = \&Math::Prime::Util::PP::setcontainsany;
 *toset = \&Math::Prime::Util::PP::toset;

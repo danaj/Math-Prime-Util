@@ -493,8 +493,6 @@ OEIS lucky numbers:
 - Look at things that loop over floor(n/i).
   https://math.stackexchange.com/a/1740370/117584
 
-- XS for setinvert
-
 - toint
 
 == almost_prime_count bounds verify
@@ -671,3 +669,5 @@ OEIS lucky numbers:
   plus Pi(n) and Schoenfeld distance
 
 - what should irand64() do on a 32-bit Perl?
+
+= PP is_prime7 deterministic MR.  Test crossover again and remove dead code.

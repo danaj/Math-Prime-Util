@@ -5343,6 +5343,85 @@ void setremove(IN SV* sva, ...)
     XSRETURN(1);
 
 
+void setinvert(IN SV* sva, ...)
+  PROTOTYPE: $@
+  PREINIT:
+    AV *ava;
+    Size_t alen, blen, i;
+    UV *rb;
+    int btype, bstatus;
+  PPCODE:
+    CHECK_ARRAYREF(sva);
+    ava = (AV*) SvRV(sva);
+    alen = av_count(ava);
+    if (items < 2)
+      RETURN_NPARITY(0);
+    CHECK_AV_NOT_READONLY(ava);
+    if (SvMAGICAL(ava) || !AvREAL(ava)) {
+      DISPATCHPP();
+      XSRETURN(1);
+    }
+    if (SvROK(ST(1)) && SvTYPE(SvRV(ST(1))) == SVt_PVAV) {
+      if (items != 2)
+        croak("setinvert: expected integer list or single array reference");
+      btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, ST(1), "setinvert");
+    } else {
+      btype = array_to_int_array(aTHX_ &blen, &rb, 1, &ST(1), items-1);
+    }
+    if (btype != IARR_TYPE_BAD) {
+      if (blen == 0) {
+        Safefree(rb);
+        RETURN_NPARITY(0);
+      }
+      bstatus = IARR_TYPE_TO_STATUS(btype);
+      if (blen <= 4 || alen <= 20) {   /* SIMPLE TOGGLE LOOP */
+        IV ndelta = 0;
+        int res = 0;
+        for (i = 0; res >= 0 && i < blen; i++) {
+          res = del_from_set(aTHX_ ava, bstatus, rb[i]);
+          if (res > 0)       { ndelta--; }          /* found and removed */
+          else if (res == 0) {                      /* not found, insert */
+            res = ins_into_set(aTHX_ ava, bstatus, rb[i]);
+            if (res > 0) ndelta++;
+          }
+        }
+        if (res >= 0) {
+          Safefree(rb);
+          ST(0) = sv_2mortal(newSViv(ndelta));
+          XSRETURN(1);
+        }
+      } else {                         /* MERGE-STYLE SYMMETRIC DIFFERENCE */
+        int atype, astatus, done = 0;
+        UV *ra = 0;
+        Size_t old_alen = alen;
+        atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
+        if (CAN_COMBINE_IARR_TYPES(atype, btype)) {
+          size_t ia = 0, ib = 0;
+          int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
+          astatus = IARR_TYPE_TO_STATUS(atype);
+          av_clear(ava);
+          while (ia < alen && ib < blen) {
+            if      (ra[ia] == rb[ib])                      { ia++; ib++; }
+            else if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib]))   av_push(ava, NEWSVINT(astatus, ra[ia++]));
+            else                                            av_push(ava, NEWSVINT(bstatus, rb[ib++]));
+          }
+          while (ia < alen) av_push(ava, NEWSVINT(astatus, ra[ia++]));
+          while (ib < blen) av_push(ava, NEWSVINT(bstatus, rb[ib++]));
+          done = 1;
+        }
+        Safefree(ra);
+        Safefree(rb);
+        if (done) {
+          ST(0) = sv_2mortal(newSViv((IV)av_count(ava) - (IV)old_alen));
+          XSRETURN(1);
+        }
+      }
+    }
+    Safefree(rb);
+    DISPATCHPP();
+    XSRETURN(1);
+
+
 void is_sidon_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
