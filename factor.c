@@ -1033,12 +1033,12 @@ int pplus1_factor(UV n, UV *factors, UV B1)
     }
     pp1_pow(&X1, k, n);
     if (X1 != 2) {
-      f = gcd_ui( submod(X1, 2, n) , n);
+      f = gcd_ui( submod(X1, 2, n), n);
       if (f != 1 && f != n) break;
     }
     pp1_pow(&X2, k, n);
     if (X2 != 2) {
-      f = gcd_ui( submod(X2, 2, n) , n);
+      f = gcd_ui( submod(X2, 2, n), n);
       if (f != 1 && f != n) break;
     }
   } END_DO_FOR_EACH_PRIME

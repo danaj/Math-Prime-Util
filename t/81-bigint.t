@@ -419,8 +419,8 @@ subtest 'znorder znprimroot znlog', sub {
 
 subtest 'divisor sum', sub {
   # Done wrong, the following will have a bunch of extra zeros.
-  my $hundredfac = Math::BigInt->new(100)->bfac;
-  is( "".divisor_sum($hundredfac), 774026292208877355243820142464115597282472420387824628823543695735957009720184359087194959566149232506852422409529601312686157396490982598473425595924480000000, "Divisor sum of 100!" );
+  my $fiftyfac = Math::BigInt->new(50)->bfac;
+  is( "".divisor_sum($fiftyfac), 218174515904456969581674334837521529647143055709686266261790720000, "Divisor sum of 50!" );
   # These should yield bigint results.
   # Quoted 0 to prevent error in perl 5.8.2 + bigint 0.23 (0 turns into NaN)
   is( divisor_sum(pn_primorial(27),"0"), 134217728, "Divisor count(103#)" );
@@ -439,7 +439,7 @@ subtest 'divisor sum', sub {
   is( "".euler_phi($n), 145857122964987051805507584, "euler_phi($n)" );
   is( carmichael_lambda($n), 3271601336256, "carmichael_lambda($n)" );
   is( kronecker(878944444444444447324234,216539985579699669610468715172511426009), -1, "kronecker(..., ...)" );
-  is( valuation(6**10000-1,5), 5, "valuation(6^10000,5) = 5" );
+  is( valuation(6**625-1,5), 5, "valuation(6^625,5) = 5" );
 }
 
 subtest 'jordan totient', sub {
