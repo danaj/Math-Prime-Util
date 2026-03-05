@@ -5757,8 +5757,8 @@ sub vecequal {
       return 0;
     }
     # About 7x faster if we skip the validates.
-    # _validate_integer($av);
-    # _validate_integer($bv);
+    # validate_integer($av);
+    # validate_integer($bv);
     return 0 unless "$av" eq "$bv";
   }
   1;
@@ -8051,8 +8051,8 @@ sub _binomialu {
 
 sub binomial {
   my($n, $k) = @_;
-  _validate_integer($n);
-  _validate_integer($k);
+  validate_integer($n);
+  validate_integer($k);
 
   # 1. Try GMP
   return reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k))
@@ -9273,8 +9273,8 @@ sub _perrin_signature {
 
 sub is_perrin_pseudoprime {
   my($n, $restrict) = @_;
-  _validate_integer($n);
-  if (defined $restrict) { _validate_integer_nonneg($restrict); }
+  validate_integer($n);
+  if (defined $restrict) { validate_integer_nonneg($restrict); }
   else                   { $restrict = 0; }
   return 0+($n >= 2) if $n < 4;
   return 0 if $restrict > 2 && ($n % 2) == 0;
@@ -9519,7 +9519,7 @@ sub _bern41_acceptable {
 
 sub is_aks_prime {
   my($n) = @_;
-  _validate_integer($n);
+  validate_integer($n);
   return 0 if $n < 2 || Mis_power($n);
   return 1 if $n == 2;
 
@@ -9588,7 +9588,7 @@ sub is_aks_prime {
 
 sub factor_exp {
   my($n) = @_;
-  _validate_integer_nonneg($n);
+  validate_integer_nonneg($n);
 
   my %exponents;
   my @factors = grep { !$exponents{$_}++ } Mfactor($n);
@@ -9646,8 +9646,8 @@ sub _remove_factor {
 }
 sub trial_factor {
   my($n, $limit) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($limit) if defined $limit;
+  validate_integer_nonneg($n);
+  validate_integer_nonneg($limit) if defined $limit;
 
   return ($n==1) ? () : ($n)  if $n < 4;
   return ($n) if defined $limit && $limit < 2;
@@ -9860,7 +9860,7 @@ my @_fsublist = (
 
 sub factor {
   my($n) = @_;
-  _validate_integer_nonneg($n);
+  validate_integer_nonneg($n);
 
   my @factors;
   if ($n < 4) {
@@ -11339,9 +11339,9 @@ sub Pi {
 
 sub forprimes {
   my($sub, $beg, $end) = @_;
-  if (defined $end) { _validate_integer_nonneg($beg); }
+  if (defined $end) { validate_integer_nonneg($beg); }
   else              { ($beg,$end) = (2, $beg);        }
-  _validate_integer_nonneg($end);
+  validate_integer_nonneg($end);
   $beg = 2 if $beg < 2;
 
   my $oldforexit = Math::Prime::Util::_start_for_loop();
@@ -11360,9 +11360,9 @@ sub forprimes {
 
 sub _forcomp_sub {
   my($what, $sub, $beg, $end) = @_;
-  if (defined $end) { _validate_integer_nonneg($beg); }
+  if (defined $end) { validate_integer_nonneg($beg); }
   else              { ($beg,$end) = (0, $beg);        }
-  _validate_integer_nonneg($end);
+  validate_integer_nonneg($end);
 
   my $cinc = 1;
   if ($what eq 'oddcomposites') {
@@ -11401,9 +11401,9 @@ sub forsemiprimes {
 
 sub _forfac_sub {
   my($sf, $sub, $beg, $end) = @_;
-  if (defined $end) { _validate_integer_nonneg($beg); }
+  if (defined $end) { validate_integer_nonneg($beg); }
   else              { ($beg,$end) = (1, $beg);        }
-  _validate_integer_nonneg($end);
+  validate_integer_nonneg($end);
   $beg = 1 if $beg < 1;
 
   my $oldforexit = Math::Prime::Util::_start_for_loop();
@@ -11438,7 +11438,7 @@ sub forsquarefreeint {
 
 sub fordivisors {
   my($sub, $n) = @_;
-  _validate_integer_nonneg($n);
+  validate_integer_nonneg($n);
   my @divisors = Mdivisors($n);
   my $oldforexit = Math::Prime::Util::_start_for_loop();
   {
