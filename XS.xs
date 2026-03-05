@@ -758,9 +758,11 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
   { \
     size_t k_, alen_ = in_alen; \
     AV* av_ = newAV(); \
-    av_extend(av_, (SSize_t)alen_); \
+    av_extend(av_, (SSize_t)alen_-1); \
+    SV **ar_ = AvARRAY(av_); \
     for (k_ = 0; k_ < alen_; k_++) \
-      av_push(av_, NEWSVINT(sign,arr[k_])); \
+      ar_[k_] = NEWSVINT(sign,arr[k_]); \
+    AvFILLp(av_) = (SSize_t)alen_-1; \
     Safefree(arr); \
     ST(0) = sv_2mortal(newRV_noinc((SV*) av_)); \
     XSRETURN(1); \
@@ -917,6 +919,29 @@ static int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort,
       sort_dedup_uv_array(r, itype == IARR_TYPE_NEG, retlen);
   }
   return itype;
+}
+
+/* Check whether an SV is a non-magical arrayref whose elements are all native
+ * non-negative integers in strictly increasing order (i.e. sorted and unique).
+ * On success returns the AvARRAY pointer and sets *lenp; otherwise NULL.
+ * Used by the set-op fast path to skip intermediate UV array allocation. */
+static SV** _check_sorted_nonneg_arrayref(pTHX_ SV *sv, size_t *lenp)
+{
+  AV *av;
+  SV **arr;
+  size_t len, i;
+  if (!SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVAV) return NULL;
+  av = (AV*)SvRV(sv);
+  if (SvMAGICAL(av)) return NULL;
+  arr = AvARRAY(av);
+  len = av_count(av);
+  for (i = 0; i < len; i++) {
+    SV *elem = arr[i];
+    if (!SVNUMTEST(elem) || (!SvIsUV(elem) && SvIVX(elem) < 0)) return NULL;
+    if (i > 0 && SvUVX(elem) <= SvUVX(arr[i-1]))                return NULL;
+  }
+  *lenp = len;
+  return arr;
 }
 
 static int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svbase, size_t len)
@@ -4873,6 +4898,35 @@ void setunion(IN SV* sva, IN SV* svb)
     UV *ra, *rb;
     size_t alen, blen;
   PPCODE:
+    /* Fast path: both inputs are arrayrefs of native non-negative sorted
+     * unique integers.  Merge SV* directly with SvREFCNT_inc, skipping
+     * intermediate UV array allocations and per-element newSVuv calls. */
+    {
+      size_t fa, fb;
+      SV **aa = _check_sorted_nonneg_arrayref(aTHX_ sva, &fa);
+      SV **bb = aa ? _check_sorted_nonneg_arrayref(aTHX_ svb, &fb) : NULL;
+      if (aa && bb) {
+        int inc_eq = (ix == 0 || ix == 1); /* union, intersect */
+        int inc_lt = (ix != 1);            /* union, minus, delta */
+        int inc_gt = (ix == 0 || ix == 3); /* union, delta */
+        size_t maxlen  = (ix == 1) ? (fa < fb ? fa : fb) : fa + fb;
+        AV  *res = newAV();
+        size_t rlen = 0, ia = 0, ib = 0;
+        av_extend(res, (SSize_t)maxlen - 1);
+        SV **ar = AvARRAY(res);
+        while (ia < fa && ib < fb) {
+          UV va = SvUVX(aa[ia]), vb = SvUVX(bb[ib]);
+          if      (va==vb) {if (inc_eq) ar[rlen++]=SvREFCNT_inc(aa[ia]); ia++; ib++;}
+          else if (va< vb) {if (inc_lt) ar[rlen++]=SvREFCNT_inc(aa[ia]); ia++;}
+          else             {if (inc_gt) ar[rlen++]=SvREFCNT_inc(bb[ib]); ib++;}
+        }
+        if (inc_lt) while (ia < fa) ar[rlen++] = SvREFCNT_inc(aa[ia++]);
+        if (inc_gt) while (ib < fb) ar[rlen++] = SvREFCNT_inc(bb[ib++]);
+        AvFILLp(res) = (SSize_t)rlen - 1;
+        ST(0) = sv_2mortal(newRV_noinc((SV*)res));
+        XSRETURN(1);
+      }
+    }
     /* Get the integers and ensure they are sorted unique integers first. */
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
     btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
