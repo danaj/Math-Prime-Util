@@ -2197,8 +2197,8 @@ void is_gaussian_prime(IN SV* sva, IN SV* svb)
   PPCODE:
     if (_validate_and_set(&a, aTHX_ sva, IFLAG_ABS) &&
         _validate_and_set(&b, aTHX_ svb, IFLAG_ABS)) {
-      if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? is_prime(b) : 0 );
-      if (b == 0) RETURN_NPARITY( ((a % 4) == 3) ? is_prime(a) : 0 );
+      if (a == 0) RETURN_NPARITY( ((b % 4) == 3) ? 2*is_prime(b) : 0 );
+      if (b == 0) RETURN_NPARITY( ((a % 4) == 3) ? 2*is_prime(a) : 0 );
       if (a < HALF_WORD && b < HALF_WORD) {
         UV aa = a*a, bb = b*b;
         if (UV_MAX-aa >= bb)

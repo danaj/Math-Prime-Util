@@ -2681,8 +2681,12 @@ not efficient for multiple calls.
 
 =head2 is_gaussian_prime
 
+  say is_gaussian_prime(3,0);  # "2"  :  3   => 3 mod 4 => prime
+  say is_gaussian_prime(1,1);  # "2"  :  1+i => norm 2  => prime
+  say is_gaussian_prime(5,0);  # "0"  :  5   => 1 mod 4 => (2+i)(2-i)
+
 Given two integers C<a> and C<b>, returns either 0, 1, or 2 to indicate
-whether C<n = a+bi> is, respectively, a Guassian composite,
+whether C<n = a+bi> is, respectively, a Gaussian composite,
 probable Gaussian prime, or definite Gaussian prime.
 This is true if and only if one of:
 
