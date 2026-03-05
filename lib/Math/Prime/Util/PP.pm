@@ -412,7 +412,7 @@ sub _frombinary {
   # Avoid the useless portable warning that can't be silenced.
   if (MPU_MAXBITS >= 64 && length($bstr) <= 64) {  # 64-bit Perl, 33-64 bit str
     my $low = substr($bstr,-32,32,'');
-    return oct('0b'.$bstr) << 32 + oct('0b'.$low);
+    return (oct('0b'.$bstr) << 32) + oct('0b'.$low);
   }
   # Length is bigger than word size, so must be a bigint
   if (!defined $_BIGINT) {
@@ -2912,8 +2912,12 @@ sub is_practical {
 sub is_delicate_prime {
   my($n, $b) = @_;
   validate_integer_nonneg($n);
-  if (defined $b) { validate_integer_nonneg($b); } else { $b = 10; }
-  croak "is_delicate_prime base must be >= 2" if $b < 2;
+  if (defined $b) {
+    validate_integer_nonneg($b);
+    croak "is_delicate_prime base must be >= 2" if $b < 2;
+  } else {
+    $b = 10;
+  }
 
   return 0 if $b == 10 && $n < 100;   # Easy shown.
   return 1 if $b ==  3 && $n == 2;
@@ -5750,9 +5754,9 @@ sub vecequal {
     my $bv = $bref->[$i++];
     next if !defined $av && !defined $bv;
     return 0 if !defined $av || !defined $bv;
-    if ( ref($av) && ref($bv) &&
-         (ref($av) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ||
-         (ref($bv) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ) {
+    if (ref($av) && ref($bv) &&
+        (ref($av) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i ||
+         ref($bv) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ) {
       next if (ref($av) eq ref($bv)) && vecequal($av, $bv);
       return 0;
     }
@@ -7605,7 +7609,7 @@ sub _logint {
 
   # Just in case something failed, escape via using Math::BigInt's blog
   if ($l == MPU_INFINITY || !defined($l<=>MPU_INFINITY)) {
-    my $R = Math::BigInt->new("$n")>copy->blog($b);
+    my $R = Math::BigInt->new("$n")->copy->blog($b);
     $R = _bigint_to_int($R) if $R <= INTMAX;
     return $R;
   }
@@ -7625,6 +7629,9 @@ sub _logint {
 
 sub logint {
   my ($n, $b, $refp) = @_;
+  validate_integer_positive($n);
+  validate_integer_nonneg($b);
+  croak "logint: base must be > 1" if $b <= 1;
   croak("logint third argument not a scalar reference") if defined($refp) && !ref($refp);
 
   if ($Math::Prime::Util::_GMPfunc{"logint"}) {
@@ -7637,9 +7644,6 @@ sub logint {
     }
     return reftyped($_[0], $e);
   }
-
-  validate_integer_positive($n);
-  validate_integer_nonneg($b);
 
   my $log = _logint($n,$b);
   $$refp = Mpowint($b,$log) if defined $refp;
@@ -8761,6 +8765,7 @@ sub _lucas_selfridge_params {
 sub _lucas_extrastrong_params {
   my($n, $increment) = @_;
   $increment = 1 unless defined $increment;
+  croak "internal lucas, increment $increment" if $increment < 1;
 
   my ($P, $Q, $D) = (3, 1, 5);
   while (1) {
@@ -9134,13 +9139,18 @@ sub is_extra_strong_lucas_pseudoprime {
 }
 
 sub is_almost_extra_strong_lucas_pseudoprime {
-  my($n, $increment) = @_;
-  $increment = 1 unless defined $increment;
+  my($n, $incr) = @_;
+  if (defined $incr) {
+    validate_integer($incr);
+    croak "Invalid lucas parameter increment: $incr" if $incr<1 || $incr>256;
+  } else {
+    $incr = 1;
+  }
 
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
 
-  my ($P, $Q, $D) = _lucas_extrastrong_params($n, $increment);
+  my ($P, $Q, $D) = _lucas_extrastrong_params($n, $incr);
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
@@ -11091,7 +11101,7 @@ sub RiemannZeta {
 sub RiemannR {
   my($x) = @_;
 
-  croak "Invalid input to ReimannR:  x must be > 0" if $x <= 0;
+  croak "Invalid input to RiemannR:  x must be > 0" if $x <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"riemannr"}) {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::riemannr, 0.41, $x);
@@ -11572,6 +11582,12 @@ sub forcomb {
 }
 sub _forperm {
   my($sub, $n, $all_perm) = @_;
+  if ($n <= 1) {
+    my $oldforexit = Math::Prime::Util::_start_for_loop();
+    if ($n == 0) { $sub->(); } else { $sub->(0); }
+    Math::Prime::Util::_end_for_loop($oldforexit);
+    return;
+  }
   my $k = $n;
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
@@ -11609,15 +11625,12 @@ sub forperm {
   my($sub, $n, $k) = @_;
   validate_integer_nonneg($n);
   croak "Too many arguments for forperm" if defined $k;
-  return $sub->() if $n == 0;
-  return $sub->(0) if $n == 1;
   _forperm($sub, $n, 1);
 }
 sub forderange {
   my($sub, $n, $k) = @_;
   validate_integer_nonneg($n);
   croak "Too many arguments for forderange" if defined $k;
-  return $sub->() if $n == 0;
   return if $n == 1;
   _forperm($sub, $n, 0);
 }
@@ -12501,9 +12514,10 @@ sub random_shawe_taylor_prime {
 
 sub miller_rabin_random {
   my($n, $k, $seed) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
   if (scalar(@_) == 1 ) { $k = 1; } else { validate_integer_nonneg($k); }
 
+  return 0 if $n < 2;
   return 1 if $k <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"miller_rabin_random"}) {
