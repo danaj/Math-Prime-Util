@@ -1494,13 +1494,16 @@ These functions return quickly for any input, including bigints.
 
 =head2 prime_count_upper
 
+Returns a proven upper bound on the number of primes up to C<n>.
+See L</prime_count_lower> for details common to both functions.
+
 =head2 prime_count_lower
 
   my $lower_limit = prime_count_lower($n);
   my $upper_limit = prime_count_upper($n);
   #   $lower_limit  <=  prime_count(n)  <=  $upper_limit
 
-Returns an upper or lower bound on the number of primes below the input number.
+Returns a proven lower bound on the number of primes up to C<n>.
 These are analytical routines, so will take a fixed amount of time and no
 memory.  The actual C<prime_count> will always be equal to or between these
 numbers.
@@ -1925,13 +1928,16 @@ L<Math::Prime::Util::GMP> may include this functionality which would help for
 
 =head2 nth_prime_upper
 
+Returns a proven upper bound on the Nth prime.
+See L</nth_prime_lower> for details common to both functions.
+
 =head2 nth_prime_lower
 
   my $lower_limit = nth_prime_lower($n);
   my $upper_limit = nth_prime_upper($n);
   # For all $n:   $lower_limit  <=  nth_prime($n)  <=  $upper_limit
 
-Returns an analytical upper or lower bound on the Nth prime.  No sieving is
+Returns a proven lower bound on the Nth prime.  No sieving is
 done, so these are fast even for large inputs.
 
 For tiny values of C<n>. exact answers are returned.  For small inputs, an
@@ -2803,7 +2809,7 @@ L<OEIS A000378|http://oeis.org/A000378>.
 =head2 is_powerfree
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
-1 is C<|n|> has no divisor C<d^k>, and returns 0 otherwise.
+1 if C<|n|> has no divisor C<d^k>, and returns 0 otherwise.
 This determines if C<|n|> has any k-th (or higher) powers in the prime
 factorization.
 C<k> defaults to 2.
@@ -2812,7 +2818,7 @@ With C<k == 2> this produces the sequence of square-free integers
 L<OEIS A005117|http://oeis.org/A005117>.
 With C<k == 3> this produces the sequence of cube-free integers
 L<OEIS A004709|http://oeis.org/A004709>.
-With C<k == 3> this produces the sequence of biquadrate-free integers
+With C<k == 4> this produces the sequence of biquadrate-free integers
 L<OEIS A046100|http://oeis.org/A046100>.
 
 =head2 powerfree_count
@@ -3005,6 +3011,49 @@ than -1 and 1.
 
 Given integers C<a> and C<b>, returns C<a + b>.
 
+These integer arithmetic functions (C<addint>, C<subint>, C<mulint>,
+C<add1int>, C<sub1int>, C<absint>, C<negint>) exist to offer exact
+integer arithmetic without overflow or NV conversion, while returning
+native integers when they fit, and bigints only when needed.
+Other choices include:
+
+=over 4
+
+=item *
+
+B<Perl native operations.>  This is fine with small numbers, but once
+large enough, values will be converted to floating point (NV).  This
+means incorrect results.  Values larger than 64-bit are completely
+unsupported.  One might expect C<2^53> to be the usual point for
+"large enough", but not only is the NV type platform dependent, but
+very old 64-bit Perl will aggressively convert values to NV starting
+at C<2^49> even with NV being a IEEE-754 double.
+
+=item *
+
+B<use integer.>  Gives exact integer math as if we were using C<IV>
+types in C.  We are still left with 32-bit vs. 64-bit platform differences,
+being restricted to signed type, and no support for larger values.
+
+=item *
+
+B<Math::BigInt, Math::GMPz, etc.>  If one knows large values will be
+used, this is a good idea.  Use bigint objects for all values, and all
+operations are methods on the objects and give correct results.
+This is functionally a good solution, but it will be 10 to B<500>
+times slower as well as more memory.
+
+=back
+
+All these functions accept native integers (IV/UV), bigints, and string
+representations of integers.  Results will be in native types if possible,
+and as objects of the chosen bigint class otherwise.  Best performance
+will still be had by native operations within range, or by using fast
+classes like L<Math::GMPz> if most operations need it.
+We give correct behavior while only paying the performance penalty when
+needed, although there is still some overhead since we are not built
+into the language like Raku or Python.
+
 =head2 subint
 
 Given integers C<a> and C<b>, returns C<a - b>.
@@ -3051,7 +3100,7 @@ We also have Euclidian and truncated division available.
 
 Given integers C<a> and C<b>, returns the modulo C<a % b>.
 
-    C<r = a - b * floor(a / b)>
+    r = a - b * floor(a / b)
 
 Floor division is used, so q is rounded towards C<-inf>
 and r has the same sign as the divisor C<b>.
@@ -3074,6 +3123,8 @@ the remainder has the opposite sign as the divisor C<b>.
 
 Given integers C<a> and C<b>, returns a list of two items:
 the Euclidean quotient and the Euclidean remainder.
+The remainder is always non-negative (C<< 0 <= r < |b| >>), and the
+quotient is chosen to satisfy C<< a = b*q + r >>.
 
 This corresponds to Pari/GP's C<divrem> function.
 There is no explicit function in L<Math::BigInt> that gives
@@ -3103,8 +3154,8 @@ L<Math::BigInt/bdiv> and L<Math::BigInt/bmod>.
 =head2 cdivrem
 
 Given integers C<a> and C<b>, returns a list of two items:
-the ceiling quotient and the ceiling remainder.
-
+the ceiling quotient (rounded towards C<+inf>) and the ceiling remainder.
+The remainder has the opposite sign from the divisor C<b>.
 This allows one to perform division with rounding up.
 
 =head2 absint
@@ -3300,11 +3351,19 @@ making it a useful tool.
 
 =head2 vecany
 
+Returns true if any element of a list satisfies a block.  See L</vecfirst>.
+
 =head2 vecall
+
+Returns true if all elements of a list satisfy a block.  See L</vecfirst>.
 
 =head2 vecnone
 
+Returns true if no element of a list satisfies a block.  See L</vecfirst>.
+
 =head2 vecnotall
+
+Returns true if not all elements of a list satisfy a block.  See L</vecfirst>.
 
 =head2 vecfirst
 
@@ -3486,7 +3545,7 @@ C<vecmex>(0,1,2,...,I<w>) = I<w>+1.
 
 =head2 vecpmex
 
-  my $minimum_excluded = vecmex(1,2,4,6);  # returns 3
+  my $minimum_excluded = vecpmex(1,2,4,6);  # returns 3
 
 Given a list of positive integers, returns the smallest positive
 integer that is not in the list.  C<mex> is short for "minimum excluded".
@@ -3701,7 +3760,7 @@ Sage's C<union> function on Set objects.
 
 =head2 setintersect
 
-  my $commonset = setintersection($set1,$set2);
+  my $commonset = setintersect($set1,$set2);
   my $is_disjoint = 0 == @$commonset;  # scalar size of the intersection
 
 Given exactly two array references of integers, treats them as sets and
@@ -3908,7 +3967,7 @@ Also see L<Math::NumSeq::Fibbinary> and L<Data::BitStream::Code::Fibonacci>.
 Given a binary string in Zeckendorf representation, return the corresponding
 integer.  The string may not contain anything other than the characters
 C<0> and C<1>, and must not contain C<11>.  The resulting number is the sum
-of the Fibinacci numbers in the position starting from the right
+of the Fibonacci numbers in the position starting from the right
 (The Fibonacci index is offset by two, as F(0)=0 and F(1)=1 are not used).
 
 =head2 sumdigits
@@ -4028,7 +4087,7 @@ Functionally identical but possibly faster than C<prime_bigomega(n) == k>.
   say is_omega_prime(6,2169229601);  # True if n has 6 distinct factors
 
 Given non-negative integers C<k> and C<n>, returns 1 if C<n> has
-exactly C<k> distinct prime factors (allowing multiplicity), and 0 otherwise.
+exactly C<k> distinct prime factors (not counting multiplicity), and 0 otherwise.
 With C<k=1>, this is the same as L</is_prime_power>.
 
 Functionally identical but possibly faster than C<prime_omega(n) == k>.
@@ -4282,11 +4341,11 @@ than one will return the length of the order C<n> sequence, as expected.
 
 Many OEIS sequences can be produced from this, including
 L<OEIS series A005728|http://oeis.org/A005728> (E<lt>= 1),
-L<OEIS series A005728|http://oeis.org/A049806> (E<lt>= 1/2),
-L<OEIS series A005728|http://oeis.org/A049807> (E<lt>= 1/3),
-L<OEIS series A005728|http://oeis.org/A049808> (E<lt>= 1/4),
+L<OEIS series A049806|http://oeis.org/A049806> (E<lt>= 1/2),
+L<OEIS series A049807|http://oeis.org/A049807> (E<lt>= 1/3),
+L<OEIS series A049808|http://oeis.org/A049808> (E<lt>= 1/4),
 ...,
-L<OEIS series A005728|http://oeis.org/A049805> (E<lt>= 1/k),
+L<OEIS series A049805|http://oeis.org/A049805> (E<lt>= 1/k),
 
 
 =head2 prime_bigomega
@@ -6237,7 +6296,7 @@ more efficient.
 This corresponds to Pari's C<numdiv> and Mathematica's
 C<DivisorSigma[0,n]> functions.
 
-Also see the L</for_divisors> functions for looping over the divisors.
+Also see the L</fordivisors> function for looping over the divisors.
 
 When C<n=0> we return the empty set (zero in scalar context).
 
@@ -6307,6 +6366,9 @@ the function will be unable to find a factor, in which case a single element,
 the input, is returned.  This function typically runs very fast.
 
 =head2 prho_factor
+
+Pollard's rho factoring algorithm.  See L</pbrent_factor> for the shared
+description of both functions.
 
 =head2 pbrent_factor
 
@@ -7659,7 +7721,7 @@ W. J. Cody and Henry C. Thacher, Jr., "Chebyshev approximations for the exponent
 
 =item *
 
-W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", L<Mathematics of Computation>, v25, n115, pp 537-547, July 1971.
+W. J. Cody, K. E. Hillstrom, and Henry C. Thacher Jr., "Chebyshev Approximations for the Riemann Zeta Function", I<Mathematics of Computation>, v25, n115, pp 537-547, July 1971.
 
 =item *
 
@@ -7719,7 +7781,7 @@ David M. Smith, "Multiple-Precision Exponential Integral and Related Functions",
 
 =item *
 
-Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", L<Mathematics of Computation>, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
+Douglas A. Stoll and Patrick Demichel , "The impact of ζ(s) complex zeros on π(x) for x E<lt> 10^{10^{13}}", I<Mathematics of Computation>, v80, n276, pp 2381-2394, October 2011.  L<http://www.ams.org/journals/mcom/2011-80-276/S0025-5718-2011-02477-4/home.html>
 
 =back
 
