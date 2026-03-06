@@ -847,10 +847,10 @@ Version 0.74
   # Get the prime factors of a number
   my @prime_factors = factor( $n );
 
-  # Return ([p1,e1],[p2,e2], ...) for $n = p1^e1 * p2*e2 * ...
+  # Return ([p1,e1],[p2,e2], ...) for $n = p1^e1 * p2^e2 * ...
   my @pe = factor_exp( $n );
 
-  # Get all divisors other than 1 and n
+  # Get all divisors including 1 and n
   my @divisors = divisors( $n );
   # Or just apply a block for each one
   my $sum = 0; fordivisors  { $sum += $_ + $_*$_ }  $n;
@@ -961,7 +961,7 @@ etc.).  Use C<--help> to see all the options.
 
 =item *
 
-factor.pl operates similar to the GNU C<factor> program.  It supports
+factor.pl operates similarly to the GNU C<factor> program.  It supports
 bigint and expression inputs.
 
 =back
@@ -999,8 +999,8 @@ module operates normally.
 If set to C<1>, the PP package will be loaded on startup rather than
 on demand, and the package aliases C<MPU>, C<PP>, C<GMP> will be used
 for the main, Perl, and GMP packages respectively.
-Normally you wouldn't want this for both aggressive namespace pollution as
-well as performance (there is often no need to load the huge PP module).
+Normally you wouldn't want this both for aggressive namespace pollution
+and for performance (there is often no need to load the huge PP module).
 But it is convenient if one wants to call the different paths explicitly.
 
 Regarding performance, on a 2020 Macbook M1, normal startup time is
@@ -1087,7 +1087,7 @@ All inputs must be integers or an error is raised.
 
   print "$n is prime" if is_prime($n);
 
-Given an integer C<n>, returns 0 is the number is composite,
+Given an integer C<n>, returns 0 if the number is composite,
 1 if it is probably prime, and 2 if it is definitely prime.
 For numbers smaller than C<2^64> it will only
 return 0 (composite) or 2 (definitely prime), as this range has been
@@ -1099,7 +1099,7 @@ proof, so it will return 2 for many other inputs.
 
 Also see the L</is_prob_prime> function, which will never do additional
 tests, and the L</is_provable_prime> function which will construct a proof
-that the input is number prime and returns 2 for almost all primes (at the
+that the input is prime and returns 2 for almost all primes (at the
 expense of speed).
 
 For native precision numbers (anything smaller than C<2^64>, all three
@@ -1313,7 +1313,7 @@ attempt to modify them will result in undefined behavior.
 =head2 forcomp
 
 Similar to L</forpart>, but iterates over integer compositions rather than
-partitions.  This can be thought of as all ordering of partitions, or
+partitions.  This can be thought of as all orderings of partitions, or
 alternately partitions may be viewed as an ordered subset of compositions.
 The ordering is lexicographic.  All options from L</forpart> may be used.
 
@@ -1323,7 +1323,7 @@ The number of unrestricted compositions of C<n> is C<2^(n-1)>.
 
 Given non-negative arguments C<n> and C<k>, the block is called with C<@_>
 set to the C<k> element array of values from C<0> to C<n-1> representing
-the combinations in lexicographical order.  While the L<binomial> function
+the combinations in lexicographical order.  While the L</binomial> function
 gives the total number, this function can be used to enumerate the choices.
 
 Rather than give a data array as input, an integer is used for C<n>.
@@ -1598,7 +1598,7 @@ The actual count will always be greater than or equal to the result.
 
 =head2 prime_power_count_upper
 
-Given a non-negative integer C<n>, quickly returns a
+Given a non-negative integer C<n>, quickly returns an
 upper bound of the count of prime powers less than or equal to C<n>.
 The actual count will always be less than or equal to the result.
 
@@ -1619,7 +1619,7 @@ The actual value will always be greater than or equal to the result.
 
 =head2 nth_prime_power_upper
 
-Given a non-negative integer C<n>, quickly returns a
+Given a non-negative integer C<n>, quickly returns an
 upper bound of the C<n>-th prime power.
 The actual value will always be less than or equal to the result.
 
@@ -1630,8 +1630,8 @@ The actual value will always be less than or equal to the result.
 Returns the lesser of twin primes between the lower and upper limits
 (inclusive), with a lower limit of C<2> if none is given.  This is
 L<OEIS A001359|http://oeis.org/A001359>.
-Given a twin prime pair C<(p,q)> with C<q = p + 2>, C<p prime>,
-and <q prime>, this function uses C<p> to represent the pair.  Hence the
+Given a twin prime pair C<(p,q)> with C<q = p + 2>, C<p> prime,
+and C<q> prime, this function uses C<p> to represent the pair.  Hence the
 bounds need to include C<p>, and the returned list will have C<p> but not C<q>.
 
 This works just like the L</primes> function, though only the first primes of
@@ -1730,21 +1730,21 @@ with LMO prime counts to get quite reasonable speeds.
 
 A fast approximation of the C<k>-almost-prime count of C<n>.
 
-The current implementation for C<n> greater than 64-bit is not well tested..
+The current implementation for C<n> greater than 64-bit is not well tested.
 
 =head2 almost_prime_count_lower
 
 Quickly returns a lower bound for the C<k>-almost-prime count of C<n>.
 The actual count will be greater than or equal to this result.
 
-The current implementation for C<n> greater than 64-bit is not well tested..
+The current implementation for C<n> greater than 64-bit is not well tested.
 
 =head2 almost_prime_count_upper
 
 Quickly returns an upper bound for the C<k>-almost-prime count of C<n>.
 The actual count will be less than or equal to this result.
 
-The current implementation for C<n> greater than 64-bit is not well tested..
+The current implementation for C<n> greater than 64-bit is not well tested.
 
 
 =head2 omega_primes
@@ -1761,8 +1761,8 @@ C<prime_omega(n) == k>.
 Compare to k-almost-primes where C<prime_bigomega(n) == k>.
 
 With C<k=1> these are the prime powers.
-With C<k=2> these are (L<OEIS A007774|http://oeis.org/A007774>).
-With C<k=3> these are (L<OEIS A033992|http://oeis.org/A033992>).
+With C<k=2> these are L<OEIS A007774|http://oeis.org/A007774>.
+With C<k=3> these are L<OEIS A033992|http://oeis.org/A033992>.
 
 =head2 omega_prime_count
 
@@ -1794,8 +1794,8 @@ Similar to prime count, but returns the count of Ramanujan primes.  Takes
 either a single number indicating a count from 2 to the argument, or
 two numbers indicating a range.
 
-While not nearly as efficient as L<prime_count>, this does use a number of
-speedups that result it in being much more efficient than generating all
+While not nearly as efficient as L</prime_count>, this does use a number of
+speedups that result in it being much more efficient than generating all
 the Ramanujan primes.
 
 =head2 ramanujan_prime_count_approx
@@ -2151,8 +2151,8 @@ and produces about 60% fewer pseudoprimes.
 Performance is typically 20-30% I<faster> than the strong Lucas test.
 
 The parameters are selected using the
-L<Baillie-OEIS method|http://oeis.org/A217719>
-method: increment C<P> from C<3> until C<jacobi(D,n) = -1>.
+L<Baillie-OEIS method|http://oeis.org/A217719>:
+increment C<P> from C<3> until C<jacobi(D,n) = -1>.
 Removing primes, this produces the sequence
 L<OEIS A217719|http://oeis.org/A217719>.
 
@@ -2186,7 +2186,7 @@ Pseudoprimes to this test
 are a subset of the base 2 Fermat and Euler tests, but a superset
 of the base 2 strong pseudoprime (Miller-Rabin) test.
 
-The main reason for this test is that is a bit more efficient
+The main reason for this test is that it is slightly more efficient
 than other probable prime tests.
 
 
@@ -2212,7 +2212,7 @@ With C<r=1>, C<P(-n) = -1 mod n> is also verified,
 creating the "minimal restricted" test.
 With C<r=2>, the full signature is also tested using the Adams and Shanks (1982)
 rules (without the quadratic form test).
-With C<r=3>, the full signature is testing using the Grantham (2000) test, which
+With C<r=3>, the full signature is tested using the Grantham (2000) test, which
 additionally does not allow pseudoprimes to be divisible by 2 or 23.
 The minimal restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A018187>.
 
@@ -2220,7 +2220,7 @@ The minimal restricted pseudoprime sequence is L<OEIS A018187|http://oeis.org/A0
 =head2 is_catalan_pseudoprime
 
 Given an integer C<n>, returns 1 if C<n> is positive and
-C<-1^((n-1/2)) C_((n-1/2)> is congruent to 2 mod C<n>,
+C<< (-1)^{(n-1)/2} * C_{(n-1)/2} >> is congruent to 2 mod C<n>,
 where C<C_n> is the nth Catalan number, and returns 0 otherwise.
 The nth Catalan number is equal to C<binomial(2n,n)/(n+1)>.
 All odd primes satisfy this condition, and only three known composites.
@@ -2788,7 +2788,7 @@ This corresponds to Pari/GP's C<ispower> function with integer arguments.
 
 =head2 is_square
 
-Given a integer C<n>, returns 1 if C<n> is a perfect square,
+Given an integer C<n>, returns 1 if C<n> is a perfect square,
 and returns 0 otherwise.  This is identical to C<is_power(n,2)>.
 
 This corresponds to Pari/GP's C<issquare> function.
@@ -2906,7 +2906,7 @@ This corresponds to Pari/GP's C<sqrtint> function.
 
 =head2 rootint
 
-Given an non-negative integer C<n> and positive exponent C<k>, return the
+Given a non-negative integer C<n> and positive exponent C<k>, return the
 integer k-th root of C<n>.  This is the largest integer C<r> such that
 C<< r^k <= n >>.
 
@@ -3010,7 +3010,7 @@ manually convert everything to bigints.
 
 This corresponds to Pari/GP's C<cmp> function, GMP's C<mpz_cmp> function,
 Math::BigInt's C<bcmp> method, and Perl's << <=> >> operator.
-Previous to version 6.2, GMP could return negative or positive values other
+Prior to version 6.2, GMP could return negative or positive values other
 than -1 and 1.
 
 =head2 addint
@@ -3097,10 +3097,11 @@ which oddly uses a truncated quotient and floored remainder.
 More importantly, consistent and correct 64-bit integer division in
 Perl is problematic.
 
-Pari/GP's C<\\> integer division operator, uses Euclidian division,
-which matches their C<divrem> function.  Our C<divint> and <modint>
+Pari/GP's C<\\> integer division operator uses Euclidean division,
+which matches their C<divrem> function.  Our C<divint> and C<modint>
 operators both use floor division, which matches Raku and Python.
-We also have Euclidian and truncated division available.
+We also have Euclidean, truncated, and ceiling division available via
+L</divrem>, L</tdivrem>, and L</cdivrem> respectively.
 
 =head2 modint
 
@@ -3113,7 +3114,7 @@ and r has the same sign as the divisor C<b>.
 This is the same as modern L<Math::BigInt/bmod> and the
 GMP C<fdiv> functions.
 
-Like with C<divint>, we use floor division, while Pari/GP uses Euclidian
+Like with C<divint>, we use floor division, while Pari/GP uses Euclidean
 for their C<%> integer remainder operator.
 
 =head2 cdivint
@@ -3216,12 +3217,12 @@ Also see L</lucasuvmod> for fast computation mod n.
 Given a list of integers, returns the greatest common divisor.  This is
 often used to test for L<coprimality|https://oeis.org/wiki/Coprimality>.
 
-Each input C<n> is treated as C<|n>.
+Each input C<n> is treated as C<|n|>.
 
 =head2 lcm
 
 Given a list of integers, returns the least common multiple.  Note that we
-follow the semantics of Mathematica, Pari, and Perl 6, re:
+follow the semantics of Mathematica, Pari, and Raku, re:
 
   lcm(0, n) = 0              Any zero in list results in zero return
   lcm(n,-m) = lcm(n, m)      We use the absolute values
@@ -3230,11 +3231,11 @@ follow the semantics of Mathematica, Pari, and Perl 6, re:
 =head2 gcdext
 
 Given two integers C<x> and C<y>, returns C<u,v,d> such that C<d = gcd(x,y)>
-and C<u*x + v*y = d>.  This uses the extended Euclidian algorithm to compute
+and C<u*x + v*y = d>.  This uses the extended Euclidean algorithm to compute
 the values satisfying Bézout's Identity.
 
 This corresponds to Pari's C<gcdext> function, which was renamed from
-C<bezout> out Pari 2.6.  The results will hence match L<Math::Pari/bezout>.
+C<bezout> in Pari 2.6.  The results will hence match L<Math::Pari/bezout>.
 
 =head2 chinese
 
@@ -3350,10 +3351,10 @@ Perl (or many other references) for a discussion of reduce with empty or
 singular-element lists.  It is often a good idea to give an identity element
 as the first list argument.
 
-While operations like L<vecmin>, L<vecmax>, L<vecsum>, L<vecprod>, etc. can
-be fairly easily done with this function, it will not be as efficient.  There
-are a wide variety of other functions that can be easily made with reduce,
-making it a useful tool.
+While operations like L</vecmin>, L</vecmax>, L</vecsum>, L</vecprod>, etc.
+can be fairly easily done with this function, it will not be as efficient.
+There are a wide variety of other functions that can be easily made with
+reduce, making it a useful tool.
 
 =head2 vecany
 
@@ -3385,7 +3386,7 @@ false.
 The interface is exactly the same as the C<any>, C<all>, C<none>, C<notall>,
 and C<first> functions in L<List::Util>.  This was done to increase
 portability and minimize confusion.  Unlike other vector functions like
-C<vecmax>, C<vecmax>, C<vecsum>, etc. there is no added value to using
+C<vecmin>, C<vecmax>, C<vecsum>, etc. there is no added value to using
 these versus the ones from L<List::Util>.  They are here for convenience.
 
 These operations can fairly easily be mapped to C<scalar(grep {...} @n)>,
@@ -3487,7 +3488,7 @@ In scalar context, C<vecsort> returns the number of items without sorting
 want.  E.g. if we only want the number of divisors, we call in scalar
 context and get the number without requiring actual sorting.
 Having the same results from
-C<$x = vecsort(5,6,7)> and <@v = vecsort(5,6,7); $x=@v;>
+C<$x = vecsort(5,6,7)> and C<@v = vecsort(5,6,7); $x=@v;>
 is what we want.
 This contrasts with Perl's built-in C<sort> which in scalar context has
 B<undefined> behaviour (in all current versions of C<perl> it returns undef).
@@ -3511,7 +3512,7 @@ Given an array reference of integers,
 numerically (ascending) sorts the integers in-place.
 The array reference is also returned for convenience.
 
-This is more efficient than L<vecsort>.  Perl's C<sort> has this
+This is more efficient than L</vecsort>.  Perl's C<sort> has this
 optimization built-in when doing straightforward sorting on non-references.
 
 =head2 vecequal
@@ -3598,7 +3599,7 @@ This "set form" is optimal for the set operations.
 
 After the set is in this form, the size of the set is simply the length.
 Similarly the set minimum and maximum are trivial.  All values in the output
-will be either typed as either native integers (IV or UV) or bigints.
+will be typed as either native integers (IV or UV) or bigints.
 
 
 =head2 setinsert
@@ -3818,7 +3819,7 @@ if it is a Sidon set (sometimes called Sidon sequence), and 0 otherwise.
 To be a Sidon set, all elements must be non-negative and
 all pair-wise sums a_i + a_j (i E<gt>= j) are unique.
 
-All finite Sidon sets are Golomb rulers, and all Golumb rulers are Sidon.
+All finite Sidon sets are Golomb rulers, and all Golomb rulers are Sidon.
 
 =head2 is_sumfree_set
 
@@ -3830,7 +3831,7 @@ to any element of the set.  That is, the set and its sumset are disjoint.
 =head2 set_is_disjoint
 
 Given two array references of integers, treats them as sets and
-returns 1 if the sets are have no elements in common, 0 otherwise.
+returns 1 if the sets have no elements in common, 0 otherwise.
 
 This corresponds to Mathematica's C<DisjointQ> function.
 
@@ -4033,7 +4034,7 @@ Given integer C<n>, returns 1 if C<|n|> has no repeated factor.
 
 Given integer C<n>, returns 1 if C<n> is positive and cyclic in the number
 theory sense, and returns 0 otherwise.
-A cyclic number C<n> has only only one group of order C<n>.
+A cyclic number C<n> has only one group of order C<n>.
 C<n> and C<φ(n)> are relatively prime.
 
 This is the L<OEIS series A003277|http://oeis.org/A003277>.
@@ -4190,7 +4191,7 @@ and Sage's C<continued_fraction> function.
 
 =head2 from_contfrac
 
-  my($N,$D) = contfrac(4,2,6,7);  # N = 415, D = 93
+  my($N,$D) = from_contfrac(4,2,6,7);  # N = 415, D = 93
 
 Given an array of integers representing the simple continued fraction,
 returns the rational C<n / d> as two integers.
@@ -4387,7 +4388,7 @@ and Mathematica's C<PrimeNu[n]> function.
 Given a single integer C<n>, returns μ(|n|), the Möbius function
 (also known as the Moebius, Mobius, or MoebiusMu function).
 This function is 1 if C<n = 1>, 0 if C<n> is not square-free
-(i.e. C<n> has a repeated factor), and C<-1^t> if C<n> is a product
+(i.e. C<n> has a repeated factor), and C<(-1)^t> if C<n> is a product
 of C<t> distinct primes.
 This is an important function in prime number theory.  Like SAGE, we define
 C<moebius(0) = 0> for convenience.
@@ -4400,8 +4401,8 @@ memory use.  The algorithm used for ranges is Deléglise and Rivat (1996)
 algorithm 4.1, which is a segmented version of Lioen and van de Lune (1994)
 algorithm 3.2.
 
-Negative ranges are possible, e.g. C<mobius(-30,-20)> will return
-C<mobius(|n|)> for -30, -29, -28, ..., -20.
+Negative ranges are possible, e.g. C<moebius(-30,-20)> will return
+C<moebius(|n|)> for -30, -29, -28, ..., -20.
 
 The return values are read-only constants.  This should almost never come up,
 but it means trying to modify aliased return values will cause an
@@ -4481,7 +4482,7 @@ from Max Alekseyev (2016).
 Given non-negative integers C<k> and C<n>, returns Jordan's k-th totient
 function for C<n>.
 Jordan's totient is a generalization of Euler's totient, where
-  C<jordan_totient(1,$n) == euler_totient($n)>
+  C<jordan_totient(1,$n) == euler_phi($n)>
 This counts the number of k-tuples less than or equal to n that form a coprime
 tuple with n.  As with C<euler_phi>, 0 is returned for all C<< n < 1 >>.
 This function can be used to generate some other useful functions, such as
@@ -4593,7 +4594,7 @@ With various C<k> values, the results are the OEIS sequences
 L<OEIS series A000005|http://oeis.org/A000005> (C<k=0>, number of divisors),
 L<OEIS series A000203|http://oeis.org/A000203> (C<k=1>, sum of divisors),
 L<OEIS series A001157|http://oeis.org/A001157> (C<k=2>, sum of squares of divisors),
-L<OEIS series A001158|http://oeis.org/A001158> (C<k=4>, sum of cubes of divisors),
+L<OEIS series A001158|http://oeis.org/A001158> (C<k=3>, sum of cubes of divisors),
 etc.
 
 The second argument may also be a code reference, which is called for each
@@ -4729,7 +4730,7 @@ internal sieve.
 
 =head2 is_lucky
 
-Given an integer C</n>, Returns C<1> if the C<n> is included in the
+Given an integer C<n>, returns C<1> if C<n> is included in the
 set of lucky numbers and returns C<0> otherwise.
 The process used is analogous to trial division using the lucky
 numbers less than C<n/log(n)>.
@@ -4756,7 +4757,7 @@ The actual count will always be greater than or equal to the result.
 
 =head2 lucky_count_upper
 
-Given a single non-negative integer C<n>, quickly returns a
+Given a single non-negative integer C<n>, quickly returns an
 upper bound of the count of lucky numbers less than or equal to C<n>.
 The actual count will always be less than or equal to the result.
 
@@ -4781,7 +4782,7 @@ The actual value will always be greater than or equal to the result.
 
 =head2 nth_lucky_upper
 
-Given a single non-negative integer C<n>, quickly returns a
+Given a single non-negative integer C<n>, quickly returns an
 upper bound of the C<n>-th lucky number.
 The actual value will always be less than or equal to the result.
 
@@ -4806,7 +4807,7 @@ even inputs, and 1 millisecond for 105 bit even inputs.
 =head2 goldbach_pair_count
 
 Given a single non-negative integer C<n>, returns the number of pairs of
-primes C<p> and C<q> where C<< p <= q >> and C<p + q = n>.
+primes C<p> and C<q> where C<< p <= q >> and C<< p + q = n >>.
 
 If no such pairs exist, C<0> is returned.
 
@@ -5014,7 +5015,7 @@ The actual count will always be greater than or equal to the result.
 
 =head2 perfect_power_count_upper
 
-Given a non-negative integer C<n>, quickly returns a
+Given a non-negative integer C<n>, quickly returns an
 upper bound of the count of perfect powers less than or equal to C<n>.
 The actual count will always be less than or equal to the result.
 
@@ -5043,7 +5044,7 @@ The actual value will always be greater than or equal to the result.
 
 =head2 nth_perfect_power_upper
 
-Given a non-negative integer C<n>, quickly returns a
+Given a non-negative integer C<n>, quickly returns an
 upper bound of the C<n>-th perfect power.
 The actual value will always be less than or equal to the result.
 
@@ -5058,7 +5059,7 @@ prime or a semiprime.
 
 =head2 smooth_count
 
-Given non-negative integer inputs C<n> and C<k>, returns the numbers of
+Given non-negative integer inputs C<n> and C<k>, returns the number of
 integers between C<1> and C<n> inclusive, that have no prime factor larger
 than C<k>.
 
@@ -5070,7 +5071,7 @@ C<vecsum( map { is_smooth($_,$k) } 1..$n )>.
 
 =head2 rough_count
 
-Given non-negative integer inputs C<n> and C<k>, returns the numbers of
+Given non-negative integer inputs C<n> and C<k>, returns the number of
 integers between C<1> and C<n> inclusive, that have no prime factor less
 than C<k>.
 
@@ -5106,8 +5107,8 @@ Given two integers C<a> and C<n>, returns the Kronecker symbol C<(a|n)>.
 The possible return values with their meanings for odd prime C<n> are:
 
    0   a = 0 mod n
-   1   a is a quadratic residue mod n       (a = x^2 mod n for some x)
-  -1   a is a quadratic non-residue mod n   (no a where a = x^2 mod n)
+   1   a is a quadratic residue mod n       (x^2 = a mod n for some x)
+  -1   a is a quadratic non-residue mod n   (no x where x^2 = a mod n)
 
 The Kronecker symbol is an extension of the Jacobi symbol to all integer
 values of C<n> from the latter's domain of positive odd values of C<n>.
@@ -5293,7 +5294,7 @@ C<--phi n a> feature of C<primecount>.
   $approx_prime_count = inverse_li(1000000000);
 
 Given a non-negative integer C<n>, returns the least integer value C<k>
-such that C<< Li(k)> >= n >>.  Since the logarithmic integral C<Li(n)> is
+such that C<< Li(k) >= n >>.  Since the logarithmic integral C<Li(n)> is
 a good approximation to the number of primes less than C<n>, this function
 is a good simple approximation to the nth prime.
 
@@ -5396,7 +5397,7 @@ While there might be confusion when sampling a list with exactly
 one element, where that element is an array reference, this is
 assumed to be a rare case.
 
-This is similar to C<sample> from L<List::Util>, C<choose_multuple> from
+This is similar to C<sample> from L<List::Util>, C<choose_multiple> from
 Rust rand, and Raku's C<pick>.
 
 
@@ -5409,7 +5410,7 @@ Functions for fast modular arithmetic are provided:
 add, subtract, multiply, divide, power, square root, nth root, inverse.
 Additionally, fast modular calculation of factorial, binomial,
 and Lucas sequences are provided.
-See L</"MODULAR FUNCTIONS"> for more functions that operation mod n.
+See L</"MODULAR FUNCTIONS"> for more functions that operate mod n.
 
 Semantics mostly follow Pari/GP, though in some cases they will indicate
 an error while we return undef.
@@ -5454,7 +5455,7 @@ Given four integers C<a>, C<b>, C<c>, and C<n>, return C<(a*b-c) mod |n|>.
 
 Given three integers C<a>, C<b>, and C<n>, return C<(a/b) mod |n|>.
 This is done as C<(a * (1/b mod |n|)) mod |n|>.
-If no inverse of C<b> mod C<|n|> exists then undef if returned.
+If no inverse of C<b> mod C<|n|> exists then undef is returned.
 
 =head2 powmod
 
@@ -5504,7 +5505,7 @@ Given three integers C<a>, C<k>, and C<n>, returns a sorted list of all
 modular C<k>-th root of C<a> modulo C<|n|>.
 If no root exists, an empty list is returned.
 
-Similar to L/allsqrtmod>, some inputs have millions or billions of roots,
+Similar to L</allsqrtmod>, some inputs have millions or billions of roots,
 so it might not be able to successfully return them all.
 
 =head2 invmod
@@ -5638,12 +5639,12 @@ C<MultiplicativeOrder[a,n]> function.
 
 =head2 znprimroot
 
-Given an integer C<n>, where C<n> is treated as C<|n>,
- returns the smallest primitive root of C<(Z/nZ)^*>,
+Given an integer C<n>, where C<n> is treated as C<|n|>,
+returns the smallest primitive root of C<(Z/nZ)^*>,
 or C<undef> if no root exists.
 A root exists when C<euler_phi($n) == carmichael_lambda($n)>,
 which will be true only if
-C<n one of {2, 4, p^k, 2p^k}> for odd prime p.
+C<< n one of {2, 4, p^k, 2p^k} >> for odd prime p.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 
@@ -5668,8 +5669,8 @@ exist an integer C<b> such that C<a = b^2 mod |n|>.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 
-This is the L<OEIS series A020649|http://oeis.org/A053760>.  For primes
-it is L<OEIS series A020649|http://oeis.org/A053760>.
+This is L<OEIS A020649|http://oeis.org/A020649>.
+For primes it is L<OEIS A053760|http://oeis.org/A053760>.
 
 =head2 is_qr
 
@@ -5710,19 +5711,20 @@ C</dev/urandom>, C</dev/random>, or L<Crypt::PRNG>, whichever is found first.
 
 We use the original ChaCha definition rather than RFC7539.  This means a
 64-bit counter, resulting in a period of 2^72 bytes or 2^68 calls to
-L<drand> or <irand64>.  This compares favorably to the 2^48 period of Perl's
-C<drand48>.  It has a 512-bit state which is significantly larger than the
+L</drand> or L</irand64>.
+This compares favorably to the 2^48 period of Perl's C<drand48>.
+It has a 512-bit state which is significantly larger than the
 48-bit C<drand48> state.  When seeding, 320 bits (40 bytes) are used.
 Among other things, this means all 52! permutations of a shuffled card deck
 are possible, which is not true of L<List::Util/shuffle>.
 
 One might think that performance would suffer from using a CSPRNG, but
-benchmarking shows it is less than one might expect.
-does not seem to be the case.  The speed of irand, irand64, and drand
-are within 20% of the fastest existing modules using non-CSPRNG methods,
-and 2 to 20 times faster than most.  While a faster underlying RNG is
-useful, the Perl call interface overhead is a majority of the time for
-these calls.  Carefully tuning that interface is critical.
+benchmarking shows this does not seem to be the case.
+The speed of C<irand>, C<irand64>, and C<drand> is within 20% of the fastest
+existing modules using non-CSPRNG methods, and 2 to 20 times faster
+than most.  While a faster underlying RNG is useful, the Perl call
+interface overhead is a majority of the time for these calls.
+Carefully tuning that interface is critical for any module.
 
 For performance on large amounts of data, see the tables
 in L</random_bytes>.
@@ -5730,7 +5732,7 @@ in L</random_bytes>.
 Each thread uses its own context, meaning seeding in one thread has no
 impact on other threads.  In addition to improved security, this is
 better for performance than a single context with locks.
-If explicit control of multiple independent streams are needed then using
+If explicit control of multiple independent streams is needed then using
 a more specific module is recommended.  I believe L<Crypt::PRNG>
 (part of L<CryptX>) and L<Bytes::Random::Secure> are good alternatives.
 
@@ -5761,8 +5763,8 @@ Returns a random NV (Perl's native floating point) using the CSPRNG.  The
 API is similar to Perl's C<rand> but giving better results.
 
 The number of actual random bits will be equal to the number of mantissa
-bits in the NV type.  For IEEE-754 doubles, this means 52 bits, and can
-go to 64 or 112 bits with long double / quadmath support.
+bits in the NV type.  For IEEE-754 doubles, this means 53 bits, and can
+go to 64 or 113 bits with long double / quadmath support.
 The L</_nvmantbits> function allows seeing how many bits are used.
 
 This gives I<substantially> better quality random numbers than the default Perl
@@ -5987,9 +5989,9 @@ algorithms like Pollard's Rho.  Rivest and Silverman (1999) present a case
 that using strong primes is unnecessary, and most modern cryptographic systems
 agree.  First, the smoothness does not affect more modern factoring methods
 such as ECM.  Second, modern factoring methods like GNFS are far faster than
-either method so make the point moot.  Third, due to key size growth and
+either method so makes the point moot.  Third, due to key size growth and
 advances in factoring and attacks, for practical purposes, using large random
-primes offer security equivalent to strong primes.
+primes offers security equivalent to strong primes.
 
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
@@ -6039,7 +6041,7 @@ value has been properly constructed.
 If you don't need absolutely proven results, then it is somewhat faster
 to use L</random_nbit_prime> either by itself or with some additional tests,
 e.g.  L</miller_rabin_random> and/or L</is_frobenius_underwood_pseudoprime>.
-One could also run L<is_provable_prime> on the result, but this will be slow.
+One could also run L</is_provable_prime> on the result, but this will be slow.
 
 =head2 random_maurer_prime_with_cert
 
@@ -6060,7 +6062,7 @@ The proof construction consists of a single chain of C<BLS3> types.
 Construct an n-bit provable prime, using the Shawe-Taylor algorithm in
 section C.6 of FIPS 186-4.  This uses 512 bits of randomness and SHA-256
 as the hash.  This is a slightly simpler and older (1986) method than
-Maurer's 1999 construction.  It is a bit faster than Maurer's method, and
+Maurer's 1995 construction.  It is a bit faster than Maurer's method, and
 uses less system entropy for large sizes.  The primary reason to use this
 rather than Maurer's method is to use the FIPS 186-4 algorithm.
 
@@ -6137,7 +6139,7 @@ specified number.
 
 Frees any extra memory the module may have allocated.  Like with
 C<prime_precalc>, it is not necessary to call this, but if you're done
-making calls, or want things cleanup up, you can use this.  The object method
+making calls, or want things cleaned up, you can use this.  The object method
 might be a better choice for complicated uses.
 
 =head2 Math::Prime::Util::MemFree->new
@@ -6161,7 +6163,7 @@ in place because you still have an object.
   my $r=prime_get_config();
   say "$_ $r->{$_}" for sort (keys %$r);
 
-Returns a reference to a hash of the current settings.  The hash is copy of
+Returns a reference to a hash of the current settings.  The hash is a copy of
 the configuration, so changing it has no effect.  The settings include:
 
   verbose         verbose level.  1 or more will result in extra output.
@@ -6244,7 +6246,7 @@ In scalar context, returns Ω(n), the total number of prime factors
 (L<OEIS A001222|http://oeis.org/A001222>).
 This corresponds to Pari's C<bigomega(n)> function and Mathematica's
 C<PrimeOmega[n]> function.
-This is same result that we would get if we evaluated the resulting
+This is the same result that we would get if we evaluated the resulting
 array in scalar context.
 
 The current algorithm does a little trial division, a check for perfect
@@ -6277,7 +6279,7 @@ In scalar context, returns ω(n), the number of unique prime factors
 (L<OEIS A001221|http://oeis.org/A001221>).
 This corresponds to Pari's C<omega(n)> function and Mathematica's
 C<PrimeNu[n]> function.
-This is same result that we would get if we evaluated the resulting
+This is the same result that we would get if we evaluated the resulting
 array in scalar context.
 
 The internals are identical to L</factor>, so all comments there apply.
@@ -6297,7 +6299,7 @@ functions.
 In scalar context this returns the sigma0 function
 (see Hardy and Wright section 16.7).
 This is L<OEIS A000005|http://oeis.org/A000005>.
-The results is identical to evaluating the array in scalar context, but
+The result is identical to evaluating the array in scalar context, but
 more efficient.
 This corresponds to Pari's C<numdiv> and Mathematica's
 C<DivisorSigma[0,n]> functions.
@@ -6518,7 +6520,7 @@ digits.
 
 For BigFloat inputs, full accuracy and performance is obtained
 only if L<Math::Prime::Util::GMP> is installed.
-If this module are not available, accuracy should be 35 digits.
+If that module is not available, accuracy should be 35 digits.
 The accuracy() setting of the input is used to determine the output accuracy.
 
 =head2 LambertW
@@ -6529,8 +6531,8 @@ input must not be less than C<-1/e>.  This corresponds to Pari's C<lambertw>
 function and Mathematica's C<ProductLog> / C<LambertW> function.
 
 This function handles all real value inputs with non-complex return values
-from the principle branch.
-Pari/GP's C<lambertw> previous to 2.15 (2022) was a subset of this.
+from the principal branch.
+Pari/GP's C<lambertw> prior to 2.15 (2022) was a subset of this.
 Recent Pari/GP and Mathematica both have more complete functions with
 both branches, and support for complex arguments and results.
 
@@ -6890,7 +6892,7 @@ cryptographic use, as there are known methods (e.g. Arnault 1994) for
 constructing counterexamples.  The number of bases required to avoid
 false results is unreasonably high, hence performance is slow even
 if one ignores counterexamples.  Unfortunately this is the
-multi-precision math library used for Perl 6 and at least one CPAN
+multi-precision math library used for Raku and at least one CPAN
 Crypto module.
 
 =item GMP/MPIR
@@ -7016,7 +7018,7 @@ L<Crypt::Primes> supports C<random_maurer_prime> functionality.  MPU has
 more options for random primes (n-digit, n-bit, ranged, strong, and S-T) in
 addition to Maurer's algorithm.  MPU does not have the critical bug
 L<RT81858|https://rt.cpan.org/Ticket/Display.html?id=81858>.  MPU has
-a more uniform distribution as well as return a larger subset of primes
+a more uniform distribution as well as returning a larger subset of primes
 (L<RT81871|https://rt.cpan.org/Ticket/Display.html?id=81871>).
 MPU does not depend on L<Math::Pari> though can run slow for bigints unless
 the L<Math::BigInt::GMP> or L<Math::BigInt::Pari> modules are installed.
@@ -7166,7 +7168,7 @@ being allowed to pass.
 
 Only available with version 2.3 of Pari.  Similar to MPU's L</prime_count>
 function in API, but uses a naive counting algorithm with its precalculated
-primes, so is not of practical use.  Incidently, Pari 2.6 (not usable from
+primes, so is not of practical use.  Incidentally, Pari 2.6 (not usable from
 Perl) has fixed the pre-calculation requirement so it is more useful, but is
 still thousands of times slower than MPU.
 
@@ -7234,8 +7236,8 @@ is best.
 
 Similar to MPU's L</partitions> and L</forpart>.  These functions were
 introduced in Pari 2.3 and 2.6, hence are not in Math::Pari.  C<numbpart>
-produce identical results to C<partitions>, but Pari is I<much> faster.
-L<forpart> is very similar to Pari's function, but produces a different
+produces identical results to C<partitions>, but Pari is I<much> faster.
+L</forpart> is very similar to Pari's function, but produces a different
 ordering (MPU is the standard anti-lexicographical, Pari uses a size sort).
 Currently Pari is somewhat faster due to Perl function call overhead.  When
 using restrictions, Pari has much better optimizations.
@@ -7306,7 +7308,7 @@ very limited compared to those.
 
 L<primesieve|http://code.google.com/p/primesieve/> and
 L<yafu|http://sourceforge.net/projects/yafu/>
-are the fastest publically available code I am aware of.  Primesieve
+are the fastest publicly available code I am aware of.  Primesieve
 will additionally take advantage of multiple cores with excellent
 efficiency.
 Tomás Oliveira e Silva's private code may be faster for very large
@@ -7427,7 +7429,7 @@ while a semiprime may be 3000x faster).  L<Math::Pari>
 is much slower with native sized inputs, probably due to calling
 overhead.  For bigints, the L<Math::Prime::Util::GMP> module is needed or
 performance will be far worse than Math::Pari.  With the GMP module,
-performance is pretty similar from 20 through 70 digits, which the caveat
+performance is pretty similar from 20 through 70 digits, with the caveat
 that the current MPU factoring uses more memory for 60+ digit numbers.
 
 
@@ -7466,7 +7468,7 @@ with very large numbers, I recommend L<Primo|http://www.ellipsa.eu/>.
 
 =head2 RANDOM PRIME GENERATION
 
-Seconds per prime for random prime generation on a early 2015 Macbook Pro
+Seconds per prime for random prime generation on an early 2015 Macbook Pro
 (2.7 GHz i5) with L<Math::BigInt::GMP> and L<Math::Prime::Util::GMP> installed.
 
   bits    random   +testing   Maurer   Shw-Tylr  CPMaurer

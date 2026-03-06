@@ -12742,16 +12742,16 @@ handled with XS or GMP.  Having the Perl implementations (1) provides examples,
 (2) allows the functions to run even if XS isn't available, and (3) gives
 big number support if L<Math::Prime::Util::GMP> isn't available.
 
-All routines should work with native integers or multi-precision numbers.  To
-enable big numbers, use bigint:
+All routines should work with native integers or multi-precision numbers.
+To enable big numbers, use bigint:
 
     use bigint;
-    say prime_count_approx(1000000000000000000000000)'
+    say prime_count_approx(1000000000000000000000000);
     # says 18435599767347541878147
 
 Or string inputs:
 
-    say prime_count_approx("1000000000000000000000000")'
+    say prime_count_approx("1000000000000000000000000");
     # identical output.
 
 Some functions will be very slow.
@@ -12759,33 +12759,9 @@ L<Math::Prime::Util::GMP> has much faster versions of many of these functions.
 Alternately, L<Math::Pari> has a lot of these types of functions.
 
 
-=head1 FUNCTIONS
-
-=head2 euler_phi
-
-Takes a I<single> integer input and returns the Euler totient.
-
-=head2 euler_phi_range
-
-Takes two values defining a range C<low> to C<high> and returns an array
-with the totient of each value in the range, inclusive.
-
-=head2 moebius
-
-Takes a I<single> integer input and returns the Moebius function.
-
-=head2 moebius_range
-
-Takes two values defining a range C<low> to C<high> and returns an array
-with the Moebius function of each value in the range, inclusive.
-
-
 =head1 LIMITATIONS
 
-The SQUFOF and Fermat factoring algorithms are not implemented yet.
-
-Some of the prime methods use more memory than they should, as the segmented
-sieve is not properly used in C<primes> and C<prime_count>.
+The SQUFOF and P+1 factoring algorithms are not implemented yet.
 
 
 =head1 PERFORMANCE
@@ -12797,7 +12773,6 @@ operations that are relatively close for small and medium-size values:
   is_prime / is_prob_prime
   is_strong_pseudoprime
   ExponentialIntegral / LogarithmicIntegral / RiemannR
-  primearray
 
 Operations that are slower include:
 
@@ -12809,8 +12784,8 @@ Operations that are slower include:
   is_aks_prime
 
 Performance improvement in this code is still possible.  The prime sieve is
-over 2x faster than anything I was able to find online, but it is still has
-room for improvement.
+over 2x faster than other pure Perl sieves, but it still has room for
+improvement.
 
 L<Math::Prime::Util::GMP> offers C<C+XS+GMP> support for most of the important
 functions, and will be vastly faster for most operations.  If you install that
