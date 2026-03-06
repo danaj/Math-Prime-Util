@@ -92,7 +92,6 @@ use Math::Prime::Util qw/
   prime_count
   nth_prime
   is_prime
-  is_provable_prime
   next_prime
   prev_prime
   prime_iterator
@@ -104,7 +103,6 @@ use Math::Prime::Util qw/
   random_maurer_prime
   miller_rabin_random
   is_bpsw_prime
-  verify_prime
   valuation
   vecequal
 /;
@@ -112,8 +110,9 @@ use Math::Prime::Util qw/
 #        LogarithmicIntegral
 #        RiemannR
 
+use Math::BigInt try=>"GMP,GMPz";
+use Math::BigFloat try=>"GMP,GMPz";
 use bigint;                            # <-------- large numbers ahead!  > 2^64
-use Math::BigFloat;
 
 my $usegmp = Math::Prime::Util::prime_get_config->{gmp};
 my $bigintver  = $bigint::VERSION;
@@ -316,22 +315,12 @@ subtest 'primality', sub {
     ok( !is_prob_prime($n), "$n is not probably prime");
   }
 
-  # Primes where n-1 is easy to factor, so we finish quickly.
-  my @proveprimes = qw/
-    65635624165761929287 1162566711635022452267983
-    77123077103005189615466924501 3991617775553178702574451996736229
-    273952953553395851092382714516720001799
-  /;
-  foreach my $n (@proveprimes) {
-    #ok( is_prime($n), "$n is prime" );
-    SKIP: {
-      skip "Large proof on 32-bit machine without EXTENDED_TESTING.", 1
-        if !$use64 && !$extra && $n > 2**66;
-      skip "Large proof without GMP or EXTENDED_TESTING.", 1
-        if !$usegmp && !$extra && $n > 2**66;
-      ok( is_provable_prime($n), "$n is provably prime" );
-    }
-  }
+  # The t/23-primality-proofs.t test does:
+  #   is_provable_prime
+  #   is_provable_prime_with_cert
+  #   prime_certificate
+  #   verify_prime
+  # using bigints.  Don't do it again here.
 };
 
 ###############################################################################

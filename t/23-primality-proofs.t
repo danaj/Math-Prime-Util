@@ -20,15 +20,19 @@ my $broken64 = (18446744073709550592 == ~0);
 # Do some tests only if:
 #   EXTENDED_TESTING is on OR we have the GMP backend
 # Note that with Calc, these things are incredibly slow.
-use Math::BigInt try=>"GMP,Pari";
-my $doexpensive = 0 + ($extra || ( (!$use64 || !$broken64) && Math::BigInt->config()->{lib} eq 'Math::BigInt::GMP' ));
+use Math::BigInt try=>"GMP,GMPz,Pari";
+my $doexpensive = 0 + ($extra || ( (!$use64 || !$broken64) && Math::BigInt->config()->{lib} =~ /^Math::BigInt::GMP/ ));
 
-my @plist = qw/20907001 809120722675364249/;
+my @plist = qw/20907001 809120722675364249 65635624165761929287/;
 if ($extra || $use64) {
-  push @plist, "677826928624294778921";
+  push @plist, "1162566711635022452267983";
 }
-if ($extra || prime_get_config->{'gmp'}) {
-  push @plist, "980098182126316404630169387";
+# The standard Perl code will only create BLS5 certificates, so there really
+# is no point to trying more numbers.
+if ($extra && prime_get_config->{'gmp'}) {
+  push @plist, "3555640317806906120837";     # ECPP
+  push @plist, "677826928624294778921";      # BLS15
+  push @plist, "1056643454116252998516779";  # BLS3
 }
 
 ## This is too slow without Math::Prime::Util::GMP.
