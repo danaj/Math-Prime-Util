@@ -2,6 +2,8 @@
 use strict;
 use warnings;
 
+# TODO: These tolerances are too tight for NV = float.
+
 use Test::More;
 use Math::Prime::Util qw/ExponentialIntegral LogarithmicIntegral
                          RiemannR RiemannZeta LambertW/;

@@ -358,8 +358,12 @@ subtest 'prime counts', sub {
   # Testing prime_count only on a small range for time reasons
   is(prime_count(877777777777777778417252,877777777777777778417352), 1, "prime_count(87..7252, 87..7352)");
 
-  # test bounds
-  check_pcbounds(31415926535897932384, 716115441142294636, '2e-8', '2e-8');
+  # test bounds for a number just outside of native size
+  if ($use64) {
+    check_pcbounds(31415926535897932384, 716115441142294636, '2e-8', '2e-8');
+  } else {
+    check_pcbounds(12345678901, 556442213, '1e-5', '1e-5');
+  }
   if ($extra) {
     check_pcbounds(314159265358979323846, 6803848951392700268, '5e-9', '5e-9');
     check_pcbounds(31415926535897932384626433, 544551456607147153724423, '3e-6', '3e-11');

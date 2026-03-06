@@ -3803,8 +3803,10 @@ sub prime_count_approx {
   #return (0,0,1,2,2,3,3,4,4,4,4,5,5,6,6,6)[$x] if $x < 16;
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
-  # Turn on high precision FP if they gave us a big number.
-  $x = _upgrade_to_float($x) if ref($x) || $x >= 1e16;
+  # Turn on high precision FP if needed (TODO assumes NV >= double prec)
+  $x = _upgrade_to_float($x) if $x > 10000000000000000;
+  my $floatx = ref($x) eq 'Math::BigFloat';
+  $x = "$x" if ref($x) && !$floatx;
 
   #    Method             10^10 %error  10^19 %error
   #    -----------------  ------------  ------------
@@ -3827,21 +3829,20 @@ sub prime_count_approx {
   # my $result = RiemannR($x) + 0.5;
 
   # Make sure we get enough accuracy, and also not too much more than needed
-  $x->accuracy(length($x->copy->as_int->bstr())+2) if ref($x) =~ /^Math::Big/;
+  $x->accuracy(length($x->copy->as_int->bstr())+2) if $floatx;
 
   my $result;
   if ($Math::Prime::Util::_GMPfunc{"riemannr"} || !ref($x)) {
     # Fast if we have our GMP backend, and ok for native.
     $result = Math::Prime::Util::PP::RiemannR($x);
   } else {
-    $x = _upgrade_to_float($x) unless ref($x) eq 'Math::BigFloat';
-    $result = Math::BigFloat->new(0);
-    $result->accuracy($x->accuracy) if ref($x) && $x->accuracy;
-    $result += Math::BigFloat->new(MLi($x));
-    $result -= Math::BigFloat->new(MLi(sqrt($x))/2);
-    my $intx = ref($x) ? Math::BigInt->new($x->bfround(0)) : $x;
+    $result = $floatx ? Math::BigFloat->bzero : 0;
+    $result->accuracy($x->accuracy) if $floatx;
+    $result += MLi($x);
+    $result -= MLi(sqrt($x))/2;
+    my $intx = $floatx ? tobigint($x->bfround(0)) : $x;
     for my $k (3 .. 1000) {
-      my $m = moebius($k);
+      my $m = Mmoebius($k);
       next unless $m != 0;
       # With Math::BigFloat and the Calc backend, FP root is ungodly slow.
       # Use integer root instead.  For more accuracy (not useful here):
@@ -3851,8 +3852,8 @@ sub prime_count_approx {
       # my $term = LogarithmicIntegral($v)/$k;
       my $term = MLi(Mrootint($intx,$k)) / $k;
       last if $term < .25;
-      if ($m == 1) { $result->badd(Math::BigFloat->new($term)) }
-      else         { $result->bsub(Math::BigFloat->new($term)) }
+      if ($m == 1) { $result += $term; }
+      else         { $result -= $term; }
     }
   }
 
@@ -3868,12 +3869,14 @@ sub prime_count_lower {
   return reftyped($_[0], Math::Prime::Util::GMP::prime_count_lower($x))
     if $Math::Prime::Util::_GMPfunc{"prime_count_lower"};
 
-  $x = _upgrade_to_float($x) if ref($x);
+  $x = _upgrade_to_float($x) if $x > 10000000000000000;
+  my $floatx = ref($x) eq 'Math::BigFloat';
+  $x = "$x" if ref($x) && !$floatx;
 
   my($result,$a);
   my $fl1 = log($x);
   my $fl2 = $fl1*$fl1;
-  my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
+  my $one = $floatx ? $x->copy->bone : 1.0;
 
   # Chebyshev            1*x/logx       x >= 17
   # Rosser & Schoenfeld  x/(logx-1/2)   x >= 67
@@ -3936,7 +3939,9 @@ sub prime_count_upper {
   return reftyped($_[0], Math::Prime::Util::GMP::prime_count_upper($x))
     if $Math::Prime::Util::_GMPfunc{"prime_count_upper"};
 
-  $x = _upgrade_to_float($x) if ref($x);
+  $x = _upgrade_to_float($x) if $x > 10000000000000000;
+  my $floatx = ref($x) eq 'Math::BigFloat';
+  $x = "$x" if ref($x) && !$floatx;
 
   # Chebyshev:            1.25506*x/logx       x >= 17
   # Rosser & Schoenfeld:  x/(logx-3/2)         x >= 67
@@ -3964,7 +3969,7 @@ sub prime_count_upper {
   my($result,$a);
   my $fl1 = log($x);
   my $fl2 = $fl1 * $fl1;
-  my $one = (ref($x) eq 'Math::BigFloat') ? $x->copy->bone : $x-$x+1.0;
+  my $one = $floatx ? $x->copy->bone : 1.0;
 
   if ($x < 15900) {              # Tweaked Rosser-type
     $a = ($x < 1621) ? 1.048 : ($x < 5000) ? 1.071 : 1.098;
@@ -10922,13 +10927,14 @@ sub LogarithmicIntegral {
       $q = mulint($factorial, $power2);
       $power2 = mulint(2, $power2);
       while ($k <= ($n-1)>>1) {
-        $inner_sum += Math::BigFloat->new(1) / (2*$k+1);
+        $inner_sum += Math::BigFloat->bone / (2*$k+1);
         $k++;
       }
-      $p *= $neglogx;
-      my $term = ($p / $q) * $inner_sum;
-      $sum += $term;
-      last if abs($term) < $tol;
+      $p->bmul($neglogx);
+      my $term = $p->copy->bdiv("$q", $xdigits)->bmul($inner_sum);
+      $term->bround($xdigits) if $xdigits;
+      $sum->badd($term);
+      last if $term->copy->babs < $tol;
     }
     $sum *= sqrt($x);
     return 0.0+_Euler(18) + log($logx) + $sum unless ref($x)=~/^Math::Big/;
