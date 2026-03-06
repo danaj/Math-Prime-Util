@@ -2632,6 +2632,7 @@ static int strnum_parse(const char **sp, STRLEN *slen)
     neg = (s[0] == '-');
     if (s[0] == '-' || s[0] == '+') { s++; len--; }
     while (len > 0 && *s == '0') { s++; len--; }
+    if (len == 0) { s--; len = 1; neg = 0; }  /* value is 0 */
     for (i = 0; i < len; i++)
       if (!isDIGIT(s[i]))
         break;
