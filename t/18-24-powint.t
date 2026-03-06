@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/powint/;
+use Math::Prime::Util qw/powint negint/;
 
 my @vals = (
  [5, 6, 15625],
@@ -22,7 +22,7 @@ my @vals = (
  [9, 17, "16677181699666569"],
 );
 
-plan tests => 7 + 1 + 4;
+plan tests => 7 + 1 + 4 + 6 + 2;
 
 ###### powint
 for my $a (-3 .. 3) {
@@ -39,3 +39,20 @@ is("".powint(powint(2,32),3),"79228162514264337593543950336","(2^32)^3");
 is("".powint(3,powint(2,7)),"11790184577738583171520872861412518665678211592275841109096961","3^(2^7)");
 ok(ref(powint(46,22)), "powint returns a bigint for 46,22");
 ok(ref(powint(-544,7)), "powint returns a bigint for -544,7");
+
+# --- Edge cases: 0^0, 0^n, 1^n, (-1)^n ---
+is(powint(0,0),  1, "0^0 = 1");
+is(powint(0,1),  0, "0^1 = 0");
+is(powint(0,5),  0, "0^5 = 0");
+is(powint(1,0),  1, "1^0 = 1");
+is(powint(1,100),1, "1^100 = 1");
+is_deeply([map { powint(-1,$_) } 0..7],
+          [1,-1,1,-1,1,-1,1,-1],
+          "(-1)^n alternates 1,-1");
+
+# --- Negative base parity ---
+{
+  my($a,$b) = (-7, 6);
+  is("".powint($a,$b), "".powint(-$a,$b), "(-7)^6 == 7^6  (even exp)");
+  is("".negint(powint(-$a,$b+1)), "".powint($a,$b+1), "(-7)^7 == -(7^7)  (odd exp)");
+}

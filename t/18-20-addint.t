@@ -41,6 +41,7 @@ plan tests =>
             + 2  # trivial addint, subint
             + 1  # addint/subint on test array
             + 2  # add1int and sub1int
+            + 1  # add/sub 0
             ;
 
 ###### addint
@@ -70,6 +71,9 @@ subtest 'selected test values', sub {
   is_deeply( [map { "".subint($_->[2],$_->[0]) } @vals],
              [map { $_->[1] } @vals],
              "subint c-a=b" );
+  is_deeply( [map { "".addint($_->[0],$_->[1])} @vals],
+             [map { "".addint($_->[1],$_->[0])} @vals],
+             "addint is commutative" );
 };
 
 ###### add1int / sub1int
@@ -82,3 +86,15 @@ subtest 'selected test values', sub {
   is_deeply([map {"".add1int($_)} @N], [map {"".addint($_,1)} @N], "add1int");
   is_deeply([map {"".sub1int($_)} @N], [map {"".subint($_,1)} @N], "sub1int");
 }
+
+subtest 'add and subtract 0 on large values', sub {
+    my @big = qw/4294967295 4294967296 9223372036854775807 9223372036854775808
+                 18446744073709551615 18446744073709551616
+                 1178630961471601951655862/;
+    is_deeply([map{"".addint($_,0)} @big], \@big,    "addint(n,0) == n for large n");
+    is_deeply([map{"".addint(0,$_)} @big], \@big,    "addint(0,n) == n for large n");
+    is_deeply([map{"".subint($_,0)} @big], \@big,    "subint(n,0) == n for large n");
+    is_deeply([map{"".subint($_,$_)}@big],[(0)x@big],"subint(n,n) == 0 for large n");
+    is_deeply([map{"".subint(0,$_)} @big],
+              [map{"-$_"} @big],                     "subint(0,n) == -n for large n");
+};

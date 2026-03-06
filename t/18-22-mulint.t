@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/mulint/;
+use Math::Prime::Util qw/mulint negint/;
 
 
 my @vals = (
@@ -31,7 +31,7 @@ my @vals = (
   [qw/18446744073709551615 2 36893488147419103230/],
 );
 
-plan tests => 2;
+plan tests => 1 + 2 + 2 + 1;
 
 ###### mulint
 { my(@got,@exp);
@@ -43,6 +43,25 @@ plan tests => 2;
   }
   is_deeply( \@got, \@exp, "mulint( -3 .. 3, -3 .. 3)" );
 }
+
 is_deeply( [map{"$_"}map { mulint($_->[0],$_->[1]) } @vals],
            [map { $_->[2] } @vals],
            "mulint a*b=c" );
+is_deeply( [map{"$_"}map { mulint($_->[1],$_->[0]) } @vals],
+           [map { $_->[2] } @vals],
+           "mulint b*a=c" );
+
+{
+  my @big = qw/9223372036854775808 18446744073709551616
+               13282407956253574712 199117675120653046511338473800925208664/;
+  is_deeply([map {mulint($_,0)} @big], [(0) x @big], "mulint(big,0) == 0");
+  is_deeply([map {mulint(0,$_)} @big], [(0) x @big], "mulint(0,big) == 0");
+}
+
+{
+  my @signed = qw/1 7 4294967295 9223372036854775808 18446744073709551615
+                  13282407956253574712/;
+  is_deeply( [map{"$_"}map { mulint($_,-1) } @signed],
+             [map{"$_"}map { negint($_)    } @signed],
+             "mulint(n,-1) == negint(n)" );
+}

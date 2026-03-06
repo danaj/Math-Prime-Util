@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/divint modint cdivint divrem fdivrem cdivrem tdivrem/;
+use Math::Prime::Util qw/divint modint cdivint divrem fdivrem cdivrem tdivrem
+                         addint mulint divint modint/;
 use Math::BigInt;
 
 
@@ -26,6 +27,11 @@ plan tests => 0
             + 3                    # cdivrem extra
             + scalar(@quotients)   # signed bigint divint+
             + scalar(@quotients)   # signed bigint divrem+
+            + 1                    # check b*q+r=a
+            + 4                    # verify a=b*q+r
+            + 1                    # Euclidean remainder in range
+            + 1                    # cdivrem remainder sign
+            + 1                    # fdivrem = divint/modint
             + 0;
 
 ###### divide by 0 should error
@@ -162,3 +168,73 @@ for my $s (@quotients) {
              "$signs   divrem, tdivrem, fdivrem, cdivrem" );
 }
 
+# --- divint/modint invariant:  b*q + r == a ---
+{
+  my @pairs = (
+    [13, 4], [-13, 4], [13, -4], [-13, -4],
+    ["9949242744253247", 64], ["-9949242744253247", 64],
+    ["18446744073709551615", 7], ["-18446744073709551617", 13],
+    ["39458349850349850394853049583049", 85889],
+    ["-39458349850349850394853049583049", 85889],
+  );
+  my $ok = 1;
+  for my $p (@pairs) {
+    my($a,$b) = @$p;
+    $ok = 0 unless "".addint(mulint($b,divint($a,$b)),modint($a,$b)) eq "$a";
+  }
+  ok($ok, "b*divint(a,b) + modint(a,b) == a for all test pairs");
+}
+
+{
+  my @pairs = ([8,3],[-8,3],[8,-3],[-8,-3],[1,2],[-1,2],[7,1],[-7,1]);
+  my @names = qw/divrem tdivrem fdivrem cdivrem/;
+  my @fns   = (\&divrem, \&tdivrem, \&fdivrem, \&cdivrem);
+  for my $i (0..$#fns) {
+    my $ok = 1;
+    for my $p (@pairs) {
+      my($a,$b) = @$p;
+      my($q,$r) = $fns[$i]->($a,$b);
+      $ok = 0 unless $b*$q + $r == $a;
+    }
+    ok($ok, "$names[$i]: a == b*q + r for all sign combinations");
+  }
+}
+
+# --- Euclidean remainder is always >= 0 ---
+{
+  my @pairs = ([8,3],[-8,3],[8,-3],[-8,-3],
+               ["39458349850349850394853049583049",85889],
+               ["-39458349850349850394853049583049",85889]);
+  my $ok = 1;
+  for my $p (@pairs) {
+    my($q,$r) = divrem($p->[0], $p->[1]);
+    $ok = 0 if $r < 0;
+  }
+  ok($ok, "divrem: remainder is always >= 0");
+}
+
+# --- cdivrem: remainder has opposite sign from divisor ---
+{
+  my @cases = ([8,3],[8,-3],[-8,3],[-8,-3]);
+  my $ok = 1;
+  for my $c (@cases) {
+    my($a,$b) = @$c;
+    my($q,$r) = cdivrem($a,$b);
+    # r == 0 or sign(r) != sign(b)
+    $ok = 0 if $r != 0 && (($r > 0) == ($b > 0));
+  }
+  ok($ok, "cdivrem: remainder has opposite sign from divisor (or is zero)");
+}
+
+# --- fdivrem results match divint + modint ---
+{
+  my @pairs = ([13,4],[-13,4],[13,-4],[-13,-4],
+               ["18446744073709551617",7],["-18446744073709551617",13]);
+  my $ok = 1;
+  for my $p (@pairs) {
+    my($a,$b) = @$p;
+    my($q,$r) = fdivrem($a,$b);
+    $ok = 0 unless "$q" eq "".divint($a,$b) && "$r" eq "".modint($a,$b);
+  }
+  ok($ok, "fdivrem results match divint+modint");
+}
