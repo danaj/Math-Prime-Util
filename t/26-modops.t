@@ -40,6 +40,15 @@ plan tests => 0
             + 1                      # mulsubmod
             + 4                      # muladdmod and mulsubmod large inputs
             + 1                      # large negative modulus
+            + 1                      # negmod round-trip
+            + 1                      # invmod round-trip
+            + 1                      # invmod undef cases
+            + 1                      # divmod round-trip
+            + 1                      # divmod undef cases
+            + 1                      # addmod/mulmod commutativity
+            + 1                      # Fermat's little theorem
+            + 1                      # modulus 2 parity
+            + 1                      # negative modulus
             + 0;
 
 ###### negmod
@@ -86,7 +95,7 @@ $num = 29 if Math::BigInt->config()->{lib} !~ /(GMP|Pari)/;
 my @i1 = map { nrand() } 0 .. $num;
 my @i2 = map { nrand() } 0 .. $num;
 my @i2t= map { $i2[$_] >> 1 } 0 .. $num;
-my @i3 = map { nrand() } 0 .. $num;
+my @i3 = map { nrand() || 1 } 0 .. $num;
 my(@exp,@res);
 
 
@@ -233,6 +242,146 @@ subtest 'big raw negative mod ', sub {
   is("".submod("17446744073709551614",0,"-19446744073709551616"),"17446744073709551614");
   is("".mulmod("18446744073709551615",2,"-19446744073709551616"),"17446744073709551614");
 };
+
+###### negmod round-trip: addmod(a, negmod(a,m), m) == 0
+{
+  my @cases = ([0,1],[1,1],[0,7],[1,7],[6,7],[100,123],[-100,123],[10000,123]);
+  push @cases, [1000000006, 1000000007],
+               ["9223372036854775806", "9223372036854775807"],
+               ["18446744073709551614", "18446744073709551615"]
+    if $use64;
+  my $ok = 1;
+  for my $c (@cases) {
+    my($a,$m) = @$c;
+    my $neg = negmod($a,$m);
+    $ok = 0 if addmod($a, $neg, $m) != 0;
+  }
+  ok($ok, "addmod(a, negmod(a,m), m) == 0");
+}
+
+###### invmod round-trip: mulmod(a, invmod(a,m), m) == 1
+{
+  my @cases = ([1,2],[1,7],[3,7],[6,7],[42,2017],[-42,2017],[45,59]);
+  push @cases, [13, "9223372036854775808"],
+               [14, "18446744073709551615"]
+    if $use64;
+  my $ok = 1;
+  for my $c (@cases) {
+    my($a,$m) = @$c;
+    my $inv = invmod($a,$m);
+    next unless defined $inv;
+    $ok = 0 if mulmod($a, $inv, $m) != 1;
+  }
+  ok($ok, "mulmod(a, invmod(a,m), m) == 1");
+}
+
+###### invmod returns undef when gcd(a,m) > 1
+{
+  my @cases = ([0,0],[1,0],[0,2],[2,4],[3,6],[6,12],[14,28474]);
+  my $ok = 1;
+  for my $c (@cases) {
+    my($a,$m) = @$c;
+    $ok = 0 if defined invmod($a,$m);
+  }
+  ok($ok, "invmod returns undef when no inverse exists");
+}
+
+###### divmod round-trip: mulmod(divmod(a,b,m), b, m) == a mod m
+{
+  my @cases;
+  for my $m (7, 13, 97, 1000000007) {
+    for my $a (0, 1, 3) {
+      for my $b (1, 2, 3) {
+        push @cases, [$a, $b, $m];
+      }
+    }
+  }
+  push @cases, [1, 3, "9223372036854775783"] if $use64;  # large prime mod
+  my $ok = 1;
+  for my $c (@cases) {
+    my($a,$b,$m) = @$c;
+    my $d = divmod($a, $b, $m);
+    next unless defined $d;
+    my $back = mulmod($d, $b, $m);
+    $ok = 0 if "$back" ne "".addmod($a, 0, $m);
+  }
+  ok($ok, "mulmod(divmod(a,b,m), b, m) == a mod m");
+}
+
+###### divmod returns undef when b has no inverse mod m
+{
+  my @cases = ([1,2,4],[1,3,6],[5,6,12]);
+  my $ok = 1;
+  for my $c (@cases) {
+    my($a,$b,$m) = @$c;
+    $ok = 0 if defined divmod($a,$b,$m);
+  }
+  ok($ok, "divmod returns undef when gcd(b,m) > 1");
+}
+
+###### addmod and mulmod commutativity
+{
+  my @vals = (0, 1, 2, 1000000006);
+  push @vals, ("9223372036854775806", "18446744073709551614") if $use64;
+  my @mods = (7, 1000000007);
+  push @mods, "18446744073709551615" if $use64;
+  my $ok = 1;
+  for my $m (@mods) { for my $a (@vals) { for my $b (@vals) {
+    $ok = 0 if addmod($a,$b,$m) != addmod($b,$a,$m);
+    $ok = 0 if mulmod($a,$b,$m) != mulmod($b,$a,$m);
+  }}}
+  ok($ok, "addmod and mulmod are commutative");
+}
+
+###### powmod: Fermat's little theorem  a^(p-1) == 1 mod p for prime p, a != 0 mod p
+{
+  my @primes = (2, 3, 5, 7, 13, 97, 1000000007);
+  push @primes, "9223372036854775783" if $use64;
+  my @bases = (1, 2, 3, 5, 42);
+  my $ok = 1;
+  for my $p (@primes) {
+    for my $a (@bases) {
+      next if addmod($a, 0, $p) == 0;  # skip a == 0 mod p
+      my $pm1 = Math::BigInt->new("$p")->bsub(1);
+      $ok = 0 if powmod($a, "$pm1", $p) != 1;
+    }
+  }
+  ok($ok, "powmod: Fermat's little theorem a^(p-1) == 1 mod p");
+}
+
+###### modular ops with modulus 2 (parity)
+{
+  my $ok = 1;
+  for my $a (0 .. 15) {
+    $ok = 0 if addmod($a, 0, 2) != ($a % 2);
+    $ok = 0 if mulmod($a, 1, 2) != ($a % 2);
+    $ok = 0 if addmod($a, $a, 2) != 0;              # a+a is always even
+    $ok = 0 if mulmod($a, 2, 2) != 0;                # 2a is always even
+    $ok = 0 if powmod($a, 1, 2) != ($a % 2);
+  }
+  # odd * odd = odd, odd * even = even
+  $ok = 0 if mulmod(3, 5, 2) != 1;
+  $ok = 0 if mulmod(3, 4, 2) != 0;
+  ok($ok, "modular operations with modulus 2 (parity)");
+}
+
+###### negative modulus: all ops should use |m|
+{
+  my @mods = (-7, -13, -1000000007);
+  my $ok = 1;
+  for my $negm (@mods) {
+    my $m = -$negm;
+    for my $a (0, 1, 3, 5) {
+      for my $b (1, 2, 3) {
+        $ok = 0 if "".addmod($a,$b,$negm) ne "".addmod($a,$b,$m);
+        $ok = 0 if "".submod($a,$b,$negm) ne "".submod($a,$b,$m);
+        $ok = 0 if "".mulmod($a,$b,$negm) ne "".mulmod($a,$b,$m);
+        $ok = 0 if "".powmod($a,$b,$negm) ne "".powmod($a,$b,$m);
+      }
+    }
+  }
+  ok($ok, "negative modulus: results match positive |m|");
+}
 
 
 sub nrand {
