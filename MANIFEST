@@ -130,6 +130,7 @@ bench/bench-mp-psrp.pl
 bench/bench-mp-prime_count.pl
 bench/bench-set-tiny.pl
 bench/factor-gnufactor.pl
+bench/setops.pl
 bench/setreject.pl
 bench/sort.pl
 bench/vecequal.pl

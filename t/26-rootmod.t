@@ -4,7 +4,6 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/ sqrtmod allsqrtmod rootmod allrootmod /;
-use Math::BigInt try=>"GMP,GMPz,Pari";
 
 my @sqrtmods = (
  [ 0, 0, undef ],

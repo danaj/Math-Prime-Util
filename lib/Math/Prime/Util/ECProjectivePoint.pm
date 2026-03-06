@@ -9,7 +9,7 @@ BEGIN {
 }
 
 BEGIN {
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,Pari"); }
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,Pari"); }
     unless defined $Math::BigInt::VERSION;
 }
 

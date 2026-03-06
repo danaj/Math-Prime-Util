@@ -10,7 +10,7 @@ BEGIN {
 
 our $BIGINTVERSION = 0.0;
 BEGIN {
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); }
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); }
     unless defined $Math::BigInt::VERSION;
   $BIGINTVERSION = $Math::BigInt::VERSION;
   $BIGINTVERSION =~ s/^(\d+)\.(\d+).*/$1.$2/;

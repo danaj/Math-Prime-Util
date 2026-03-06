@@ -345,7 +345,7 @@ sub _load_bigint {
   #prime_set_config( trybigint => 'Math::GMPz,Math::GMP' );
   #return $_BIGINT if defined $_BIGINT;
 
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
   $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
 }
 
@@ -364,7 +364,7 @@ sub _to_bigint {
     $n = Math::BigInt->bnan;
   } elsif ($_BIGINT eq 'Math::Pari' && $_[0] =~ /^0[bx]/) {
     # Pari added support for this in 2.8, so not in Math::Pari
-    do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
+    do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
     $n = Math::BigInt->new("$_[0]");
     $n = $_BIGINT->new("$n");
   } else {
@@ -1045,7 +1045,7 @@ package installation tool.
 =item *
 
 Install and use L<Math::BigInt::GMP> (or C<GMPz> or C<LTM>), then use
-C<use bigint try =E<gt> 'GMPz,GMP,LTM,Pari'> in your script, or on the
+C<use bigint try =E<gt> 'GMP,GMPz,LTM,Pari'> in your script, or on the
 command line e.g. C<-Mbigint=lib,GMP>.  Large modular exponentiation is
 much faster using the better backends, as are the math and approximation
 functions when called with very large inputs.

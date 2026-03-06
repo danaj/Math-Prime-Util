@@ -2880,7 +2880,7 @@ UV from_zeckendorf(const char* str)
   UV n, fa = 0, fb = 1, fc = 1;  /* fc = fib(2) */
 
   if (str == 0) return 0;
-  for (len = 0; len+1 <= MAX_FIB_LEN && str[len] != '\0'; len++)
+  for (len = 0; len < MAX_FIB_LEN && str[len] != '\0'; len++)
     if (str[len] != '0' && str[len] != '1')
       return 0;
   if (len == 0 || len > MAX_FIB_LEN) return 0;

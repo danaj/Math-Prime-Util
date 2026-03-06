@@ -13,7 +13,6 @@ BEGIN {
   }
 }
 
-use Math::BigInt try=>"GMPz,GMP,Pari";
 my $have_gmp = prime_get_config->{'gmp'};
 
 plan tests => 100;

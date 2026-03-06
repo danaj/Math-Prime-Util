@@ -24,7 +24,7 @@ BEGIN {
 
 BEGIN {
   # TODO: remove this when everything uses tobigint
-  do { require Math::BigInt;  Math::BigInt->import(try=>"GMPz,GMP,LTM,Pari"); }
+  do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); }
     unless defined $Math::BigInt::VERSION;
 
   use constant OLD_PERL_VERSION=> $] < 5.008;
