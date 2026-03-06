@@ -4396,32 +4396,46 @@ void divrem(IN SV* sva, IN SV* svb)
     OBJECTIFY_STACK(2);
     XSRETURN(2);
 
-void lshiftint(IN SV* svn, IN unsigned long k = 1)
+void lshiftint(IN SV* svn, IN SV* svk = 0)
   ALIAS:
     rshiftint = 1
     rashiftint = 2
   PREINIT:
-    int status;
-    UV n, nk;
+    int nstatus, kstatus, nix;
+    UV n, k, nk;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (k == 0) {
-      ST(0) = svn;
-      XSRETURN(1);
+    nix = ix;
+    if (items == 1) {
+      kstatus = 1;
+      k = 1;
+    } else {
+      kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY);
+      if (kstatus == -1) {
+        k = neg_iv(k);
+        nix = !ix;  /* 0 => 1, 1 => 0, 2 => 0 */
+      }
     }
-    if (status != 0 && ix == 1 && k >= BITS_PER_WORD)  /* Big right shift */
-      XSRETURN_UV(0);
-    if (status == 1 && k < BITS_PER_WORD) {
-      if (ix > 0)                       XSRETURN_UV(n >> k);  /* Right shift */
-      if ( ((n << k) >> k) == n)        XSRETURN_UV(n << k);  /* Left shift */
-      /* Fall through -- left shift needs more bits */
-    } else if (status == -1 && k < BITS_PER_WORD) {
-      n = neg_iv(n);
-      nk = n >> k;
-      if (ix == 1)                      XSRETURN_IV(-nk);
-      if (ix == 2)                      XSRETURN_IV(((nk<<k)==n) ? -nk : -nk-1);
-      if (((n << (k+1)) >> (k+1)) == n) XSRETURN_IV(-(n << k));
-      /* Fall through -- left shift needs more bits */
+    if (kstatus != 0) {
+      nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+      if (k == 0)
+        XSRETURN(1);
+      if (nstatus != 0 && nix > 0 && k >= BITS_PER_WORD) /* Big right shift */
+        XSRETURN_IV(nstatus == -1 && nix==2 ? -1 : 0);
+      if (nstatus == 1 && k < BITS_PER_WORD) {
+        if (nix > 0)                    XSRETURN_UV(n >> k);  /* Right shift */
+        if ( ((n << k) >> k) == n)      XSRETURN_UV(n << k);  /* Left shift */
+        /* Fall through -- left shift needs more bits */
+      } else if (nstatus == -1 && nix > 0 && k < BITS_PER_WORD) {
+        n = neg_iv(n);
+        nk = n >> k;
+        XSRETURN_IV( nix == 1 ? -nk : (nk<<k)==n ? -nk : -nk-1 );
+      } else if (nstatus == -1 && nix == 0 && k+1 < BITS_PER_WORD) {
+        n = neg_iv(n);
+        nk = n << k;
+        if ((nk << 1) >> (k+1) == n)
+           XSRETURN_IV(-nk);
+        /* Fall through -- left shift needs more bits */
+      }
     }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));

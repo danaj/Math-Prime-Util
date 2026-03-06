@@ -5416,7 +5416,7 @@ sub lshiftint {
   validate_integer($n);
   if (!defined $k) { $k = 1; } else { validate_integer($k); }
 
-  return rshiftint($n, Mnegint($k)) if $k < 0;  # Technically not supported
+  return rshiftint($n, Mnegint($k)) if $k < 0;
   return Mnegint(lshiftint(Mnegint($n),$k)) if $n < 0;
 
   if (!ref($n)) {
@@ -5434,7 +5434,7 @@ sub rshiftint {
   validate_integer($n);
   if (!defined $k) { $k = 1; } else { validate_integer($k); }
 
-  return lshiftint($n, Mnegint($k)) if $k < 0;  # Technically not supported
+  return lshiftint($n, Mnegint($k)) if $k < 0;
   return Mnegint(rshiftint(Mnegint($n),$k)) if $n < 0;
 
   if (!ref($n)) {
@@ -5453,7 +5453,8 @@ sub rashiftint {
   my($n, $k) = @_;
   validate_integer($n);
   if (!defined $k) { $k = 1; } else { validate_integer($k); }
-  my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
+  return lshiftint($n, Mnegint($k)) if $k < 0;
+  my $k2 = $k < MPU_MAXBITS ? (1<<$k) : Mpowint(2,$k);
   Mdivint($n, $k2);
 }
 

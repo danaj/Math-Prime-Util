@@ -2938,7 +2938,7 @@ This corresponds to Pari/GP's C<logint> function.
 
 =head2 lshiftint
 
-Given an integer C<n> and an optional non-negative integer number of bits C<k>,
+Given an integer C<n> and an optional integer number of bits C<k>,
 perform a left shift of C<n> by C<k> bits.
 If the second argument is not provided, it is assumed to be 1.
 This is equivalent to multiplying by C<2^k>.
@@ -2948,12 +2948,14 @@ how Perl behaves with C<use integer> or C<use bigint>, but raw Perl
 coerces the argument into an unsigned before left shifting, which is
 unlikely to ever be what is wanted.
 
+If C<k> is negative, a right shift is performed by C<|k|> bits.
+
 This corresponds to Pari/GP's C<shift> function with a positive number
 of bits, and Mathematica's C<BitShiftLeft> function.
 
 =head2 rshiftint
 
-Given an integer C<n> and an optional non-negative integer number of bits C<k>,
+Given an integer C<n> and an optional integer number of bits C<k>,
 perform a right shift of C<n> by C<k> bits.
 If the second argument is not provided, it is assumed to be 1.
 This is equivalent to truncated division by C<2^k>.
@@ -2964,6 +2966,8 @@ as commonly used with fixed-width registers in a particular bit format,
 but instead treated as sign and magnitude, where the magnitude
 is right shifted.
 
+If C<k> is negative, a left shift is performed by C<|k|> bits.
+
 For an interesting discussion of arithmetic right shift, see
 Guy Steele's 1977 article "Arithmetic Shift Considered Harmful".
 
@@ -2973,10 +2977,12 @@ to dividing by the power of 2 using L</tdivrem> or GMP's C<mpz_tdiv_q_2exp>.
 
 =head2 rashiftint
 
-Given an integer C<n> and an optional non-negative integer number of bits C<k>,
+Given an integer C<n> and an optional integer number of bits C<k>,
 perform a signed arithmetic right shift of C<n> by C<k> bits.
 If the second argument is not provided, it is assumed to be 1.
 This is equivalent to floor division by C<2^k>.
+
+If C<k> is negative, a left shift is performed by C<|k|> bits.
 
 For non-negative C<n>, this is always equal to L</rshiftint>.
 With negative arguments it is similar to L<Math::BigInt#brsft>, Python,
