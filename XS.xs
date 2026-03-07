@@ -3805,6 +3805,7 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
                  break;
         case 4:  ret = znlog(a, b, n);
                  if (ret == 0 && (b == 0 || a != 1))  retundef = 1;
+                 break;
         default: break;
       }
       if (retundef) XSRETURN_UNDEF;
@@ -3893,13 +3894,13 @@ void invmod(IN SV* sva, IN SV* svn)
       if (n == 0) XSRETURN_UNDEF;
       if (n == 1) XSRETURN_UV((ix==1) ? 1 : 0); /* znorder different */
       _mod_with(&a, astatus, n);
-      retok = 1;
+      retok = r = 0;
       switch (ix) {
         case 0:  retok = r = modinverse(a, n); break;
         case 1:  retok = r = znorder(a, n);    break;
         case 2:  retok = sqrtmod(&r, a, n);    break;
         case 3:
-        default: r = negmod(a, n); break;
+        default: retok = 1;  r = negmod(a, n); break;
       }
       if (retok == 0) XSRETURN_UNDEF;
       XSRETURN_UV(r);

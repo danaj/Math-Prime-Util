@@ -104,7 +104,6 @@ static UV _sqrtmod_prime(UV a, UV p) {
     }
     return x;
   }
-  return 0;
 }
 #else
 static UV _sqrtmod_prime(UV a, UV p) {
@@ -228,7 +227,6 @@ static UV _sqrtmod_composite(UV a, UV n) {
   uint32_t i, root;
 
   if (n == 0) return UV_MAX;
-  /* TODO: if (is_perfect_square(a))  return (isqrt(a) % n); */
   if (a >= n) a %= n;
   if (n <= 2 || a <= 1)                return a;
   if (is_perfect_square_ret(a,&root))  return root;
@@ -677,7 +675,7 @@ static UV _rootmod_kprime(UV a, UV k, factored_t nf) {
     if (s == UV_MAX) return UV_MAX;
     inv = modinverse(N, fe);
     t = mulmod(inv, submod(s % fe,r % fe,fe), fe);
-    r = addmod(r, mulmod(N,t,n), n);
+    r = addmod(r, mulmod(N,t,nf.n), nf.n);
     N *= fe;
   }
   return r;
@@ -703,7 +701,7 @@ static UV _rootmod_composite2(UV a, UV k, UV n) {
   kfactors = factor(k, kfac);
   r = a;
   for (i = 0; i < kfactors; i++) {   /* for each prime k */
-    r = _rootmod_kprime(r, kfac[i], n, nfactors, nfac, nexp);
+    r = _rootmod_kprime(r, kfac[i], nf);
     if (r == UV_MAX) { /* Bad path.  We have to use a fallback method. */
 #if USE_ROOTMOD_SPLITK
       r = _rootmod_composite1(a,k,n);
@@ -899,7 +897,7 @@ static UV* _allsqrtmodfact(UV *nroots, UV a, factored_t nf) {
 
   /* nr2,roots2 are roots of all the rest, found recursively */
   roots2 = _allsqrtmodfact(&nr2, a, rf);
-  if (roots2 == 0) return 0;
+  if (roots2 == 0) { Safefree(roots1); return 0; }
 
   roots = _rootmod_cprod(&nr,  nr1, roots1, pk,  nr2, roots2, rf.n);
 
@@ -1111,6 +1109,7 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
 
   if (k == 0) {
     if (a != 1) return 0;
+    if (n > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
     New(0, roots, n, UV);
     for (i = 0; i < n; i++)
       roots[i] = i;
