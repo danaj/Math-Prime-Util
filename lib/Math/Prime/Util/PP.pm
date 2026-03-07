@@ -1496,7 +1496,7 @@ sub jordan_totient {
 }
 
 sub euler_phi {
-  return euler_phi_range(@_) if scalar @_ > 1;
+  return _euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
   return 0 if defined $n && $n < 0;
 
@@ -1618,7 +1618,7 @@ sub inverse_totient {
   }
 }
 
-sub euler_phi_range {
+sub _euler_phi_range {
   my($lo, $hi) = @_;
   validate_integer($lo);
   validate_integer($hi);
@@ -1706,7 +1706,7 @@ sub prime_omega {
 }
 
 sub moebius {
-  return moebius_range(@_) if scalar @_ > 1;
+  return _moebius_range(@_) if scalar @_ > 1;
   my($n) = @_;
   validate_integer_abs($n);
   return ($n == 1) ? 1 : 0  if $n <= 1;
@@ -2987,7 +2987,7 @@ sub is_totient {
 }
 
 
-sub moebius_range {
+sub _moebius_range {
   my($lo, $hi) = @_;
   validate_integer($lo);
   validate_integer($hi);
@@ -2995,9 +2995,9 @@ sub moebius_range {
   return moebius($lo) if $lo == $hi;
   if ($lo < 0) {
     if ($hi < 0) {
-      return reverse(moebius_range(-$hi,-$lo));
+      return reverse(_moebius_range(-$hi,-$lo));
     } else {
-      return (reverse(moebius_range(1,-$lo)), moebius_range(0,$hi));
+      return (reverse(_moebius_range(1,-$lo)), _moebius_range(0,$hi));
     }
   }
   my @mu;

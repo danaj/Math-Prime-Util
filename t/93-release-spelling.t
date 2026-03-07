@@ -24,7 +24,7 @@ add_stopwords(qw/-th
                  semiprime semiprimes
                  precalculated premultiplier
                  benchmarking hardcoded online
-                 unoptimized unusably
+                 unoptimized unusably orderings
                  coprime summatory
                  RiemannR LambertW
                  csrand srand irand irand64 drand urandomb urandomm

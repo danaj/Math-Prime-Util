@@ -3037,8 +3037,8 @@ at C<2^49> even with NV being a IEEE-754 double.
 
 =item *
 
-B<use integer.>  Gives exact integer math as if we were using C<IV>
-types in C.  We are still left with 32-bit vs. 64-bit platform differences,
+B<use integer.>  Gives exact integer math as if we were using C<IV> types
+in C.  We are still left with 32-bit versus 64-bit platform differences,
 being restricted to signed type, and no support for larger values.
 
 =item *
