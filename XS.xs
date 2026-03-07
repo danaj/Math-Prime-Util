@@ -4861,7 +4861,7 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
           for (j = 0; j < blen; j++) {
             FASTSETSVINT(asv, atype == IARR_TYPE_POS, ra[i]);
             FASTSETSVINT(bsv, btype == IARR_TYPE_POS, rb[j]);
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
             status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
             if (status != 0)  iset_add(&s, ret, status);
             if (status == 0 || iset_is_invalid(s)) break;
@@ -5974,7 +5974,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         for ( ; beg < 6 && beg <= end; beg += 1+(beg>2) ) {
           CHECK_FORCOUNT;
           sv_setuv(svarg, beg);
-          { ENTER; MULTICALL; LEAVE; }
+          MULTICALL;
         }
       }
       if (beg <= end) {
@@ -5988,7 +5988,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         for (beg = next_prime(beg-1); beg <= end && beg != 0; beg = next_prime(beg)) {
           CHECK_FORCOUNT;
           sv_setuv(svarg, beg);
-          { ENTER; MULTICALL; LEAVE; }
+          MULTICALL;
         }
        } else {                      /* MULTICALL segment sieve */
         void* ctx = start_segment_primes(beg, end, &segment);
@@ -6000,7 +6000,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
             if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg, p);            }
             else if (crossuv && p > IV_MAX)   { sv_setuv(svarg, p); crossuv=0; }
             else                              { SvUV_set(svarg, p);            }
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
           END_DO_FOR_EACH_SIEVE_PRIME
           CHECK_FORCOUNT;
         }
@@ -6087,7 +6087,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             nextprime = next_prime(beg);
           else if (FORCOMPTEST(ix,beg)) {
             sv_setuv(svarg, beg);
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
           }
           CHECK_FORCOUNT;
         }
@@ -6096,7 +6096,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
           if (beg < 8)  beg = 8;
         } else if (beg <= 4) { /* sieve starts at 7, so handle this here */
           sv_setuv(svarg, 4);
-          { ENTER; MULTICALL; LEAVE; }
+          MULTICALL;
           beg = 6;
         }
         /* Find the two primes that bound their interval. */
@@ -6119,7 +6119,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
               if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg,c); }
               else if (crossuv && c > IV_MAX)   { sv_setuv(svarg,c); crossuv=0;}
               else                              { SvUV_set(svarg,c); }
-              { ENTER; MULTICALL; LEAVE; }
+              MULTICALL;
             }
           END_DO_FOR_EACH_SIEVE_PRIME
         }
@@ -6129,7 +6129,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             if (FORCOMPTEST(ix,nextprime)) {
               CHECK_FORCOUNT;
               sv_setuv(svarg, nextprime);
-              { ENTER; MULTICALL; LEAVE; }
+              MULTICALL;
             }
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6197,7 +6197,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         for (c = beg; c <= end && c >= beg; c++) {
           if (is_semiprime(c)) {
             sv_setuv(svarg, c);
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
           }
           CHECK_FORCOUNT;
         }
@@ -6209,7 +6209,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           count = range_semiprime_sieve(&S, seg_beg, seg_end);
           for (c = 0; c < count; c++) {
             sv_setuv(svarg, S[c]);
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
             CHECK_FORCOUNT;
           }
           Safefree(S);
@@ -6294,7 +6294,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
         count = generate_almost_primes(&S, k, seg_beg, seg_end);
         for (c = 0; c < count; c++) {
           sv_setuv(svarg, S[c] << shiftres);
-          { ENTER; MULTICALL; LEAVE; }
+          MULTICALL;
           CHECK_FORCOUNT;
         }
         Safefree(S);
@@ -6350,7 +6350,7 @@ fordivisors (SV* block, IN SV* svn)
       PUSH_MULTICALL(subcv);
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
-        { ENTER; MULTICALL; LEAVE; }
+        MULTICALL;
         CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6548,7 +6548,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
             av_fill(av, k-1);
             for (j = k-1; j >= 0; j--)
               AvARRAY(av)[j] = svals[ cm[k-j-1]-1 ];
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
           }
           CHECK_FORCOUNT;
           if (_comb_iterate(cm, k, n, ix)) break;
@@ -6630,7 +6630,7 @@ void forsetproduct (SV* block, ...)
         arr = AvARRAY(av);
         for (i = narrays-1; i >= 0; i--)  /* Faster to fill backwards */
           arr[i] = arsvs[i][arcnt[i]];
-        { ENTER; MULTICALL; LEAVE; }
+        MULTICALL;
         CHECK_FORCOUNT;
         for (i = narrays-1; i >= 0; i--) {
           if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
@@ -6725,7 +6725,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
             SvREADONLY_on(sv);
             AvARRAY(av)[i] = sv;
           }
-          { ENTER; MULTICALL; LEAVE; }
+          MULTICALL;
         }
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6800,7 +6800,7 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
           CHECK_FORCOUNT;
           if (isf[i]) {
             sv_setuv(svarg, seglo+i);
-            { ENTER; MULTICALL; LEAVE; }
+            MULTICALL;
           }
         }
         FIX_MULTICALL_REFCOUNT;
@@ -6850,7 +6850,7 @@ CODE:
       PUSH_MULTICALL(subcv);
       for (i = 2; i < items; i++) {
         GvSV(bgv) = args[i];
-        { ENTER; MULTICALL; LEAVE; }
+        MULTICALL;
         SvSetMagicSV(ret, *PL_stack_sp);
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6961,7 +6961,7 @@ PPCODE:
       PUSH_MULTICALL(subcv);
       for (index = 1; index < items; index++) {
         GvSV(PL_defgv) = args[index];
-        { ENTER; MULTICALL; LEAVE; }
+        MULTICALL;
         if (SvTRUEx(*PL_stack_sp) ^ invert)
           break;
       }
