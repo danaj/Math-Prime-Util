@@ -462,6 +462,7 @@ subtest 'set_is_proper_intersection', sub {
     my($s,$t,$str,$exp) = @$info;
     is( set_is_proper_intersection($s,$t), $exp->[4], $str );
   }
+  is(set_is_proper_intersection([1,2],[1,3]), 1, "[1,2] and [1,3]");
 };
 
 subtest 'setremove', sub {

@@ -3419,7 +3419,9 @@ will return the first and third.  The mask may be a bigint.
 
 If the second argument is an array reference, then its elements will be used
 as zero-based indices into the first array.  Duplicate values are allowed and
-the ordering is preserved.  Hence these are equivalent:
+the ordering is preserved.  Given that Perl has fully functional array slices
+in the language, this is for completeness with Pari/GP.
+These are equivalent:
 
     vecextract($aref, $iref);
     @$aref[@$iref];

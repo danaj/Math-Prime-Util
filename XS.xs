@@ -2357,14 +2357,15 @@ vecextract(IN SV* x, IN SV* svm)
     CHECK_ARRAYREF(x);
     av = (AV*) SvRV(x);
     if (SvROK(svm) && SvTYPE(SvRV(svm)) == SVt_PVAV) {
-      AV* avm = (AV*) SvRV(svm);
-      Size_t j, mlen = av_count(avm);
-      for (j = 0; j < mlen; j++) {
-        SV** iv = av_fetch(avm, j, 0);
-        if (iv && SvTYPE(*iv) == SVt_IV) {
-          SV **v = av_fetch(av, SvIV(*iv), 0);
-          if (v) XPUSHs(*v);
-        }
+      SSize_t j, index;
+      DECL_ARREF(mav);
+      USE_ARREF(mav, svm, SUBNAME, AR_READ);
+      for (j = 0; j < len_mav; j++) {
+        SV* v = FETCH_ARREF(mav, j);
+        if (_validate_and_set(&mask, aTHX_ v, IFLAG_IV) == 0)
+          croak("vecextract invalid index");
+        index = (SSize_t)mask;
+        { SV **v = av_fetch(av, index, 0);  if (v) XPUSHs(*v); }
       }
     } else if (_validate_and_set(&mask, aTHX_ svm, IFLAG_POS)) {
       while (mask) {
@@ -4964,7 +4965,7 @@ void setunion(IN SV* sva, IN SV* svb)
         if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
         if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
       } else if (ix == 1) { /* intersect */
-        New(0, r, (alen > blen) ? alen : blen, UV);
+        New(0, r, (alen < blen) ? alen : blen, UV);
         while (ia < alen && ib < blen) {
           if (ra[ia] == rb[ib]) {
             r[rlen++] = ra[ia];
@@ -5065,7 +5066,7 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
         case 4: if (alen <= blen && rlen == alen) ret = 1;  break;
         case 5: if (alen <  blen && rlen == alen) ret = 1;  break;
         case 6:
-        default:if (rlen > 1 && rlen < alen && rlen < blen) ret = 1; break;
+        default:if (rlen > 0 && rlen < alen && rlen < blen) ret = 1; break;
       }
       RETURN_NPARITY(ret);
     }
@@ -5193,7 +5194,6 @@ void setinsert(IN SV* sva, ...)
         /* 1. Find out how many elements go in front. */
         while (nbeg < blen && _sign_cmp(bstatus,rb[nbeg],alostatus,alo) < 0)
           nbeg++;
-          ;
         /* 2. Find out how many elements go at the end. */
         while (nend < blen-nbeg && _sign_cmp(bstatus,rb[blen-1-nend],ahistatus,ahi) > 0)
           nend++;
@@ -5424,8 +5424,8 @@ void setinvert(IN SV* sva, ...)
           done = 1;
         }
         Safefree(ra);
-        Safefree(rb);
         if (done) {
+          Safefree(rb);
           ST(0) = sv_2mortal(newSViv((IV)av_count(ava) - (IV)old_alen));
           XSRETURN(1);
         }
@@ -5719,20 +5719,22 @@ void vecsample(IN SV* svk, ...)
         uint16_t *I;
         New(0, I, nitems, uint16_t);
         I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
+        EXTEND(SP, k);
         for (i = 0; i < k; i++) {
           uint32_t j = urandomm32(randcxt, nitems-i);
           uint16_t t = I[i+j];  I[i+j] = I[i];
-          XPUSHs(FETCH_ARREF(avp,t));
+          PUSHs(FETCH_ARREF(avp,t));
         }
         Safefree(I);
       } else {
         size_t *I;
         New(0, I, nitems, size_t);
         I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
+        EXTEND(SP, k);
         for (i = 0; i < k; i++) {
           size_t j = urandomm64(randcxt, nitems-i);
           size_t t = I[i+j];  I[i+j] = I[i];
-          XPUSHs(FETCH_ARREF(avp,t));
+          PUSHs(FETCH_ARREF(avp,t));
         }
         Safefree(I);
       }
@@ -7005,23 +7007,26 @@ void vecuniq(...)
     int status, retvals;
     SSize_t j;
     UV n;
-    unsigned long sz;
+    unsigned long sz, nret;
   PPCODE:
     retvals = (GIMME_V != G_SCALAR && GIMME_V != G_VOID);
     s = iset_create((size_t)items);
-    for (status = 1, j = 0; j < items; j++) {
+    for (status = 1, nret = 0, j = 0; j < items; j++) {
       status = _validate_and_set(&n, aTHX_ ST(j), IFLAG_ANY);
       if (status == 0) break;
       if (iset_add(&s, n, status) == 0)
         continue;
       if (iset_sign(s) == 0) { status = 0; break; }
-      if (retvals)
+      if (retvals) {
         PUSHs(sv_2mortal(NEWSVINT(status,n)));
+        nret++;
+      }
     }
     sz = iset_size(s);
     iset_destroy(&s);
     if (status != 0 && retvals) {
-      XSRETURN(sz);
+      if (nret != sz)croak("vecuniq: iset %lu items, pushed %lu items",sz,nret);
+      XSRETURN(nret);
     } else if (status != 0) {
       ST(0) = sv_2mortal(newSVuv(sz));
       XSRETURN(1);
@@ -7105,7 +7110,7 @@ void vecfreq(...)
       ST(0) = sv_2mortal(newSVuv(count+1));
       retlen = 1;
     } else {
-      int sign = IARR_TYPE_NEG ? -1 : 1;
+      int sign = itype == IARR_TYPE_NEG ? -1 : 1;
       dMY_CXT;
       EXTEND(SP, (EXTEND_TYPE)len*2);
       retlen = 0;
@@ -7153,8 +7158,9 @@ void vecsingleton(...)
       if (!iset_add(&seen, n, sign))
         iset_add(&dups, n, sign);
     }
+    if (iset_is_invalid(seen))  itype = IARR_TYPE_BAD;  /* Poison the type */
     iset_destroy(&seen);
-    if (i < len || itype == IARR_TYPE_BAD || iset_is_invalid(seen)) {
+    if (i < len || itype == IARR_TYPE_BAD) {
       iset_destroy(&dups);
       Safefree(L);
       DISPATCHPP();
