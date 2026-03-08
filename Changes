@@ -341,6 +341,13 @@ Revision history for Perl module Math::Prime::Util
 
     - stirling first kind without GMP is faster for some inputs.
 
+    - Our block functions now all skip wrapping the calls in an internal
+      scope.  This was already documented, and is what List::Util does.
+      It gives us a 10-30% performance increase for lightweight blocks.
+      For almost all use cases there is no functional difference, but
+      sending anonymous subroutines or references outside the block will
+      not work as expected.
+
     [OTHER]
 
     - Legendre, Meissel, and Lehmer prime counting got rewritten to use our

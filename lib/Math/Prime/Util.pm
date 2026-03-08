@@ -6881,60 +6881,43 @@ is implementation specific (currently it is identical, but later
 releases may use APRCL).  With L<Math::Prime::Util::GMP> installed,
 this is quite fast through 300 or so digits.
 
-Math systems 30 years ago typically used Miller-Rabin tests with C<k>
+Math systems 35 years ago typically used Miller-Rabin tests with C<k>
 bases (usually fixed bases, sometimes random) for primality
 testing, but these have generally been replaced by some form of BPSW
 as used in this module.  See Pinch's 1993 paper for examples of why
-using C<k> M-R tests leads to poor results.  The three exceptions in
-common contemporary use I am aware of are:
+using C<k> M-R tests leads to poor results.  All common contemporary
+usage is now some BPSW variant.
 
 =over 4
 
-=item libtommath
+=item libtommath (previous to 1.1.0)
 
-Uses the first C<k> prime bases.  This is problematic for
-cryptographic use, as there are known methods (e.g. Arnault 1994) for
-constructing counterexamples.  The number of bases required to avoid
-false results is unreasonably high, hence performance is slow even
-if one ignores counterexamples.  Unfortunately this is the
-multi-precision math library used for Raku and at least one CPAN
-Crypto module.
+As of version 1.1.0 (January 2019), this uses strong BPSW and even adds
+a base 3 strong pseudoprime test.  Raku uses this so fixes one of my
+peeves I had with their design.
 
-=item GMP/MPIR
+=item GMP/MPIR (previous to 6.2.0)
 
-Uses a set of C<k> static-random bases.  The bases are randomly chosen
-using a PRNG that is seeded identically each call (the seed changes
-with each release).  This offers a very slight advantage over using
-the first C<k> prime bases, but not much.  See, for example, Nicely's
-L<mpz_probab_prime_p pseudoprimes|https://faculty.lynchburg.edu/~nicely/misc/mpzspsp.html>
-page.
+As of version 6.2.0 (January 2020), this uses strong BPSW and typically
+adds one random-base strong pseudoprime test in addition.
 
-=item L<Math::Pari> (not recent Pari/GP)
+=item L<Math::Pari> (previous to Pari 2.3.0)
 
 Pari 2.1.7 is the default version installed with the L<Math::Pari>
 module.  It uses 10 random M-R bases (the PRNG uses a fixed seed
-set at compile time).  Pari 2.3.0 was released in May 2006 and it,
-like all later releases through at least 2.6.1, use BPSW / APRCL,
-after complaints of false results from using M-R tests.  For example,
-it will indicate 9 is prime about 1 out of every 276k calls.
+set at compile time) and is highly susceptible to false positives.
+Pari 2.3.0 was released in May 2006 and it uses BPSW (or the APR-CL
+proof method), which are still used to this day in modern Pari/GP
+(a great ECPP implementation was added in 2.10 for even better proofs).
 
 =back
 
-Basically the problem is that it is just too easy to get counterexamples
-from running C<k> M-R tests, forcing one to use a very large number of
+Basically the problem with running C<k> M-R tests is that it is too easy
+to get counterexamples, forcing one to use a very large number of
 tests (at least 20) to avoid frequent false results.  Using the BPSW test
-results in no known counterexamples after 30+ years and runs much faster.
+results in no known counterexamples after 45+ years and runs much faster.
 It can be enhanced with one or more random bases if one desires, and
 will I<still> be much faster.
-
-Using C<k> fixed bases has another problem, which is that in any
-adversarial situation we can assume the inputs will be selected such
-that they are one of our counterexamples.  Now we need absurdly large
-numbers of tests.  This is like playing "pick my number" but the
-number is fixed forever at the start, the guesser gets to know
-everyone else's guesses and results, and can keep playing as long as
-they like.  It's only valid if the players are completely oblivious to
-what is happening.
 
 
 =head1 LIMITATIONS
@@ -6955,14 +6938,17 @@ an issue if you use non-Cygwin Win32 B<and> call these routines from within
 Perl threads.
 
 Because the loop functions like L</forprimes> use C<MULTICALL>, there is
-some odd behavior with anonymous sub creation inside the block.  This is
-shared with most XS modules that use C<MULTICALL>, and is rarely seen
-because it is such an unusual use.  An example is:
+some odd behavior with anonymous sub creation inside the block.
+See L<RT95409|https://rt.cpan.org/Ticket/Display.html?id=95409>.
+This is shared with most XS modules that use C<MULTICALL>, and is rarely
+seen because it is such an unusual use.  Two examples are:
 
   forprimes { my $var = "p is $_"; push @subs, sub {say $var}; } 50;
   $_->() for @subs;
 
-This can be worked around by using double braces for the function, e.g.
+  forprimes { my $x=$_; push @vals,\$x; } 50;   say $$_ for @vals;
+
+This can be solved by using double braces for the function, e.g.
 C<forprimes {{ ... }} 50>.
 
 
@@ -7042,11 +7028,9 @@ gets larger (factoring 19 digit semiprimes is over 1000 times slower).  The
 function C<count_prime_factors> can be done in MPU using C<scalar factor($n)>.
 See the L</"EXAMPLES"> section for a 2-line function replicating C<matches>.
 
-L<Math::Big> version 1.12 includes C<primes> functionality.  The current
-code is only usable for very tiny inputs as it is incredibly slow and uses
-lots of memory.  L<RT81986|https://rt.cpan.org/Ticket/Display.html?id=81986>
-has a patch to make it run much faster and use much less memory.  Since it is
-in pure Perl it will still run quite slow compared to MPU.
+L<Math::Big> version 1.16 includes features such as computing the
+first C<n> primes, the first C<n> digits of Pi, base conversion, and
+factorial.  With the latest versions it is reasonably fast for pure Perl.
 
 L<Math::Big::Factors> supports factorization using wheel factorization (smart
 trial division).  It supports bigints.  Unfortunately it is extremely slow on
@@ -7055,8 +7039,8 @@ can take hundreds or thousands of times longer to factor than MPU or
 L<Math::Factor::XS>.  19-digit semiprimes will take I<hours> versus MPU's
 single milliseconds.
 
-L<Math::Factoring> is a placeholder module for bigint factoring.  Version 0.02
-only supports trial division (the Pollard-Rho method does not work).
+L<Math::Factoring> is a placeholder module for bigint factoring.
+The latest version, 0.02 from 2012, only correctly supports trial division.
 
 L<Math::Prime::TiedArray> allows random access to a tied primes array, almost
 identically to what MPU provides in L<Math::Prime::Util::PrimeArray>.  MPU
@@ -7327,15 +7311,15 @@ are all faster.
 
 =item Prime Counts and Nth Prime
 
-Outside of private research implementations doing prime counts for
-C<< n > 2^64 >>, this module should be close to state of the art in
-performance, and supports results up to C<2^64>.  Further performance
-improvements are planned, as well as expansion to larger values.
+The gold standard is currently Kim Walisch's fantastic
+L<primecount|https://github.com/kimwalisch/primecount>.
+For single threaded computations with 64-bit C<n>, this module is fairly
+close in performance.
 
 The fastest solution for small inputs is a hybrid table/sieve method.
 This module does this for values below 60M.  As the inputs get larger,
 either the tables have to grow exponentially or speed must be
-sacrificed.  Hence this is not a good general solution for most uses.
+sacrificed, so eventually we will use methods like LMO.
 
 =back
 
@@ -7350,20 +7334,19 @@ Counting the primes to C<800_000_000> (800 million):
        0.007 Math::Prime::Util           0.12     using Lehmer's method
        0.27  Math::Prime::Util           0.17     segmented mod-30 sieve
        0.39  Math::Prime::Util::PP       0.24     Perl (Lehmer's method)
-       0.9   Math::Prime::Util           0.01     mod-30 sieve
        2.9   Math::Prime::FastSieve      0.12     decent odd-number sieve
-      11.7   Math::Prime::XS             0.26     needs some optimization
+      11.7   Math::Prime::XS             0.27     0.27 includes a count
       15.0   Bit::Vector                 7.2
       48.9   Math::Prime::Util::PP       0.14     Perl (fastest I know of)
+      49.00  Math::Big                   1.16     Uses efficient Perl
      170.0   Faster Perl sieve (net)     2012-01  array of odds
      548.1   RosettaCode sieve (net)     2012-06  simplistic Perl
     3048.1   Math::Primality             0.08     Perl + Math::GMPz
-  >20000     Math::Big                   1.12     Perl, > 26GB RAM used
 
-Python's standard modules are very slow: MPMATH v0.17 C<primepi> takes 169.5s
-and 25+ GB of RAM.  SymPy 0.7.1 C<primepi> takes 292.2s.  However there are
-very fast solutions written by Robert William Hanks (included in the xt/
-directory of this distribution): pure Python in 12.1s and NUMPY in 2.8s.
+Python's SymPy 1.1 (2017) up to current 1.14.0 (2025) uses Legendre's method.
+This is vastly preferable to sieving used by earlier versions of SymPy and by
+MPMATH (as of v1.4.0).  It is a little slower than our Lehmer and quite a bit
+slower than LMO, but is much simpler.
 
 =head2 PRIMALITY TESTING
 
