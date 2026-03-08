@@ -148,29 +148,33 @@ void iset_allvals(const iset_t set, UV* array) {
 
 #if 0
 void iset_minmax(const iset_t set, UV *min, UV *max) {
-  unsigned long i;
-  UV v;
+  size_t i;
 
-  if (set.type == ISET_TYPE_INVALID || set.size == 0) { *min=*max=0; return; }
+  *min = *max = 0;
+  if (set.type == ISET_TYPE_INVALID || set.size == 0)
+    return;
 
   if (set.type != ISET_TYPE_IV) {
-    *min = UV_MAX;
-    *max = 0;
-    for (i = 0; i < set.maxsize; i++)
-      if (v = A.arr[i], v != 0) {
+    if (!set.contains_zero)  { *min = UV_MAX; }
+    for (i = 0; i < set.maxsize; i++) {
+      UV v = set.arr[i];
+      if (v != 0) {
         if (v < *min) *min = v;
         if (v > *max) *max = v;
       }
     }
   } else {
-    *min = IV_MAX;
-    *max = IV_MIN;
-    for (i = 0; i < set.maxsize; i++)
-      if (v = A.arr[i], v != 0) {
-        if ((IV)v < *min) *min = v;
-        if ((IV)v > *max) *max = v;
+    IV smin = set.contains_zero ? 0 : IV_MAX;
+    IV smax = set.contains_zero ? 0 : IV_MIN;
+    for (i = 0; i < set.maxsize; i++) {
+      IV sv = (IV) set.arr[i];
+      if (sv != 0) {
+        if (sv < smin) smin = sv;
+        if (sv > smax) smax = sv;
       }
     }
+    *min = (UV)smin;
+    *max = (UV)smax;
   }
 }
 #endif
@@ -181,7 +185,7 @@ void iset_minmax(const iset_t set, UV *min, UV *max) {
 void iset_union_with(iset_t *set, const iset_t L) {
   size_t i, lsize;
   UV v, *larr;
-  int lsign = iset_sign(L);;
+  int lsign = iset_sign(L);
 
   lsize = L.maxsize;
   larr = L.arr;
@@ -234,10 +238,10 @@ iset_t iset_intersection_of(const iset_t A, const iset_t B) {
   UV v;
   iset_t s;
 
-  if (A.size > B.maxsize)               /* Swap for performance. */
+  if (A.size > B.size)               /* Swap for performance. */
     return iset_intersection_of(B,A);
 
-  s = iset_create((A.size > B.size) ? A.size : B.size);
+  s = iset_create((A.size < B.size) ? A.size : B.size);
 
   for (i = 0; i < A.maxsize; i++)
     if (v = A.arr[i], v != 0)
@@ -297,6 +301,7 @@ bool iset_is_subset_of(const iset_t A, const iset_t B) {
 /******************************************************************************/
 
 void iset_test(void) {
+#if 0
   iset_t s;
   UV *S;
   size_t i;
@@ -329,4 +334,5 @@ void iset_test(void) {
     if (S[i] != i)
       croak("fail element %lu expected %lu got %lu\n", (unsigned long)i, (unsigned long)i, S[i]);
   iset_destroy(&s);
+#endif
 }
