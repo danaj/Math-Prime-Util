@@ -8577,7 +8577,7 @@ sub znorder {
     my $phi = ($e == 1) ? $pm1 : Mmulint($pm1, Mpowint($p, $e-1));
 
     # For small phi, enumerate sorted divisors directly.
-    if ($phi <= 2**64) {
+    if ($phi < 2 ** MPU_MAXBITS) {
       my $found = 0;
       foreach my $d (Mdivisors($phi)) {
         if (Mpowmod($amod, $d, $pe) == 1) {

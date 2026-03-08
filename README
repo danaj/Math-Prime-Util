@@ -1,44 +1,73 @@
 Math::Prime::Util version 0.74
 
-A module for number theory in Perl.  This includes prime sieving, primality
-tests, primality proofs, integer factoring, counts / bounds / approximations
-for primes, nth primes, and twin primes, random prime generation,
-and much more.
+A comprehensive number theory module for Perl, also available as "ntheory".
+It provides over 370 functions covering:
 
-The default sieving and factoring are intended to be the fastest on CPAN.
-Current measurements show it is faster than:
-  Math::Prime::XS
-  Math::Prime::FastSieve
-  Math::Factor::XS
-  Math::Big
-  Math::Big::Factors
-  Math::Factoring
-  Math::Primality
-  Math::Prime::TiedArray
-  Crypt::Primes
-  Math::ModInt::ChineseRemainder
-For non-bignums, it is typically faster than Math::Pari (and doesn't
-require Pari to be installed).  With Math::Prime::Util::GMP installed
-it is usually faster than Math::Pari for bigints.
+  - Prime sieving, generation, and iteration
+  - Primality testing (BPSW, Miller-Rabin, Lucas, Frobenius, AKS) and proving
+  - Integer factoring (trial, Pollard rho, p-1, p+1, SQUFOF, ECM)
+  - Prime counting: exact (Lehmer/LMO), bounds, and approximations
+  - Nth prime, twin primes, almost primes, semiprimes
+  - Random prime generation (cryptographic CSPRNG)
+  - Combinatorics: binomial, factorial, Stirling, partitions, permutations
+  - Multiplicative functions: euler_phi, moebius, divisor_sum, liouville, etc.
+  - Modular arithmetic: powmod, sqrtmod, chinese (CRT), znorder, znlog
+  - Integer arithmetic: addint, mulint, divint, powint, etc. (arbitrary size)
+  - Special functions: Riemann zeta, R, Li, Lambert W, Chebyshev theta/psi
+  - Iterators: forprimes, forcomposites, fordivisors, forcomb, forpart, etc.
+  - Integer set operations: union, intersection, minus, delta, sumset, etc.
+
+Performance-critical code is written in C (XS).  A pure Perl backend is
+included for portability.  For bignum inputs, installing the optional
+Math::Prime::Util::GMP module gives a large additional speedup.
+
+The default sieving and factoring are intended to be the fastest on CPAN,
+and are faster than Math::Prime::XS, Math::Prime::FastSieve,
+Math::Factor::XS, Math::Big, Math::Factoring, Math::Primality, and
+Crypt::Primes.  For native-size integers it is typically faster than
+Math::Pari.  With Math::Prime::Util::GMP installed it is usually faster
+than Math::Pari for bigints as well.
 
 
 SYNOPSIS
 
-  use Math::Prime::Util qw/primes/;
+  use Math::Prime::Util qw/:all/;
+  # or:  use ntheory qw/:all/;
 
-  # Get a big array reference of many primes
-  my $aref = primes( 100_000_000 );
+  # Sieving and iteration
+  my $aref  = primes(100_000_000);            # array ref of primes
+  my @twins = @{ twin_primes(1000, 2000) };   # twin primes in range
+  forprimes { say } 1e6, 1e6+1000;            # iterate over primes
 
-  # All the primes between 5k and 10k inclusive in a regular array
-  my @primes = @{ primes( 5_000, 10_000 ) };
+  # Primality
+  say is_prime(1000000007) ? "prime" : "composite";
+  say is_provable_prime($n) ? "proven prime" : "not prime";
 
-See the POD module documentation for examples and more information on all the
-methods included.
+  # Factoring
+  my @factors = factor(1234567890);
+  my @fexp    = factor_exp("290375823984720394875209384750932");
+
+  # Prime counting
+  say prime_count(1e11);                      # exact: 4118054813
+  say prime_count_approx(int(1e18));          # fast approximation
+
+  # Number-theoretic functions
+  say euler_phi(240);                         # 64
+  say moebius(30);                            # -1
+  say carmichael_lambda(1002);                # 166
+
+  # Modular arithmetic
+  say powmod(2, 1000, 1009);                  # 2^1000 mod 1009
+  say chinese([14,643], [254,419]);           # CRT
+  say znorder(2, 1009);                       # multiplicative order
+
+See the POD documentation for full details on all functions:
+  perldoc Math::Prime::Util
 
 
 INSTALLATION
 
-To install this module type the following:
+To install this module:
 
    perl Makefile.PL
    make
@@ -56,6 +85,8 @@ DEPENDENCIES
 Perl 5.6.2 or later (5.8 or later is preferred).
 
 C89 compiler, 32-bit or 64-bit.
+
+Optional: Math::Prime::Util::GMP for faster bignum operations.
 
 
 COPYRIGHT AND LICENCE
