@@ -1246,7 +1246,7 @@ though B<significantly> faster and avoids issues with large loop variables.
 
 Given a block and either an end number or start/end pair, calls the block for
 each number in the inclusive range.  C<$_> is set to the number while C<@_>
-holds the factors.  Especially for small inputs or large ranges, This can be
+holds the factors.  Especially for small inputs or large ranges, this can be
 faster than calling L</factor> on each sequential value.
 
 Similar to the arrays returned by similar functions such as L</forpart>,
@@ -1987,11 +1987,14 @@ is within 3.6%, but this function is within 0.000012%.
 
   say "500th number with exactly 3 factors: ", nth_almost_prime(3,500);
 
+A C<k>-almost prime is a product of C<k> prime numbers,
+counted with multiplicity.  That is, there are exactly C<k> prime
+factors (which do not have to be distinct from each other).
+
 Given non-negative integers C<k> and C<n>, returns the
 C<n>-th C<k>-almost prime.
 With C<k=1> this is the nth prime.
 With C<k=2> this is the nth semiprime.
-In general this is the C<n>-th integer with exactly C<k> prime factors.
 
 The implementation does a binary search lookup with
 L</almost_prime_count> so is reasonably efficient for large values.
@@ -2862,7 +2865,7 @@ from C<P^E> to C<P^(E % k)>.  Alternately we can say all k-th powers are
 divided out.
 C<k> defaults to 2.
 
-When C<k == 2>, This is also sometimes called C<core(n)>.  It is the
+When C<k == 2>, this is also sometimes called C<core(n)>.  It is the
 unique square-free integer C<d> such that C<n/d> is a square.
 
 With C<k == 2> this produces the sequence
@@ -4066,7 +4069,7 @@ This is the L<OEIS series A002997|http://oeis.org/A002997>.
 Given an integer C<n>, returns 0 if C<n> is negative or not
 a quasi-Carmichael number, and returns the number of bases otherwise.
 These are square-free composites that satisfy
-C<p+b> divides C<n+b> for all prime factors C<p> or C<n> and for one or
+C<p+b> divides C<n+b> for all prime factors C<p> of C<n> and for one or
 more non-zero integer C<b>.
 
 This is the L<OEIS series A257750|http://oeis.org/A257750>.
@@ -5333,10 +5336,9 @@ later use the same lexicographic ordering).
 
   $k = permtonum([1,8,2,7,6,5,3,4,9,0]);  # $k = 654321
 
-Given an array reference containing integers from C<0> to C<n>,
-returns the lexicographic permutation rank of the set.  This is
-the inverse of the L</numtoperm> function.  All integers up to
-C<n> must be present.
+Given an array reference containing each integer from C<0> to C<n-1>,
+in some ordering, returns the lexicographic permutation rank of the set.
+This is the inverse of the L</numtoperm> function.
 
 This will match iteration number C<k> (zero based) of L</forperm>.
 The result will be between C<0> and C<n!-1>.
@@ -5581,7 +5583,7 @@ consistent argument order and does not return C<Q_k>.
 
 =head2 lucas_sequence
 
-  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k)
+  my($U, $V, $Qk) = lucas_sequence($n, $P, $Q, $k);
 
 B<lucas_sequence() is deprecated.  Use lucasuvmod() instead.>
 
@@ -5646,7 +5648,7 @@ returns the smallest primitive root of C<(Z/nZ)^*>,
 or C<undef> if no root exists.
 A root exists when C<euler_phi($n) == carmichael_lambda($n)>,
 which will be true only if
-C<< n one of {2, 4, p^k, 2p^k} >> for odd prime p.
+C<< n is one of {2, 4, p^k, 2p^k} >> for odd prime p.
 
 Like other modular functions, if C<n = 0> the function returns undef.
 
@@ -6011,7 +6013,7 @@ L</random_maurer_prime> depending on the platform and bit size.
 
 =head2 random_proven_prime_with_cert
 
-  my($n, $cert) = random_proven_prime_with_cert(512)
+  my($n, $cert) = random_proven_prime_with_cert(512);
 
 Similar to L</random_proven_prime>, but returns a two-element array containing
 the n-bit provable prime along with a primality certificate.  The certificate
@@ -6047,7 +6049,7 @@ One could also run L</is_provable_prime> on the result, but this will be slow.
 
 =head2 random_maurer_prime_with_cert
 
-  my($n, $cert) = random_maurer_prime_with_cert(512)
+  my($n, $cert) = random_maurer_prime_with_cert(512);
 
 As with L</random_maurer_prime>, but returns a two-element array containing
 the n-bit provable prime along with a primality certificate.  The certificate
@@ -6081,7 +6083,7 @@ value has been properly constructed.
 
 =head2 random_shawe_taylor_prime_with_cert
 
-  my($n, $cert) = random_shawe_taylor_prime_with_cert(4096)
+  my($n, $cert) = random_shawe_taylor_prime_with_cert(4096);
 
 As with L</random_shawe_taylor_prime>, but returns a two-element array
 containing the n-bit provable prime along with a primality certificate.
@@ -6464,12 +6466,13 @@ The accuracy() setting of the input is used to determine the output accuracy.
 
 =head2 LogarithmicIntegral
 
-  my $li = LogarithmicIntegral($x)
+  my $li = LogarithmicIntegral($x);
 
-Given a positive floating point input, returns the floating point logarithmic
-integral of C<x>, defined as the integral of C<dt/ln t> from C<0> to C<x>.
-If given a negative input, the function will croak.  The function returns
-0 at C<x = 0>, and C<-infinity> at C<x = 1>.
+Given a non-negative floating point input, returns the floating point
+logarithmic integral of C<x>, defined as the integral of C<dt/ln t>
+from C<0> to C<x>.
+If given a negative input, the function will croak.
+The function returns 0 at C<x = 0>, and C<-infinity> at C<x = 1>.
 
 This is often known as C<li(x)>.  A related function is the offset logarithmic
 integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
@@ -6775,7 +6778,7 @@ or its C<matches> function with the C<skip_multiples> option:
 
 Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4s Pari example:
 
-  use Math::Prime::Util qw/forcomposite divisor_sum/;
+  use Math::Prime::Util qw/forcomposites divisor_sum/;
   forcomposites {
     say if divisor_sum($_)+6 == divisor_sum($_+6)
   } 9,1e7;
