@@ -8562,34 +8562,49 @@ sub znorder {
   return reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n))
     if $Math::Prime::Util::_GMPfunc{"znorder"};
 
-  # Sadly, Calc/FastCalc are horrendously slow for this function.
   return undef if Mgcd($a, $n) > 1;
 
-  # The answer is one of the divisors of phi(n) and lambda(n).
-  my $lambda = Math::Prime::Util::carmichael_lambda($n);
-  $a = tobigint($a);
+  # Factor n, compute znorder mod each prime power, LCM the results.
+  # This is much faster than working mod n because each p^e is smaller.
+  my $order = 1;
+  foreach my $fn (Mfactor_exp($n)) {
+    my($p, $e) = @$fn;
+    my $pe = ($e == 1) ? $p : Mpowint($p, $e);
+    my $amod = Mmodint($a, $pe);
+    next if $amod <= 1;
+    # phi(p^e) = (p-1) * p^(e-1)
+    my $pm1 = Msubint($p, 1);
+    my $phi = ($e == 1) ? $pm1 : Mmulint($pm1, Mpowint($p, $e-1));
 
-  # This is easy and usually fast, but can bog down with too many divisors.
-  if ($lambda <= 2**64) {
-    foreach my $k (Mdivisors($lambda)) {
-      return $k if Mpowmod($a,$k,$n) == 1;
+    # For small phi, enumerate sorted divisors directly.
+    if ($phi <= 2**64) {
+      my $found = 0;
+      foreach my $d (Mdivisors($phi)) {
+        if (Mpowmod($amod, $d, $pe) == 1) {
+          $order = Mlcm($order, $d);
+          $found = 1;
+          last;
+        }
+      }
+      return undef unless $found;
+      next;
     }
-    return undef;
-  }
 
-  # Algorithm 1.7 from A. Das applied to Carmichael Lambda.
-  my $k = 1;
-  foreach my $f (Mfactor_exp($lambda)) {
-    my($pi, $ei, $enum) = ($f->[0],$f->[1], 0);
-    my $phidiv = Mdivint($lambda, Mpowint($pi,$ei));
-    my $b = Mpowmod($a, $phidiv, $n);
-    while ($b != 1) {
-      return undef if $enum++ >= $ei;
-      $b = Mpowmod($b, $pi, $n);
-      $k = Mmulint($k, $pi);
+    # Algorithm 1.7 from A. Das applied to phi(p^e).
+    my $k = 1;
+    foreach my $f (Mfactor_exp($phi)) {
+      my($pi, $ei, $enum) = ($f->[0], $f->[1], 0);
+      my $phidiv = Mdivint($phi, Mpowint($pi, $ei));
+      my $b = Mpowmod($amod, $phidiv, $pe);
+      while ($b != 1) {
+        return undef if $enum++ >= $ei;
+        $b = Mpowmod($b, $pi, $pe);
+        $k = Mmulint($k, $pi);
+      }
     }
+    $order = Mlcm($order, $k);
   }
-  $k;
+  $order;
 }
 
 sub _dlp_trial {
