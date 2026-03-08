@@ -1,0 +1,491 @@
+
+A timeline of when each function was added.
+
+-------------------------------------------------------------------------------
+2026-03-20  v0.74
+2026-01-20  vecslide { ... } @list
+2026-01-18  vecsingleton(...)
+2025-12-20  minimal_goldbach_pair(n)
+2025-12-20  goldbach_pairs(n)
+2025-12-20  goldbach_pair_count(n)
+2025-11-29  from_contfrac(@A)
+2025-09-16  vecfreq(...)
+2025-06-18  inverse_li_nv(x)
+2025-06-17  vecsample(k,@list)
+2025-06-14  setcontainsany(\@A,\@B)
+2025-04-21  next_farey(n,[p,q])
+2025-04-21  farey_rank(n,[p,q])
+2025-04-18  farey(n)  farey(n,k)
+2025-04-17  vecsorti(\@L)
+2025-04-16  stern_brocot_n(n,d)
+2025-04-16  nth_stern_diatomic(n)
+2025-04-16  nth_stern_brocot(n)
+2025-04-16  nth_calkin_wilf(n)
+2025-04-16  next_stern_brocot(n,d)
+2025-04-16  next_calkin_wilf(n,d)
+2025-04-16  calkin_wilf_n(n,d)
+2025-04-16  contfrac(n,d)
+2025-04-04  is_happy(n)  is_happy(n,base,exponent)
+2025-04-02  is_cyclic(n)
+2025-03-17  forsquarefreeint {} lo,hi
+2025-03-12  setremove(\@A,$v)  setremove(\@A,\@B)
+2025-03-12  setinvert(\@A,$v)  setinvert(\@A,\@B)
+2025-02-25  set_is_superset(\@A,\@B)
+2025-02-25  set_is_subset(\@A,\@B)
+2025-02-25  set_is_proper_superset(\@A,\@B)
+2025-02-25  set_is_proper_subset(\@A,\@B)
+2025-02-25  set_is_proper_intersection(\@A,\@B)
+2025-02-25  set_is_equal(\@A,\@B)
+2025-02-25  set_is_disjoint(\@A,\@B)
+2025-02-24  setinsert(\@A,$v)  setinsert(\@A,\@B)
+2025-02-21  setcontains(\@A,$v)  setcontains(\@A,\@B)
+2025-02-10  vecsort(@L)
+2024-11-04  is_sumfree_set(\@L)
+2024-11-04  is_sidon_set(\@L)
+2024-09-07  toset(\@A)
+2024-09-07  setunion(\@A,\@B)
+2024-09-07  setminus(\@A,\@B)
+2024-09-07  setintersect(\@A,\@B)
+2024-09-07  setdelta(\@A,\@B)
+2024-08-25  vecuniq(...)
+2024-08-25  sumset(\@A[,\@B])
+2024-08-25  setbinop {...} \@A[,\@B]
+2024-07-27  rising_factorial(x,n)
+2024-07-27  falling_factorial(x,n)
+2024-07-20  fubini(n)
+2024-07-19  subfactorial(n)
+2024-06-18  squarefree_kernel(n)
+2024-06-17  frobenius_number(...)
+2024-05-30  next_chen_prime(n)
+2024-05-30  is_chen_prime(n)
+2024-05-20  nth_powerfree(n[,k])
+2024-05-20  is_perfect_number(n)
+2024-05-12  pisano_period(n)
+2024-04-09  powerful_numbers([lo,]hi[,k])
+2024-04-05  negmod(a, n)
+2024-04-03  cornacchia(d,n)
+2024-03-31  is_qr(a,n)
+2024-03-31  is_congruent_number(n)
+2023-05-16  is_divisible(n,d)
+2023-05-16  is_congruent(n,c,d)
+2023-05-12  mulsubmod(a, b, c, n)
+2023-05-12  muladdmod(a, b, c, n)
+2023-05-11  is_odd(n)
+2023-05-11  is_even(n)
+2023-05-06  cheb_factor(n)
+2023-05-05  cdivint(a, b)
+2023-05-04  cdivrem(a, b)
+2023-05-02  sumpowerful(n[,k])
+2023-05-02  powersum(n,k)
+2023-03-10  vecpmex(...)
+2023-03-10  vecmex(...)
+2023-03-10  sumtotient(n)
+2021-09-20  prev_perfect_power(n)
+2021-09-20  perfect_power_count_upper(n)
+2021-09-20  perfect_power_count_lower(n)
+2021-09-20  perfect_power_count_approx(n)
+2021-09-20  nth_perfect_power_upper(n)
+2021-09-20  nth_perfect_power_lower(n)
+2021-09-20  nth_perfect_power_approx(n)
+2021-09-20  nth_perfect_power(n)
+2021-09-20  next_perfect_power(n)
+2021-09-20  is_perfect_power(n)
+2021-09-05  prime_powers([start,] end)
+2021-09-05  prime_power_count_upper(n)
+2021-09-05  prime_power_count_lower(n)
+2021-09-05  prime_power_count_approx(n)
+2021-09-05  prime_power_count([start,] end)
+2021-09-05  prev_prime_power(n)
+2021-09-05  next_prime_power(n)
+2021-09-05  nth_prime_power_upper(n)
+2021-09-05  nth_prime_power_lower(n)
+2021-09-05  nth_prime_power_approx(n)
+2021-09-05  nth_prime_power(n)
+2021-09-05  nth_lucky_upper(n)
+2021-09-05  nth_lucky_lower(n)
+2021-09-05  nth_lucky_approx(n)
+2021-09-05  nth_lucky(n)
+2021-09-05  lucky_count_upper(n)
+2021-09-05  lucky_count_lower(n)
+2021-09-05  lucky_count_approx(n)
+2021-09-05  lucky_count([start,] end)
+2021-09-05  chinese2([a1,m1],[a2,m2],...)
+2021-08-28  powerfree_part_sum(n[,k])
+2021-08-27  powerfree_part(n[,k])
+2021-08-26  powerfree_sum(n[,k])
+2021-08-26  powerfree_count(n[,k])
+2021-08-26  is_powerfree(n[,k])
+2021-08-12  is_sum_of_squares(n[,k])
+2021-07-05  allrootmod(a,k,n)
+2021-06-28  allsqrtmod(a,n)
+2021-06-08  nth_omega_prime(k,n)
+2021-03-13  is_omega_prime(k,n)
+2021-03-05  omega_primes(k,[start,]end)
+2021-03-05  omega_prime_count(k,n)
+2021-03-05  almost_primes(k,[start,]end)
+2021-03-02  add1int(n)
+2021-03-02  sub1int(n)
+2021-03-02  signint(a, b)
+2021-03-02  cmpint(a, b)
+2021-02-11  lucasvmod
+2021-02-11  lucasumod
+2021-02-11  lucasuvmod
+2021-02-11  lucasuv(p,q,k)
+2021-02-11  fdivrem(a, b)
+2021-01-26  is_delicate_prime(n[,b])
+2021-01-18  rshiftint(n, k)
+2021-01-18  rashiftint(n, k)
+2021-01-18  lshiftint(n, k)
+2021-01-14  tozeckendorf(n)
+2021-01-14  fromzeckendorf(str)
+2021-01-13  vecequal(\@a, \@b)
+2021-01-12  foralmostprimes {} k,a,b
+2020-08-08  binomialmod(n,k,m)
+2020-07-23  is_practical(n)
+2020-07-17  smooth_count(n,k)
+2020-07-17  rough_count(n,k)
+2020-07-16  perfect_power_count([beg,] end)
+2020-07-15  qnr
+2020-07-09  powerful_count(n[,k])
+2020-07-09  nth_powerful(n[,k])
+2020-07-07  is_powerful(n[,k])
+2020-07-04  almost_prime_count_lower(k,n)
+2020-07-04  almost_prime_count_upper(k,n)
+2020-07-04  nth_almost_prime_approx(k,n)
+2020-07-04  nth_almost_prime_lower(k,n)
+2020-07-04  nth_almost_prime_upper(k,n)
+2020-07-04  nth_almost_prime
+2020-06-24  almost_prime_count
+2020-06-24  almost_prime_count_approx
+2020-06-23  is_almost_prime(n,k)
+2020-06-23  is_smooth(n,k)
+2020-06-23  is_rough(n,k)
+2020-06-20  prime_bigomega(n)
+2020-06-20  prime_omega(n)
+2020-06-18  sumliouville(n)
+2020-08-21  rootmod
+2020-08-19  submod
+2019-06-28  absint
+2019-06-28  negint
+2019-02-24  random_safe_prime
+2019-01-07  powint
+2019-01-07  mulint
+2019-01-07  addint
+2019-01-07  subint
+2019-01-07  divint
+2019-01-07  modint
+2019-01-07  divrem
+2019-01-07  tdivrem
+2019-01-03  is_gaussian_prime(a,b)
+2018-12-14  is_lucky(n)
+2018-12-14  nth_lucky(n)
+2018-12-12  lucky_numbers([start],] end)
+
+-------------------------------------------------------------------------------
+2018-11-15  v0.73
+2018-11-13  inverse_totient
+-------------------------------------------------------------------------------
+2018-11-08  v0.72
+2018-10-30  forsetproduct {...} \@a,\@b
+2018-10-16  semiprime_count_approx
+2018-10-08  semi_primes
+2018-10-05  nth_semiprime_approx
+2018-09-20  nth_semiprime
+-------------------------------------------------------------------------------
+2018-08-28  v0.71
+2018-08-23  semiprime_count([lo,]hi)
+2018-08-16  random_factored_integer(n)
+2018-08-16  forsemiprimes {...} a,b
+2018-02-11  forsquarefree {...} a,b
+2018-02-11  forfactored {...} a,b
+-------------------------------------------------------------------------------
+2017-12-02  v0.70
+-------------------------------------------------------------------------------
+2017-11-08  v0.69
+2017-10-20  is_totient(n)
+-------------------------------------------------------------------------------
+2017-10-19  v0.68
+2017-10-16  is_fundamental(d)
+2017-09-26  factorialmod(n,m)
+-------------------------------------------------------------------------------
+2017-09-23  v0.67
+2017-09-23  is_polygonal(n,k)
+2017-09-22  lastfor
+2017-09-18  is_square(n)
+-------------------------------------------------------------------------------
+2017-09-12  v0.66
+2017-09-11  shuffle
+2017-09-09  numtoperm
+2017-09-09  permtonum
+2017-09-09  randperm
+2017-09-01  forderange {} ?
+2017-05-26  random_semiprime(n)
+2017-05-26  random_unrestricted_semiprime(n)
+-------------------------------------------------------------------------------
+2017-05-03  v0.65
+-------------------------------------------------------------------------------
+2017-04-17  v0.64
+-------------------------------------------------------------------------------
+2017-04-16  v0.63
+-------------------------------------------------------------------------------
+2017-04-16  v0.62
+2017-04-14  nth_ramanujan_prime_upper(n)
+2017-04-14  nth_ramanujan_prime_lower(n)
+2017-04-14  nth_ramanujan_prime_approx(n)
+2017-04-14  ramanujan_prime_count_upper(n)
+2017-04-14  ramanujan_prime_count_lower(n)
+2017-04-14  ramanujan_prime_count_approx(n)
+2017-04-14  entropy_bytes(n)
+2017-04-10  csrand(str)
+2017-04-05  rand(UV)
+2017-04-05  urandomm
+2017-04-05  urandomb
+2017-04-05  srand
+2017-04-05  random_bytes
+2017-04-05  irand64
+2017-04-05  irand
+2017-04-05  drand
+-------------------------------------------------------------------------------
+2017-03-12  v0.61
+2017-02-22  is_semiprime(n)
+2017-02-21  inverse_li(n)
+2017-01-10  is_pillai(n)
+-------------------------------------------------------------------------------
+2016-10-09  v0.60
+2016-08-30  vecfirstidx {...} @n
+-------------------------------------------------------------------------------
+2016-08-03  v0.59
+2016-07-26  rootint(n,k)
+2016-07-24  is_euler_plumb_pseudoprime
+2016-07-21  logint(n,b)
+2016-07-21  ramanujan_sum(k,n)
+2016-07-10  is_prime_power(n)
+-------------------------------------------------------------------------------
+2016-05-21  v0.58
+2016-05-18  sieve_range(n, width, depth)
+2016-05-03  hclassno
+2016-04-29  is_quasi_carmichael
+2016-04-22  is_primitive_root
+2016-01-14  is_euler_pseudoprime
+2016-01-10  sqrtmod
+2016-01-05  addmod
+2016-01-05  mulmod
+2016-01-05  divmod
+2016-01-05  powmod
+-------------------------------------------------------------------------------
+2016-01-03  v0.57
+2016-01-01  formultiperm {...} \@n
+2015-12-23  vecnone vecall vecany vecnotall vecfirst
+2015-12-20  ramanujan_prime_count
+2015-12-18  todigits
+2015-12-18  todigitstring
+2015-12-18  fromdigits
+-------------------------------------------------------------------------------
+2015-12-13  v0.56
+2015-12-11  forcomp { ... } n[,{...}]
+2015-11-02  is_carmichael(n)
+-------------------------------------------------------------------------------
+2015-10-19  v0.55
+-------------------------------------------------------------------------------
+2015-10-14  v0.54
+2015-10-04  sieve_prime_cluster
+-------------------------------------------------------------------------------
+2015-09-05  v0.53
+2015-09-02  sumdigits(n,base)
+2015-08-12  ramanujan_tau(n)
+-------------------------------------------------------------------------------
+2015-08-09  v0.52
+2015-07-23  is_square_free(n)
+-------------------------------------------------------------------------------
+2015-06-21  v0.51
+2015-06-13  is_frobenius_khashin_pseudoprime
+2015-06-12  sum_primes
+2015-06-12  print_primes
+2015-05-23  is_catalan_pseudoprime
+-------------------------------------------------------------------------------
+2015-05-03  v0.50
+2015-04-24  is_ramanujan_prime
+2015-04-22  nth_ramanujan_prime
+2015-01-28  vecextract
+2014-12-29  ramanujan_primes
+2014-12-27  sqrtint
+2014-12-25  harmfrac
+2014-12-25  harmreal
+-------------------------------------------------------------------------------
+2014-11-30  v0.49
+-------------------------------------------------------------------------------
+2014-11-28  v0.48
+2014-11-18  lucasu(p,q,k)
+2014-11-18  lucasv(p,q,k)
+-------------------------------------------------------------------------------
+2014-11-18  v0.47
+2014-11-06  is_mersenne_prime
+-------------------------------------------------------------------------------
+2014-10-21  v0.46
+2014-10-20  hammingweight
+2014-10-20  vecreduce
+-------------------------------------------------------------------------------
+2014-09-26  v0.45
+2014-09-25  stirling
+2014-09-22  vecprod
+2014-09-21  Pi
+2014-09-19  bernfrac
+2014-09-19  bernreal
+2014-09-18  vecmin
+2014-09-18  vecmax
+2014-09-16  LambertW
+2014-09-16  is_perrin_pseudoprime
+2014-09-16  is_frobenius_pseudoprime
+2014-09-08  is_bpsw_prime
+2014-09-07  factorial
+2014-09-05  forperm
+2014-09-05  forcomb
+-------------------------------------------------------------------------------
+2014-08-16  v0.43
+2014-08-04  twin_primes
+2014-07-30  foroddcomposites
+-------------------------------------------------------------------------------
+2014-06-18  v0.42
+2014-06-02  chinese
+2014-06-02  gcdext
+-------------------------------------------------------------------------------
+2014-05-18  v0.41
+2014-05-12  binomial
+2014-05-11  vecsum
+2014-05-10  forpart
+2014-05-05  invmod
+2014-04-28  valuation
+-------------------------------------------------------------------------------
+2014-04-21  v0.40
+2014-04-10  nth_twin_prime_approx
+2014-03-27  nth_twin_prime
+2014-03-20  twin_prime_count_approx
+2014-03-20  twin_prime_count
+2014-03-06  random_shawe_taylor_prime_with_cert
+2014-03-06  random_shawe_taylor_prime
+-------------------------------------------------------------------------------
+2014-03-01  v0.39
+-------------------------------------------------------------------------------
+2014-02-28  v0.38
+2014-01-30  is_power
+-------------------------------------------------------------------------------
+2014-01-13  v0.36
+2014-01-07  znlog
+2014-01-06  legendre_phi
+2014-01-06  lcm
+2014-01-03  gcd
+2013-12-27  kronecker
+2013-12-27  znprimroot
+2013-12-18  forcomposites
+2013-12-18  fordivisors
+-------------------------------------------------------------------------------
+2013-12-08  v0.35
+-------------------------------------------------------------------------------
+2013-11-19  v0.34
+-------------------------------------------------------------------------------
+2013-11-18  v0.33
+2013-10-18  partitions(n)
+2013-10-18  liouville(n)
+2013-10-18  factor_exp(n)
+-------------------------------------------------------------------------------
+2013-10-13  v0.32
+2013-09-27  miller_rabin_random(n,k)
+2013-09-19  prime_iterator_object
+2013-09-12  znorder(a,n)
+2013-08-13  carmichael_lambda(n)
+-------------------------------------------------------------------------------
+2013-08-07  v0.31
+-------------------------------------------------------------------------------
+2013-08-06  v0.30
+2013-07-12  pplus1_factor(n)
+2013-07-04  is_almost_extra_strong_lucas_pseudoprime(n)
+2013-06-24  lucas_sequence(n,P,Q,k)
+2013-06-24  is_frobenius_underwood_pseudoprime(n)
+-------------------------------------------------------------------------------
+2013-05-30  v0.29
+2013-05-29  is_extra_strong_lucas_pseudoprime(n)
+2013-05-29  is_lucas_pseudoprime(n)
+2013-05-29  is_pseudoprime(n,base)
+-------------------------------------------------------------------------------
+2013-05-23  v0.28
+2013-05-21  prime_iterator([start])
+2013-05-20  forprimes {...} [start,]end
+-------------------------------------------------------------------------------
+2013-05-20  v0.27
+-------------------------------------------------------------------------------
+2013-04-21  v0.26
+2013-04-12  prime_certificate(n)
+2013-04-10  verify_prime(cert)
+-------------------------------------------------------------------------------
+2013-03-19  v0.25
+-------------------------------------------------------------------------------
+2013-03-10  v0.24
+-------------------------------------------------------------------------------
+2013-03-05  v0.23
+2013-03-01  chebyshev_theta(n)
+2013-03-01  chebyshev_psi(n)
+2013-02-27  consecutive_integer_lcm(n)
+-------------------------------------------------------------------------------
+2013-02-26  v0.22
+-------------------------------------------------------------------------------
+2013-02-22  v0.21
+2013-02-22  exp_mangoldt(n)
+2013-02-21  mertens(n)
+-------------------------------------------------------------------------------
+2013-02-03  v0.20
+-------------------------------------------------------------------------------
+2013-02-01  v0.19
+-------------------------------------------------------------------------------
+2013-01-14  v0.18
+2013-01-14  random_strong_prime(n)
+-------------------------------------------------------------------------------
+2012-12-20  v0.17
+-------------------------------------------------------------------------------
+2012-12-11  v0.16
+-------------------------------------------------------------------------------
+2012-12-09  v0.15
+-------------------------------------------------------------------------------
+2012-11-29  v0.14
+2012-11-22  jordan_totient(n,k)
+2012-11-22  divisor_sum(n[,k])
+-------------------------------------------------------------------------------
+2012-11-19  v0.13
+-------------------------------------------------------------------------------
+2012-11-17  v0.12
+2012-11-17  is_aks_prime(n)
+2012-11-05  is_provable_prime(n)
+2012-08-02  primorial(n)
+2012-08-02  pn_primorial(n)
+2012-07-23  RiemannZeta(x)
+-------------------------------------------------------------------------------
+2012-07-23  v0.11
+-------------------------------------------------------------------------------
+2012-07-16  v0.10
+2012-07-07  random_maurer_prime(bits)
+2012-07-03  is_strong_lucas_pseudoprime(n)
+2012-06-29  moebius(n)
+2012-06-29  euler_phi(n)
+2012-06-25  is_strong_pseudoprime(n,base)
+2012-06-19  all_factors(n)
+2012-06-10  ExponentialIntegral(x)
+2012-06-10  LogarithmicIntegral(x)
+2012-06-10  RiemannR(x)
+2012-06-07  random_nbit_prime(bits)
+2012-06-07  random_ndigit_prime(digits)
+2012-06-07  random_prime([lo,]hi)
+-------------------------------------------------------------------------------
+2012-06-04  v0.01  Initial release
+            primes([lo,]hi)
+            is_prime(n)
+            is_prob_prime(n)
+            prime_count([lo,]hi)
+            nth_prime(n)
+            next_prime(n)
+            prev_prime(n)
+            factor(n)
+            prime_count_approx(n)
+            prime_count_lower(n)
+            prime_count_upper(n)
+            nth_prime_approx(n)
+            nth_prime_lower(n)
+            nth_prime_upper(n)
