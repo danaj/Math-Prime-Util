@@ -16,7 +16,8 @@ use Test::More;
 eval "use Test::Weaken";
 plan skip_all => "Test::Weaken required for testing leaks" if $@;
 
-use Math::Prime::Util qw/prime_iterator primes factor moebius/;
+use Math::Prime::Util qw/prime_iterator primes factor moebius
+                         forprimes divisors divrem/;
 use Math::Prime::Util::PrimeIterator;
 
 my $leaks;
@@ -64,5 +65,25 @@ $leaks = Test::Weaken::leaks(
     return [moebius(500,1000)];
   });
 ok(!$leaks, "moebius range doesn't leak");
+
+$leaks = Test::Weaken::leaks(
+  sub {
+    my @p;
+    forprimes { push @p, $_ } 1000;
+    return \@p;
+  });
+ok(!$leaks, "forprimes block doesn't leak");
+
+$leaks = Test::Weaken::leaks(
+  sub {
+    return [divrem(1000000007, 12345)];
+  });
+ok(!$leaks, "divrem doesn't leak");
+
+$leaks = Test::Weaken::leaks(
+  sub {
+    return [divisors(720720)];
+  });
+ok(!$leaks, "divisors doesn't leak");
 
 done_testing();
