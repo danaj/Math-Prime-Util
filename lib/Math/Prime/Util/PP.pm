@@ -6967,7 +6967,10 @@ sub is_power {
   }
 
   if ($a != 0) {
-    return 1 if $a == 1;                  # Everything is a 1st power
+    if ($a == 1) {
+      $$refp = $n if defined $refp;
+      return 1;                           # Everything is a 1st power
+    }
     return 0 if $n < 0 && $a % 2 == 0;    # Negative n never an even power
     if ($a == 2) {
       if (_is_perfect_square($n)) {
@@ -7004,15 +7007,16 @@ sub is_power {
 
   my $negn = $n < 0;
   $n = Mnegint($n) if $negn;
-  my $k = _powerof_ret($n, $refp);
+  my $r;
+  my $k = _powerof_ret($n, defined $refp ? \$r : undef);
   return 0 if $k < 2;
   if ($negn && $k % 2 == 0) {
     my $v = Mvaluation($k, 2);
     $k >>= $v;
     return 0 if $k < 2;
-    $$refp = Mpowint($$refp, Mpowint(2,$v)) if defined $refp;
+    $r = Mpowint($r, Mpowint(2,$v)) if defined $r;
   }
-  $$refp = Mnegint($$refp) if $negn && defined $refp;
+  $$refp = $negn ? Mnegint($r) : $r  if defined $refp && $k > 0;
   $k;
 }
 

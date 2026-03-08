@@ -459,14 +459,20 @@ subtest 'is_power', sub {
   is( is_power(3089265681159475043336839581081873360674602365963130114355701114591322241990483812812582393906477998611814245513881), 14, "ispower(150607571^14) == 14" );
   my @negpowers = (qw/0 0 0 3 0 5 3 7 0 9 5 11 3 13 7 15 0 17 9 19 5 21 11 23 3 25 13 27 7 29 15 31/);
   push @negpowers, (qw/0 33 17 35 9 37 19 39 5 41 21 43 11 45 23 47 3 49 25 51 13 53 27 55 7 57 29 59 15 61 31 63 0 65 33 67 17 69 35 71 9 73 37 75 19 77 39 79 5 81 41 83 21 85 43 87 11 89 45 91 23 93 47 95 3 97 49 99 25 101 51 103 13 105 53 107 27 109 55 111 7 113 57 115 29 117 59 119 15 121 61 123 31 125 63 127 0 129 65 131 33 133 67 135 17 137 69 139 35 141 71 143 9 145 73 147 37 149 75/) if $extra;
-  # Work around bug in Math::BigInt::Pari and Perl pre-5.18.
-  if ($bigintlib eq 'Pari' && $] < "5.018") {
-    is_deeply( [map { is_power("".-7 ** $_) } int("0") .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
-    is_deeply( [map { my $r; my $p=is_power("".-7 ** $_, "0", \$r); $p ? (0+$r) ** $p : -7 ** $_; } int("0") .. $#negpowers], [map { -7 ** $_ } int("0") .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
-  } else {
-    is_deeply( [map { is_power(-7 ** $_) } int("0") .. $#negpowers], \@negpowers, "-7 ^ i for 0 .. $#negpowers" );
-    is_deeply( [map { my $r; my $p=is_power(-7 ** $_, "0", \$r); $p ? (1*$r) ** $p : -7 ** $_; } int("0") .. $#negpowers], [map { -7 ** $_ } int("0") .. $#negpowers], "correct root from is_power for -7^i for 0 .. $#negpowers" );
+  # Make sure to test Math::BigInt::Pari with Perl pre-5.18.
+  my(@gotpow0,@gotpow,@gotroot,@exproot);
+  for (0 .. $#negpowers) {
+    my $r;
+    my $n = 7 ** $_;
+    push @gotpow0, is_power("-$n");
+    push @gotpow, is_power("-$n", int("0"), \$r);
+    push @gotroot, $r;
+    my $p = $gotpow[-1];
+    push @exproot, $p == 0 ? undef : -(7 ** int($_/$p));
   }
+  is_deeply(\@gotpow0, \@negpowers, "is_power( -(7^i) ) for 0 .. $#negpowers");
+  is_deeply(\@gotpow, \@negpowers, "same result with is_power(n,0,\\\$r)");
+  is_deeply(\@gotroot, \@exproot, "correct roots in \$r");
 };
 
 ###############################################################################
