@@ -195,7 +195,61 @@ die "sqrtmod native" unless checkv($rnat,2);
 die "sqrtmod bigint" unless checkv($rbig,"50031545098999707");
 print ".";
 
-# TODO divrem, tdivrem, fdivrem, cdivrem
+# divrem (Euclidean): remainder always >= 0
+{
+  my($q,$r);
+  ($q,$r) = divrem(310, 17);
+  die "divrem native" unless checkv($q,18) && checkv($r,4);
+  ($q,$r) = divrem(-310, 17);
+  die "divrem native neg" unless checkv($q,-19) && checkv($r,13);
+  ($q,$r) = divrem($y, $x);
+  die "divrem bigint" unless checkv($q,2120255184830) && checkv($r,"297440975187654227929");
+  ($q,$r) = divrem(-$y, $x);
+  die "divrem bigint neg" unless checkv($q,-2120255184831) && checkv($r,"883150645529757075495");
+  print ".";
+}
+
+# tdivrem (truncated toward zero)
+{
+  my($q,$r);
+  ($q,$r) = tdivrem(310, 17);
+  die "tdivrem native" unless checkv($q,18) && checkv($r,4);
+  ($q,$r) = tdivrem(-310, 17);
+  die "tdivrem native neg" unless checkv($q,-18) && checkv($r,-4);
+  ($q,$r) = tdivrem($y, $x);
+  die "tdivrem bigint" unless checkv($q,2120255184830) && checkv($r,"297440975187654227929");
+  ($q,$r) = tdivrem(-$y, $x);
+  die "tdivrem bigint neg" unless checkv($q,-2120255184830) && checkv($r,"-297440975187654227929");
+  print ".";
+}
+
+# fdivrem (floored)
+{
+  my($q,$r);
+  ($q,$r) = fdivrem(310, 17);
+  die "fdivrem native" unless checkv($q,18) && checkv($r,4);
+  ($q,$r) = fdivrem(-310, 17);
+  die "fdivrem native neg" unless checkv($q,-19) && checkv($r,13);
+  ($q,$r) = fdivrem($y, $x);
+  die "fdivrem bigint" unless checkv($q,2120255184830) && checkv($r,"297440975187654227929");
+  ($q,$r) = fdivrem(-$y, $x);
+  die "fdivrem bigint neg" unless checkv($q,-2120255184831) && checkv($r,"883150645529757075495");
+  print ".";
+}
+
+# cdivrem (ceiling)
+{
+  my($q,$r);
+  ($q,$r) = cdivrem(310, 17);
+  die "cdivrem native" unless checkv($q,19) && checkv($r,-13);
+  ($q,$r) = cdivrem(-310, 17);
+  die "cdivrem native neg" unless checkv($q,-18) && checkv($r,-4);
+  ($q,$r) = cdivrem($y, $x);
+  die "cdivrem bigint" unless checkv($q,2120255184831) && checkv($r,"-883150645529757075495");
+  ($q,$r) = cdivrem(-$y, $x);
+  die "cdivrem bigint neg" unless checkv($q,-2120255184830) && checkv($r,"-297440975187654227929");
+  print ".";
+}
 
 $rnat = lucasumod(4,-3,2379,377);
 $rbig = lucasumod(4,-3,2379,$x);
@@ -227,7 +281,196 @@ print ".";
 
 ################################################################################
 
-################################################################################
+print "\nnthry  ";
+
+# gcd: small result from small inputs, big result from big inputs
+$rnat = gcd(15, 35);
+$rbig = gcd(mulint($z,6), mulint($z,10));
+die "gcd native" unless checkv($rnat, 5);
+die "gcd bigint" unless checkv($rbig, "2208855348487841292610598402");
+print ".";
+
+# lcm
+$rnat = lcm(15, 35);
+$rbig = lcm(mulint($z,6), mulint($z,10));
+die "lcm native" unless checkv($rnat, 105);
+die "lcm bigint" unless checkv($rbig, "33132830227317619389158976030");
+print ".";
+
+# gcdext
+{
+  my @ge = gcdext(15, 35);
+  die "gcdext native" unless checkv($ge[0],-2) && checkv($ge[1],1) && checkv($ge[2],5);
+  @ge = gcdext(mulint($z,6), mulint($z,10));
+  die "gcdext bigint" unless checkv($ge[0],2) && checkv($ge[1],-1) && checkv($ge[2],"2208855348487841292610598402");
+  print ".";
+}
+
+# euler_phi:  phi(100) = 40,  phi(7^32) = 7^31 * 6
+$rnat = euler_phi(100);
+$rbig = euler_phi($z);
+die "euler_phi native" unless checkv($rnat, 40);
+die "euler_phi bigint" unless checkv($rbig, "946652292209074839690256458");
+print ".";
+
+# carmichael_lambda:  lambda(100) = 20,  lambda(7^32) = 7^31 * 6
+$rnat = carmichael_lambda(100);
+$rbig = carmichael_lambda($z);
+die "carmichael_lambda native" unless checkv($rnat, 20);
+die "carmichael_lambda bigint" unless checkv($rbig, "946652292209074839690256458");
+print ".";
+
+# jordan_totient:  J_2(100) = 7200,  J_2(7^32) = 7^62 * 48
+$rnat = jordan_totient(2, 100);
+$rbig = jordan_totient(2, $z);
+die "jordan_totient native" unless checkv($rnat, 7200);
+die "jordan_totient bigint" unless checkv($rbig, "1194867416459594155237786640878013212168766002414274352");
+print ".";
+
+# kronecker:  always returns native -1, 0, or 1
+$rnat = kronecker(15, 35);
+die "kronecker" unless checkv($rnat, 0);
+$rnat = kronecker($x, $z);
+die "kronecker bigint args" unless checkv($rnat, 1);
+print ".";
+
+# znorder:  znorder(2,101) = 100
+$rnat = znorder(2, 101);
+die "znorder native" unless checkv($rnat, 100);
+# znorder with bigint prime modulus: znorder(2, next_prime(2^70))
+$rbig = znorder(2, $class->new("1180591620717411303449"));
+die "znorder bigint" unless checkv($rbig, "295147905179352825862");
+print ".";
+
+# znprimroot:  znprimroot(101) = 2
+$rnat = znprimroot(101);
+die "znprimroot native" unless checkv($rnat, 2);
+$rnat = znprimroot($class->new("1180591620717411303449"));
+die "znprimroot bigint" unless checkv($rnat, 3);
+print ".";
+
+# exp_mangoldt:  prime power -> prime,  otherwise -> 1
+$rnat = exp_mangoldt(128);  # 2^7 -> 2
+die "exp_mangoldt native" unless checkv($rnat, 2);
+$rnat = exp_mangoldt($z);   # 7^32 -> 7
+die "exp_mangoldt bigint" unless checkv($rnat, 7);
+$rnat = exp_mangoldt(30);   # not a prime power -> 1
+die "exp_mangoldt 30" unless checkv($rnat, 1);
+print ".";
+
+# consecutive_integer_lcm:  result can exceed UV
+$rnat = consecutive_integer_lcm(20);
+$rbig = consecutive_integer_lcm(100);
+die "consecutive_integer_lcm native" unless checkv($rnat, 232792560);
+die "consecutive_integer_lcm bigint" unless checkv($rbig, "69720375229712477164533808935312303556800");
+print ".";
+
+# ramanujan_tau
+$rnat = ramanujan_tau(20);
+$rbig = ramanujan_tau(1000);
+die "ramanujan_tau native" unless checkv($rnat, -7109760);
+die "ramanujan_tau bigint" unless checkv($rbig, "-30328412970240000");
+print ".";
+
+# partitions
+$rnat = partitions(30);
+$rbig = partitions(1000);
+die "partitions native" unless checkv($rnat, 5604);
+die "partitions bigint" unless checkv($rbig, "24061467864032622473692149727991");
+print ".";
+
+# chinese (CRT)
+$rnat = chinese([3,7],[5,11]);
+$rbig = chinese([3,$x],[5,$z]);
+die "chinese native" unless checkv($rnat, 38);
+die "chinese bigint" unless checkv($rbig, "274780012208942403819037834081377580846524923907");
+print ".";
+
+# binomial
+$rnat = binomial(20, 10);
+$rbig = binomial(100, 50);
+die "binomial native" unless checkv($rnat, 184756);
+die "binomial bigint" unless checkv($rbig, "100891344545564193334812497256");
+$rbig = binomial($x, 3);
+die "binomial bigint n" unless checkv($rbig, "274250759553534340358464632138771002190616713273449955064807424");
+print ".";
+
+# stirling (type 1 and type 2)
+$rnat = stirling(10, 3, 1);
+$rbig = stirling(30, 3, 1);
+die "stirling s1 native" unless checkv($rnat, -1172700);
+die "stirling s1 bigint" unless checkv($rbig, "-62262192842035613491057459200000");
+$rnat = stirling(10, 3, 2);
+$rbig = stirling(50, 3, 2);
+die "stirling s2 native" unless checkv($rnat, 9330);
+die "stirling s2 bigint" unless checkv($rbig, "119649664052358811373730");
+print ".";
+
+# permtonum
+$rnat = permtonum([2,1,0]);
+$rbig = permtonum([24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0]);
+die "permtonum native" unless checkv($rnat, 5);
+die "permtonum bigint" unless checkv($rbig, "15511210043330985983999999");
+print ".";
+
+# subfactorial
+$rnat = subfactorial(10);
+$rbig = subfactorial(50);
+die "subfactorial native" unless checkv($rnat, 1334961);
+die "subfactorial bigint" unless checkv($rbig, "11188719610782480504630258070757734324011354208865721592720336801");
+print ".";
+
+# falling_factorial
+$rnat = falling_factorial(10, 3);
+$rbig = falling_factorial($x, 3);
+die "falling_factorial native" unless checkv($rnat, 720);
+die "falling_factorial bigint" unless checkv($rbig, "1645504557321206042150787792832626013143700279640699730388844544");
+print ".";
+
+# rising_factorial
+$rnat = rising_factorial(10, 3);
+$rbig = rising_factorial($x, 3);
+die "rising_factorial native" unless checkv($rnat, 1320);
+die "rising_factorial bigint" unless checkv($rbig, "1645504557321206042159150572282074996821776173992942865953587200");
+print ".";
+
+# pisano_period
+$rnat = pisano_period(100);
+$rbig = pisano_period($x);
+die "pisano_period native" unless checkv($rnat, 300);
+die "pisano_period bigint" unless checkv($rbig, "1770887431076116955136");
+print ".";
+
+# powersum
+$rnat = powersum(10, 2);
+$rbig = powersum(100, 10);
+die "powersum native" unless checkv($rnat, 385);
+die "powersum bigint" unless checkv($rbig, "959924142434241924250");
+print ".";
+
+# lucasu:  U(1,-1,k) = Fibonacci(k)
+$rnat = lucasu(1, -1, 20);
+$rbig = lucasu(1, -1, 100);
+die "lucasu native" unless checkv($rnat, 6765);
+die "lucasu bigint" unless checkv($rbig, "354224848179261915075");
+print ".";
+
+# lucasv:  V(1,-1,k) = Lucas(k)
+$rnat = lucasv(1, -1, 20);
+$rbig = lucasv(1, -1, 100);
+die "lucasv native" unless checkv($rnat, 15127);
+die "lucasv bigint" unless checkv($rbig, "792070839848372253127");
+print ".";
+
+# lucasuv
+{
+  my($u,$v);
+  ($u,$v) = lucasuv(1, -1, 20);
+  die "lucasuv native" unless checkv($u, 6765) && checkv($v, 15127);
+  ($u,$v) = lucasuv(1, -1, 100);
+  die "lucasuv bigint" unless checkv($u, "354224848179261915075") && checkv($v, "792070839848372253127");
+  print ".";
+}
 
 # TODO
 #  next_prime  prev_prime
@@ -236,20 +479,8 @@ print ".";
 # random_strong_prime random_safe_prime random_prime
 # random_maurer_prime random_shawe_taylor_prime
 
-# consecutive_integer_lcm
-# partitions
-# gcd lcm gcdext
-# chinese ramanujan_tau
-# exp_mangoldt
-# jordan_totient
-# carmichael_lambda
-# binomial
-# stirling
 # primorial pn_primorial
-# permtonum
-# subfactorial falling_factorial rising_factorial
-# pisano_period powersum fromdigits
-# lucsasu lucasv lucasuv
+# fromdigits
 
 # powerful_count powerfree_count prime_power_count perfect_power_count
 # nth_powerfree nth_perfect_power nth_perfect_power_approx

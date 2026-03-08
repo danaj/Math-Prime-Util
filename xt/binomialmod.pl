@@ -2,6 +2,7 @@
 use warnings;
 use strict;
 use ntheory qw/binomialmod next_prime/;
+#Math::Prime::Util::prime_set_config(bigint=>"Math::GMPz");
 
 {
   my $s = 0;
