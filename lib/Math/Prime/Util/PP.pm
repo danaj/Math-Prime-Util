@@ -537,20 +537,21 @@ sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
     return 2;
   }
 
-  if ($n < 47636622961201) {   # BPSW seems to be faster after this
+  if ($n < 154639673381) {   # BPSW seems to be faster after this
     # Deterministic set of Miller-Rabin tests.  If the MR routines can handle
-    # bases greater than n, then this can be simplified.
-    my @bases;
+    # bases greater than n, this can be simplified.  This covers all 64-bit
+    # inputs, even though we restrict it to smaller inputs for performance.
+    my @b;
     # n > 1_000_000 because of the previous block.
-    if    ($n <         19471033) { @bases = ( 2,  299417); }
-    elsif ($n <         38010307) { @bases = ( 2,  9332593); }
-    elsif ($n <        316349281) { @bases = ( 11000544, 31481107); }
-    elsif ($n <       4759123141) { @bases = ( 2, 7, 61); }
-    elsif ($n <     154639673381) { @bases = ( 15, 176006322, 4221622697); }
-    elsif ($n <   47636622961201) { @bases = ( 2, 2570940, 211991001, 3749873356); }
-    elsif ($n < 3770579582154547) { @bases = ( 2, 2570940, 880937, 610386380, 4130785767); }
-    else                          { @bases = ( 2, 325, 9375, 28178, 450775, 9780504, 1795265022); }
-    return is_strong_pseudoprime($n, @bases)  ?  2  :  0;
+    if    ($n <         19471033) {@b=(2,299417)}
+    elsif ($n <         38010307) {@b=(2,9332593)}
+    elsif ($n <        316349281) {@b=(11000544,31481107)}             # 2 bases
+    elsif ($n <       4759123141) {@b=(2,7,61)}
+    elsif ($n <     154639673381) {@b=(15,176006322,4221622697)}       # 3 bases
+    elsif ($n <   47636622961201) {@b=(2,2570940,211991001,3749873356)}# 4 bases
+    elsif ($n < 3770579582154547) {@b=(2,2570940,880937,610386380,4130785767)}
+    else                          {@b=(2,325,9375,28178,450775,9780504,1795265022)}
+    return is_strong_pseudoprime($n, @b)  ?  2  :  0;
   }
 
   # Inlined BPSW
@@ -9179,28 +9180,29 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   return 0 if $D == 0;  # We found a divisor in the sequence
   die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
 
-  my($TWO, $V, $W) = map { tobigint($_) } (2, $P, $P*$P-2);
-  $n = tobigint($n);
-
-  my $kstr = todigitstring($n + 1, 2);
-  $kstr =~ s/(0*)\z//;   # Remove trailing zeros
-  my $s = length($1);
-  my $bpos = 0;
-  while (++$bpos < length($kstr)) {
-    if (substr($kstr,$bpos,1)) {
-      $V = Mmulsubmod($V, $W, $P,   $n);
-      $W = Mmulsubmod($W, $W, $TWO, $n);
+  my($s, $k) = (0, Madd1int($n));
+  while (Mis_even($k) && $k != 0) {
+    $s++;
+    $k = Mrshiftint($k);
+  }
+  my @kbits = Mtodigits($k, 2);
+  shift @kbits;  # Remove leading 1
+  my($V,$W) = ($P,$P*$P-2);
+  foreach my $bit (@kbits) {
+    if ($bit) {
+      $V = Mmulsubmod($V, $W, $P, $n);
+      $W = Mmulsubmod($W, $W, 2,  $n);
     } else {
-      $W = Mmulsubmod($W, $V, $P,   $n);
-      $V = Mmulsubmod($V, $V, $TWO, $n);
+      $W = Mmulsubmod($W, $V, $P, $n);
+      $V = Mmulsubmod($V, $V, 2,  $n);
     }
   }
   return 1 if $V == 2 || Msubint($n,$V) == 2;
   foreach my $r (0 .. $s-2) {
     return 1 if $V == 0;
-    $V = Mmulsubmod($V, $V, $TWO, $n);
+    $V = Mmulsubmod($V, $V, 2, $n);
   }
-  0;
+  return 0;
 }
 
 sub is_frobenius_khashin_pseudoprime {
