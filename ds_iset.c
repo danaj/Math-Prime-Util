@@ -124,7 +124,8 @@ iset_t iset_create_from_array(UV* d, size_t dlen, int dsign) {
         size_t h = _iset_pos(s.arr, s.mask, val);
         if (s.arr[h] != val) {
           s.arr[h] = val;
-          s.size++;
+          if (++s.size > FILL_RATIO * (double)s.maxsize)
+            _iset_resize(&s);
         }
         if (val > (UV)IV_MAX)
           s.type |= typemask;

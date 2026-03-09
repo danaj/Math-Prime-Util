@@ -42,6 +42,8 @@ bool iset_contains(const iset_t set, UV val);   /* returns 0 or 1 */
 
 /* sign indicates: val is a UV (1) or IV (-1) */
 bool iset_add(iset_t *set, UV val, int sign); /* Returns 1 if added, 0 if not */
+
+/* This would require non-trivial changes to handle chains */
 /* void  iset_remove(iset_t *set, UV val); */
 
 /* We could make an iterator */
