@@ -6613,7 +6613,7 @@ sub addmod {
   }
   # Impl 1.  Make $a a bigint and let things promote.  Fastest.
   $a = tobigint($a);
-  $b = tobigint($b) if ref($a) eq 'Math::Pari';
+  if (ref($a) eq 'Math::Pari') { $b = tobigint($b); $n = tobigint($n); }
   my $r = ($a + $b) % $n;
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
 
@@ -6641,7 +6641,7 @@ sub submod {
           :                ($b-$n)+$a;
   }
   $a = tobigint($a);
-  $b = tobigint($b) if ref($a) eq 'Math::Pari';
+  if (ref($a) eq 'Math::Pari') { $b = tobigint($b); $n = tobigint($n); }
   my $r = ($a - $b) % $n;
   return $r <= INTMAX ? _bigint_to_int($r) : $r;
 }
