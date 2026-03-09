@@ -6937,19 +6937,15 @@ C<prime_count>, or C<nth_prime> with large inputs.  This is B<only>
 an issue if you use non-Cygwin Win32 B<and> call these routines from within
 Perl threads.
 
-Because the loop functions like L</forprimes> use C<MULTICALL>, there is
-some odd behavior with anonymous sub creation inside the block.
-See L<RT95409|https://rt.cpan.org/Ticket/Display.html?id=95409>.
-This is shared with most XS modules that use C<MULTICALL>, and is rarely
-seen because it is such an unusual use.  Two examples are:
-
-  forprimes { my $var = "p is $_"; push @subs, sub {say $var}; } 50;
-  $_->() for @subs;
-
-  forprimes { my $x=$_; push @vals,\$x; } 50;   say $$_ for @vals;
-
-This can be solved by using double braces for the function, e.g.
-C<forprimes {{ ... }} 50>.
+The block calls like L</forprimes>, L</vecreduce>, etc. use C<MULTICALL>.
+We optimize away the per-call scope if it looks like it isn't needed.
+This solves the functional and memory problems seen in
+L<RT95409|https://rt.cpan.org/Ticket/Display.html?id=95409> and
+L<RT127605|https://rt.cpan.org/Ticket/Display.html?id=127605>, while
+still allowing higher performance on common simple blocks that don't
+create temporary variables or pass local references out of scope.
+Double braces for the function, e.g. C<forprimes {{ ... }} 50>, can be
+used to force a separate scope.
 
 
 =head1 SEE ALSO

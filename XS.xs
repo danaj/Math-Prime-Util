@@ -600,10 +600,10 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
    *       We're missing the input sv that gives us the desired return class.
    */
 }
-#define DISPATCHPP() dispatch_external(aTHX_ cv, GIMME_V, items, TRUE);
+#define DISPATCHPP() dispatch_external(aTHX_ cv, GIMME_V, items, TRUE)
 
 #define DISPATCHPP_GMPONLYIF(expr) \
-  dispatch_external(aTHX_ cv, GIMME_V, items, !!(expr));
+  dispatch_external(aTHX_ cv, GIMME_V, items, !!(expr))
 
 #define DISPATCH_VOIDPP() \
   (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_PP, SUBNAME, items, 0)
@@ -625,6 +625,55 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
       _vcallsubn(aTHX_ G_ARRAY,VCALL_ROOT,"_maybe_bigint_allargs",nargs_,0); \
   } while (0)
 
+/* Returns 0 if we see no reason to wrap this sub inside it's own scope.
+   Returns 1 if we need to because of locals created.
+   Returns 1 if it's too complicated (long, infinite loop, deep branches) */
+static bool cv_needs_scope(pTHX_ const CV *cv) {
+  OP *o = CvSTART(cv);
+  size_t nops = 0;
+  OP *branches[8];
+  int nbranch = 0;
+  for (; nops < 500; o = o->op_next) {
+    if (!o) {
+      if (nbranch > 0) { o = branches[--nbranch]; continue; }
+      break;
+    }
+    /* printf("   %s\n",PL_op_name[o->op_type]); */
+    nops++;
+    switch (o->op_type) {
+      case OP_PADSV:  case OP_PADAV:  case OP_PADHV:
+      case OP_ANONCODE:
+#if PERL_VERSION_GE(5,17,6)
+      case OP_PADRANGE:
+#endif
+#if PERL_VERSION_GE(5,27,6)
+      case OP_MULTICONCAT:  /* This could hide a PADSV -- we don't know */
+#endif
+#if PERL_VERSION_GE(5,37,3)
+      case OP_PADSV_STORE:
+#endif
+        return 1;
+
+      case OP_AND:  case OP_OR:  case OP_COND_EXPR:
+      case OP_ANDASSIGN:  case OP_ORASSIGN:
+#if PERL_VERSION_GE(5,9,0)
+      case OP_DOR:
+      case OP_DORASSIGN:
+#endif
+        if (nbranch >= 8) return 1; /* Too deep */
+        branches[nbranch++] = cLOGOPx(o)->op_other;
+        break;
+      case OP_LEAVESUB:
+        if (nbranch > 0) { o = branches[--nbranch]; continue; }
+        break;
+    }
+  }
+  if (nops >= 500) return 1;
+  return 0;
+}
+#define DECL_MULTICALL_SCOPE(cv)  bool addscope = cv_needs_scope(aTHX_ cv)
+#define SCOPED_MULTICALL \
+  do { if(addscope) {ENTER;}  MULTICALL;  if(addscope) {LEAVE;} } while(0)
 
 /******************************************************************************/
 
@@ -1138,7 +1187,7 @@ static int index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int 
 
   while (hi-lo > 1) {
     int mid = lo + ((hi-lo) >> 1);
-    SC_SET_MID_VALUE(midstatus, rmid, arr, mid, cache);
+    SC_SET_MID_VALUE(midstatus, rmid, arr, (size_t)mid, cache);
     cmp = _sign_cmp(midstatus, rmid, sign, val);
     if (cmp == 0) { *eq = 1; return mid; }
     if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
@@ -2360,7 +2409,7 @@ vecextract(IN SV* x, IN SV* svm)
       SSize_t j, index;
       DECL_ARREF(mav);
       USE_ARREF(mav, svm, SUBNAME, AR_READ);
-      for (j = 0; j < len_mav; j++) {
+      for (j = 0; (Size_t)j < len_mav; j++) {
         SV* v = FETCH_ARREF(mav, j);
         if (_validate_and_set(&mask, aTHX_ v, IFLAG_IV) == 0)
           croak("vecextract invalid index");
@@ -3118,7 +3167,7 @@ void urandomb(IN UV bits)
       }
       if (res || ix == 0) XSRETURN_UV(res);
     }
-    DISPATCHPP_GMPONLYIF(ix != 1 || bits != uvmax_maxlen)
+    DISPATCHPP_GMPONLYIF(ix != 1 || bits != uvmax_maxlen);
     objectify_result(aTHX_ 0, ST(0));
     XSRETURN(1);
 
@@ -3875,7 +3924,7 @@ void factorialmod(IN SV* sva, IN SV* svn)
       if (n == 1) XSRETURN_UV(0);
       XSRETURN_UV( factorialmod(a, n) );
     }
-    DISPATCHPP_GMPONLYIF(astatus == 1)
+    DISPATCHPP_GMPONLYIF(astatus == 1);
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
@@ -4857,12 +4906,13 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
       if (!CvISXSUB(subcv)) {
         dMULTICALL;
         I32 gimme = G_SCALAR;
+        DECL_MULTICALL_SCOPE(subcv);
         PUSH_MULTICALL(subcv);
         for (i = 0; i < alen; i++) {
           for (j = 0; j < blen; j++) {
             FASTSETSVINT(asv, atype == IARR_TYPE_POS, ra[i]);
             FASTSETSVINT(bsv, btype == IARR_TYPE_POS, rb[j]);
-            MULTICALL;
+            SCOPED_MULTICALL;
             status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
             if (status != 0)  iset_add(&s, ret, status);
             if (status == 0 || iset_is_invalid(s)) break;
@@ -5720,7 +5770,7 @@ void vecsample(IN SV* svk, ...)
         uint16_t *I;
         New(0, I, nitems, uint16_t);
         I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
-        EXTEND(SP, k);
+        EXTEND(SP, (EXTEND_TYPE)k);
         for (i = 0; i < k; i++) {
           uint32_t j = urandomm32(randcxt, nitems-i);
           uint16_t t = I[i+j];  I[i+j] = I[i];
@@ -5731,7 +5781,7 @@ void vecsample(IN SV* svk, ...)
         size_t *I;
         New(0, I, nitems, size_t);
         I[0] = nitems-1;  for (i = 1; i < nitems; i++)  I[i] = i-1;
-        EXTEND(SP, k);
+        EXTEND(SP, (EXTEND_TYPE)k);
         for (i = 0; i < k; i++) {
           size_t j = urandomm64(randcxt, nitems-i);
           size_t t = I[i+j];  I[i+j] = I[i];
@@ -5747,7 +5797,7 @@ void is_happy(SV* svn, UV base = 10, UV k = 2)
     UV n, sum;
     int h, status;
   PPCODE:
-    if (base < 2 || base > 36) croak("sumdigits: invalid base %"UVuf, base);
+    if (base < 2 || base > 36) croak("is_happy: invalid base %"UVuf, base);
     if (k > 10) croak("is_happy: invalid exponent %"UVuf, k);
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
     if (status == 0 && base == 10) { /* String op to reduce into range. */
@@ -5969,13 +6019,14 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (!CvISXSUB(subcv) && beg <= end) {
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       if (beg < 6) {
         beg = (beg <= 2) ? 2 : (beg <= 3) ? 3 : 5;
         for ( ; beg < 6 && beg <= end; beg += 1+(beg>2) ) {
           CHECK_FORCOUNT;
           sv_setuv(svarg, beg);
-          MULTICALL;
+          SCOPED_MULTICALL;
         }
       }
       if (beg <= end) {
@@ -5989,7 +6040,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         for (beg = next_prime(beg-1); beg <= end && beg != 0; beg = next_prime(beg)) {
           CHECK_FORCOUNT;
           sv_setuv(svarg, beg);
-          MULTICALL;
+          SCOPED_MULTICALL;
         }
        } else {                      /* MULTICALL segment sieve */
         void* ctx = start_segment_primes(beg, end, &segment);
@@ -6001,7 +6052,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
             if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg, p);            }
             else if (crossuv && p > IV_MAX)   { sv_setuv(svarg, p); crossuv=0; }
             else                              { SvUV_set(svarg, p);            }
-            MULTICALL;
+            SCOPED_MULTICALL;
           END_DO_FOR_EACH_SIEVE_PRIME
           CHECK_FORCOUNT;
         }
@@ -6073,6 +6124,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
       void* ctx;
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       if (beg >= MPU_MAX_PRIME ||
 #if BITS_PER_WORD == 64
@@ -6088,7 +6140,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             nextprime = next_prime(beg);
           else if (FORCOMPTEST(ix,beg)) {
             sv_setuv(svarg, beg);
-            MULTICALL;
+            SCOPED_MULTICALL;
           }
           CHECK_FORCOUNT;
         }
@@ -6097,7 +6149,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
           if (beg < 8)  beg = 8;
         } else if (beg <= 4) { /* sieve starts at 7, so handle this here */
           sv_setuv(svarg, 4);
-          MULTICALL;
+          SCOPED_MULTICALL;
           beg = 6;
         }
         /* Find the two primes that bound their interval. */
@@ -6120,7 +6172,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
               if      (SvTYPE(svarg) != SVt_IV) { sv_setuv(svarg,c); }
               else if (crossuv && c > IV_MAX)   { sv_setuv(svarg,c); crossuv=0;}
               else                              { SvUV_set(svarg,c); }
-              MULTICALL;
+              SCOPED_MULTICALL;
             }
           END_DO_FOR_EACH_SIEVE_PRIME
         }
@@ -6130,7 +6182,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             if (FORCOMPTEST(ix,nextprime)) {
               CHECK_FORCOUNT;
               sv_setuv(svarg, nextprime);
-              MULTICALL;
+              SCOPED_MULTICALL;
             }
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6182,6 +6234,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
       UV c, seg_beg, seg_end, *S, count;
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       if (beg >= MPU_MAX_SEMI_PRIME ||
 #if BITS_PER_WORD == 64
@@ -6198,7 +6251,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         for (c = beg; c <= end && c >= beg; c++) {
           if (is_semiprime(c)) {
             sv_setuv(svarg, c);
-            MULTICALL;
+            SCOPED_MULTICALL;
           }
           CHECK_FORCOUNT;
         }
@@ -6210,7 +6263,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
           count = range_semiprime_sieve(&S, seg_beg, seg_end);
           for (c = 0; c < count; c++) {
             sv_setuv(svarg, S[c]);
-            MULTICALL;
+            SCOPED_MULTICALL;
             CHECK_FORCOUNT;
           }
           Safefree(S);
@@ -6282,6 +6335,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
       UV seg_beg, seg_end, *S, count, k3 = ipow(3,k);
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       while (beg <= end) {
         /* TODO: Tuning this better would be nice */
@@ -6295,7 +6349,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
         count = generate_almost_primes(&S, k, seg_beg, seg_end);
         for (c = 0; c < count; c++) {
           sv_setuv(svarg, S[c] << shiftres);
-          MULTICALL;
+          SCOPED_MULTICALL;
           CHECK_FORCOUNT;
         }
         Safefree(S);
@@ -6348,10 +6402,11 @@ fordivisors (SV* block, IN SV* svn)
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       for (i = 0; i < ndivisors; i++) {
         sv_setuv(svarg, divs[i]);
-        MULTICALL;
+        SCOPED_MULTICALL;
         CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6537,6 +6592,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
       PUSH_MULTICALL(subcv);
@@ -6549,7 +6605,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
             av_fill(av, k-1);
             for (j = k-1; j >= 0; j--)
               AvARRAY(av)[j] = svals[ cm[k-j-1]-1 ];
-            MULTICALL;
+            SCOPED_MULTICALL;
           }
           CHECK_FORCOUNT;
           if (_comb_iterate(cm, k, n, ix)) break;
@@ -6623,6 +6679,7 @@ void forsetproduct (SV* block, ...)
       dMULTICALL;
       SV **arr;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
       PUSH_MULTICALL(subcv);
@@ -6631,7 +6688,7 @@ void forsetproduct (SV* block, ...)
         arr = AvARRAY(av);
         for (i = narrays-1; i >= 0; i--)  /* Faster to fill backwards */
           arr[i] = arsvs[i][arcnt[i]];
-        MULTICALL;
+        SCOPED_MULTICALL;
         CHECK_FORCOUNT;
         for (i = narrays-1; i >= 0; i--) {
           if (++arcnt[i] >= arlen[i])  arcnt[i] = 0;
@@ -6708,6 +6765,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_VOID;
+      DECL_MULTICALL_SCOPE(subcv);
       AV *av = save_ary(PL_defgv);
       AvREAL_off(av);
       PUSH_MULTICALL(subcv);
@@ -6726,7 +6784,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
             SvREADONLY_on(sv);
             AvARRAY(av)[i] = sv;
           }
-          MULTICALL;
+          SCOPED_MULTICALL;
         }
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6796,12 +6854,13 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
       if (!CvISXSUB(subcv)) {
         dMULTICALL;
         I32 gimme = G_VOID;
+        DECL_MULTICALL_SCOPE(subcv);
         PUSH_MULTICALL(subcv);
         for (i = 0; i < seghi-seglo+1; i++) {
           CHECK_FORCOUNT;
           if (isf[i]) {
             sv_setuv(svarg, seglo+i);
-            MULTICALL;
+            SCOPED_MULTICALL;
           }
         }
         FIX_MULTICALL_REFCOUNT;
@@ -6848,10 +6907,11 @@ CODE:
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_SCALAR;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       for (i = 2; i < items; i++) {
         GvSV(bgv) = args[i];
-        MULTICALL;
+        SCOPED_MULTICALL;
         SvSetMagicSV(ret, *PL_stack_sp);
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6901,13 +6961,14 @@ CODE:
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_SCALAR;
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       for (i = 1; i < items-1; i++) {
         SV *olda = GvSV(plAgv), *oldb = GvSV(plBgv);
         GvSV(plAgv) = SvREFCNT_inc_simple_NN(args[i]);
         GvSV(plBgv) = SvREFCNT_inc_simple_NN(args[i+1]);
         SvREFCNT_dec(olda);  SvREFCNT_dec(oldb);
-        MULTICALL;
+        SCOPED_MULTICALL;
         retsvarr[i-1] = newSVsv(*PL_stack_sp);
       }
       FIX_MULTICALL_REFCOUNT;
@@ -6958,11 +7019,11 @@ PPCODE:
     if (!CvISXSUB(subcv)) {
       dMULTICALL;
       I32 gimme = G_SCALAR;
-
+      DECL_MULTICALL_SCOPE(subcv);
       PUSH_MULTICALL(subcv);
       for (index = 1; index < items; index++) {
         GvSV(PL_defgv) = args[index];
-        MULTICALL;
+        SCOPED_MULTICALL;
         if (SvTRUEx(*PL_stack_sp) ^ invert)
           break;
       }
@@ -7073,9 +7134,9 @@ void vecuniq(...)
 void vecfreq(...)
   PROTOTYPE: @
   PREINIT:
-    int itype, count;
+    int itype;
     size_t len, i, retlen;
-    UV *L;
+    UV *L, count;
   PPCODE:
     if (items == 0) {
       if (GIMME_V == G_SCALAR) XSRETURN_UV(0);
@@ -7112,19 +7173,18 @@ void vecfreq(...)
       retlen = 1;
     } else {
       int sign = itype == IARR_TYPE_NEG ? -1 : 1;
-      dMY_CXT;
       EXTEND(SP, (EXTEND_TYPE)len*2);
       retlen = 0;
       count = 1;
       for (i = 1; i < len; i++) {
         if (L[i] == L[i-1]) { count++; continue; }
         PUSHs(sv_2mortal(NEWSVINT(sign,L[i-1])));  /* key */
-        PUSH_NPARITY((int)count);                  /* val */
+        PUSHs(sv_2mortal(newSVuv(count)));         /* val */
         retlen += 2;
         count = 1;
       }
       PUSHs(sv_2mortal(NEWSVINT(sign,L[i-1])));  /* key */
-      PUSH_NPARITY((int)count);                  /* val */
+      PUSHs(sv_2mortal(newSVuv(count)));         /* val */
       retlen += 2;
     }
     Safefree(L);

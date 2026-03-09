@@ -341,12 +341,9 @@ Revision history for Perl module Math::Prime::Util
 
     - stirling first kind without GMP is faster for some inputs.
 
-    - Our block functions now all skip wrapping the calls in an internal
-      scope.  This was already documented, and is what List::Util does.
-      It gives us a 10-30% performance increase for lightweight blocks.
-      For almost all use cases there is no functional difference, but
-      sending anonymous subroutines or references outside the block will
-      not work as expected.
+    - Block functions that use MULTICALL now will pre-check the block to
+      see if it needs to be run in its own scope.  If not, then we get a
+      10-30% performance increase with lightweight blocks.
 
     [OTHER]
 
