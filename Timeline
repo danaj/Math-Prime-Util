@@ -466,7 +466,7 @@ A timeline of when each function was added.
 2012-06-29  moebius(n)
 2012-06-29  euler_phi(n)
 2012-06-25  is_strong_pseudoprime(n,base)
-2012-06-19  all_factors(n)
+2012-06-19  all_factors(n)   [renamed to divisors in v0.36]
 2012-06-10  ExponentialIntegral(x)
 2012-06-10  LogarithmicIntegral(x)
 2012-06-10  RiemannR(x)

@@ -57,7 +57,7 @@ Revision history for Perl module Math::Prime::Util
     - absint(n)                       integer absolute value
     - negint(n)                       integer negation
     - cmpint(a, b)                    integer comparison (like <=>)
-    - signint(a, b)                   integer sign (-1,0,1)
+    - signint(n)                      integer sign (-1,0,1)
     - random_safe_prime               for n-bit safe primes
     - inverse_li_nv(x)                float inverse logarithmic integral
     - is_gaussian_prime(a,b)          is a+bi a Gaussian prime
@@ -81,7 +81,7 @@ Revision history for Perl module Math::Prime::Util
     - is_even(n)                      is n an even integer (divisible by 2)
     - is_divisible(n,d)               is n exactly divisible by d
     - is_congruent(n,c,d)             is n congruent to c mod d
-    - is_qr(a,n)                      is a a quadratic non-residue mod n
+    - is_qr(a,n)                      is a a quadratic residue mod n
     - is_cyclic(n)                    does n have exactly one group of order n
     - forsquarefreeint {} lo,hi       loop over square-free integers
     - almost_primes(k,[start,]end)    array ref of k-almost-primes
@@ -247,7 +247,7 @@ Revision history for Perl module Math::Prime::Util
     - lucas_sequence wasn't right for some outlier cases.  This did not
       impact any primality tests or other internal code.
 
-    - gcd(-n) and lcd(-n) would return -n instead of n.
+    - gcd(-n) and lcm(-n) would return -n instead of n.
 
     - All mod functions are more consistent.  Like Pari, we use mod abs(n).
       If n=0, we return undef.  If n=1, we return 0.

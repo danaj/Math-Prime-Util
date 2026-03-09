@@ -5,6 +5,8 @@
  *   keyval_t   simple key/val type, both UV
  *   set        a key value set, with "add" function for new=old+new
  *   setlist    key (UV) plus dynamic array of UVs.  "append" functionality
+ *
+ * Key=0 is not allowed.
  */
 
 
