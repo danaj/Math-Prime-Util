@@ -6480,7 +6480,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
           if (i <= k) continue;
         }
 
-        PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)k);
+        PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)k+1);
         for (i = 0; i <= k; i++) { PUSHs(svals[a[i]]); }
         PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
         CHECK_FORCOUNT;
@@ -6614,7 +6614,7 @@ void forsetproduct (SV* block, ...)
       New(0, arsvs[i], len_inav, SV*);
       for (j = 0; j < (SSize_t)len_inav; j++) {
         SV* v = FETCH_ARREF(inav,j);
-        arsvs[i][j] = v ? v : &PL_sv_undef;;
+        arsvs[i][j] = v ? v : &PL_sv_undef;
       }
     }
     START_FORCOUNT;
