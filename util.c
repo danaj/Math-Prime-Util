@@ -1881,23 +1881,23 @@ bool is_primitive_root(UV a, UV n, bool nprime) {
 }
 
 IV gcdext(IV a, IV b, IV* u, IV* v, IV* cs, IV* ct) {
-  IV s = 0;  IV os = 1;
-  IV t = 1;  IV ot = 0;
-  IV r = b;  IV or = a;
-  if (a == 0 && b == 0) { os = 0; t = 0; }
+  IV s = 0;  IV olds = 1;
+  IV t = 1;  IV oldt = 0;
+  IV r = b;  IV oldr = a;
+  if (a == 0 && b == 0) { olds = 0; t = 0; }
   while (r != 0) {
-    IV quot = or / r;
-    { IV tmp = r; r = or - quot * r;  or = tmp; }
-    { IV tmp = s; s = os - quot * s;  os = tmp; }
-    { IV tmp = t; t = ot - quot * t;  ot = tmp; }
+    IV quot = oldr / r;
+    { IV tmp = r; r = oldr - quot * r;  oldr = tmp; }
+    { IV tmp = s; s = olds - quot * s;  olds = tmp; }
+    { IV tmp = t; t = oldt - quot * t;  oldt = tmp; }
   }
-  if (or < 0) /* correct sign */
-    { or = -or; os = -os; ot = -ot; }
-  if (u  != 0) *u = os;
-  if (v  != 0) *v = ot;
+  if (oldr < 0) /* correct sign */
+    { oldr = -oldr; olds = -olds; oldt = -oldt; }
+  if (u  != 0) *u = olds;
+  if (v  != 0) *v = oldt;
   if (cs != 0) *cs = s;
   if (ct != 0) *ct = t;
-  return or;
+  return oldr;
 }
 
 /* Calculate 1/a mod n. */
@@ -2571,8 +2571,8 @@ char* pidigits(uint32_t digits)
 
   if (digits == 0) return 0;
   if (digits >= 1 && digits <= DBL_DIG && digits <= 18) {
-    Newz(0, out, 19, char);
-    (void)sprintf(out, "%.*lf", (digits-1), 3.141592653589793238);
+    Newz(0, out, 20, char);
+    (void)snprintf(out, 20, "%.*lf", (digits-1), 3.141592653589793238);
     return out;
   }
   digits++;   /* For rounding */

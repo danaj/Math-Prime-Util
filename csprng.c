@@ -34,10 +34,10 @@
 
 #include "chacha.h"
 #define SEED_BYTES (32+8)
-#define CSEED(ctx,bytes,data,good)  chacha_seed(ctx,bytes,data,good)
-#define CRBYTES(ctx,bytes,data)     chacha_rand_bytes(ctx,bytes,data)
-#define CIRAND32(ctx)               chacha_irand32(ctx)
-#define CIRAND64(ctx)               chacha_irand64(ctx)
+#define CSEED(ctx,bytes,data,good)  chacha_seed((chacha_context_t*)ctx,bytes,data,good)
+#define CRBYTES(ctx,bytes,data)     chacha_rand_bytes((chacha_context_t*)ctx,bytes,data)
+#define CIRAND32(ctx)               chacha_irand32((chacha_context_t*)ctx)
+#define CIRAND64(ctx)               chacha_irand64((chacha_context_t*)ctx)
 #define CSELFTEST()                 chacha_selftest()
 
 /* Helper macros, similar to ChaCha, so we're consistent. */
@@ -197,7 +197,7 @@ UV irand64(void* ctx)
 
 bool is_csprng_well_seeded(void *ctx)
 {
-  chacha_context_t *cs = ctx;
+  chacha_context_t *cs = (chacha_context_t*)ctx;
   return cs->goodseed;
 }
 

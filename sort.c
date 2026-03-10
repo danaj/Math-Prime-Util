@@ -141,7 +141,7 @@ static bool _radixsort(UV *array, size_t n, bool is_iv)
   }
   /* Allocate second ping-pong buffer */
   a = array;
-  b = malloc(n * sizeof(UV));
+  b = (UV*)malloc(n * sizeof(UV));
   if (b == 0) return 0;
   /* Each pass radix-sorts and counts for next pass */
   for (sh = 0; UV_MAX >> sh >= RADIX; sh += RADIX_BIT) {
