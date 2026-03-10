@@ -796,6 +796,9 @@ UV rootint(UV n, uint32_t k)
 UV ipowsafe(UV n, UV k) {
   UV p = 1;
 
+  if (n == 0) return !k;  /* 0^0 => 1, 0^x => 0 */
+  if (n == 1) return 1;   /* 1^0 => 1, 1^x => 1 */
+
   if (k <= MPU_MAX_POW3) {
     if (k == 0) return 1;
     if (k == 1) return n;
