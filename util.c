@@ -934,6 +934,7 @@ uint32_t powerof_ret(UV n, uint32_t *root) {
 
 /* Like lcm_ui, but returns 0 if overflow */
 UV lcmsafe(UV x, UV y) {
+  if (x==0 || y==0) return 0;
   y /= gcd_ui(x,y);
   if (UV_MAX/x < y) return 0;
   return x*y;
@@ -969,8 +970,8 @@ UV logint(UV n, UV b)
 {
   /* UV e;  for (e=0; n; n /= b) e++;  return e-1; */
   UV v, e = 0;
-  if (b == 2)
-    return log2floor(n);
+  if (b <= 2)
+    return b == 2 ? log2floor(n) : 0;  /* b < 2 is invalid */
   if (b > n)
     return 0;
   if (n > UV_MAX/b) {
@@ -1290,7 +1291,7 @@ UV falling_factorial(UV n, UV m)
   if (m == 0) return 1;
   if (m > n) return 0;
   for (i = 1; i < m; i++) {
-    if (UV_MAX/(n-1) < r) return UV_MAX;  /* Overflow */
+    if (UV_MAX/(n-i) < r) return UV_MAX;  /* Overflow */
     r *= (n-i);
   }
   return r;
@@ -1973,6 +1974,7 @@ IV edivrem(IV *Q, IV *R, IV D, IV d) {
 }
 
 UV ivmod(IV a, UV n) {   /* a mod n with signed a (0 <= r < n) */
+  if (n <= 1) return 0;
   if (a >= 0) {
     return (UV)(a) % n;
   } else {
