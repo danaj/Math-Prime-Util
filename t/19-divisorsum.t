@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/divisor_sum/;
+use Math::Prime::Util qw/aliquot_sum divisor_sum/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -22,53 +22,83 @@ my %sigmak = (
   3 => [1, 9, 28, 73, 126, 252, 344, 585, 757, 1134, 1332, 2044, 2198, 3096, 3528, 4681, 4914, 6813, 6860, 9198, 9632, 11988, 12168, 16380, 15751, 19782, 20440, 25112, 24390, 31752, 29792, 37449, 37296, 44226, 43344, 55261, 50654, 61740, 61544],
 );
 
-my @tau4 = (1,4,4,10,4,16,4,20,10,16,4,40,4,16,16,35,4,40,4,40,16,16,4,80,10,16,20,40,4,64,4,56,16,16,16,100);
-push @tau4, (4,16,16,80,4,64,4,40,40,16,4,140,10,40,16,40,4,80,16,80,16,16,4,160,4,16,40,84,16,64,4,40,16,64,4,200,4,16,40,40,16) if $extra;
+plan tests => 1     # aliquot_sum(n)
+            + 1     # divisor_sum(0,k)
+            + 1     # divisor_sum(n)
+            + 1     # divisor_sum(n,k)
+            + 1     # divisor_sum(n,sub{})
+            + 1     # tau
+            + 1;    # overflow
 
-plan tests => 1 + 2*scalar(keys %sigmak) + 1 + 2 + 1 + 5;
+subtest 'aliquot_sum' => sub {
+  # A001065 starting at n=1
+  is_deeply( [map { aliquot_sum($_) } 0..20],
+             [0, 0,1,1,3,1,6,1,7,4,8,1,16,1,10,9,15,1,21,1,22],
+             "aliquot_sum(0..20)" );
+  # Perfect numbers: aliquot_sum(n) == n
+  is_deeply( [map { aliquot_sum($_) } (6, 28, 496, 8128)],
+             [6, 28, 496, 8128], "perfect numbers" );
+  # Amicable pairs: each is the aliquot_sum of the other
+  is( aliquot_sum(220), 284, "aliquot_sum(220) = 284" );
+  is( aliquot_sum(284), 220, "aliquot_sum(284) = 220" );
+  # Prime: aliquot_sum(p) = 1
+  is( aliquot_sum(999999937), 1, "aliquot_sum of prime = 1" );
+  # Prime power: aliquot_sum(2^k) = 2^k - 1
+  is( "".aliquot_sum("4611686018427387904"), "4611686018427387903",
+      "aliquot_sum(2^62) = 2^62-1" );
+  # Large n where sigma overflows UV, dispatches to PP
+  is( "".aliquot_sum("9600000000000000688"),
+      "9000000000000000676",
+      "aliquot_sum where sigma overflows UV" );
+  # simple bigint
+  is( "".aliquot_sum("927208363107752634625925"),"317454036909046584758395",
+      "aliquot_sum(927208363107752634625925) = 317454036909046584758395" );
+};
+
 
 ###### Divisor sum
-
 is_deeply( [map { divisor_sum(0,$_) } 0..5], [0,0,0,0,0,0], "divisor_sum(0,k) = 0" );
 
-while (my($k, $sigmaref) = each (%sigmak)) {
-  my @slist;
-  foreach my $n (1 .. scalar @$sigmaref) {
-    push @slist, divisor_sum( $n, sub { int($_[0] ** $k) } );
-  }
-  is_deeply( \@slist, $sigmaref, "Sum of divisors to the ${k}th power: Sigma_$k" );
-  @slist = ();
-  foreach my $n (1 .. scalar @$sigmaref) {
-    push @slist, divisor_sum( $n, $k );
-  }
-  is_deeply( \@slist, $sigmaref, "Sigma_$k using integer instead of sub" );
-}
-# k=1 standard sum -- much faster
-{
+subtest 'divisor_sum(n)', sub {
   my @slist = map { divisor_sum($_) } 1 .. scalar @{$sigmak{1}};
   is_deeply(\@slist, $sigmak{1}, "divisor_sum(n)");
-}
-# tau two ways
-{
+};
+
+subtest 'divisor_sum(n,k)', sub {
+  while (my($k, $sigmaref) = each (%sigmak)) {
+    my @slist = map { divisor_sum($_,$k) } 1 .. scalar @$sigmaref;
+    is_deeply( \@slist, $sigmaref, "Sigma_$k using divisor_sum(n,k)" );
+  }
+};
+subtest 'divisor_sum(n,sub{})', sub {
+  while (my($k, $sigmaref) = each (%sigmak)) {
+    my @slist = map {divisor_sum($_,sub{int($_[0])**$k})} 1..scalar @$sigmaref;
+    is_deeply( \@slist, $sigmaref, "Sum of divisors to the ${k}th power: Sigma_$k" );
+  }
+};
+
+subtest 'tau using divisor_sum', sub {
   my $len = scalar @{$sigmak{0}};
   my @slist1 = map { divisor_sum($_, sub {1}) } 1 .. $len;
   my @slist2 = map { divisor_sum($_, 0      ) } 1 .. $len;
   is_deeply( \@slist1, $sigmak{0}, "tau as divisor_sum(n, sub {1})" );
   is_deeply( \@slist2, $sigmak{0}, "tau as divisor_sum(n, 0)" );
-}
 
-{
   # tau_4 A007426
+  my @tau4 = (1,4,4,10,4,16,4,20,10,16,4,40,4,16,16,35,4,40,4,40,16,16,4,80,10,16,20,40,4,64,4,56,16,16,16,100);
+  push @tau4, (4,16,16,80,4,64,4,40,40,16,4,140,10,40,16,40,4,80,16,80,16,16,4,160,4,16,40,84,16,64,4,40,16,64,4,200,4,16,40,40,16) if $extra;
   my @t;
   foreach my $n (1 .. scalar @tau4) {
     push @t, divisor_sum($n, sub { divisor_sum($_[0],sub { divisor_sum($_[0],0) }) });
   }
   is_deeply( \@t, \@tau4, "Tau4 (A007426), nested divisor sums" );
-}
+};
 
-# Check some cases for integer overflow
-is( "".divisor_sum( 1<<27,2),   "24019198012642645", "divisor_sum(2^27,2)" );
-is( "".divisor_sum(262144,3),   "20587884010836553", "divisor_sum(2^18,3)" );
-is( "".divisor_sum( 16384,4),   "76861433640456465", "divisor_sum(2^16,4)" );
-is( "".divisor_sum(  2048,5),   "37191016277640225", "divisor_sum(2^11,5)" );
-is( "".divisor_sum(  5003,5), "3134386256752025244", "divisor_sum(5003,5)" );
+subtest 'integer overflow check', sub {
+  # Check some cases for integer overflow
+  is( "".divisor_sum( 1<<27,2),   "24019198012642645", "divisor_sum(2^27,2)" );
+  is( "".divisor_sum(262144,3),   "20587884010836553", "divisor_sum(2^18,3)" );
+  is( "".divisor_sum( 16384,4),   "76861433640456465", "divisor_sum(2^16,4)" );
+  is( "".divisor_sum(  2048,5),   "37191016277640225", "divisor_sum(2^11,5)" );
+  is( "".divisor_sum(  5003,5), "3134386256752025244", "divisor_sum(5003,5)" );
+};

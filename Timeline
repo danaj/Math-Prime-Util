@@ -1,8 +1,19 @@
 
 A timeline of when each function was added.
 
+2026-??-??  v0.75
+2026-03-13  is_safe_prime(n)
+2026-03-13  fibonacci(k)
+2026-03-13  lucas_number(k)
+2026-03-13  aliquot_sum(n)
+2026-03-13  prime_signature(n)
+2026-03-13  sopf(n)
+2026-03-13  sopfr(n)
+2026-03-13  digital_root(n[,base])
+2026-03-13  mult_digital_root(n[,base])
+2026-03-13  is_palindrome(n[,base])
 -------------------------------------------------------------------------------
-2026-03-20  v0.74
+2026-03-13  v0.74
 2026-01-20  vecslide { ... } @list
 2026-01-18  vecsingleton(...)
 2025-12-20  minimal_goldbach_pair(n)
@@ -180,7 +191,6 @@ A timeline of when each function was added.
 2018-12-14  is_lucky(n)
 2018-12-14  nth_lucky(n)
 2018-12-12  lucky_numbers([start],] end)
-
 -------------------------------------------------------------------------------
 2018-11-15  v0.73
 2018-11-13  inverse_totient

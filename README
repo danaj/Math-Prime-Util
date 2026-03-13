@@ -1,4 +1,4 @@
-Math::Prime::Util version 0.74
+Math::Prime::Util version 0.75
 
 A comprehensive number theory module for Perl, also available as "ntheory".
 It provides over 370 functions covering:

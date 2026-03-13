@@ -20,6 +20,8 @@ extern bool miller_rabin(UV const n, const UV *bases, int nbases);
 extern int is_mersenne_prime(UV p) ISCONSTFUNC;
 extern bool lucas_lehmer(UV p);
 
+extern bool is_safe_prime(UV n) ISCONSTFUNC;
+
 extern bool BPSW(UV const n) ISCONSTFUNC;
 extern bool MR32(uint32_t n) ISCONSTFUNC;
 

@@ -29,11 +29,12 @@ my @functions =  qw(
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
+      is_palindrome is_safe_prime
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
-      lucas_sequence
+      lucas_sequence fibonacci lucas_number
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod pisano_period
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range prime_powers lucky_numbers
@@ -105,7 +106,9 @@ my @functions =  qw(
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda hclassno inverse_totient
+      divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
+      prime_signature sopf sopfr
+      digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
       stirling fubini znorder znprimroot znlog legendre_phi

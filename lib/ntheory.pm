@@ -147,6 +147,10 @@ Tags:
   divisor_sum(n)                      sum of divisors
   divisor_sum(n,k)                    sum of k-th power of divisors
   divisor_sum(n,sub{...})             sum of code run for each divisor
+  aliquot_sum(n)                      sum of proper divisors
+  prime_signature(n)                  reverse sorted list of factor exponents
+  sopfr(n)                            sum of prime factors
+  sopf(n)                             sum of distinct prime factors
 
 =head2 ITERATORS
 
@@ -299,6 +303,8 @@ Tags:
   is_powerful(n[,k])                  is n a k-powerful number
   is_practical(n)                     is n a practical number
   is_delicate_prime(n)                is n a digitally delicate prime
+  is_safe_prime(n)                    are both n and (n-1)/2 prime
+  is_palindrom(n[,base])              is n a palindrome (default base 10)
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b
@@ -388,6 +394,8 @@ Tags:
   lucasvmod(P, Q, k, n)               V_k for Lucas(P,Q) mod n
   lucasuvmod(P, Q, k, n)              (U_k,V_k,Q^k) for Lucas(P,Q) mod n
   lucas_sequence(n,P,Q,k)             deprecated, use lucasuvmod instead
+  fibonacci(k)                        The k-th Fibonacci number
+  lucas_number(k)                     The k-th Lucas number
   pisano_period(n)                    The period of Fibonacci numbers mod n
   bernfrac(n)                         Bernoulli number as (num,den)
   bernreal(n)                         Bernoulli number as BigFloat
@@ -437,6 +445,8 @@ Tags:
   powerfree_part_sum(n[,k])           sum of k-powerfree parts for 1 to n
   squarefree_kernel(n)                integer radical of |n|
   powersum(n,k)                       sum of kth powers from 1 to n
+  digital_root(n[,base])              iterated sum of digits (default base 10)
+  mult_digital_root(n[,base])         iterated product of digits
 
 =head2 RATIONALS
 

@@ -11,6 +11,8 @@ extern UV lucasumod(UV P, UV Q, UV k, UV n);
 
 /* No modulo, returns false if it overflows. */
 extern bool lucasuv(IV* U, IV* V, IV P, IV Q, UV k);
+extern UV fibonacci_number(UV k);
+extern UV lucas_number(UV k);
 
 /* Legacy version, also returns Qk */
 extern void lucas_seq(UV* U, UV* V, UV* Qk,  UV n, IV P, IV Q, UV k);

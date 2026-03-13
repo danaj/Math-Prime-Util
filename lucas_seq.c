@@ -299,3 +299,49 @@ bool lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
   if (V) *V = Vl;
   return 1;
 }
+#undef OVERHALF
+
+
+/* Returns false on overflow of A or B.
+ * Returns A = F(k), B = F(k+1) */
+static bool _calc_fib(UV* A, UV *B, UV k)
+{
+  UV a, b, c, d;
+  int j;
+
+  if (k >= (BITS_PER_WORD == 64 ? 93 : 47)) return 0;
+  if (k <= 1) { *A=k; *B=1; return 1; }
+
+  a = 1;  b = 1;  /* Start with (F(1), F(2)) = (1, 1), MSB already consumed */
+  j = 0;
+  { UV v = k; while (v >>= 1) j++; }
+
+  for (j--; j >= 0; j--) {
+    /* Double: (F(m), F(m+1)) -> (F(2m), F(2m+1)) */
+    c = a * (2*b - a);                    /* F(2m) */
+    d = a*a + b*b;                        /* F(2m+1) */
+    if ( (k >> j) & 1 ) {                 /* F(2m+2) = F(2m) + F(2m+1) */
+      a=d;  b=c+d;
+    } else {
+      a=c;  b=d;
+    }
+  }
+  *A = a;  *B = b;
+  return 1;
+}
+
+UV fibonacci_number(UV k)
+{
+  UV A, B;
+  if (k <= 1) return k;
+  if (!_calc_fib(&A, &B, k-1)) return 0;
+  return B;
+}
+UV lucas_number(UV k)
+{
+  UV A, B;
+  if (k <= 1) return 2 - k;
+  if (!_calc_fib(&A, &B, k-1)) return 0;
+  if (UV_MAX-A < B || UV_MAX-A < (A+B)) return 0;
+  return A + (A+B);  /* L(k) = F(k-1) + F(k+1) */
+}

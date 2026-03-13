@@ -1,5 +1,21 @@
 Revision history for Perl module Math::Prime::Util
 
+0.75 2026-?
+
+    [ADDED]
+
+    - is_safe_prime(n)                returns 1 if odd pos n and (n-1)/2 prime
+    - fibonacci(k)                    Fibonacci number, same as lucasu(1,-1,k)
+    - lucas_number(k)                 Lucas number, same as lucasv(1,-1,k)
+    - aliquot_sum                     sum of proper divisors
+    - prime_signature(n)              reverse sorted list of factor exponents
+    - sopfr(n)                        sum of prime factors
+    - sopf(n)                         sum of distinct prime factors
+    - digital_root(n[,base])          iterated sum of digits (default base 10)
+    - mult_digital_root(n[,base])     iterated product of digits
+    - is_palindrome(n[,base])         is n a palindrome (default base 10)
+
+
 0.74 2026-03-13
 
     [API Changes]

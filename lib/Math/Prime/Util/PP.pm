@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.74';
+  $Math::Prime::Util::PP::VERSION = '0.75';
 }
 
 our $BIGINTVERSION = 0.0;
@@ -149,6 +149,7 @@ our $_BIGINT;
 *Mvecnone = \&Math::Prime::Util::vecnone;
 *Mvecsum = \&Math::Prime::Util::vecsum;
 *Mvecprod = \&Math::Prime::Util::vecprod;
+*Mvecuniq = \&Math::Prime::Util::vecuniq;
 *Mvecmin = \&Math::Prime::Util::vecmin;
 *Mvecmax = \&Math::Prime::Util::vecmax;
 *Mvecfirst = \&Math::Prime::Util::vecfirst;
@@ -2883,6 +2884,19 @@ sub is_omega_prime {
   return (Mprime_omega($n) == $k) ? 1 : 0;
 }
 
+sub is_safe_prime {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  if ($n < 23) { return ($n == 5 || $n == 7 || $n == 11) ? 1 : 0; }
+  my $n210 = Mmodint($n,210);
+  return 0 if $n210 % 6 != 5;
+  return 0 if $n210 % 5 == 0 || $n210 % 7 == 0;
+  return 0 if $n210 % 10 == 1 || $n210 % 14 == 1;
+  return 0 unless Mis_prime(Mrshiftint($n));
+  return 0 unless Mis_prime($n);
+  1;
+}
+
 sub is_practical {
   my($n) = @_;
   validate_integer($n);
@@ -3381,6 +3395,57 @@ sub divisor_sum {
   }
   return Mmulint($prod[0],$prod[1]) if @prod == 2;
   Mvecprod(@prod);
+}
+
+sub aliquot_sum {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  return 0 if $n <= 1;
+  my @factors = Mfactor_exp($n);
+  if (@factors == 1) {
+    my($p,$e) = @{$factors[0]};
+    my($pke,$fmult) = (1,1);
+    while ($e-- > 1) {
+      $pke = Mmulint($pke,$p);
+      $fmult = Maddint($fmult,$pke);
+    }
+    return $fmult;
+  }
+  my @prod;
+  foreach my $f (@factors) {
+    my($p,$e) = @$f;
+    my($pke,$fmult) = ($p,Madd1int($p));
+    while ($e-- > 1) {
+      $pke = Mmulint($pke,$p);
+      $fmult = Maddint($fmult,$pke);
+    }
+    push @prod, $fmult;
+  }
+  Msubint(Mvecprod(@prod),$n);
+}
+
+sub prime_signature {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  if ($n < 4) {
+    if (wantarray) { return ($n==1) ? () : (1); }
+    else           { return ($n==1) ? 0 : 2; };
+  }
+  my @S = reverse Mvecsort(map { $_->[1] } Mfactor_exp($n));
+  return @S if wantarray;
+  Mvecprod(map { Mpowint($_primes_small[1+$_],$S[$_]) } 0..$#S);
+}
+
+sub sopfr {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  Mvecsum(Mfactor($n));
+}
+
+sub sopf {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  Mvecsum(Mvecuniq(Mfactor($n)));
 }
 
 #############################################################################
@@ -5818,6 +5883,32 @@ sub sumdigits {
   $sum;
 }
 
+sub digital_root {
+  my($n,$base) = @_;
+  validate_integer_nonneg($n);
+  if (defined $base) {
+    validate_integer_nonneg($base);
+    croak "digital_root: Invalid base: $base" if $base < 2;
+  } else {
+     $base = 10;
+  }
+  return 0 if $n == 0;
+  1 + ($n-1) % ($base-1);
+}
+sub mult_digital_root {
+  my($n,$base) = @_;
+  validate_integer_nonneg($n);
+  if (defined $base) {
+    validate_integer_nonneg($base);
+    croak "digital_root: Invalid base: $base" if $base < 2;
+  } else {
+     $base = 10;
+  }
+  my $dr = $n;
+  $dr = Mvecprod(Mtodigits($dr,$base))  while $dr >= $base;
+  $dr;
+}
+
 sub is_happy {
   my($n, $base, $k) = @_;
   validate_integer_nonneg($n);
@@ -7469,6 +7560,20 @@ sub fromdigits {
   return $n <= INTMAX ? _bigint_to_int($n) : $n;
 }
 
+sub is_palindrome {
+  my($n,$base) = @_;
+  validate_integer_nonneg($n);
+  if (defined $base) {
+    validate_integer_nonneg($base);
+    croak "is_palindrome: Invalid base: $base" if $base < 2;
+  } else {
+     $base = 10;
+  }
+  my @dig = Mtodigits($n,$base);
+  my @rdig = reverse @dig;
+  vecequal(\@dig,\@rdig);
+}
+
 sub _validate_zeckendorf {
   my($s) = @_;
   if ($s ne '0') {
@@ -9017,6 +9122,37 @@ sub lucasv {
   return maybetobigint( Math::Prime::Util::GMP::lucasv($_[0], $_[1], $_[2]) )
     if $Math::Prime::Util::_GMPfunc{"lucasv"};
   (lucasuv(@_))[1];
+}
+
+sub _fibnm {    # Returns (F(k), F(k+1))
+  my($k) = @_;
+  return ($k,1) if $k <= 1;
+
+  my($a,$b) = (1,1);
+  my @kbits = Mtodigits($k, 2);
+  shift @kbits;  # Remove leading 1
+  foreach my $bit (@kbits) {
+    ($a,$b) = map { tobigint($_) } ($a,$b) if !ref($b) && $b >= 11863283;
+    my($c,$d) = ($a * (2*$b-$a), $a*$a + $b*$b);
+    ($a,$b) = $bit ? ($d,$c+$d) : ($c,$d);
+  }
+  ($a,$b);
+}
+
+sub fibonacci {
+  my($k) = @_;
+  validate_integer_nonneg($k);
+  return $k if $k <= 1;
+  my($a,$b) = _fibnm($k-1);
+  $b = _bigint_to_int($b) if ref($b) && $b <= INTMAX;
+  return $b;
+}
+sub lucas_number {
+  my($k) = @_;
+  validate_integer_nonneg($k);
+  return 2-$k if $k <= 1;
+  my($a,$b) = _fibnm($k-1);
+  Mvecsum($a,$a,$b);
 }
 
 sub lucasumod {
@@ -12742,7 +12878,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.74
+Version 0.75
 
 
 =head1 SYNOPSIS

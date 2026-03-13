@@ -82,6 +82,7 @@ plan tests => 2 +  # require_ok
               1 +  # primality proofs
               1 +  # misc ntheory
               1 +  # more misc ntheory
+              1 +  # functions v0.75
               1 +  # Lucky numbers
               1 +  # perfect powers
               1 +  # powerful
@@ -949,6 +950,10 @@ subtest 'other is * prime', sub {
   is_deeply([map{is_prob_prime($_)}@ipp_2], [map{2}@ipp_2], "is_prob_prime(p)");
   is_deeply([map{is_prob_prime($_)}@ipp_0], [map{0}@ipp_0], "is_prob_prime(c)");
 
+  is_deeply([map { is_safe_prime(2*$_+1) } 0..30],
+            [0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0],
+            "is_safe_prime(n) for 1,3,5,7,...,61");
+
 };
 
 subtest 'primality proofs', sub {
@@ -1255,6 +1260,26 @@ subtest 'more misc ntheory functions', sub {
   is(rough_count(1291677,43),187389,"rough_count");
 };
 
+subtest 'functions from v0.75', sub {
+  is(is_palindrome(121),   1, "is_palindrome(121) = 1");
+  is(is_palindrome(123),   0, "is_palindrome(123) = 0");
+
+  is(digital_root(493),       7, "digital_root(493) = 7");
+  is(mult_digital_root(77),   8, "mult_digital_root(77) = 8");
+
+  is(fibonacci(10),     55,  "fibonacci(10) = 55");
+  is(lucas_number(10), 123,  "lucas_number(10) = 123");
+
+  is(aliquot_sum(57792), 121024, "aliquot_sum(57792) = 121024");
+
+  is(sopf(57792),  55, "sopf(57792) = 55");
+  is(sopfr(57792), 65, "sopfr(57792) = 65");
+
+  is_deeply([prime_signature(3428740)],[2,1,1,1,1],"ARRAY  prime_signature(3428740) = (2,1,1,1,1)");
+  is(scalar prime_signature(3428740),4620,"SCALAR prime_signature(3428740) = 4620");
+};
+
+###############################################################################
 
 subtest 'Lucky numbers', sub {
   ok(!is_lucky(1772),"1772 is not a lucky number");

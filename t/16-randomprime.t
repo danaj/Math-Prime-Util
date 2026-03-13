@@ -12,6 +12,7 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
                          random_semiprime random_unrestricted_semiprime
                          random_safe_prime random_strong_prime
                          factor is_prime is_semiprime is_smooth logint
+                         is_safe_prime
                          prime_set_config/;
 
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -198,8 +199,7 @@ subtest 'safe primes', sub {
     SKIP: {
     skip "Skip larger safe prime on 32-bit",1 if $bits > 50 && !$use64;
       my $p = random_safe_prime($bits);
-      my $q = ($p-1) >> 1;
-      ok ( is_nbit($p, $bits) && is_prime($p) && is_prime($q),
+      ok ( is_nbit($p, $bits) && is_safe_prime($p),
            "random_safe_prime($bits) is in range and is a safe prime");
     }
   }

@@ -5,7 +5,7 @@ use Carp qw/croak confess carp/;
 
 BEGIN {
   $Math::Prime::Util::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::VERSION = '0.74';
+  $Math::Prime::Util::VERSION = '0.75';
 }
 
 # parent is cleaner, and in the Perl 5.10.1 / 5.12.0 core, but not earlier.
@@ -35,11 +35,12 @@ our @EXPORT_OK =
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
+      is_palindrome is_safe_prime
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
-      lucas_sequence
+      lucas_sequence fibonacci lucas_number
       lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod pisano_period
       primes twin_primes semi_primes almost_primes omega_primes ramanujan_primes
       sieve_prime_cluster sieve_range prime_powers lucky_numbers
@@ -112,7 +113,9 @@ our @EXPORT_OK =
       euler_phi jordan_totient exp_mangoldt sumtotient
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
-      divisor_sum carmichael_lambda hclassno inverse_totient
+      divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
+      prime_signature sopf sopfr
+      digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
       stirling fubini znorder znprimroot znlog legendre_phi
@@ -774,7 +777,7 @@ Math::Prime::Util - Utilities related to prime numbers, including fast sieves an
 
 =head1 VERSION
 
-Version 0.74
+Version 0.75
 
 
 =head1 SYNOPSIS
@@ -3177,6 +3180,37 @@ Given integer C<n>, return C<|n|>, i.e. the absolute value of C<n>.
 Given integer C<n>, return C<-n>.
 
 
+=head2 fibonacci
+
+  say fibonacci($_) for 0..20; # 0,1,1,2,3,5,8,13,21,34,55,...
+
+Given a non-negative integer C<k>, returns C<F(k)>, the C<k>-th Fibonacci
+number.  The sequence begins C<F(0)=0>, C<F(1)=1>, with each subsequent
+term the sum of the two preceding terms.
+
+This is equivalent to C<lucasu(1,-1,k)> but can be faster.
+
+This is L<OEIS A000045|http://oeis.org/A000045>.
+
+This corresponds to Mathematica's C<Fibonacci> function and
+Pari/GP's C<fibonacci> function.
+
+=head2 lucas_number
+
+  say lucas_number($_) for 0..10; # 2,1,3,4,7,11,18,29,47,76,123,...
+
+Given a non-negative integer C<k>, returns C<L(k)>, the C<k>-th Lucas
+number.  The sequence begins C<L(0)=2>, C<L(1)=1>, with each subsequent
+term the sum of the two preceding terms.
+
+Lucas numbers satisfy C<L(k) = F(k-1) + F(k+1)> and are equivalent to
+C<lucasv(1,-1,k)>.
+
+This is L<OEIS A000032|http://oeis.org/A000032>.
+
+This corresponds to Mathematica's C<LucasL> function.
+
+
 =head2 lucasu
 
   say "Fibonacci($_) = ", lucasu(1,-1,$_) for 0..100;
@@ -4008,6 +4042,74 @@ then sums the digits.  This can be done with either
 C<vecsum(todigits($n, $base))> or C<sumdigits(todigitstring($n,$base))>.
 C<Math::BigInt> version 1.999818 has a similar C<digitsum> function.
 
+
+=head2 is_palindrome
+
+  say "$n is a palindrome" if is_palindrome($n);
+  say "$n is a binary palindrome" if is_palindrome($n, 2);
+
+Given a non-negative integer C<n>, returns 1 if C<n> is a palindrome
+in the given base (default 10), 0 otherwise.  A palindrome reads the
+same forwards and backwards in its digit representation.
+For example, 121, 1221, and 15951 are base-10 palindromes.
+
+An optional second argument specifies the base, which must be at least 2
+and defaults to 10.
+
+Single-digit numbers (including 0) are palindromes in any base
+(single digits in the given base).
+
+This is L<OEIS series A002113|http://oeis.org/A002113> (base 10), with
+some other bases such as A006995 (base 2), A014190 (base 3), A014192 (base 4).
+
+This corresponds to Mathematica's C<PalindromeQ> function (base 10 only).
+
+
+=head2 digital_root
+
+  say digital_root(493);         # 7  (4+9+3=16, 1+6=7)
+  say digital_root(255, 16);     # 15 (0xF)
+
+Given a non-negative integer C<n>, returns the additive digital root:
+the single-digit value obtained by repeatedly summing the digits until
+a single digit remains.  The optional second argument specifies the base
+(default 10), which must be at least 2.  The result is always between 0
+and C<base-1> inclusive.
+
+The digital root is computed directly by the formula C<1 + (n-1) % (base-1)>
+for C<n E<gt> 0>, and 0 for C<n = 0>.  This is equivalent to C<n mod (base-1)>
+except that a non-zero result is returned for exact multiples of C<base-1>
+(e.g., C<digital_root(9)> is 9, not 0).
+
+The value returned is likely to be a read-only constant.
+
+In base 10 this is L<OEIS A010888|http://oeis.org/A010888>.
+
+This corresponds to Mathematica's C<DigitalRoot> function.
+
+=head2 mult_digital_root
+
+  say mult_digital_root(77);     # 8  (7*7=49, 4*9=36, 3*6=18, 1*8=8)
+  say mult_digital_root(39);     # 4  (3*9=27, 2*7=14, 1*4=4)
+  say mult_digital_root(255,16); # 14 (F*F=E1, E*1=E => 14)
+
+Given a non-negative integer C<n>, returns the multiplicative digital root:
+the single-digit value obtained by repeatedly multiplying the digits until
+a single digit remains.  The optional second argument specifies the base
+(default 10), which must be at least 2.  The result is always between 0
+and C<base-1> inclusive.
+
+If any digit is 0, the result is 0 (since all subsequent products are 0).
+The number of iterations required (not returned by this function) is the
+multiplicative persistence of C<n>.
+
+The value returned is likely to be a read-only constant.
+
+In base 10 this is L<OEIS A031347|http://oeis.org/A031347>.
+
+This corresponds to Mathematica's C<MultiplicativeDigitalRoot> function.
+
+
 =head2 valuation
 
   say "$n is divisible by 2 ", valuation($n,2), " times.";
@@ -4108,6 +4210,17 @@ Functionally identical but possibly faster than C<prime_omega(n) == k>.
 
 Given non-negative integer C<n> return 1 if C<n> is a Chen prime.  That is,
 if C<n> is prime and C<n+2> is either a prime or semi-prime.
+
+=head2 is_safe_prime
+
+Given a non-negative integer C<n>, returns 1 if C<n> is a safe prime,
+and 0 otherwise.  A safe prime is a prime with C<(n-1)/2> also prime.
+
+Safe primes arise in cryptography: the multiplicative group modulo a
+safe prime has a large prime-order subgroup, making discrete logarithm
+problems harder.  See also L</random_safe_prime>.
+
+This is L<OEIS A005385|http://oeis.org/A005385>.
 
 =head2 is_fundamental
 
@@ -4384,6 +4497,37 @@ The return value is a read-only constant.
 This corresponds to Pari's C<omega> function
 and Mathematica's C<PrimeNu[n]> function.
 
+=head2 prime_signature
+
+  say join(",", prime_signature(360));   # 3,2,1  (360 = 2^3 * 3^2 * 5)
+  say join(",", prime_signature(12));    # 2,1    (12 = 2^2 * 3)
+  say join(",", prime_signature(1));     # (empty list)
+  my $sig = scalar prime_signature(18);  # 12  (same shape as 12 = 2^2 * 3)
+
+Given a non-negative integer C<n>, returns the prime signature of C<n>.
+This is the exponents of the prime factorization, sorted in descending order.
+
+The prime signature describes the multiplicative structure of C<n>
+independent of which primes appear.  Numbers with the same signature
+have the same number of divisors, the same value of the Möbius function,
+and so on.  For example, all numbers of signature C<(2,1)> are of the
+form C<p^2 * q> and have exactly 6 divisors.
+
+In scalar context, returns the smallest integer with this signature.
+For signature C<(a,b,c,...)> the integer is C<2^a * 3^b * 5^c * ...>.
+This allows scalar equality checks, as the integer value is a unique
+mapping to the exact signature.
+
+Many useful classifications can be made by looking at the
+prime signature S(n) and using simple operations such as min, max, gcd,
+sum, etc.
+E.g. If min(S(n)) >= 2, then n is a powerful number,
+if sum(S(n))=k then n is a k-almost-prime.
+
+C<prime_signature(1)> returns an empty list (zero in scalar context).
+C<prime_signature(0)> returns C<(1)> (C<2> in scalar context).
+
+
 =head2 moebius
 
   say "$n is square free" if moebius($n) != 0;
@@ -4616,6 +4760,49 @@ though we have a function L</jordan_totient> which is more efficient.
 For numeric second arguments (sigma computations), the result will be a bigint
 if necessary.  For the code reference case, the user must take care to return
 bigints if overflow will be a concern.
+
+
+=head2 aliquot_sum
+
+  say aliquot_sum(12);    # 16  (1+2+3+4+6)
+  say aliquot_sum(6);     # 6   (perfect number)
+
+Given a non-negative integer C<n>, returns the sum of the proper divisors
+of C<n>, that is, all divisors except C<n> itself.
+Returns 0 for C<n E<lt>= 1>.
+
+If the aliquot sum equals C<n>, C<n> is a perfect number.
+If it exceeds C<n>, C<n> is abundant; if less, C<n> is deficient.
+Two numbers are amicable if each is the aliquot sum of the other.
+
+Equivalent to C<divisor_sum(n,1) - n>.
+
+This is L<OEIS A001065|http://oeis.org/A001065>.
+
+=head2 sopfr
+
+  say sopfr(12);    # 7   (2+2+3)
+  say sopfr(360);   # 14  (2+2+2+3+3+5)
+
+Given a non-negative integer C<n>, returns the sum of prime factors of
+C<n> with repetition (also called the integer logarithm or sopfr).
+C<sopfr(1) = 0>.
+
+Equivalent to C<vecsum(factor($n))>.
+
+This is L<OEIS A001414|http://oeis.org/A001414>.
+
+=head2 sopf
+
+  say sopf(12);     # 5   (2+3)
+  say sopf(360);    # 10  (2+3+5)
+
+Given a non-negative integer C<n>, returns the sum of the distinct prime
+factors of C<n>.  C<sopf(1) = 0>.
+
+Equivalent to C<vecsum(vecuniq(factor($n)))>.
+
+This is L<OEIS A008472|http://oeis.org/A008472>.
 
 
 =head2 ramanujan_tau

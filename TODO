@@ -530,7 +530,6 @@ OEIS lucky numbers:
 - more efficient kth_farey in PP
 
 = OEIS sequence for omega k=3 counts for 10^i
-= cheb_factor in GMP
 
 = taupower
 = rtau
@@ -670,4 +669,23 @@ OEIS lucky numbers:
 
 - what should irand64() do on a 32-bit Perl?
 
-= PP is_prime7 deterministic MR.  Test crossover again and remove dead code.
+- I don't think 53-real.t will pass on NV = float machine
+
+- keyval.h sizes should be size_t, not long/UV.
+
+- more new functions:
+  - is_abundant(n)
+  - is_deficient(n)
+  - reverse_digits(n, base=10)
+  - is_harshad(n,base=10)  n % sumdigits(n) == 0
+  - catalan_number(n)  [binomial(2n,n)/(n+1)]
+  - bell number(n)
+  - convergents(cfrac)
+  - partitions_q(n)  A000009, Mathematica: PartitionsQ
+  - dedekind_psi(n)  A001615  n*prod(1+1/p)
+  - multifactorial(n,k)
+- even more:
+  - squares_r(k,n)  A004018, A005875, Mathematica: SquaresR
+  - bestappr(x,B) best rational with denominator <= B
+
+- fibonacci(-k), lucas_number(-k)  like Pari.  Docs and test also

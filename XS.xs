@@ -2177,7 +2177,8 @@ void is_prime(IN SV* svn)
     is_ramanujan_prime = 12
     is_semiprime = 13
     is_chen_prime = 14
-    is_mersenne_prime = 15
+    is_safe_prime = 15
+    is_mersenne_prime = 16
   PREINIT:
     int status, ret;
     UV n;
@@ -2201,7 +2202,8 @@ void is_prime(IN SV* svn)
         case 12: ret = is_ramanujan_prime(n); break;
         case 13: ret = is_semiprime(n); break;
         case 14: ret = is_chen_prime(n); break;
-        case 15: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
+        case 15: ret = is_safe_prime(n); break;
+        case 16: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
         default: break;
       }
     }
@@ -2643,6 +2645,19 @@ void lucasuv(IN SV* svp, IN SV* svq, IN SV* svk)
       XSRETURN(ix==0 ? 2 : 1);
     }
 
+void fibonacci(IN SV* svk)
+  ALIAS:
+    lucas_number = 1
+  PREINIT:
+    UV k;
+  PPCODE:
+    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+      UV N = ix == 0 ? fibonacci_number(k) : lucas_number(k);
+      if (k == 0 || N > 0)
+        XSRETURN_UV(N);
+    }
+    DISPATCHPP();
+    XSRETURN(1);
 
 void is_sum_of_squares(IN SV* svn, IN UV k = 2)
   PREINIT:
@@ -3680,6 +3695,62 @@ divisor_sum(IN SV* svn, ...)
     }
     DISPATCHPP();
     XSRETURN(1);
+
+void aliquot_sum(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      UV sum = aliquot_sum(n);
+      if (n <= 1 || sum != 0)
+        XSRETURN_UV(sum);
+    }
+    DISPATCHPP();
+    XSRETURN(1);
+
+void sopf(IN SV* svn)
+  ALIAS:
+    sopfr = 1
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      UV sum = ix ? sopfr(n) : sopf(n);
+      XSRETURN_UV(sum);
+    }
+    DISPATCHPP();
+    XSRETURN(1);
+
+void prime_signature(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      factored_t nf = factorint(n);
+      uint32_t i, j, nfactors = nf.nfactors;
+      /* Insertion sort the exponents in descending order */
+      for (i = 1; i < nfactors; i++) {
+        uint8_t t = nf.e[i];
+        for (j = i; j > 0 && nf.e[j-1] < t; j--)
+          nf.e[j] = nf.e[j-1];
+        nf.e[j] = t;
+      }
+      if (GIMME_V == G_ARRAY) {
+        dMY_CXT;
+        EXTEND(SP, (EXTEND_TYPE)nfactors);
+        for (i = 0; i < nfactors; i++)
+          PUSH_NPARITY(nf.e[i]);
+        XSRETURN(nfactors);
+      } else {
+        UV S = nfactors > 0, p = 0;
+        for (i = 0; i < nfactors; i++)
+          { p = next_prime(p); S *= ipow(p,nf.e[i]); }
+        XSRETURN_UV(S);
+      }
+    }
+    DISPATCHPP();
+    return;
+
 
 void
 jordan_totient(IN SV* sva, IN SV* svn)
@@ -5927,6 +5998,50 @@ void todigits(SV* svn, int base=10, int length=-1)
     DISPATCHPP();
     if (ix == 2) objectify_result(aTHX_ 0, ST(0));
     return;
+
+void is_palindrome(SV* svn, int base = 10)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      uint32_t b = base;
+      UV forward = n, reverse = 0;
+      while (n > 0) {
+        uint32_t digit = n % b;
+        reverse = reverse * b + digit;
+        n /= b;
+      }
+      RETURN_NPARITY(forward == reverse);
+    }
+    DISPATCHPP();
+    XSRETURN(1);
+
+void digital_root(SV* svn, int base = 10)
+  ALIAS:
+    mult_digital_root = 1
+  PREINIT:
+    UV n, dr;
+  PPCODE:
+    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      if (n == 0) {
+        dr = 0;
+      } else if (ix == 0) {
+        dr = 1 + (n-1) % (base-1);
+      } else {
+        int i, len, digits[128];
+        dr = n;
+        while (dr >= base) {
+          len = to_digit_array(digits, dr, base, -1);
+          for (dr = 1, i = 0; i < len; i++)
+            dr *= digits[i];
+        }
+      }
+      RETURN_NPARITY(dr);
+    }
+    DISPATCHPP();
+    XSRETURN(1);
 
 void tozeckendorf(SV* svn)
   PREINIT:

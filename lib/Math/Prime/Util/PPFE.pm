@@ -186,7 +186,9 @@ sub entropy_bytes {
 *is_congruent_number = \&Math::Prime::Util::PP::is_congruent_number;
 *is_perfect_number = \&Math::Prime::Util::PP::is_perfect_number;
 *is_delicate_prime = \&Math::Prime::Util::PP::is_delicate_prime;
+*is_safe_prime = \&Math::Prime::Util::PP::is_safe_prime;
 *is_happy = \&Math::Prime::Util::PP::is_happy;
+*is_palindrome = \&Math::Prime::Util::PP::is_palindrome;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;
 *sumpowerful = \&Math::Prime::Util::PP::sumpowerful;
@@ -238,6 +240,7 @@ sub entropy_bytes {
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
 *divisor_sum = \&Math::Prime::Util::PP::divisor_sum;
+*aliquot_sum = \&Math::Prime::Util::PP::aliquot_sum;
 *sumtotient = \&Math::Prime::Util::PP::sumtotient;
 *jordan_totient = \&Math::Prime::Util::PP::jordan_totient;
 *ramanujan_sum = \&Math::Prime::Util::PP::ramanujan_sum;
@@ -262,6 +265,12 @@ sub entropy_bytes {
 *fubini = \&Math::Prime::Util::PP::fubini;
 *falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
 *rising_factorial = \&Math::Prime::Util::PP::rising_factorial;
+
+*prime_signature = \&Math::Prime::Util::PP::prime_signature;
+*sopfr = \&Math::Prime::Util::PP::sopfr;
+*sopf = \&Math::Prime::Util::PP::sopf;
+*digital_root = \&Math::Prime::Util::PP::digital_root;
+*mult_digital_root = \&Math::Prime::Util::PP::mult_digital_root;
 
 *chebyshev_theta = \&Math::Prime::Util::PP::chebyshev_theta;
 *chebyshev_psi = \&Math::Prime::Util::PP::chebyshev_psi;
@@ -319,6 +328,8 @@ sub entropy_bytes {
 *lucasumod = \&Math::Prime::Util::PP::lucasumod;
 *lucasvmod = \&Math::Prime::Util::PP::lucasvmod;
 *lucasuvmod = \&Math::Prime::Util::PP::lucasuvmod;
+*fibonacci = \&Math::Prime::Util::PP::fibonacci;
+*lucas_number = \&Math::Prime::Util::PP::lucas_number;
 *pisano_period = \&Math::Prime::Util::PP::pisano_period;
 *znlog = \&Math::Prime::Util::PP::znlog;
 *znorder = \&Math::Prime::Util::PP::znorder;

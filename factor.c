@@ -560,6 +560,44 @@ UV divisor_sum(UV n, UV k)
 }
 
 
+UV aliquot_sum(UV n) {
+  factored_t nf;
+  UV product;
+  uint32_t i;
+
+  if (n <= 1) return 0;
+
+  nf = factorint(n);
+
+  /* Prime power: aliquot(p^e) = 1 + p + ... + p^(e-1), always < p^e = n */
+  if (nf.nfactors == 1) {
+    UV f = nf.f[0];
+    uint16_t e = nf.e[0];
+    UV pke = 1, fmult = 1;
+    while (e-- > 1) {
+      pke *= f;
+      fmult += pke;
+    }
+    return fmult;
+  }
+
+  /* Multiple prime factors: compute σ(n) with overflow detection, subtract n */
+  product = 1;
+  for (i = 0; i < nf.nfactors; i++) {
+    UV       f = nf.f[i];
+    uint16_t e = nf.e[i];
+    UV pke = f, fmult = 1 + f;
+    while (e-- > 1) {
+      pke *= f;
+      if (fmult > UV_MAX - pke) return 0;
+      fmult += pke;
+    }
+    if (product > UV_MAX / fmult) return 0;
+    product *= fmult;
+  }
+  return product - n;
+}
+
 
 /******************************************************************************/
 /******************************************************************************/
@@ -2029,3 +2067,33 @@ int main(int argc, char *argv[])
   return(0);
 }
 #endif
+
+UV sopfr(UV n)
+{
+  factored_t nf;
+  UV sum;
+  uint32_t i;
+
+  if (n <= 5) return n - (n==1);
+
+  nf = factorint(n);
+  sum = 0;
+  for (i = 0; i < nf.nfactors; i++)
+    sum += (nf.f[i] * (UV)nf.e[i]);
+  return sum;
+}
+
+UV sopf(UV n)
+{
+  factored_t nf;
+  UV sum;
+  uint32_t i;
+
+  if (n <= 3) return n - (n==1);
+
+  nf = factorint(n);
+  sum = 0;
+  for (i = 0; i < nf.nfactors; i++)
+    sum += nf.f[i];
+  return sum;
+}

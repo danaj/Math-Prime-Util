@@ -61,6 +61,7 @@ extern int cheb_factor(UV n, UV *factors, UV B, UV initx);
 extern UV* divisor_list(UV n, UV *num_divisors, UV maxd);
 
 extern UV  divisor_sum(UV n, UV k);
+extern UV  aliquot_sum(UV n);
 
 extern int prime_omega(UV n);     /* number of distinct prime factors */
 extern int prime_bigomega(UV n);  /* number of prime factors w/ multiplicity */
@@ -92,5 +93,8 @@ extern UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent);
 extern UV znlog(UV a, UV g, UV p);
 /* znlog given prime gorder = znorder(g,p) */
 extern UV znlog_solve(UV a, UV g, UV p, UV gorder);
+
+extern UV sopfr(UV n);
+extern UV sopf(UV n);
 
 #endif
