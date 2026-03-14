@@ -2649,12 +2649,20 @@ void fibonacci(IN SV* svk)
   ALIAS:
     lucas_number = 1
   PREINIT:
-    UV k;
+    UV k, N;
+    int kstatus;
   PPCODE:
-    if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
-      UV N = ix == 0 ? fibonacci_number(k) : lucas_number(k);
-      if (k == 0 || N > 0)
-        XSRETURN_UV(N);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY);
+    if (kstatus != 0) {
+      if (kstatus == -1) k = neg_iv(k);
+      N = ix == 0 ? fibonacci_number(k) : lucas_number(k);
+      if (k == 0 || N > 0) {
+        /* fib(-n) = -fib(n) for even n, luc(-n) = -luc(n) for odd n */
+        if (kstatus == 1 || k % 2 != ix)
+          XSRETURN_UV(N);
+        else if (N <= IV_MAX)
+          XSRETURN_IV(-(IV)N);
+      }
     }
     DISPATCHPP();
     XSRETURN(1);

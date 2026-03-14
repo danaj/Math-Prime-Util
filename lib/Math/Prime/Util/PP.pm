@@ -9141,7 +9141,11 @@ sub _fibnm {    # Returns (F(k), F(k+1))
 
 sub fibonacci {
   my($k) = @_;
-  validate_integer_nonneg($k);
+  validate_integer($k);
+  if ($k < 0) {
+    $k = -$k;
+    return Mnegint(fibonacci($k)) if Mis_even($k);
+  }
   return $k if $k <= 1;
   my($a,$b) = _fibnm($k-1);
   $b = _bigint_to_int($b) if ref($b) && $b <= INTMAX;
@@ -9149,7 +9153,11 @@ sub fibonacci {
 }
 sub lucas_number {
   my($k) = @_;
-  validate_integer_nonneg($k);
+  validate_integer($k);
+  if ($k < 0) {
+    $k = -$k;
+    return Mnegint(lucas_number($k)) if Mis_odd($k);
+  }
   return 2-$k if $k <= 1;
   my($a,$b) = _fibnm($k-1);
   Mvecsum($a,$a,$b);

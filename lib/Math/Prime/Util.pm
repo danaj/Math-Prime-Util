@@ -3184,9 +3184,10 @@ Given integer C<n>, return C<-n>.
 
   say fibonacci($_) for 0..20; # 0,1,1,2,3,5,8,13,21,34,55,...
 
-Given a non-negative integer C<k>, returns C<F(k)>, the C<k>-th Fibonacci
+Given an integer C<k>, returns C<F(k)>, the C<k>-th Fibonacci
 number.  The sequence begins C<F(0)=0>, C<F(1)=1>, with each subsequent
-term the sum of the two preceding terms.
+term the sum of the two preceding terms.  The sequence can be run in 
+reverse so negative C<k> is valid.
 
 This is equivalent to C<lucasu(1,-1,k)> but can be faster.
 
@@ -3199,9 +3200,10 @@ Pari/GP's C<fibonacci> function.
 
   say lucas_number($_) for 0..10; # 2,1,3,4,7,11,18,29,47,76,123,...
 
-Given a non-negative integer C<k>, returns C<L(k)>, the C<k>-th Lucas
+Given an integer C<k>, returns C<L(k)>, the C<k>-th Lucas
 number.  The sequence begins C<L(0)=2>, C<L(1)=1>, with each subsequent
-term the sum of the two preceding terms.
+term the sum of the two preceding terms.  The sequence can be run in
+reverse so negative C<k> is valid.
 
 Lucas numbers satisfy C<L(k) = F(k-1) + F(k+1)> and are equivalent to
 C<lucasv(1,-1,k)>.
