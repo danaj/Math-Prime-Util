@@ -1277,6 +1277,8 @@ subtest 'functions from v0.75', sub {
 
   is_deeply([prime_signature(3428740)],[2,1,1,1,1],"ARRAY  prime_signature(3428740) = (2,1,1,1,1)");
   is(scalar prime_signature(3428740),4620,"SCALAR prime_signature(3428740) = 4620");
+
+  is(abundance(234848889), -84975858, "abundance(234848889) = -84975858");
 };
 
 ###############################################################################
