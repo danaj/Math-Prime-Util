@@ -3424,6 +3424,12 @@ sub aliquot_sum {
   Msubint(Mvecprod(@prod),$n);
 }
 
+sub abundance {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  Msubint(aliquot_sum($n),$n);
+}
+
 sub prime_signature {
   my($n) = @_;
   validate_integer_nonneg($n);

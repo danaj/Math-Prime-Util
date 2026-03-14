@@ -271,6 +271,7 @@ sub entropy_bytes {
 *sopf = \&Math::Prime::Util::PP::sopf;
 *digital_root = \&Math::Prime::Util::PP::digital_root;
 *mult_digital_root = \&Math::Prime::Util::PP::mult_digital_root;
+*abundance = \&Math::Prime::Util::PP::abundance;
 
 *chebyshev_theta = \&Math::Prime::Util::PP::chebyshev_theta;
 *chebyshev_psi = \&Math::Prime::Util::PP::chebyshev_psi;

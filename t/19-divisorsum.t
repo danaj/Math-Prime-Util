@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/aliquot_sum divisor_sum/;
+use Math::Prime::Util qw/abundance aliquot_sum divisor_sum/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -23,6 +23,7 @@ my %sigmak = (
 );
 
 plan tests => 1     # aliquot_sum(n)
+            + 1     # abundance(n)
             + 1     # divisor_sum(0,k)
             + 1     # divisor_sum(n)
             + 1     # divisor_sum(n,k)
@@ -55,6 +56,22 @@ subtest 'aliquot_sum' => sub {
       "aliquot_sum(927208363107752634625925) = 317454036909046584758395" );
 };
 
+
+subtest 'abundance' => sub {
+  # abundance(n) = sigma(n) - 2n: positive=abundant, zero=perfect, negative=deficient
+  is_deeply( [map { abundance($_) } 1..20],
+             [-1,-1,-2,-1,-4,0,-6,-1,-5,-2,-10,4,-12,-4,-6,-1,-16,3,-18,2],
+             "abundance(1..20)" );
+  # Perfect numbers: abundance = 0  (A000396)
+  is_deeply( [map { abundance($_) } (6, 28, 496, 8128)],
+             [0, 0, 0, 0], "perfect numbers have abundance 0" );
+  # First odd abundant number (A005231): 945 = 3^3 * 5 * 7
+  is( abundance(945), 30, "abundance(945) = 30 (first odd abundant)" );
+  # For a prime p, sigma(p) = p+1, so abundance(p) = 1-p
+  is( abundance(999999937), -999999936, "abundance of large prime = 1-p" );
+  # bigint
+  is("".abundance("927208363107752634625925"),"-609754326198706049867530", "abundance(927208363107752634625925)");
+};
 
 ###### Divisor sum
 is_deeply( [map { divisor_sum(0,$_) } 0..5], [0,0,0,0,0,0], "divisor_sum(0,k) = 0" );

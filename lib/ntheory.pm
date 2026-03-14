@@ -447,6 +447,7 @@ Tags:
   powersum(n,k)                       sum of kth powers from 1 to n
   digital_root(n[,base])              iterated sum of digits (default base 10)
   mult_digital_root(n[,base])         iterated product of digits
+  abundance(n)                        sigma(n)-2n, deficient/abundant/perfect
 
 =head2 RATIONALS
 

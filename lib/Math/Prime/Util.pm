@@ -114,7 +114,7 @@ our @EXPORT_OK =
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
-      prime_signature sopf sopfr
+      prime_signature sopf sopfr abundance
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
@@ -2765,6 +2765,8 @@ Given integer C<n>, returns 1 if C<n> is a positive integer that is the
 sum of its divisors excluding the number itself, or equivalently a number
 that is equal to its aliquot sum.
 
+Also see L</abundance>.
+
 =head2 is_power
 
   say "$n is a perfect square" if is_power($n, 2);
@@ -4738,8 +4740,6 @@ the sum should use the C<k-th> powers of the divisors.
 This is known as the sigma function (see Hardy and Wright section 16.7).
 The API is identical to Pari/GP's C<sigma> function, and not dissimilar to
 Mathematica's C<DivisorSigma[k,n]> function.
-This function is useful for calculating things like aliquot sums, abundant
-numbers, perfect numbers, etc.
 
 With various C<k> values, the results are the OEIS sequences
 L<OEIS series A000005|http://oeis.org/A000005> (C<k=0>, number of divisors),
@@ -4780,6 +4780,19 @@ Two numbers are amicable if each is the aliquot sum of the other.
 Equivalent to C<divisor_sum(n,1) - n>.
 
 This is L<OEIS A001065|http://oeis.org/A001065>.
+
+=head2 abundance
+
+  say "$n is a deficient number" if abundance($n) < 0;
+
+Given a non-negative integer C<n>, returns C<sigma(n) - 2n> or equivalently
+C<aliquot_sum(n) - n>.
+
+A perfect number will have C<< abundance(n) = 0 >>,
+a deficient number will have C<< abundance(n) < 0 >>, and
+an abundant number will have C<< abundance(n) > 0 >>.
+
+This is L<OEIS A033880|http://oeis.org/A033880>.
 
 =head2 sopfr
 

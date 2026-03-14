@@ -3716,6 +3716,18 @@ void aliquot_sum(IN SV* svn)
     DISPATCHPP();
     XSRETURN(1);
 
+void abundance(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      UV sum = aliquot_sum(n);
+      if (n <= 1 || sum != 0)
+        XSRETURN_IV((IV)(sum-n));
+    }
+    DISPATCHPP();
+    XSRETURN(1);
+
 void sopf(IN SV* svn)
   ALIAS:
     sopfr = 1
