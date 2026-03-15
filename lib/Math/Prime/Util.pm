@@ -120,7 +120,7 @@ our @EXPORT_OK =
       ramanujan_tau ramanujan_sum
       stirling bell_number catalan_number fubini
       factorial factorialmod subfactorial binomial binomialmod
-      falling_factorial rising_factorial
+      multifactorial falling_factorial rising_factorial
       znorder znprimroot znlog legendre_phi
       contfrac from_contfrac
       next_calkin_wilf next_stern_brocot
@@ -5416,6 +5416,30 @@ Given a non-negative integer C<n>, returns the factorial of C<n>,
 defined as the product of the integers 1 to C<n> with the special case
 of C<factorial(0) = 1>.  This corresponds to Pari's C<factorial(n)>
 and Mathematica's C<Factorial[n]> functions.
+
+=head2 multifactorial
+
+  say multifactorial(9, 3);   # 9 * 6 * 3 = 162
+  say multifactorial(10, 2);  # 10!! = 10*8*6*4*2 = 3840
+
+Given a non-negative integer C<n> and a positive integer C<k>, returns
+the C<k>-step multifactorial of C<n>, defined as the product of the
+positive integers from C<n> stepping down by C<k>:
+
+  multifactorial(n, k) = n * (n-k) * (n-2k) * ... * r
+
+where C<r> is the last positive term (C<< r <= k >>).
+C<multifactorial(0, k) = 1> for all C<k>.
+
+With C<k=1> this is C<factorial(n)>.  With C<k=2> this is the double
+factorial (C<n!!>), with C<k=3> the triple factorial (C<n!!!>),
+and so on.
+The double factorial is L<OEIS A006882|http://oeis.org/A006882>.
+
+This corresponds to Mathematica's C<Multifactorial[n,k]> function,
+and Sage's C<n.multifactorial(k)> method.
+For the double factorial, Mathematica has C<Factorial2[n]>,
+SymPy has C<factorial2>, and Maple has C<doublefactorial(n)>.
 
 =head2 subfactorial
 

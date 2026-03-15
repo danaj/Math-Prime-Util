@@ -68,6 +68,7 @@ extern UV bell_number(UV n) ISCONSTFUNC;
 extern UV fubini(UV n) ISCONSTFUNC;
 extern UV binomial(UV n, UV k) ISCONSTFUNC;
 extern UV catalan_number(UV n) ISCONSTFUNC;
+extern UV multifactorial(UV n, UV k) ISCONSTFUNC;
 extern UV falling_factorial(UV n, UV m) ISCONSTFUNC;
 extern UV rising_factorial(UV n, UV m) ISCONSTFUNC;
 extern IV falling_factorial_s(IV n, UV m) ISCONSTFUNC;

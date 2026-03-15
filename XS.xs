@@ -302,6 +302,7 @@ static const gmp_info_t gmp_info[] = {
   {                "primorial", 37, 1, R_BIGINT },
   {             "pn_primorial", 37, 1, R_BIGINT },
   {                "permtonum", 47, 1, R_BIGINT },
+  {           "multifactorial", 51, 1, R_BIGINT },
   {             "subfactorial", 51, 1, R_BIGINT },
   {        "falling_factorial", 51, 1, R_BIGINT },
   {         "rising_factorial", 51, 1, R_BIGINT },
@@ -4863,6 +4864,19 @@ void binomial(IN SV* svn, IN SV* svk)
       }
     }
     DISPATCHPP_GMPONLYIF(nstatus == 1 && kstatus != 0);
+    objectify_result(aTHX_ svn, ST(0));
+    XSRETURN(1);
+
+void multifactorial(IN SV* svn, IN SV* svk)
+  PREINIT:
+    UV n, k, r;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+      r = multifactorial(n, k);
+      if (n == 0 || r > 0) XSRETURN_UV(r);
+    }
+    DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 

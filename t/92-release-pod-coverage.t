@@ -148,7 +148,7 @@ sub mpu_public_regex {
       ramanujan_tau ramanujan_sum
       stirling bell_number catalan_number fubini
       factorial factorialmod subfactorial binomial binomialmod
-      falling_factorial rising_factorial
+      multifactorial falling_factorial rising_factorial
       znorder znprimroot znlog legendre_phi
       contfrac from_contfrac
       next_calkin_wilf next_stern_brocot

@@ -8292,6 +8292,21 @@ sub binomialmod {
   return Mmodint(Mbinomial($n,$k),$m);
 }
 
+sub multifactorial {
+  my($n, $k) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_positive($k);
+  return 1 if $n == 0;
+  return Mfactorial($n) if $k == 1;
+  # TODO: If we have Math::GMPz, we could call Rmpz_mfac_uiui(R,n,k)
+  my($i, @t) = ($n);
+  while (1) {
+    push @t, $i;
+    last if $i <= $k;
+    $i = Msubint($i, $k);
+  }
+  Mvecprod(@t);
+}
 sub _falling_factorial {
   my($n,$m) = @_;
   if ($m <= 1) { return ($m == 0) ? 1 : $n }

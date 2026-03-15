@@ -4,11 +4,12 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/factorial catalan_number bell_number fubini
-                         subfactorial falling_factorial rising_factorial/;
+                         subfactorial falling_factorial rising_factorial
+                         multifactorial/;
 use Math::BigInt try => "GMP,Pari";
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
-plan tests => 7;
+plan tests => 8;
 
 subtest 'factorial', sub {
   ok(!defined eval { factorial(-5); }, "factorial(-5) gives error");
@@ -46,6 +47,36 @@ subtest 'falling_factorial', sub {
   is_deeply( [map { "".falling_factorial($_->[0],$_->[1]) } ([515,7],[516,7],[568,7],[89,10],[103,101],["36893488147419103233",2])],
              [qw/9222879462222182400 9349716704335257600 18378924259448108160 18452514066426316800 49514503582430902037733576272908866745450829110572462415026402773499383329208111416070720536941769246326758192988646046611441067207574945792000000000000000000000000 1361129467683753853890391917874491949056/],
              "falling_factorial selected values");
+};
+
+subtest 'multifactorial', sub {
+  ok(!defined eval { multifactorial(5,  0); 1 }, "multifactorial(n,0) gives error");
+  ok(!defined eval { multifactorial(-1, 2); 1 }, "multifactorial(-1,k) gives error");
+
+  # k=1 is ordinary factorial
+  is_deeply( [map { "".multifactorial($_,1) } 0..20],
+             [map { "".factorial($_) } 0..20],
+             "multifactorial(n,1) = factorial(n) for 0..20" );
+
+  # k=2: double factorial (A006882)
+  is_deeply( [map { "".multifactorial($_,2) } 0..20],
+             [qw/1 1 2 3 8 15 48 105 384 945 3840 10395 46080 135135 645120
+                 2027025 10321920 34459425 185794560 654729075 3715891200/],
+             "multifactorial(n,2): double factorial (A006882)" );
+
+  # k=3: triple factorial (A007661)
+  is_deeply( [map { "".multifactorial($_,3) } 0..15],
+             [qw/1 1 2 3 4 10 18 28 80 162 280 880 1944 3640 12320 29160/],
+             "multifactorial(n,3): triple factorial (A007661)" );
+
+  # k > n: only one term
+  is( "".multifactorial(7, 10), 7, "multifactorial(n,k) = n when k >= n" );
+
+  # bigint overflow
+  is( "".multifactorial(35,2), "221643095476699771875",
+      "multifactorial(35,2) = 35!!" );
+  is( "".multifactorial(100,1), "".factorial(100),
+      "multifactorial(100,1) = 100!" );
 };
 
 subtest 'rising_factorial', sub {

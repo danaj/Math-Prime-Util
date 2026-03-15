@@ -344,6 +344,7 @@ Tags:
   subfactorial(n)                     count of derangements of n objects
   binomial(n,k)                       binomial coefficient
   binomialmod(n,k,m)                  binomial(n,k) mod m
+  multifactorial(n,k)                 k-step multifactorial of n
   falling_factorial(x,n)              falling factorial
   rising_factorial(x,n)               rising factorial
   partitions(n)                       number of integer partitions

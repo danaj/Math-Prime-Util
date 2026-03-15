@@ -1250,6 +1250,8 @@ subtest 'more misc ntheory functions', sub {
   is(falling_factorial(17,5),742560,"falling_factorial");
   is(rising_factorial(17,5),2441880,"rising_factorial");
 
+  is(multifactorial(15,3),29160,"multifactorial");
+
   # "A k-rough number, as defined by Finch in 2001 and 2003, is a positive
   #  integer whose prime factors are all greater than or equal to k."
   ok( is_rough("62000279000279",31),"is_rough(31*n,31) = 1");

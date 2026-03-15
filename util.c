@@ -1191,6 +1191,18 @@ UV subfactorial(UV n) {
   return (n * subfactorial(n-1) + ((n & 1) ? -1 : 1));
 }
 
+UV multifactorial(UV n, UV k) {
+  UV i, r = 1;
+  if (k == 0) return 0;
+  for (i = n; i > 0; ) {
+    if (r > UV_MAX / i) return 0;
+    r *= i;
+    if (i <= k) break;
+    i -= k;
+  }
+  return r;
+}
+
 UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   UV d, g, r = 1;
   if (k == 0) return 1;

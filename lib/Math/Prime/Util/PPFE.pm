@@ -261,6 +261,7 @@ sub entropy_bytes {
 *sumliouville = \&Math::Prime::Util::PP::sumliouville;
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
 *binomial = \&Math::Prime::Util::PP::binomial;
+*multifactorial = \&Math::Prime::Util::PP::multifactorial;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
 *catalan_number = \&Math::Prime::Util::PP::catalan_number;
 *bell_number = \&Math::Prime::Util::PP::bell_number;
