@@ -146,7 +146,7 @@ sub mpu_public_regex {
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling fubini znorder znprimroot znlog legendre_phi
+      stirling bell_number fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
       contfrac from_contfrac

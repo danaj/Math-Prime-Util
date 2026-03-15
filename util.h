@@ -64,6 +64,7 @@ extern UV pn_primorial(UV n) ISCONSTFUNC;
 extern UV primorial(UV n) ISCONSTFUNC;
 extern UV factorial(UV n) ISCONSTFUNC;
 extern UV subfactorial(UV n) ISCONSTFUNC;
+extern UV bell_number(UV n) ISCONSTFUNC;
 extern UV fubini(UV n) ISCONSTFUNC;
 extern UV binomial(UV n, UV k) ISCONSTFUNC;
 extern UV falling_factorial(UV n, UV m) ISCONSTFUNC;

@@ -8381,6 +8381,28 @@ sub subfactorial {
   $r;
 }
 
+sub catalan_number {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  return 1 if $n <= 1;
+  # C(n) = binomial(2n,n) / (n+1)
+  Mdivint(Mbinomial(Mmulint(2,$n), $n), Madd1int($n));
+}
+
+sub bell_number {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  # Bell triangle: B(k) is the first element of row k.
+  my @row = (tobigint(1));
+  for my $i (1 .. $n) {
+    my @next = ($row[-1]);
+    push @next, $next[-1] + $row[$_] for 0 .. $i-1;
+    @row = @next;
+  }
+  $row[0] = _bigint_to_int($row[0]) if $row[0] <= INTMAX;
+  $row[0];
+}
+
 my $_fubinis = [1,1,3,13,75];
 sub _add_fubini {  # Add the next Fubini sequence term to an array reference.
   my($A)= @_;

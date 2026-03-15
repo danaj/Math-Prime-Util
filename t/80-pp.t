@@ -1017,6 +1017,8 @@ subtest 'misc number theory functions', sub {
   is(stirling(12,4,2), '611501', "S(12,4)" );
   is(stirling(12,4,1), '105258076', "s(12,4)" );
 
+  is(join(" ",map{bell_number($_)}0..6,18),"1 1 2 5 15 52 203 682076806159","bell_number(n) for n in {0..6,18}");
+
   is(join(" ",map{fubini($_)}0..6,18),"1 1 3 13 75 541 4683 3385534663256845323","fubini(n) for n in {0..6,18}");
 
   is_deeply([numtoperm(11,33967658)],[9,3,6,4,7,1,10,0,5,2,8],"numtoperm");

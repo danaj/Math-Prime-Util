@@ -262,6 +262,7 @@ sub entropy_bytes {
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
 *binomial = \&Math::Prime::Util::PP::binomial;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
+*bell_number = \&Math::Prime::Util::PP::bell_number;
 *fubini = \&Math::Prime::Util::PP::fubini;
 *falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
 *rising_factorial = \&Math::Prime::Util::PP::rising_factorial;

@@ -402,6 +402,7 @@ Tags:
   harmfrac(n)                         Harmonic number as (num,den)
   harmreal(n)                         Harmonic number as BigFloat
   stirling(n,m,[type])                Stirling numbers of 1st or 2nd type
+  bell_number(n)                      Bell number, count of set partitions
   fubini(n)                           Fubini (Ordered Bell) number
   numtoperm(n,k)                      kth lexico permutation of n elems
   permtonum([a,b,...])                permutation number of given perm

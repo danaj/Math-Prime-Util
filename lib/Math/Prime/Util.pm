@@ -118,7 +118,7 @@ our @EXPORT_OK =
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling fubini znorder znprimroot znlog legendre_phi
+      stirling bell_number fubini znorder znprimroot znlog legendre_phi
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
       contfrac from_contfrac
@@ -5453,9 +5453,18 @@ of the second kind are the number of ways to partition a set of C<n>
 elements into C<k> non-empty subsets.  The Lah numbers are the number of
 ways to split a set of C<n> elements into C<k> non-empty lists.
 
+=head2 bell_number
+
+  say "B(32) = ",bell_number(32);  # 128064670049908713818925644
+
+Given a non-negative integer C<n>, returns the Bell number of C<n>,
+which counts the number of partitions of a set of size C<n>.
+
+This is the L<OEIS series A000110|http://oeis.org/A000110>.
+
 =head2 fubini
 
-Given a non-negative integer C<n>, returns the Fubini number of n,
+Given a non-negative integer C<n>, returns the Fubini number of C<n>,
 also called the ordered Bell numbers, or the number of ordered partitions
 of C<n>.  It is the count of rankings of C<n> items allowing for ties.
 

@@ -1276,6 +1276,22 @@ IV stirling1(UV n, UV m) {
   return s;
 }
 
+UV bell_number(UV n) {
+  UV row[27], next[27];
+  uint32_t i,j;
+  if (n <= 1) return 1;
+  if (n >= ((BITS_PER_WORD == 64) ? 26 : 16))  return 0;
+  row[0] = 1;
+  for (i = 1; i <= n; i++) {
+    next[0] = row[i-1];
+    for (j = 0; j < i; j++)
+      next[j+1] = next[j] + row[j];
+    for (j = 0; j <= i; j++)
+      row[j] = next[j];
+  }
+  return row[0];
+}
+
 UV fubini(UV n) {
   UV k, sum;
   if (n == 0) return 1;
