@@ -239,6 +239,7 @@ sub entropy_bytes {
 *moebius = \&Math::Prime::Util::PP::moebius;
 *euler_phi = \&Math::Prime::Util::PP::euler_phi;
 *inverse_totient = \&Math::Prime::Util::PP::inverse_totient;
+*dedekind_psi = \&Math::Prime::Util::PP::dedekind_psi;
 *divisor_sum = \&Math::Prime::Util::PP::divisor_sum;
 *aliquot_sum = \&Math::Prime::Util::PP::aliquot_sum;
 *sumtotient = \&Math::Prime::Util::PP::sumtotient;

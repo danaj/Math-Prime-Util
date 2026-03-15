@@ -4745,6 +4745,22 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
       return;
     }
 
+void
+dedekind_psi(IN SV* svn)
+  PREINIT:
+    int nstatus;
+    UV n, r;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (nstatus != 0) {
+      if (nstatus == -1 || n == 0) XSRETURN_UV(0);
+      r = dedekind_psi(n);
+      if (r > 0) XSRETURN_UV(r);
+    }
+    DISPATCHPP();
+    objectify_result(aTHX_ svn, ST(0));
+    XSRETURN(1);
+
 void sqrtint(IN SV* svn)
   ALIAS:
     carmichael_lambda = 1

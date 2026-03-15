@@ -1695,6 +1695,22 @@ sub sumtotient {
   _sumtot($n, \@sumcache, {});
 }
 
+sub dedekind_psi {
+  my($n) = @_;
+  validate_integer($n);
+  return 0 if $n <= 0;
+  my @P;
+  for my $pe (Mfactor_exp($n)) {
+    my($f,$e) = @$pe;
+    if ($e == 1) {
+      push @P, Madd1int($f);
+    } else {
+      my $T = Mpowint($f,$e-1);
+      push @P, Maddint($T, Mmulint($T,$f));
+    }
+  }
+  Mvecprod(@P);
+}
 
 sub prime_bigomega {
   my($n) = @_;

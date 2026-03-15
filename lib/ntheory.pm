@@ -376,6 +376,7 @@ Tags:
   jordan_totient(k,n)                 Jordan's totient
   sumtotient(n)                       sum of Euler totient for 1 to n
   carmichael_lambda(n)                Carmichael's Lambda function
+  dedekind_psi(n)                     Dedekind psi function
   ramanujan_sum(k,n)                  Ramanujan's sum
   exp_mangoldt(n)                     exponential of Mangoldt function
   liouville(n)                        Liouville function

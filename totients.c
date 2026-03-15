@@ -398,6 +398,25 @@ UV jordan_totient(UV k, UV n) {
   return totient;
 }
 
+/******************************************************************************/
+
+UV dedekind_psi(UV n) {
+  UV factors[MPU_MAX_FACTORS+1];
+  UV result = 1, lastf = 0;
+  uint32_t i, nfactors = factor(n, factors);
+  for (i = 0; i < nfactors; i++) {
+    UV f = factors[i];
+    if (f == lastf) {
+      if (result > UV_MAX/f) return 0;
+      result *= f;
+    } else {
+      if (result > UV_MAX/(f+1)) return 0;
+      result *= (f+1);
+      lastf = f;
+    }
+  }
+  return result;
+}
 
 /******************************************************************************/
 

@@ -103,7 +103,7 @@ my @functions =  qw(
       set_is_disjoint set_is_equal set_is_proper_intersection
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
-      euler_phi jordan_totient exp_mangoldt sumtotient
+      euler_phi jordan_totient exp_mangoldt sumtotient dedekind_psi
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient

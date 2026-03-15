@@ -994,6 +994,7 @@ subtest 'misc number theory functions', sub {
   is( euler_phi(324234), 108072, "euler_phi(324234)" );
   is( "".jordan_totient(4, 899), "653187225600", "jordan_totient(4, 899)" );
   is( carmichael_lambda(324234), 18012, "carmichael_lambda(324234)" );
+  is( dedekind_psi(866500497), 1155334104, "dedekind_psi(866500497)" );
 
   is( exp_mangoldt(16), 2, "exp_mangoldt of power of 2 = 2" );
   is( exp_mangoldt(14), 1, "exp_mangoldt of even = 1" );

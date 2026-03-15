@@ -110,7 +110,7 @@ our @EXPORT_OK =
       set_is_disjoint set_is_equal set_is_proper_intersection
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
-      euler_phi jordan_totient exp_mangoldt sumtotient
+      euler_phi jordan_totient exp_mangoldt sumtotient dedekind_psi
       partitions bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
@@ -4657,7 +4657,27 @@ Jordan's totient is a generalization of Euler's totient, where
 This counts the number of k-tuples less than or equal to n that form a coprime
 tuple with n.  As with C<euler_phi>, 0 is returned for all C<< n < 1 >>.
 This function can be used to generate some other useful functions, such as
-the Dedekind psi function, where C<psi(n) = J(2,n) / J(1,n)>.
+L</dedekind_psi>, where C<psi(n) = J(2,n) / J(1,n)>.
+
+=head2 dedekind_psi
+
+  say "psi(30) = ", dedekind_psi(30);   # 72
+
+Given an integer C<n>, returns the Dedekind psi function ψ(n).
+This is a multiplicative arithmetic function defined as:
+
+  psi(n) = n * product( 1 + 1/p )  for distinct primes p dividing n
+
+Equivalently, for each prime power p^k exactly dividing n, the contribution
+is p^(k-1) * (p+1).  Thus C<psi(p) = p+1> for prime p, and
+C<psi(p^k) = p^(k-1) * (p+1)> for k >= 1.
+
+It is related to other multiplicative functions by
+C<jordan_totient(2,n) == dedekind_psi(n) * euler_phi(n)>.
+
+As with C<euler_phi>, 0 is returned for all C<< n < 1 >>.
+
+This is L<OEIS series A001615|http://oeis.org/A001615>.
 
 =head2 sumtotient
 
