@@ -87,12 +87,9 @@ static UV sieve_pairs(UV* L, UV n) {
       sieve_segment(lowsieve, qdbeg, qdend);
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
         UV q = n-p;
-        if (L) {
-          if (is_prime_in_sieve(lowsieve, q-qdbeg*30))
-            L[s++] = q;
-        } else {
-          if (is_prime_in_sieve(lowsieve, q-qdbeg*30))
-            s++;
+        if (is_prime_in_sieve(lowsieve, q-qdbeg*30)) {
+          if (L) L[s] = q;
+          s++;
         }
       END_DO_FOR_EACH_SIEVE_PRIME
       Safefree(lowsieve);
