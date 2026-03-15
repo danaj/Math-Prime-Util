@@ -5761,13 +5761,13 @@ sub vecsum {
 sub vecprefixsum {
   my @v = (@_ == 1 && ref $_[0] eq 'ARRAY') ? @{$_[0]} : @_;
   return unless @v;
-  return reftyped($_[0],$_[0]) if @v == 1;
+  return reftyped($_[0],$v[0]) if @v == 1;
 
   my @psum;
   my $sum = 0;
-  if (OLD_PERL_VERSION) { $_="$_" for @_ };
+  if (OLD_PERL_VERSION) { $_="$_" for @v };
 
-  foreach my $v (@_) {
+  foreach my $v (@v) {
     $sum = tobigint($sum)
       if !ref $sum && ($sum+$v > (INTMAX-513) || $sum+$v < (INTMIN+513));
     push @psum, $sum += $v;

@@ -2421,8 +2421,8 @@ vecprefixsum(...)
       IV *SL = (IV*)L;
       for (i = 1; i < len; i++) {
         IV a = SL[i-1], b = SL[i];
-        if ((b > 0 && a > IV_MAX - b) || (b < 0 && a < IV_MIN - b))
-          break;
+        if (a > 0 && b > 0 && a > IV_MAX - b) break;  /* overflow  */
+        if (a < 0 && b < 0 && a < IV_MIN - b) break;  /* underflow */
         SL[i] = a + b;
       }
       if (i >= len)  RETURN_LIST_VALS(len, L, 0);
