@@ -5730,7 +5730,7 @@ sub vecsum {
   if (OLD_PERL_VERSION) { $_="$_" for @_ };
   foreach my $v (@_) {
     $sum += $v;
-    if ($sum > (INTMAX-250) || $sum < (INTMIN+250)) {
+    if ($sum > (INTMAX-513) || $sum < (INTMIN+513)) {
       # Sum again from the start using bigint sum
       $sum = tobigint(0);
       if (ref($sum) eq 'Math::Pari') { $sum += "$_" for @_; }
@@ -5745,12 +5745,18 @@ sub vecsum {
 sub vecprefixsum {
   my @v = (@_ == 1 && ref $_[0] eq 'ARRAY') ? @{$_[0]} : @_;
   return unless @v;
-  return @v if @v == 1;
-  my @result = ($v[0]);
-  for my $i (1 .. $#v) {
-    push @result, Maddint($result[-1], $v[$i]);
+  return reftyped($_[0],$_[0]) if @v == 1;
+
+  my @psum;
+  my $sum = 0;
+  if (OLD_PERL_VERSION) { $_="$_" for @_ };
+
+  foreach my $v (@_) {
+    $sum = tobigint($sum)
+      if !ref $sum && ($sum+$v > (INTMAX-513) || $sum+$v < (INTMIN+513));
+    push @psum, $sum += $v;
   }
-  @result;
+  @psum;
 }
 
 sub _product_mulint {
@@ -8404,15 +8410,9 @@ sub bell_number {
   my($n) = @_;
   validate_integer_nonneg($n);
   # Bell triangle: B(k) is the first element of row k.
-  my @row = (tobigint(1));
-  for my $i (1 .. $n) {
-    # @row = vecprefixsum($row[-1],@row);
-    my @next = ($row[-1]);
-    push @next, $next[-1] + $row[$_] for 0 .. $i-1;
-    @row = @next;
-  }
-  $row[0] = _bigint_to_int($row[0]) if $row[0] <= INTMAX;
-  $row[0];
+  my @row = (1);
+  @row = vecprefixsum($row[-1],@row)  for 1 .. $n;
+  return $row[0];
 }
 
 my $_fubinis = [1,1,3,13,75];
