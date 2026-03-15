@@ -348,6 +348,7 @@ Tags:
   falling_factorial(x,n)              falling factorial
   rising_factorial(x,n)               rising factorial
   partitions(n)                       number of integer partitions
+  partitionsq(n)                      number of partitions into distinct parts
   valuation(n,k)                      number of times n is divisible by k
   hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol

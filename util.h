@@ -163,6 +163,7 @@ extern bool is_catalan_pseudoprime(UV n);
 extern UV  polygonal_root(UV n, UV k, bool* overflow);
 
 extern UV  npartitions(UV n);
+extern UV  npartitionsq(UV n);
 extern UV  consecutive_integer_lcm(UV n);
 
 extern UV  frobenius_number(UV* A, uint32_t alen);

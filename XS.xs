@@ -3249,7 +3249,8 @@ void urandomm(IN SV* svn)
 void pisano_period(IN SV* svn)
   ALIAS:
     partitions = 1
-    consecutive_integer_lcm = 2
+    partitionsq = 2
+    consecutive_integer_lcm = 3
   PREINIT:
     UV n, r = 0;
   PPCODE:
@@ -3257,7 +3258,8 @@ void pisano_period(IN SV* svn)
       switch (ix) {
         case  0: r = pisano_period(n); break;
         case  1: r = npartitions(n); break;
-        case  2: r = consecutive_integer_lcm(n); break;
+        case  2: r = npartitionsq(n); break;
+        case  3: r = consecutive_integer_lcm(n); break;
         default: break;
       }
       /* Returns 0 if n=0 or result overflows */

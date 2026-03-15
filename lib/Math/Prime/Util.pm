@@ -111,7 +111,7 @@ our @EXPORT_OK =
       set_is_subset set_is_proper_subset set_is_superset set_is_proper_superset
       moebius mertens liouville sumliouville prime_omega prime_bigomega
       euler_phi jordan_totient exp_mangoldt sumtotient dedekind_psi
-      partitions bernfrac bernreal harmfrac harmreal
+      partitions partitionsq bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
       prime_signature sopf sopfr abundance
@@ -4926,7 +4926,6 @@ Matching that series, we define C<consecutive_integer_lcm(0) = 1>.
 =head2 partitions
 
 Given an integer C<n>, returns the partition function C<p(n)>.
-If C<n> is negative, 0 is returned.
 This is the number of ways of writing the integer C<n> as a sum of positive
 integers, without restrictions.
 
@@ -4948,6 +4947,19 @@ formula using multi-precision floating point.  In 10 seconds:
 
 If you want the enumerated partitions, see L</forpart>.
 
+=head2 partitionsq
+
+Given a non-negative integer C<n>, returns the number of partitions of C<n>
+into B<distinct> parts (no part repeated).
+
+For example, C<partitionsq(6) = 4>: the partitions are {6}, {1,5}, {2,4},
+and {1,2,3}.
+
+By Euler's theorem, this equals the number of partitions of C<n> into
+B<odd> parts.
+
+This corresponds to Mathematica's C<PartitionsQ> function.
+The values produced in order are L<OEIS series A000009|http://oeis.org/A000009>.
 
 =head2 lucky_numbers
 

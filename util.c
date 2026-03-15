@@ -3211,6 +3211,49 @@ UV npartitions(UV n) {
   return npart;
 }
 
+UV npartitionsq(UV n) {
+  UV *part, *pent, i, j, k, d, npart;
+
+  if (n <= 3)  return 1 + (n==3);
+  if (n > ((BITS_PER_WORD == 32) ? 237 : 791)) return 0;  /* Overflow */
+
+  d = isqrt(n+1);
+  New(0, pent, 2*d+2, UV);
+  pent[0] = 0;
+  pent[1] = 1;
+  for (i = 1; i <= d; i++) {
+    pent[2*i  ] = ( i   *(3*i+1)) / 2;
+    pent[2*i+1] = ((i+1)*(3*i+2)) / 2;
+  }
+  New(0, part, n+1, UV);
+  part[0] = 1;
+  for (j = 1; j <= n; j++) {
+    UV psum = 0;
+    /* same pentagonal recurrence as npartitions */
+    for (k = 1; pent[k] <= j; k++) {
+      if ((k+1) & 2) psum += part[j - pent[k]];
+      else           psum -= part[j - pent[k]];
+    }
+    /* E(x^2) correction: nonzero at double-pentagonals 2*pent[k],
+       with sign opposite to the recurrence sign at index k */
+    if ((j & 1) == 0) {
+      UV hj = j >> 1;
+      for (k = 1; pent[k] <= hj; k++) {
+        if (pent[k] == hj) {
+          if ((k+1) & 2) psum--;
+          else           psum++;
+          break;
+        }
+      }
+    }
+    part[j] = psum;
+  }
+  npart = part[n];
+  Safefree(part);
+  Safefree(pent);
+  return npart;
+}
+
 UV consecutive_integer_lcm(UV n)
 {
   UV i, ilcm, sqrtn;

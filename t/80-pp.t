@@ -1066,6 +1066,7 @@ subtest 'misc number theory functions', sub {
   is( "".primorial(118), "31610054640417607788145206291543662493274686990", "primorial(118)" );
   is( pn_primorial(7), 510510, "pn_primorial(7)" );
   is( partitions(74), 7089500, "partitions(74)" );
+  is( partitionsq(74), 44046, "partitionsq(74)" );
 
   is(legendre_phi(54321,5),11287,"legendre_phi(54321,5) = 11287");
   is(inverse_li(13579),146261,"inverse_li");

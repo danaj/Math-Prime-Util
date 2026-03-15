@@ -1173,6 +1173,39 @@ sub partitions {
   return $part[$n];
 }
 
+sub partitionsq {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  # n = 462 exceeds 2^49 intermediates
+  my($ZERO,$ONE) = $n < 462  ?  (0,1)  :  (tobigint(0),tobigint(1));
+  my @part = ($ONE);
+  for my $j (1..$n) {
+    my($pos, $neg) = ($ZERO, $ZERO);
+    my($i, $sign) = (1, 1);
+    while ((my $a = ($i*(3*$i-1)) >> 1) <= $j) {
+      my $b = ($i*(3*$i+1)) >> 1;
+      if ($sign > 0) {
+        $pos += $part[$j-$a];
+        $pos += $part[$j-$b] if $b <= $j;
+      } else {
+        $neg += $part[$j-$a];
+        $neg += $part[$j-$b] if $b <= $j;
+      }
+      # E(x²) correction: nonzero when j = 2*a or 2*b (j/2 is pentagonal)
+      # sign of e₂(j) is opposite the recurrence sign
+      if ($a*2 == $j || $b*2 == $j) {
+        $sign > 0 ? $neg++ : $pos++;
+      }
+      $i++;  $sign = -$sign;
+    }
+    $part[$j] = $pos-$neg;
+  }
+  my $q = $part[$n];
+  $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX;
+  return $q;
+}
+
+
 my @_lf63 = (0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,1,1,1,0,0);
 my @_small_lucky = (undef,1,3,7,9,13,15,21,25,31,33,37,43,49,51,63,67,69,73,75,79,87,93,99,105,111,115,127,129,133,135,141,151,159,163,169,171,189,193,195);
 

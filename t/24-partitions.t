@@ -3,13 +3,14 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/partitions forpart forcomp is_prime/;
+use Math::Prime::Util qw/partitions partitionsq forpart forcomp is_prime/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $use64 = Math::Prime::Util::_uvbits >= 64;
 
 # About 5x faster if available.
 #Math::Prime::Util::prime_set_config(bigint => "Math::GMPz");
 
-plan tests => 3;
+plan tests => 4;
 
 subtest 'partitions', sub {
   my @parts = (qw/
@@ -41,6 +42,26 @@ subtest 'partitions', sub {
       is( "".partitions($n), $epart, "partitions($n)" );
     }
   }
+};
+
+################### partitionsq
+
+subtest 'partitionsq', sub {
+  ok(!defined eval { partitionsq(-1); 1 }, "partitionsq(-1) gives error");
+
+  my @parts = (qw/
+    1 1 1 2 2 3 4 5 6 8 10 12 15 18 22 27 32 38 46 54 64 76 89 104
+    122 142 165 192 222 256 296 340 390 448 512 585 668 760 864 982
+    1113 1260 1426 1610 1816 2048 2304 2590 2910 3264 3658
+  /);
+  is_deeply( [map { partitionsq($_) } 0..$#parts], \@parts, "partitionsq(0..$#parts)" );
+
+  is(partitionsq(100),444793,"partitionsq(100)");
+  is(partitionsq(300),114872472064,"partitionsq(300)");
+  is("".partitionsq(1000),"8635565795744155161506","partitionsq(1000)")
+    if $use64 || $extra;;
+  is("".partitionsq(2000),"106972734349914451123354464808960","partitionsq(2000)")
+    if $use64 && $extra;;
 };
 
 ################### forpart

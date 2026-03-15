@@ -20,6 +20,7 @@ Revision history for Perl module Math::Prime::Util
     - vecprefixsum(@list)             prefix sum / cumulative sum of list
     - multifactorial(n,k)             k-step multifactorial of n
     - dedekind_psi(n)                 Dedekind psi function, n*prod(1+1/p)
+    - partitionsq(n)                  number of partitions into distinct parts
 
 
 0.74 2026-03-13

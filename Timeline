@@ -2,6 +2,7 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.75
+2025-03-16  partitionsq(n)
 2025-03-15  dedekind_psi(n)
 2025-03-15  multifactorial(n,k)
 2025-03-15  vecprefixsum(@list)
