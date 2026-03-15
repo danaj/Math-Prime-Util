@@ -625,6 +625,11 @@ sub vecprod {
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::vecprod(@v);
 }
+sub vecprefixsum {
+  my @v = (@_ == 1 && ref $_[0] eq 'ARRAY') ? @{$_[0]} : @_;
+  _validate_integer($_) for @v;
+  return Math::Prime::Util::PP::vecprefixsum(@v);
+}
 sub vecmin {
   my(@v) = @_;
   _validate_integer($_) for @v;

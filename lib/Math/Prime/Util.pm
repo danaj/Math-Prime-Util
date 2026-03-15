@@ -100,9 +100,9 @@ our @EXPORT_OK =
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
-      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
+      vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsorti vecfreq vecsingleton vecslide
+      vecuniq vecsort vecsorti vecfreq vecsingleton vecslide
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setcontainsany setinsert setremove setinvert
@@ -3343,6 +3343,23 @@ sums (signed) integers and returns the untruncated result.
 
 Processing is done on native integers while possible, including using a
 128-bit running sum in the C code.
+
+=head2 vecprefixsum
+
+  my @cumulative = vecprefixsum(1..10);  # 1,3,6,10,15,21,28,36,45,55
+
+Returns the prefix sums (also called cumulative sums) of the integer
+arguments.  Given a list C<(a0, a1, a2, ...)>, returns
+C<(a0, a0+a1, a0+a1+a2, ...)>.  Each element of the result is the
+sum of the original elements up to that index.  An empty argument
+list returns an empty list.  Arguments may be negative, bigints, or
+integers stored as strings.
+
+Like C<vecsum>, all arithmetic is done on integers, returning exact results
+without converting to floating-point.
+
+The input can also be a single array reference, which will be slightly more
+efficient.  The output will still be a flat list.
 
 =head2 vecprod
 

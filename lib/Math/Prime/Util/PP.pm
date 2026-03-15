@@ -5742,6 +5742,17 @@ sub vecsum {
   $sum;
 }
 
+sub vecprefixsum {
+  my @v = (@_ == 1 && ref $_[0] eq 'ARRAY') ? @{$_[0]} : @_;
+  return unless @v;
+  return @v if @v == 1;
+  my @result = ($v[0]);
+  for my $i (1 .. $#v) {
+    push @result, Maddint($result[-1], $v[$i]);
+  }
+  @result;
+}
+
 sub _product_mulint {
   my($a, $b, $r) = @_;
   return $r->[$a] if $b <= $a;

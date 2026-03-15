@@ -217,6 +217,7 @@ Tags:
   vecsorti(\@list)                    in-place numeric sort a list ref
   vecextract(\@list, mask)            select from list based on mask
   vecequal(\@list1, \@list2)          compare equality of two array refs
+  vecprefixsum(@list)                 prefix sum / cumulative sum of list
   vecreduce { ... } @list             reduce / left fold applied to list
   vecall { ... } @list                return true if all are true
   vecany { ... } @list                return true if any are true

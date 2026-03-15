@@ -2400,6 +2400,44 @@ gcd(...)
     XSRETURN(1);
 
 void
+vecprefixsum(...)
+  PROTOTYPE: @
+  PREINIT:
+    int type;
+    size_t i, len;
+    UV *L;
+  PPCODE:
+    if (items == 0)
+      XSRETURN_EMPTY;
+    if (SvROK(ST(0)) && SvTYPE(SvRV(ST(0))) == SVt_PVAV) {
+      if (items != 1)
+        croak("vecprefixsum: expected integer list or single array reference");
+      type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), "vecprefixsum");
+    } else {
+      type = array_to_int_array(aTHX_ &len, &L, 0, &ST(0), items);
+    }
+    if (type == IARR_TYPE_NEG) {
+      IV *SL = (IV*)L;
+      for (i = 1; i < len; i++) {
+        IV a = SL[i-1], b = SL[i];
+        if ((b > 0 && a > IV_MAX - b) || (b < 0 && a < IV_MIN - b))
+          break;
+        SL[i] = a + b;
+      }
+      if (i >= len)  RETURN_LIST_VALS(len, L, 0);
+    } else if (type != IARR_TYPE_BAD) {
+      for (i = 1; i < len; i++) {
+        if (L[i] > UV_MAX - L[i-1])
+          break;
+        L[i] += L[i-1];
+      }
+      if (i >= len)  RETURN_LIST_VALS(len, L, 1);
+    }
+    Safefree(L);
+    DISPATCHPP();
+    return;
+
+void
 vecextract(IN SV* x, IN SV* svm)
   PREINIT:
     AV* av;

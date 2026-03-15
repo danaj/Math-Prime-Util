@@ -129,9 +129,9 @@ sub mpu_public_regex {
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
-      vecsum vecmin vecmax vecprod vecreduce vecextract vecequal vecuniq
+      vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecsort vecsorti vecfreq vecsingleton vecslide
+      vecuniq vecsort vecsorti vecfreq vecsingleton vecslide
       setbinop sumset setunion setintersect setminus setdelta toset
       setcontains setcontainsany setinsert setremove setinvert
       is_sidon_set is_sumfree_set

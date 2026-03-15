@@ -7,7 +7,7 @@ use Math::Prime::Util qw/vecreduce
                          vecextract
                          vecequal
                          vecmin vecmax
-                         vecsum vecprod factorial
+                         vecsum vecprod vecprefixsum factorial
                          vecuniq
                          vecsingleton
                          vecfreq
@@ -121,6 +121,7 @@ plan tests => 1    # vecmin
             + 1    # vecmax
             + 1    # vecsum
             + 1    # vecprod
+            + 1    # vecprefixsum
             + 1    # vecreduce
             + 1    # vecextract
             + 1    # vecequal
@@ -176,6 +177,41 @@ subtest 'vecprod', sub {
     push @prod, "".vecprod(1 .. $f);
   }
   is_deeply(\@prod, \@fact, "vecprod matches factorial for 0 .. 50");
+};
+
+##### vecprefixsum
+subtest 'vecprefixsum', sub {
+  my @cases = (
+    [ [],           [],              "empty" ],
+    [ [5],          [5],             "single element" ],
+    [ [0],          [0],             "single zero" ],
+    [ [1,2,3,4,5],  [1,3,6,10,15],  "1..5" ],
+    [ [-1,-2,-3],   [-1,-3,-6],     "all negative" ],
+    [ [-3,2,-1,5],  [-3,-1,-2,3],   "mixed signs" ],
+    [ [0,0,0],      [0,0,0],        "all zeros" ],
+    [ [3000000000,3000000000], [3000000000,6000000000], "32-bit UV overflow" ],
+    [ [2147483647,1], [2147483647,2147483648], "32-bit IV overflow" ],
+    [ [-2147483648,-1], [-2147483648,-2147483649], "32-bit IV underflow" ],
+  );
+  for my $r (@cases) {
+    my($in, $exp, $desc) = @$r;
+    is_deeply( [map{"$_"} vecprefixsum(@$in)],  $exp, "vecprefixsum list [$desc]" );
+    is_deeply( [map{"$_"} vecprefixsum($in)],   $exp, "vecprefixsum aref [$desc]" );
+  }
+  if ($use64) {
+    my @c64 = (
+      [ ["9000000000000000000","9000000000000000000"],
+        ["9000000000000000000","18000000000000000000"], "64-bit UV overflow" ],
+      [ ["9223372036854775807",1],
+        ["9223372036854775807","9223372036854775808"], "64-bit IV overflow" ],
+      [ ["-9223372036854775808",-1],
+        ["-9223372036854775808","-9223372036854775809"], "64-bit IV underflow"],
+    );
+    for my $r (@c64) {
+      my($in, $exp, $desc) = @$r;
+      is_deeply([map{"$_"}vecprefixsum(@$in)],$exp,"vecprefixsum list [$desc]");
+    }
+  }
 };
 
 ##### vecreduce

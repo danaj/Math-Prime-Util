@@ -17,6 +17,7 @@ Revision history for Perl module Math::Prime::Util
     - abundance(n)                    sigma(n)-2n => deficient/abundant/perfect
     - bell_number(n)                  Bell number, count of set partitions
     - catalan_number(n)               Catalan number
+    - vecprefixsum(@list)             prefix sum / cumulative sum of list
 
 
 0.74 2026-03-13
