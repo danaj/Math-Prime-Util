@@ -56,6 +56,7 @@ add_stopwords(qw/-th
                  sumset setbinop setunion setintersect setminus setdelta toset
                  setcontains setcontainsany setinsert setremove setinvert
                  contfrac farey
+                 sopf sopfr min max
                  _uvsize _ivsize _nvsize _uvbits _nvmantbits _nvmantdigits
                  pp 100ns/);
 

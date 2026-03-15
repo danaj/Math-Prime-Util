@@ -118,9 +118,10 @@ our @EXPORT_OK =
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling bell_number fubini znorder znprimroot znlog legendre_phi
+      stirling bell_number catalan_number fubini
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
+      znorder znprimroot znlog legendre_phi
       contfrac from_contfrac
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n
@@ -765,7 +766,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise Bézout uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader setwise
+=for stopwords Möbius Deléglise Bézout fibonacci uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader setwise
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -4800,8 +4801,7 @@ This is L<OEIS A033880|http://oeis.org/A033880>.
   say sopfr(360);   # 14  (2+2+2+3+3+5)
 
 Given a non-negative integer C<n>, returns the sum of prime factors of
-C<n> with repetition (also called the integer logarithm or sopfr).
-C<sopfr(1) = 0>.
+C<n> with repetition.  C<sopfr(1) = 0>.
 
 Equivalent to C<vecsum(factor($n))>.
 
@@ -5329,6 +5329,70 @@ If C<n> is not an odd prime, then the result does not necessarily
 indicate whether C<a> is a quadratic residue mod C<n>.  Using the function
 L</is_qr> will return correct results for any C<n>, though could be slower.
 
+
+=head2 binomial
+
+Given two integers C<n> and C<k>, returns the binomial coefficient
+C<n*(n-1)*...*(n-k+1)/k!>, also known as the choose function.  Negative
+arguments use the L<Kronenburg extensions|http://arxiv.org/abs/1105.3689/>.
+This corresponds to Pari's C<binomial(n,k)> function, Mathematica's
+C<Binomial[n,k]> function, and GMP's C<mpz_bin_ui> function.
+
+For negative arguments, this matches Mathematica.  Pari does not implement
+the C<< n < 0, k <= n >> extension and instead returns C<0> for this
+case.  GMP's API does not allow negative C<k> but otherwise matches.
+C<Math::BigInt> version 1.999816 and later supports negative arguments
+with similar semantics.  Prior to this, C<< n < 0, k > 0 >> was undefined.
+
+=head2 catalan_number
+
+Given a non-negative integer C<n>, returns the Catalan number C<C_n>.
+This is given by C<binomial(2*n,n) / (n+1)>.
+
+This corresponds to Mathematica's C<CatalanNumber[n]> function,
+Sage's C<catalan_number(n)> function, and SymPy's C<catalan(n)> function.
+
+This is the L<OEIS series A000108|http://oeis.org/A000108>.
+
+=head2 stirling
+
+  say "s(14,2) = ", stirling(14, 2);
+  say "S(14,2) = ", stirling(14, 2, 2);
+  say "L(14,2) = ", stirling(14, 2, 3);
+
+Given two 32-/64-bit non-negative integers C<n> and C<k>, plus an
+optional third argument C<kind> (1, 2, or 3, with the default being 1),
+returns the Stirling number of the given kind.
+The third kind are the unsigned Lah numbers.
+This corresponds to Pari's C<stirling(n,k,{type})>
+function and Mathematica's C<StirlingS1> / C<StirlingS2> functions.
+
+Stirling numbers of the first kind are C<-1^(n-k)> times the number of
+permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
+of the second kind are the number of ways to partition a set of C<n>
+elements into C<k> non-empty subsets.  The Lah numbers are the number of
+ways to split a set of C<n> elements into C<k> non-empty lists.
+
+=head2 bell_number
+
+  say "B(32) = ",bell_number(32);  # 128064670049908713818925644
+
+Given a non-negative integer C<n>, returns the Bell number of C<n>,
+which counts the number of partitions of a set of size C<n>.
+
+This corresponds to Mathematica's C<BellB[n]> function,
+Sage's C<bell_number(n)> function, and SymPy's C<bell(n)> function.
+
+This is the L<OEIS series A000110|http://oeis.org/A000110>.
+
+=head2 fubini
+
+Given a non-negative integer C<n>, returns the Fubini number of C<n>,
+also called the ordered Bell numbers, or the number of ordered partitions
+of C<n>.  It is the count of rankings of C<n> items allowing for ties.
+
+This is the L<OEIS series A000670|http://oeis.org/A000670>.
+
 =head2 factorial
 
 Given a non-negative integer C<n>, returns the factorial of C<n>,
@@ -5345,20 +5409,6 @@ starting position.
 
 This is L<OEIS series A000166|http://oeis.org/A000166>.
 This corresponds to Mathematica's C<Subfactorial[n]> function.
-
-=head2 binomial
-
-Given two integers C<n> and C<k>, returns the binomial coefficient
-C<n*(n-1)*...*(n-k+1)/k!>, also known as the choose function.  Negative
-arguments use the L<Kronenburg extensions|http://arxiv.org/abs/1105.3689/>.
-This corresponds to Pari's C<binomial(n,k)> function, Mathematica's
-C<Binomial[n,k]> function, and GMP's C<mpz_bin_ui> function.
-
-For negative arguments, this matches Mathematica.  Pari does not implement
-the C<< n < 0, k <= n >> extension and instead returns C<0> for this
-case.  GMP's API does not allow negative C<k> but otherwise matches.
-C<Math::BigInt> version 1.999816 and later supports negative arguments
-with similar semantics.  Prior to this, C<< n < 0, k > 0 >> was undefined.
 
 =head2 falling_factorial
 
@@ -5433,42 +5483,6 @@ as a L<Math::BigFloat> object using the default precision.  An optional
 second argument may be given specifying the precision to be used.
 
 This corresponds to Pari's C<bernreal> function.
-
-=head2 stirling
-
-  say "s(14,2) = ", stirling(14, 2);
-  say "S(14,2) = ", stirling(14, 2, 2);
-  say "L(14,2) = ", stirling(14, 2, 3);
-
-Given two 32-/64-bit non-negative integers C<n> and C<k>, plus an
-optional third argument C<kind> (1, 2, or 3, with the default being 1),
-returns the Stirling number of the given kind.
-The third kind are the unsigned Lah numbers.
-This corresponds to Pari's C<stirling(n,k,{type})>
-function and Mathematica's C<StirlingS1> / C<StirlingS2> functions.
-
-Stirling numbers of the first kind are C<-1^(n-k)> times the number of
-permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
-of the second kind are the number of ways to partition a set of C<n>
-elements into C<k> non-empty subsets.  The Lah numbers are the number of
-ways to split a set of C<n> elements into C<k> non-empty lists.
-
-=head2 bell_number
-
-  say "B(32) = ",bell_number(32);  # 128064670049908713818925644
-
-Given a non-negative integer C<n>, returns the Bell number of C<n>,
-which counts the number of partitions of a set of size C<n>.
-
-This is the L<OEIS series A000110|http://oeis.org/A000110>.
-
-=head2 fubini
-
-Given a non-negative integer C<n>, returns the Fubini number of C<n>,
-also called the ordered Bell numbers, or the number of ordered partitions
-of C<n>.  It is the count of rankings of C<n> items allowing for ties.
-
-This is the L<OEIS series A000670|http://oeis.org/A000670>.
 
 =head2 harmfrac
 

@@ -3,12 +3,12 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/factorial subfactorial bell_number fubini
-                         falling_factorial rising_factorial/;
+use Math::Prime::Util qw/factorial catalan_number bell_number fubini
+                         subfactorial falling_factorial rising_factorial/;
 use Math::BigInt try => "GMP,Pari";
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
-plan tests => 6;
+plan tests => 7;
 
 subtest 'factorial', sub {
   ok(!defined eval { factorial(-5); }, "factorial(-5) gives error");
@@ -34,6 +34,9 @@ my $nfubini = $extra ? 23 : 19;
 is_deeply( [ map { "".fubini($_) } 0..$nfubini ],
            [@fubini[0..$nfubini]],
            "fubini(n) for 0..$nfubini" );
+
+my @catalan = qw/1 1 2 5 14 42 132 429 1430 4862 16796 58786 208012 742900 2674440 9694845 35357670 129644790 477638700 1767263190 6564120420 24466267020 91482563640 343059613650 1289904147324 4861946401452 18367353072152 69533550916004 263747951750360 1002242216651368 3814986502092304 14544636039226909 55534064877048198 212336130412243110 812944042149730764 3116285494907301262 11959798385860453492 45950804324621742364/;
+is_deeply([map {"".catalan_number($_)} 0..$#catalan], \@catalan, "catalan_number(n) for 0..$#catalan)");
 
 subtest 'falling_factorial', sub {
   my $k;

@@ -4,7 +4,7 @@ use warnings;
 
 BEGIN {
   $ntheory::AUTHORITY = 'cpan:DANAJ';
-  $ntheory::VERSION = '0.74';
+  $ntheory::VERSION = '0.75';
 }
 
 BEGIN {
@@ -402,6 +402,7 @@ Tags:
   harmfrac(n)                         Harmonic number as (num,den)
   harmreal(n)                         Harmonic number as BigFloat
   stirling(n,m,[type])                Stirling numbers of 1st or 2nd type
+  catalan_number(n)                   Catalan number
   bell_number(n)                      Bell number, count of set partitions
   fubini(n)                           Fubini (Ordered Bell) number
   numtoperm(n,k)                      kth lexico permutation of n elems

@@ -1214,6 +1214,13 @@ UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   return r;
 }
 
+UV catalan_number(UV n) {
+  UV r = binomial(2*n,n);
+  if (r != 0)
+    r /= (n+1);
+  return r;
+}
+
 UV stirling3(UV n, UV m) {   /* Lah numbers */
   UV f1, f2;
 

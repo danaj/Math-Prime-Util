@@ -4760,24 +4760,36 @@ void factorial(IN SV* svn)
     fubini = 3
     primorial = 4
     pn_primorial = 5
-    sumtotient = 6
+    catalan_number = 6
   PREINIT:
     UV n, r;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       r = 0;
       switch(ix) {
-        case 0:  r = factorial(n);    break;
-        case 1:  r = subfactorial(n); break;
-        case 2:  r = bell_number(n);  break;
-        case 3:  r = fubini(n);       break;
-        case 4:  r = primorial(n);    break;
-        case 5:  r = pn_primorial(n); break;
-        case 6:  r = sumtotient(n);   break;
+        case 0:  r = factorial(n);      break;
+        case 1:  r = subfactorial(n);   break;
+        case 2:  r = bell_number(n);    break;
+        case 3:  r = fubini(n);         break;
+        case 4:  r = primorial(n);      break;
+        case 5:  r = pn_primorial(n);   break;
+        case 6:  r = catalan_number(n); break;
         default: break;
       }
       if (n == 0 || r > 0) XSRETURN_UV(r);
-      if (ix == 6) {  /* Probably an overflow, try 128-bit. */
+    }
+    DISPATCHPP();
+    objectify_result(aTHX_ svn, ST(0));
+    XSRETURN(1);
+
+void sumtotient(IN SV* svn)
+  PREINIT:
+    UV n, r;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      r = sumtotient(n);
+      if (n == 0 || r > 0) XSRETURN_UV(r);
+      {  /* Overflow, try 128-bit. */
         UV hicount, count;
         int retok = sumtotient128(n, &hicount, &count);
         if (retok == 1 && hicount > 0)

@@ -146,9 +146,10 @@ sub mpu_public_regex {
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling bell_number fubini znorder znprimroot znlog legendre_phi
+      stirling bell_number catalan_number fubini
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
+      znorder znprimroot znlog legendre_phi
       contfrac from_contfrac
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n
@@ -189,7 +190,8 @@ sub mpu_PPM_regex {
       Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
       Mdivisor_sum Mis_congruent Mis_divisible
       Mis_semiprime Mis_square_free Mhclassno
-      Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum Mvecslide
+      Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum Mvecuniq
+      Mvecslide
       Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits

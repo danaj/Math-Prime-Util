@@ -111,9 +111,10 @@ my @functions =  qw(
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling bell_number fubini znorder znprimroot znlog legendre_phi
+      stirling bell_number catalan_number fubini
       factorial factorialmod subfactorial binomial binomialmod
       falling_factorial rising_factorial
+      znorder znprimroot znlog legendre_phi
       contfrac from_contfrac
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n

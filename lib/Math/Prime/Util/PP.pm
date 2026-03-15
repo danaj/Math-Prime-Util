@@ -8395,6 +8395,7 @@ sub bell_number {
   # Bell triangle: B(k) is the first element of row k.
   my @row = (tobigint(1));
   for my $i (1 .. $n) {
+    # @row = vecprefixsum($row[-1],@row);
     my @next = ($row[-1]);
     push @next, $next[-1] + $row[$_] for 0 .. $i-1;
     @row = @next;
@@ -9546,7 +9547,7 @@ sub is_catalan_pseudoprime {
       return 0 unless _catgamma($q,$p) == 1 && _catgamma($p,$q) == 1;
     }
     if (is_prime($f[-1])) {  # fully factored
-      for my $F (vecuniq(@f)) {
+      for my $F (Mvecuniq(@f)) {
         return 0 if _catvtest($n-1,$F);
       }
     }
