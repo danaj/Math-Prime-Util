@@ -4165,6 +4165,7 @@ Given integer C<n>, returns 1 if C<n> is positive and cyclic in the number
 theory sense, and returns 0 otherwise.
 A cyclic number C<n> has only one group of order C<n>.
 C<n> and C<φ(n)> are relatively prime.
+This function returns C<0> for all input C<< n <= 0 >>.
 
 This is the L<OEIS series A003277|http://oeis.org/A003277>.
 
@@ -4178,6 +4179,7 @@ These are composites that satisfy C<b^(n-1) ≡ 1 mod n> for all
 C<< 1 < b < n >> relatively prime to C<n>.
 Alternately Korselt's theorem says these are composites such that C<n> is
 square-free and C<p-1> divides C<n-1> for all prime divisors C<p> of C<n>.
+This function returns C<0> for all input C<< n <= 0 >>.
 
 For inputs larger than 50 digits after removing very small factors, this
 uses a probabilistic test since factoring the number could take unreasonably
@@ -4925,7 +4927,7 @@ Matching that series, we define C<consecutive_integer_lcm(0) = 1>.
 
 =head2 partitions
 
-Given an integer C<n>, returns the partition function C<p(n)>.
+Given a non-negative integer C<n>, returns the partition function C<p(n)>.
 This is the number of ways of writing the integer C<n> as a sum of positive
 integers, without restrictions.
 
@@ -5343,6 +5345,8 @@ Given an integer C<n>, returns 1 if C<n> is a practical number,
 and returns 0 otherwise.
 A practical number is a positive integer C<n> such that all smaller
 positive integers can be represented as sums of distinct divisors of C<n>.
+This function returns C<0> for all input C<< n <= 0 >>.
+
 This is L<OEIS series A005153|http://oeis.org/A005153>.
 
 
@@ -6540,7 +6544,7 @@ Allows setting of some parameters.  Currently the only parameters are:
   my @factors = factor(3_369_738_766_071_892_021);
   # returns (204518747,16476429743)
 
-Produces the prime factors of a positive number input, in numerical order.
+Produces the prime factors of a non-negative integer input, in numerical order.
 The product of the returned factors will be equal to the input.  C<n = 1>
 will return an empty list, and C<n = 0> will return 0.  This matches Pari.
 
