@@ -156,7 +156,7 @@ subtest 'lucas_number' => sub {
                   44140595050111976643 71420983074726546239/;
   is_deeply( [map { "".lucas_number($_) } 88..95], \@L88to95, "lucas_number(88..95)" );
   is( lucas_number(-45), -2537720636, "lucas_number(-45)" );
-  is( lucas_number(-91), "-10420180999117162549", "lucas_number(-91)" );
+  is( "".lucas_number(-91), "-10420180999117162549", "lucas_number(-91)" );
   is( "".lucas_number(369),
       "130749263813571723341736891410627379813133098633002886657379480727164562863276",
       "lucas_number(369) is 256-bit bigint" );

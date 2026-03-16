@@ -168,10 +168,9 @@ is("".subint(0, $uvmax), "-$uvmax", "subint(0, UV_MAX) = -UV_MAX");
       my $cmp = cmpint($a, $b);
       # Verify: cmpint agrees with subint sign
       my $diff = subint($a, $b);
-      my $expected = ($diff eq "0") ? 0 : (substr("$diff",0,1) eq '-') ? -1 : 1;
-      if ($cmp != $expected) {
-        $ok = 0;
-      }
+      if ($a eq $b)    { $ok = 0 unless $cmp == 0 && $diff == 0; }
+      elsif ($cmp < 0) { $ok = 0 unless $diff < 0; }
+      else             { $ok = 0 unless $diff > 0; }
     }
   }
   ok($ok, "cmpint agrees with sign(subint(a,b)) for boundary values");

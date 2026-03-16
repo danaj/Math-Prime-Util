@@ -670,8 +670,8 @@ sub _sieve_erat_string {
 
 sub _sieve_segment {
   my($beg,$end,$limit) = @_;
-  ($beg, $end) = map { _bigint_to_int($_) } ($beg, $end)
-    if ref($end) && $end <= INTMAX;
+  $beg = _bigint_to_int($beg) if ref($beg) && $beg <= INTMAX;
+  $end = _bigint_to_int($end) if ref($end) && $end <= INTMAX;
   croak "Internal error: segment beg is even" if ($beg % 2) == 0;
   croak "Internal error: segment end is even" if ($end % 2) == 0;
   croak "Internal error: segment end < beg" if $end < $beg;
@@ -887,7 +887,7 @@ sub sieve_prime_cluster {
 
   # Compute acceptable residues.
   my $pr = Mprimorial($p);
-  my $startpr = _bigint_to_int($lo % $pr);
+  my $startpr = Mmodint($lo,$pr);
 
   my @acc = grep { ($_ & 1) && $_%3 }  ($startpr .. $startpr + $pr - 1);
   for my $c (@cl) {
@@ -910,7 +910,7 @@ sub sieve_prime_cluster {
   my(@lorem,@vprem);
   for my $pidx (0..$#mprimes) {
     my $p = $mprimes[$pidx];
-    $lorem[$pidx] = _bigint_to_int($lo % $p);
+    $lorem[$pidx] = Mmodint($lo,$p);
     for my $c (@cl) {
       $vprem[$pidx]->[ ($p-($c%$p)) % $p ] = 1;
     }
@@ -924,7 +924,7 @@ sub sieve_prime_cluster {
 
     # Make sure we don't do anything past the limit
     if (($lo+$acc[-1]) > $hi) {
-      my $max = _bigint_to_int($hi-$lo);
+      my $max = Msubint($hi,$lo);
       @racc = grep { $_ <= $max } @racc;
     }
 
@@ -1455,9 +1455,7 @@ sub consecutive_integer_lcm {
     $p_power = Mmulint($p_power,$p) while $p_power <= $pmin;
     push @powers, $p_power;
   }
-  my $pn = Mvecprod(@powers);
-  $pn = _bigint_to_int($pn) if $pn <= INTMAX;
-  return $pn;
+  Mvecprod(@powers);
 }
 
 sub frobenius_number {
@@ -5652,8 +5650,7 @@ sub gcd {
     $gcd = Math::BigInt::bgcd(map { Math::BigInt->new("$_") } @N);
     $gcd = tobigint($gcd);
   }
-  $gcd = _bigint_to_int($gcd) if $gcd <= INTMAX;
-  $gcd;
+  return $gcd <= INTMAX  ?  _bigint_to_int($gcd)  :  $gcd;
 }
 sub lcm {
   my(@v) = @_;
@@ -5965,7 +5962,7 @@ sub digital_root {
      $base = 10;
   }
   return 0 if $n == 0;
-  1 + ($n-1) % ($base-1);
+  1 + Mmodint($n-1,$base-1);
 }
 sub mult_digital_root {
   my($n,$base) = @_;
@@ -7711,8 +7708,7 @@ sub sqrtint {
   } else {
     $R = Math::BigInt->new("$n")->bsqrt;
   }
-  $R = _bigint_to_int($R) if $R <= INTMAX;
-  $R;
+  return $R <= INTMAX  ?  _bigint_to_int($R)  :  $R;
 }
 
 sub rootint {
@@ -7798,8 +7794,7 @@ sub _logint {
   # Just in case something failed, escape via using Math::BigInt's blog
   if ($l == MPU_INFINITY || !defined($l<=>MPU_INFINITY)) {
     my $R = Math::BigInt->new("$n")->copy->blog($b);
-    $R = _bigint_to_int($R) if $R <= INTMAX;
-    return $R;
+    return $R <= INTMAX  ?  _bigint_to_int($R)  :  $R;
   }
 
   my $R = int($l);
@@ -8395,9 +8390,8 @@ sub factorial {
     return reftyped($_[0], $r)    if defined $r;
   }
   # maybe roll our own: https://oeis.org/A000142/a000142.pdf
-  my $r = Math::BigInt->new($n)->bfac();
-  $r = _bigint_to_int($r) if $r <= INTMAX;
-  $r;
+  my $r = Math::BigInt->new("$n")->bfac();
+  return $r <= INTMAX  ?  _bigint_to_int($r)  :  $r;
 }
 
 sub factorialmod {
@@ -9851,11 +9845,7 @@ sub is_aks_prime {
     return 0 if Mpowmod($a, $n-1, $n) != 1;
   }
 
-  if ($n < (MPU_HALFWORD-1) ) {
-    $n = _bigint_to_int($n) if ref($n);
-  } else {
-    $n = tobigint($n);
-  }
+  $n = tobigint($n) if $n >= (MPU_HALFWORD-1);
 
   print "# aks r = $r  s = $s\n" if $_verbose;
   local $| = 1 if $_verbose > 1;
@@ -10031,7 +10021,7 @@ sub trial_factor {
       $I += 4;
       next if $g->is_one;
       my $G = _bigint_to_int($g);   # Native int (or larger)
-      $G = $g if $G >= INTMAX;      # Must use original if multiples found.
+      $G = $g if $G > (INTMAX-513); # Must use original if multiples found.
       $n = _remove_factor($n, $f1, \@factors) unless $G % $f1;
       $n = _remove_factor($n, $f2, \@factors) unless $G % $f2;
       $n = _remove_factor($n, $f3, \@factors) unless $G % $f3;
@@ -11065,8 +11055,11 @@ sub ExponentialIntegral {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::ei, $x<100?0.49:0.53, $x);
     return $r if defined $r;
   }
-  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
-  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
+
+  if (ref($x) && ref($x) ne 'Math::BigFloat') {
+    $x = $x <= INTMAX && $x >= INTMIN ? _bigint_to_int($x)
+                                      : _upgrade_to_float("$x");
+  }
 
   my $tol = 1e-16;
   my $sum = 0.0;
@@ -11155,8 +11148,10 @@ sub LogarithmicIntegral {
     return $li2const;
   }
 
-  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
-  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
+  if (ref($x) && ref($x) ne 'Math::BigFloat') {
+    $x = $x <= INTMAX && $x >= INTMIN ? _bigint_to_int($x)
+                                      : _upgrade_to_float("$x");
+  }
 
   # Make sure we preserve whatever accuracy setting the input was using.
   $x->accuracy($_[0]->accuracy) if ref($x) && ref($_[0]) =~ /^Math::Big/ && $_[0]->accuracy;
@@ -11383,9 +11378,11 @@ sub RiemannR {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::riemannr, 0.41, $x);
     return $r if defined $r;
   }
-  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
-  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
 
+  if (ref($x) && ref($x) ne 'Math::BigFloat') {
+    $x = $x <= INTMAX && $x >= INTMIN ? _bigint_to_int($x)
+                                      : _upgrade_to_float("$x");
+  }
 
 # TODO: look into this as a generic solution
 if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
@@ -11459,8 +11456,11 @@ sub LambertW {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::lambertw, 0.42, $x);
     return $r if defined $r;
   }
-  $x=_bigint_to_int($x) if ref($x)eq'Math::BigInt' && $x<=INTMAX && $x>=INTMIN;
-  $x=_upgrade_to_float($x) if ref($x) && ref($x) ne 'Math::BigFloat';
+
+  if (ref($x) && ref($x) ne 'Math::BigFloat') {
+    $x = $x <= INTMAX && $x >= INTMIN ? _bigint_to_int($x)
+                                      : _upgrade_to_float("$x");
+  }
 
   my $xacc = ref($x) ? _find_big_acc($x) : 0;
   my $w;
