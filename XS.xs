@@ -468,8 +468,8 @@ static int _validate_int(pTHX_ SV* n, int negok)
 }
 
 #define IFLAG_ANY      0x00000000U
-#define IFLAG_POS      0x00000001U  /* Must be non-negative */
-#define IFLAG_NONZERO  0x00000002U  /* Must not be zero */
+#define IFLAG_NONNEG   0x00000001U  /* Must be non-negative */
+#define IFLAG_POS      0x00000002U  /* Must be positive (n > 0) */
 #define IFLAG_ABS      0x00000004U  /* Absolute value returned */
 #define IFLAG_IV       0x00000008U  /* Value returned as IV */
 
@@ -481,7 +481,7 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   if (SVNUMTEST(svn)) {
     IV n = SvIVX(svn);
     if (n >= 0) {
-      if (n == 0 && (mask & IFLAG_NONZERO))
+      if (n == 0 && (mask & IFLAG_POS))
         croak("Parameter '%" SVf "' must be a positive integer", svn);
       *val = (UV)n;
       return 1;
@@ -492,16 +492,17 @@ static int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
       *val = (UV)n;
       return 1;
     }
-    if (mask & IFLAG_ABS) { *val = (UV)(-n); return 1; }
-    if (mask & IFLAG_POS) croak("Parameter '%" SVf "' must be a non-negative integer", svn);
+    if (mask & IFLAG_ABS)    { *val = (UV)(-n); return 1; }
+    if (mask & IFLAG_POS)    croak("Parameter '%" SVf "' must be a positive integer", svn);
+    if (mask & IFLAG_NONNEG) croak("Parameter '%" SVf "' must be a non-negative integer", svn);
     *val = n;
     return -1;
   }
 
-  status = _validate_int( aTHX_ svn, !(mask & IFLAG_POS) );
+  status = _validate_int( aTHX_ svn, !(mask & (IFLAG_NONNEG|IFLAG_POS)) );
   if (status == 1) {
     UV n = my_svuv(svn);
-    if (n == 0 && (mask & IFLAG_NONZERO))
+    if (n == 0 && (mask & IFLAG_POS))
       croak("Parameter '%" SVf "' must be a positive integer", svn);
     if (n > (UV)IV_MAX && (mask & IFLAG_IV))
       return 0;
@@ -1618,8 +1619,8 @@ bool _validate_integer(SV* svn)
     /* Flag:  0 neg ok,  1 neg err,  2 zero or neg err,  3 abs */
     switch (ix) {
       case 0: mask = IFLAG_ANY; break;
-      case 1: mask = IFLAG_POS; break;
-      case 2: mask = IFLAG_POS | IFLAG_NONZERO; break;
+      case 1: mask = IFLAG_NONNEG; break;
+      case 2: mask = IFLAG_POS; break;
       case 3: mask = IFLAG_ABS; break;
       default: croak("_validate_integer unknown flag value");
     }
@@ -1636,7 +1637,7 @@ bool _validate_integer(SV* svn)
       if (mask & IFLAG_ABS) {
         /* TODO: if given a positive bigint, no need for this */
         sv_setsv(svn, sv_to_bigint_abs(aTHX_ svn));
-      } else if (mask & IFLAG_POS) {
+      } else if (mask & IFLAG_NONNEG) {
         if (!_is_sv_bigint(aTHX_ svn))
           sv_setsv(svn, sv_to_bigint_nonneg(aTHX_ svn));
       } else {
@@ -1687,8 +1688,8 @@ void prime_count(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     UV lo = 0, hi, count = 0;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       if (lo <= hi) {
         switch (ix) {
           case 0:  count = prime_count_range(lo, hi);           break;
@@ -1727,7 +1728,7 @@ void prime_count_upper(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       switch (ix) {
         case  0: ret = prime_count_upper(n); break;
         case  1: ret = prime_count_lower(n); break;
@@ -1759,8 +1760,8 @@ void sum_primes(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     UV lo = 2, hi;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       UV count = 0;
       int retok = 1;
       /* 32/64-bit, Legendre or table-accelerated sieving. */
@@ -1789,8 +1790,8 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
     UV lo = 2, hi, ret;
     dMY_CXT;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       ret = random_prime(MY_CXT.randcxt,lo,hi);
       if (ret) XSRETURN_UV(ret);
       else     XSRETURN_UNDEF;
@@ -1803,8 +1804,8 @@ void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
   PREINIT:
     UV lo = 2, hi;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       if (lo <= hi) {
         int fd = (infd == -1) ? fileno(stdout) : infd;
         print_primes(lo, hi, fd);
@@ -1891,8 +1892,8 @@ void primes(IN SV* svlo, IN SV* svhi = 0)
     AV* av;
     UV lo = 0, hi, i;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       CREATE_RETURN_AV(av);
       if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
       if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));
@@ -1934,8 +1935,8 @@ void almost_primes(IN UV k, IN SV* svlo, IN SV* svhi = 0)
     AV* av;
     UV lo = 1, hi, i, n, *S;
   PPCODE:
-    if ((items == 2 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items >= 3 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 2 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items >= 3 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       CREATE_RETURN_AV(av);
       S = 0;
       if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
@@ -1958,8 +1959,8 @@ void prime_powers(IN SV* svlo, IN SV* svhi = 0)
     AV* av;
     UV lo = 0, hi, i, num, *L;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       CREATE_RETURN_AV(av);
       if (ix == 0) {         /* Prime power */
         if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
@@ -1999,8 +2000,8 @@ lucky_numbers(IN SV* svlo, IN SV* svhi = 0)
     AV* av;
     UV lo = 0, hi, i, nlucky = 0;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       CREATE_RETURN_AV(av);
       if (lo == 0 && hi <= UVCONST(4000000000)) {
         uint32_t* lucky = lucky_sieve32(&nlucky, hi);
@@ -2024,7 +2025,7 @@ void minimal_goldbach_pair(IN SV* svn)
   PREINIT:
     UV n, res;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       if (ix == 0) {
         res = minimal_goldbach_pair(n);
         if (res == 0) XSRETURN_UNDEF;
@@ -2041,7 +2042,7 @@ void goldbach_pairs(IN SV* svn)
     size_t npairs, i;
     UV     n, *L;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) == 1) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) == 1) {
       if (GIMME_V != G_ARRAY)
         XSRETURN_UV(goldbach_pair_count(n));
       L = goldbach_pairs(&npairs, n);
@@ -2060,8 +2061,8 @@ void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
     AV* av;
     UV lo = 1, hi, i, npowerful, *powerful;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_POS)) ||
-        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS))) {
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       CREATE_RETURN_AV(av);
       powerful = powerful_numbers_range(&npowerful, lo, hi, k);
       for (i = 0; i < npowerful; i++)
@@ -2079,7 +2080,7 @@ sieve_range(IN SV* svn, IN UV width, IN UV depth)
     UV i, n;
   PPCODE:
     /* Return index of every n unless it is a composite with factor > depth */
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (status == 1) {
       if ((n+width) < n) {
         status = 0;   /* range will overflow */
@@ -2105,7 +2106,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
     if (items > 100) croak("sieve_prime_cluster: too many entries");
     cl[0] = 0;
     for (i = 1; i < nc; i++) {
-      if (!_validate_and_set(&cval, aTHX_ ST(1+i), IFLAG_POS))
+      if (!_validate_and_set(&cval, aTHX_ ST(1+i), IFLAG_NONNEG))
         croak("sieve_prime_cluster: cluster values must be standard integers");
       if (cval & 1) croak("sieve_prime_cluster: values must be even");
       if (cval > 2147483647UL) croak("sieve_prime_cluster: values must be 31-bit");
@@ -2113,8 +2114,8 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       cl[i] = cval;
     }
     done = 0;
-    if (_validate_and_set(&lo, aTHX_ svlo, IFLAG_POS) &&
-        _validate_and_set(&hi, aTHX_ svhi, IFLAG_POS)) {
+    if (_validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) &&
+        _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG)) {
       list = sieve_cluster(lo, hi, nc, cl, &nprimes);
       if (list != 0) {
         done = 1;
@@ -2149,7 +2150,7 @@ void is_pseudoprime(IN SV* svn, ...)
                           is_strong_pseudoprime(n, 2);
       } else {
         for (i = 1, ret = 1;  i < items && ret == 1; i++) {
-          status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_POS);
+          status = _validate_and_set(&base, aTHX_ ST(i), IFLAG_NONNEG);
           if (status != 1) break;
           ret = (ix == 0) ? is_pseudoprime(n, base) :
                 (ix == 1) ? is_euler_pseudoprime(n, base) :
@@ -2457,7 +2458,7 @@ vecextract(IN SV* x, IN SV* svm)
         index = (SSize_t)mask;
         { SV **v = av_fetch(av, index, 0);  if (v) XPUSHs(*v); }
       }
-    } else if (_validate_and_set(&mask, aTHX_ svm, IFLAG_POS)) {
+    } else if (_validate_and_set(&mask, aTHX_ svm, IFLAG_NONNEG)) {
       while (mask) {
         if (mask & 1) {
           SV** v = av_fetch(av, i, 0);
@@ -2495,10 +2496,10 @@ vecmex(...)
   PPCODE:
     if (ix == 0) {
       min = 0;
-      mask = IFLAG_POS;
+      mask = IFLAG_NONNEG;
     } else {
       min = 1;
-      mask = IFLAG_POS | IFLAG_NONZERO;
+      mask = IFLAG_POS;
     }
     if (items == 0)
       XSRETURN_UV(min);
@@ -2525,7 +2526,7 @@ frobenius_number(...)
     if (items == 0) XSRETURN_UNDEF;
     Newz(0, A, items, UV);
     for (i = 0; i < items; i++) {
-      if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS | IFLAG_NONZERO)) break;
+      if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS)) break;
       if (n == 1) { found1 = 1; break; }
       A[i] = n;
     }
@@ -2601,8 +2602,8 @@ void cornacchia(IN SV* svd, IN SV* svn)
   PREINIT:
     UV d, n, x, y;
   PPCODE:
-    if (_validate_and_set(&d, aTHX_ svd, IFLAG_POS) &&
-        _validate_and_set(&n, aTHX_ svn, IFLAG_POS) ) {
+    if (_validate_and_set(&d, aTHX_ svd, IFLAG_NONNEG) &&
+        _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) ) {
       if (!cornacchia(&x, &y, d, n))  XSRETURN_UNDEF;
       PUSHs(sv_2mortal(newSVuv( x )));
       PUSHs(sv_2mortal(newSVuv( y )));
@@ -2616,10 +2617,10 @@ void lucas_sequence(...)
     UV U, V, Qk,  n, P, Q, k;
   PPCODE:
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
-    if (_validate_and_set(&n, aTHX_ ST(0), IFLAG_POS | IFLAG_NONZERO) &&
+    if (_validate_and_set(&n, aTHX_ ST(0), IFLAG_POS) &&
         _validate_and_set(&P, aTHX_ ST(1), IFLAG_ANY | IFLAG_IV) &&
         _validate_and_set(&Q, aTHX_ ST(2), IFLAG_ANY | IFLAG_IV) &&
-        _validate_and_set(&k, aTHX_ ST(3), IFLAG_POS)) {
+        _validate_and_set(&k, aTHX_ ST(3), IFLAG_NONNEG)) {
       lucas_seq(&U, &V, &Qk, n, (IV)P, (IV)Q, k);
       PUSHs(sv_2mortal(newSVuv( U )));  /* 4 args in, 3 out, no EXTEND needed */
       PUSHs(sv_2mortal(newSVuv( V )));
@@ -2641,7 +2642,7 @@ void lucasuvmod(IN SV* svp, IN SV* svq, IN SV* svk, IN SV* svn)
     pstatus = _validate_and_set(&P, aTHX_ svp, IFLAG_ANY);
     qstatus = _validate_and_set(&Q, aTHX_ svq, IFLAG_ANY);
     if ((pstatus != 0) && (qstatus != 0) &&
-        _validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG) &&
         _validate_and_set(&n, aTHX_ svn, IFLAG_ABS)
         ) {
       if (n == 0) XSRETURN_UNDEF;
@@ -2672,7 +2673,7 @@ void lucasuv(IN SV* svp, IN SV* svq, IN SV* svk)
   PPCODE:
     if (_validate_and_set((UV*)&P, aTHX_ svp, IFLAG_IV) &&
         _validate_and_set((UV*)&Q, aTHX_ svq, IFLAG_IV) &&
-        _validate_and_set(&k, aTHX_ svk, IFLAG_POS) &&
+        _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG) &&
         lucasuv(&U, &V, P, Q, k)) {
       if (ix == 1)  XSRETURN_IV(U);     /* U = lucasu(P,Q,k) */
       if (ix == 2)  XSRETURN_IV(V);     /* V = lucasv(P,Q,k) */
@@ -2820,7 +2821,7 @@ void powerfree_count(IN SV* svn, IN int k = 2)
     int status;
     UV n, res;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ANY : IFLAG_POS);
+    status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ANY : IFLAG_NONNEG);
     if (status != 0) {
       if (status == -1)
         XSRETURN_UV(0);
@@ -2926,7 +2927,7 @@ void inverse_li(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       if (n < MPU_MAX_PRIME_IDX) /* Fall through to Perl if out of range. */
         XSRETURN_UV(inverse_li(n));
     }
@@ -2947,7 +2948,7 @@ void nth_prime(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_PRIME_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -2970,7 +2971,7 @@ void nth_prime_power(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_PRIME_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -2993,7 +2994,7 @@ void nth_perfect_power(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_PERFECT_POW_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -3017,7 +3018,7 @@ void nth_ramanujan_prime(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_RMJN_PRIME_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -3038,7 +3039,7 @@ void nth_twin_prime(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_TWIN_PRIME_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -3057,7 +3058,7 @@ void nth_semiprime(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_SEMI_PRIME_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -3078,7 +3079,7 @@ void nth_lucky(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if ( _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
          n <= MPU_MAX_LUCKY_IDX ) {
       if (n == 0) XSRETURN_UNDEF;
       switch (ix) {
@@ -3100,7 +3101,7 @@ void next_prime(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)
         && !(ix == 0 && n >= MPU_MAX_PRIME)) {
       ret = 0;
       switch (ix) {
@@ -3175,7 +3176,7 @@ void next_chen_prime(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       ret = next_chen_prime(n);
       if (ret != 0) XSRETURN_UV(ret);
     }
@@ -3237,7 +3238,7 @@ void urandomm(IN SV* svn)
   PREINIT:
     UV n, ret;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       dMY_CXT;
       ret = urandomm64(MY_CXT.randcxt, n);
       XSRETURN_UV(ret);
@@ -3254,7 +3255,7 @@ void pisano_period(IN SV* svn)
   PREINIT:
     UV n, r = 0;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       switch (ix) {
         case  0: r = pisano_period(n); break;
         case  1: r = npartitions(n); break;
@@ -3274,7 +3275,7 @@ void random_factored_integer(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       dMY_CXT;
       int f, nf, flip;
       UV r, F[MPU_MAX_FACTORS+1];
@@ -3299,7 +3300,7 @@ void contfrac(IN SV* svnum, IN SV* svden)
   PPCODE:
     nstatus = _validate_and_set(&num, aTHX_ svnum, IFLAG_ANY);
     /* TODO: handle negative numerator */
-    if (nstatus == 1 && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+    if (nstatus == 1 && _validate_and_set(&den, aTHX_ svden, IFLAG_POS)) {
       UV *cf, rem;
       int i, steps = contfrac(&cf, &rem, num, den);
       EXTEND(SP, (EXTEND_TYPE)steps);
@@ -3327,7 +3328,7 @@ void from_contfrac(...)
       /* TODO: handle negative n */
       cfA1 = n;
       for (i = 1; nstatus == 1 && i < (size_t) items; i++) {
-        if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS | IFLAG_NONZERO))
+        if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS))
           break;
         /* check each step for overflow */
         overflow = (UV_MAX/n < cfA1) || (UV_MAX/n < cfB1);
@@ -3359,7 +3360,7 @@ void next_calkin_wilf(IN SV* svnum, IN SV* svden)
     UV num, den;
     int status;
   PPCODE:
-    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS | IFLAG_NONZERO) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS)) {
       switch (ix) {
         case 0:  status = next_calkin_wilf(&num, &den);  break;
         case 1:  status = next_stern_brocot(&num, &den); break;
@@ -3380,7 +3381,7 @@ void calkin_wilf_n(IN SV* svnum, IN SV* svden)
   PREINIT:
     UV num, den, n;
   PPCODE:
-    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS | IFLAG_NONZERO) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS | IFLAG_NONZERO)) {
+    if (_validate_and_set(&num, aTHX_ svnum, IFLAG_POS) && _validate_and_set(&den, aTHX_ svden, IFLAG_POS)) {
       switch (ix) {
         case 0:  n = calkin_wilf_n(num, den);  break;
         case 1:  n = stern_brocot_n(num, den); break;
@@ -3398,7 +3399,7 @@ void nth_calkin_wilf(IN SV* svn)
     UV n, num, den;
     int status;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       switch (ix) {
         case 0:  status = nth_calkin_wilf(&num, &den, n);  break;
         case 1:  status = nth_stern_brocot(&num, &den, n);  break;
@@ -3417,7 +3418,7 @@ void nth_stern_diatomic(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS))
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG))
       XSRETURN_UV(nth_stern_diatomic(n));
     DISPATCHPP();
     XSRETURN(1);
@@ -3429,10 +3430,10 @@ void farey(IN SV* svn, IN SV* svk = 0)
   PPCODE:
     wantsingle = svk != 0;
     if (wantsingle) {
-      if (!_validate_and_set(&k, aTHX_ svk, IFLAG_POS))
+      if (!_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG))
         k = UV_MAX;
     }
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
       if (!wantsingle && GIMME_V != G_ARRAY)
         XSRETURN_UV(farey_length(n));
       if (n <= UVCONST(4294967295)) {
@@ -3471,7 +3472,7 @@ void next_farey(IN SV* svn, IN SV* svfrac)
     uint32_t p, q;
     int status;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS | IFLAG_NONZERO) &&
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
         n <= UVCONST(4294967295)) {
       CHECK_ARRAYREF(svfrac);
       av = (AV*) SvRV(svfrac);
@@ -3482,9 +3483,9 @@ void next_farey(IN SV* svn, IN SV* svfrac)
       if (psvp == 0 || psvq == 0)
          status = 0;
       if (status != 0)
-        status = _validate_and_set(&p64, aTHX_ *psvp, IFLAG_POS);
+        status = _validate_and_set(&p64, aTHX_ *psvp, IFLAG_NONNEG);
       if (status != 0)
-        status = _validate_and_set(&q64, aTHX_ *psvq, IFLAG_POS | IFLAG_NONZERO);
+        status = _validate_and_set(&q64, aTHX_ *psvq, IFLAG_POS);
       if (status != 0 && p64 >= q64) {
         if (ix == 0) XSRETURN_UNDEF;
         else         XSRETURN_UV(farey_length(n) - (p64 == q64));
@@ -3542,7 +3543,7 @@ void bernfrac(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) != 0) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) != 0) {
       if (ix == 0) {
         IV num;  UV den;
         if (bernfrac(&num, &den, n)) {
@@ -3580,7 +3581,7 @@ void inverse_totient(IN SV* svn)
     UV i, n, ntotients;
   PPCODE:
     gimme_v = GIMME_V;
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (status == 1) {
       if (gimme_v == G_SCALAR) {
         XSRETURN_UV( inverse_totient_count(n) );
@@ -3609,7 +3610,7 @@ factor(IN SV* svn)
     int status;
   PPCODE:
     gimme_v = GIMME_V;
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (status == 1) {
       if (ix == 0) {
         UV factors[MPU_MAX_FACTORS];
@@ -3637,10 +3638,10 @@ void divisors(IN SV* svn, IN SV* svk = 0)
     int status;
     UV n, k, i, ndivisors, *divs;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     k = n;
     if (status == 1 && svk != 0) {
-      status = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+      status = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
       if (k > n)  k = n;
     }
     if (status != 1) {
@@ -3683,7 +3684,7 @@ trial_factor(IN SV* svn, ...)
        {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000};
      /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1 */
   PPCODE:
-    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS) || ix == 10) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) || ix == 10) {
       DISPATCHPP();
       return;
     }
@@ -3727,7 +3728,7 @@ divisor_sum(IN SV* svn, ...)
     UV n, k, sigma;
   PPCODE:
     if (items == 1) {
-      if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+      if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
         sigma = divisor_sum(n, 1);
         if (n <= 1 || sigma != 0)
           XSRETURN_UV(sigma);
@@ -3735,8 +3736,8 @@ divisor_sum(IN SV* svn, ...)
     } else {
       SV* svk = ST(1);
       if ( (!SvROK(svk) || (SvROK(svk) && SvTYPE(SvRV(svk)) != SVt_PVCV)) &&
-           _validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
-           _validate_and_set(&k, aTHX_ svk, IFLAG_POS) ) {
+           _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
+           _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG) ) {
         sigma = divisor_sum(n, k);
         if (n <= 1 || sigma != 0)
           XSRETURN_UV(sigma);
@@ -3749,7 +3750,7 @@ void aliquot_sum(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       UV sum = aliquot_sum(n);
       if (n <= 1 || sum != 0)
         XSRETURN_UV(sum);
@@ -3761,7 +3762,7 @@ void abundance(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       UV sum = aliquot_sum(n);
       if (n <= 1 || sum != 0)
         XSRETURN_IV((IV)(sum-n));
@@ -3775,7 +3776,7 @@ void sopf(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       UV sum = ix ? sopfr(n) : sopf(n);
       XSRETURN_UV(sum);
     }
@@ -3786,7 +3787,7 @@ void prime_signature(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       factored_t nf = factorint(n);
       uint32_t i, j, nfactors = nf.nfactors;
       /* Insertion sort the exponents in descending order */
@@ -3825,8 +3826,8 @@ jordan_totient(IN SV* sva, IN SV* svn)
     int astatus, nstatus;
     UV a, n, ret;
   PPCODE:
-    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_POS);
-    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_NONNEG);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (astatus != 0 && nstatus != 0) {
       switch (ix) {
         case 0:  ret = jordan_totient(a, n);
@@ -4049,7 +4050,7 @@ void factorialmod(IN SV* sva, IN SV* svn)
     int astatus, nstatus;
     UV a, n;
   PPCODE:
-    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_POS);
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_NONNEG);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     if (astatus != 0 && nstatus != 0) {
       if (n == 0) XSRETURN_UNDEF;
@@ -4188,7 +4189,7 @@ is_smooth(IN SV* svn, IN SV* svk)
     UV n, k;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
-        _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+        _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG)) {
       RETURN_NPARITY( (ix == 0) ? is_smooth(n,k) : is_rough(n,k) );
     }
     DISPATCHPP();
@@ -4202,7 +4203,7 @@ is_omega_prime(IN SV* svk, IN SV* svn)
     UV n, k;
     int nstatus, kstatus;
   PPCODE:
-    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (kstatus != 0 && nstatus != 0) {
       int res = (nstatus != 1) ? 0
@@ -4255,7 +4256,7 @@ void valuation(IN SV* svn, IN SV* svk)
     UV n, k;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
-        _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+        _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG)) {
       if (k <= 1)  croak("valuation: k must be > 1");
       if (n == 0) XSRETURN_UNDEF;
       RETURN_NPARITY(valuation(n, k));
@@ -4272,8 +4273,8 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
     int nstatus;
     UV n, ret, k = 2;
   PPCODE:
-    nstatus = _validate_and_set(&n, aTHX_ svn, (ix < 3) ? IFLAG_ANY: IFLAG_POS);
-    if (nstatus != 0 && (!svk || _validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
+    nstatus = _validate_and_set(&n, aTHX_ svn, (ix < 3) ? IFLAG_ANY: IFLAG_NONNEG);
+    if (nstatus != 0 && (!svk || _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG))) {
       if (nstatus == -1) RETURN_NPARITY(0);
       if (ix == 0) RETURN_NPARITY( is_powerful(n, k) );
       if (ix == 1) XSRETURN_UV( powerful_count(n, k) );
@@ -4339,7 +4340,7 @@ void addint(IN SV* sva, IN SV* svb)
     UV a, b, t, ret;
   PPCODE:
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 7) ? IFLAG_POS : IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 7) ? IFLAG_NONNEG : IFLAG_ANY);
 
     if (astatus != 0 && bstatus != 0) {
       /* We will try to do everything with non-negative integers, with overflow
@@ -4527,7 +4528,7 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
     if (ix == 1 && k <= 0)  croak("rootint: k must be > 0");
     if (svret != 0 && !SvROK(svret))
       croak("%s: third argument not a scalar reference",SUBNAME);
-    if (_validate_and_set(&n, aTHX_ svn, ix == 0 ? IFLAG_POS | IFLAG_NONZERO : IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, ix == 0 ? IFLAG_POS : IFLAG_NONNEG)) {
       root = (ix == 0) ? logint(n, k) : rootint(n, k);
       if (svret) sv_setuv(SvRV(svret), ix == 0 ? ipow(k,root) : ipow(root,k));
       XSRETURN_UV(root);
@@ -4770,7 +4771,7 @@ void sqrtint(IN SV* svn)
   PREINIT:
     UV n, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       r = 0;
       switch (ix) {
         case 0:  r = isqrt(n);  break;
@@ -4821,7 +4822,7 @@ void factorial(IN SV* svn)
   PREINIT:
     UV n, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       r = 0;
       switch(ix) {
         case 0:  r = factorial(n);      break;
@@ -4843,7 +4844,7 @@ void sumtotient(IN SV* svn)
   PREINIT:
     UV n, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       r = sumtotient(n);
       if (n == 0 || r > 0) XSRETURN_UV(r);
       {  /* Overflow, try 128-bit. */
@@ -4889,7 +4890,7 @@ void multifactorial(IN SV* svn, IN SV* svk)
   PREINIT:
     UV n, k, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
         _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
       r = multifactorial(n, k);
       if (n == 0 || r > 0) XSRETURN_UV(r);
@@ -4906,7 +4907,7 @@ void falling_factorial(IN SV* svn, IN SV* svk)
     UV n, k;
   PPCODE:
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY | IFLAG_IV);
-    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
     if (nstatus == 1 && kstatus == 1) {
       UV ret = (ix==0) ? falling_factorial(n,k) : rising_factorial(n,k);
       if (ret != UV_MAX) XSRETURN_UV(ret);
@@ -4931,7 +4932,7 @@ void mertens(IN SV* svn)
     UV n;
     int status;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix < 5) ? IFLAG_POS : IFLAG_ANY);
+    status = _validate_and_set(&n, aTHX_ svn, (ix < 5) ? IFLAG_NONNEG : IFLAG_ANY);
     if (status == -1)
       XSRETURN_IV(0);
     if (status == 1) {
@@ -4973,7 +4974,7 @@ void chebyshev_theta(IN SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       NV r = (ix==0)  ?  chebyshev_theta(n)  :  chebyshev_psi(n);
       XSRETURN_NV(r);
     }
@@ -5851,7 +5852,7 @@ void permtonum(IN SV* svp)
       int V[21], A[21] = {0};
       for (i = 0; i < plen; i++) {
         SV *iv = FETCH_ARREF(avp,i);
-        if (_validate_and_set(&val, aTHX_ iv, IFLAG_POS) != 1)
+        if (_validate_and_set(&val, aTHX_ iv, IFLAG_NONNEG) != 1)
           break;
         if (val >= plen || A[val] != 0) break;
         A[val] = i+1;
@@ -5925,7 +5926,7 @@ void vecsample(IN SV* svk, ...)
     if (items > 2 || !SvROK(ST(1)) || SvTYPE(SvRV(ST(1))) != SVt_PVAV) {
       /* Standard form, where we are given an array of items */
       nitems = items-1;
-      if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
+      if (_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG) == 0 || k > nitems)
         k = nitems;
       ST(0) = ST(items-1); /* Move last value to the first stack entry. */
       for (i = 0; i < k; i++) {
@@ -5937,7 +5938,7 @@ void vecsample(IN SV* svk, ...)
       USE_ARREF(avp, ST(1), SUBNAME, AR_READ);
       nitems = len_avp;
 
-      if (_validate_and_set(&k, aTHX_ svk, IFLAG_POS) == 0 || k > nitems)
+      if (_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG) == 0 || k > nitems)
         k = nitems;
       if (k == 0)
         XSRETURN_EMPTY;
@@ -5974,7 +5975,7 @@ void is_happy(SV* svn, UV base = 10, UV k = 2)
   PPCODE:
     if (base < 2 || base > 36) croak("is_happy: invalid base %"UVuf, base);
     if (k > 10) croak("is_happy: invalid exponent %"UVuf, k);
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (status == 0 && base == 10) { /* String op to reduce into range. */
       STRLEN i, len;
       const char* s = SvPV(svn, len);
@@ -6108,7 +6109,7 @@ void is_palindrome(SV* svn, int base = 10)
     UV n;
   PPCODE:
     if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       uint32_t b = base;
       UV forward = n, reverse = 0;
       while (n > 0) {
@@ -6128,7 +6129,7 @@ void digital_root(SV* svn, int base = 10)
     UV n, dr;
   PPCODE:
     if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       if (n == 0) {
         dr = 0;
       } else if (ix == 0) {
@@ -6151,7 +6152,7 @@ void tozeckendorf(SV* svn)
   PREINIT:
     UV n;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       char *str = to_zeckendorf(n);
       XPUSHs(sv_2mortal(newSVpv(str, 0)));
       Safefree(str);
@@ -6222,8 +6223,8 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
-        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_NONNEG) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6325,8 +6326,8 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
-        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_NONNEG) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6434,8 +6435,8 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
-        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_NONNEG) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6520,8 +6521,8 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
-        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_NONNEG) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6606,7 +6607,7 @@ fordivisors (SV* block, IN SV* svn)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6658,7 +6659,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     dMY_CXT;
   PPCODE:
     SETSUBREF(subcv, block);
-    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6784,8 +6785,8 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     if (ix > 0 && svk != 0)
       croak("%s: too many arguments", SUBNAME);
 
-    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_POS) ||
-        (svk && !_validate_and_set(&k, aTHX_ svk, IFLAG_POS))) {
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) ||
+        (svk && !_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -6954,8 +6955,8 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
-        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_NONNEG) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
@@ -7046,8 +7047,8 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
   PPCODE:
     SETSUBREF(subcv, block);
 
-    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_POS) ||
-        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_POS))) {
+    if (!_validate_and_set(&beg, aTHX_ svbeg, IFLAG_NONNEG) ||
+        (svend && !_validate_and_set(&end, aTHX_ svend, IFLAG_NONNEG))) {
       DISPATCH_VOIDPP();
       XSRETURN(0);
     }
