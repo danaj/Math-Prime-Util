@@ -9888,10 +9888,6 @@ sub _basic_factor {
     }
   }
 
-  if ($_[0] > 1 && _is_prime7($_[0])) {
-    push @factors, $_[0];
-    $_[0] = 1;
-  }
   @factors;
 }
 
@@ -10112,25 +10108,25 @@ sub trial_factor {
 
 my $_holf_r;
 my @_fsublist = (
-  [ "power",      sub { _power_factor (shift) } ],
+  [ "power",       sub { _factor_power  (shift) } ],
 
-  [ "pbrent 8k",  sub { pbrent_factor (shift,    8*1024, 1, 1) } ],
-  [ "p-1 16k",    sub { pminus1_factor(shift,    16_384, 16_384, 1); } ],
-  [ "ECM 500",    sub { ecm_factor    (shift,       500, 10_000, 10) } ],
-  [ "ECM 4k",     sub { ecm_factor    (shift,     4_000, 20_000, 20) } ],
+  [ "pbrent 8k",   sub { _factor_pbrent (shift,    8*1024, 1) } ],
+  [ "p-1 16k",     sub { _factor_pminus1(shift,    16_384, 16_384) } ],
+  [ "ECM 500",     sub { _factor_ecm    (shift,       500, 10_000, 10) } ],
+  [ "ECM 4k",      sub { _factor_ecm    (shift,     4_000, 20_000, 20) } ],
 
-  [ "pbrent 512k",sub { pbrent_factor (shift,  512*1024, 7, 1) } ],
-  [ "p-1 4M",     sub { pminus1_factor(shift, 4_000_000, undef, 1); } ],
-  [ "ECM 10k",    sub { ecm_factor    (shift,    10_000,  50_000, 10) } ],
-  [ "pbrent 512k",sub { pbrent_factor (shift,  512*1024, 11, 1) } ],
-  [ "HOLF 256k",  sub { holf_factor   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; } ],
-  [ "p-1 20M",    sub { pminus1_factor(shift,20_000_000); } ],
-  [ "ECM 100k",   sub { ecm_factor    (shift,   100_000, 800_000, 10) } ],
-  [ "HOLF 512k",  sub { holf_factor   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; } ],
-  [ "pbrent 2M",  sub { pbrent_factor (shift, 2048*1024, 13, 1) } ],
-  [ "HOLF 2M",    sub { holf_factor   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; } ],
-  [ "ECM 1M",     sub { ecm_factor    (shift, 1_000_000, 1_000_000, 10) } ],
-  [ "p-1 100M",   sub { pminus1_factor(shift, 100_000_000, 500_000_000); } ],
+  [ "pbrent 512k", sub { _factor_pbrent (shift,  512*1024, 7) } ],
+  [ "p-1 4M",      sub { _factor_pminus1(shift, 4_000_000, undef) } ],
+  [ "ECM 10k",     sub { _factor_ecm    (shift,    10_000,  50_000, 10) } ],
+  [ "pbrent 512k", sub { _factor_pbrent (shift,  512*1024, 11) } ],
+  [ "HOLF 256k",   sub { _factor_holf   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; } ],
+  [ "p-1 20M",     sub { _factor_pminus1(shift, 20_000_000) } ],
+  [ "ECM 100k",    sub { _factor_ecm    (shift,   100_000, 800_000, 10) } ],
+  [ "HOLF 512k",   sub { _factor_holf   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; } ],
+  [ "pbrent 2M",   sub { _factor_pbrent (shift, 2048*1024, 13) } ],
+  [ "HOLF 2M",     sub { _factor_holf   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; } ],
+  [ "ECM 1M",      sub { _factor_ecm    (shift, 1_000_000, 1_000_000, 10) } ],
+  [ "p-1 100M",    sub { _factor_pminus1(shift, 100_000_000, 500_000_000) } ],
 );
 
 sub factor {
@@ -10148,44 +10144,34 @@ sub factor {
     return ref($_[0]) ? maybetobigintall(@factors) : @factors;
   }
 
-  $n = Maddint($n,0) if ref($n);  # Ensure we have a copy
   my $lim = 4999;  # How much trial factoring to do
-
   # For native integers, we could save a little time by doing hardcoded trials
   # by 2-29 here.  Skipping it.
-
   push @factors, Mtrial_factor($n, $lim);
-  return @factors if $factors[-1] < $lim*$lim;
-  $n = pop(@factors);
+  my $lim_sq = $lim * $lim;
+  return @factors if $factors[-1] < $lim_sq;
 
-  my @nstack = ($n);
+  my @nstack = (pop(@factors));
+  # @factors is all primes, @nstack has the numbers we need to factor
   while (@nstack) {
     $n = pop @nstack;
-    # Don't use bignum on $n if it has gotten small enough.
     $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
-    #print "Looking at $n with stack ", join(",",@nstack), "\n";
-    while ( ($n >= ($lim*$lim)) && !_is_prime7($n) ) {
-      my @ftry;
-      $_holf_r = 1;
-      foreach my $sub (@_fsublist) {
-        last if scalar @ftry >= 2;
-        print "  starting $sub->[0]\n" if getconfig()->{'verbose'} > 1;
-        @ftry = $sub->[1]->($n);
-      }
-      if (scalar @ftry > 1) {
-        #print "  split into ", join(",",@ftry), "\n";
-        $n = shift @ftry;
-        $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
-        push @nstack, @ftry;
-      } else {
-        #warn "trial factor $n\n";
-        push @factors, Mtrial_factor($n);
-        #print "  trial into ", join(",",@factors), "\n";
-        $n = 1;
-        last;
-      }
+    if ($n < $lim_sq || _is_prime7($n)) {
+      push @factors, $n if $n > 1;;
+      next;
     }
-    push @factors, $n  if $n != 1;
+    my @ftry;
+    $_holf_r = 1;
+    for my $sub (@_fsublist) {
+      print "  starting $sub->[0]\n" if getconfig()->{'verbose'} > 1;
+      @ftry = $sub->[1]->($n);
+      last if @ftry >= 2;
+    }
+    if (@ftry >= 2) {
+      push @nstack, @ftry;
+    } else {
+      push @factors, Mtrial_factor($n);
+    }
   }
   Mvecsort(@factors);
 }
@@ -10212,7 +10198,7 @@ sub squfof_factor { Mtrial_factor(@_) }
 sub lehman_factor { Mtrial_factor(@_) }
 sub pplus1_factor { pminus1_factor(@_) }
 
-sub _power_factor {
+sub _factor_power {
   my $r;
   my $k = Mis_power($_[0],0,\$r);
   return ($_[0]) unless $k > 1;
@@ -10220,19 +10206,10 @@ sub _power_factor {
   map { $r } 1..$k;
 }
 
-sub prho_factor {
-  my($n, $rounds, $pa, $skipbasic) = @_;
-  validate_integer_nonneg($n);
-  if (defined $rounds) { validate_integer_nonneg($rounds); }
-  else                 { $rounds = 4*1024*1024; }
-  if (defined $pa)     { validate_integer_nonneg($pa); }
-  else                 { $pa = 3; }
-
-  my @factors;
-  if (!$skipbasic) {
-    @factors = _basic_factor($n);
-    return @factors if $n < 4;
-  }
+sub _factor_prho {
+  my($n, $rounds, $pa) = @_;
+  $rounds = 4*1024*1024 unless defined $rounds;
+  $pa = 3 unless defined $pa;
 
   my($U,$V) = (7,7);
 
@@ -10263,7 +10240,7 @@ sub prho_factor {
         }
         last if $f == 1 || $f == $n;
       }
-      return _found_factor($f, $n, "prho-bigint", @factors);
+      return _found_factor($f, $n, "prho-bigint");
     }
 
   } else {
@@ -10293,27 +10270,28 @@ sub prho_factor {
         }
         last if $f == 1 || $f == $n;
       }
-      return _found_factor($f, $n, "prho-32", @factors);
+      return _found_factor($f, $n, "prho-32") if $f != 1 && $f != $n;
     }
 
   }
-  push @factors, $n;
-  @factors;
+  ($n);
 }
 
-sub pbrent_factor {
-  my($n, $rounds, $pa, $skipbasic) = @_;
+sub prho_factor {
+  my($n, $rounds, $pa) = @_;
   validate_integer_nonneg($n);
-  if (defined $rounds) { validate_integer_nonneg($rounds); }
-  else                 { $rounds = 4*1024*1024; }
-  if (defined $pa)     { validate_integer_nonneg($pa); }
-  else                 { $pa = 3; }
+  validate_integer_nonneg($rounds) if defined $rounds;
+  validate_integer_nonneg($pa) if defined $pa;
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  (@f, _factor_prho($n, $rounds, $pa));
+}
 
-  my @factors;
-  if (!$skipbasic) {
-    @factors = _basic_factor($n);
-    return @factors if $n < 4;
-  }
+sub _factor_pbrent {
+  my($n, $rounds, $pa) = @_;
+  $rounds = 4*1024*1024 unless defined $rounds;
+  $pa = 1 unless defined $pa;
 
   my($Xi,$Xm) = (2,2);
 
@@ -10353,7 +10331,7 @@ sub pbrent_factor {
         } while ($f == 1 && $r-- != 0);
         last if $f == 1 || $f == $n;
       }
-      return _found_factor($f, $n, "pbrent", @factors);
+      return _found_factor($f, $n, "pbrent");
     }
 
   } else {
@@ -10364,26 +10342,27 @@ sub pbrent_factor {
       $Xi = ($Xi * $Xi) % $n;
       $Xi += $pa; $Xi -= $n if $Xi >= $n;
       my $f = _gcd_ui( ($Xi>$Xm) ? $Xi-$Xm : $Xm-$Xi, $n);
-      return _found_factor($f, $n, "pbrent-32",@factors) if $f != 1 && $f != $n;
+      return _found_factor($f, $n, "pbrent-32") if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
   }
-  push @factors, $n;
-  @factors;
+  ($n);
 }
 
-sub pminus1_factor {
-  my($n, $B1, $B2, $skipbasic) = @_;
+sub pbrent_factor {
+  my($n, $rounds, $pa) = @_;
   validate_integer_nonneg($n);
-  validate_integer_nonneg($B1) if defined $B1;
-  validate_integer_nonneg($B2) if defined $B2;
+  validate_integer_nonneg($rounds) if defined $rounds;
+  validate_integer_nonneg($pa) if defined $pa;
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  (@f, _factor_pbrent($n, $rounds, $pa));
+}
 
-  my @factors;
-  if (!$skipbasic) {
-    @factors = _basic_factor($n);
-    return @factors if $n < 4;
-  }
+sub _factor_pminus1 {
+  my($n, $B1, $B2) = @_;
 
   $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
 
@@ -10404,30 +10383,24 @@ sub pminus1_factor {
           while ($k <= $kmin) { $k *= $q; }
         }
         $pa = Mpowmod($pa, $k, $n);
-        if ($pa == 0) { push @factors, $n; return @factors; }
+        if ($pa == 0) { return ($n); }
         my $f = Mgcd($pa-1, $n);
-        return _found_factor($f, $n, "pminus1-64", @factors) if $f != 1;
+        return _found_factor($f, $n, "pminus1-64") if $f != 1;
       }
       last if $pc_end >= $B1;
       ($pc_beg, $pc_end) = ($pc_end+1, $pc_end+18000);
     }
-    push @factors, $n;
-    return @factors;
+    return ($n);
   }
 
   if (!defined $B1) {
     for my $mul (1, 100, 1000, 10_000, 100_000, 1_000_000) {
       $B1 = 1000 * $mul;
       $B2 = 1*$B1;
-      #warn "Trying p-1 with $B1 / $B2\n";
-      my @nf = pminus1_factor($n, $B1, $B2);
-      if (scalar @nf > 1) {
-        push @factors, @nf;
-        return @factors;
-      }
+      my @nf = _factor_pminus1($n, $B1, $B2);
+      return @nf if @nf > 1;
     }
-    push @factors, $n;
-    return @factors;
+    return ($n);
   }
   $B2 = 1*$B1 unless defined $B2;
 
@@ -10452,10 +10425,10 @@ sub pminus1_factor {
         next if $pc_beg > 2 && ($j-1) % 256;
         $pa = _bi_powmod($pa, $t, $n);
         $t = tobigint(1);
-        if ($pa == 0) { push @factors, $n; return @factors; }
+        if ($pa == 0) { return ($n); }
         $f = Mgcd($pa-1, $n);
         last if $f == $n;
-        return _found_factor($f, $n, "pminus1-bigint $B1", @factors) unless $f == 1;
+        return _found_factor($f, $n, "pminus1-bigint $B1") unless $f == 1;
         $saveq = $q;
         $savea = $pa+0;
       }
@@ -10465,7 +10438,7 @@ sub pminus1_factor {
     ($pc_beg, $pc_end) = (Madd1int($pc_end), Maddint($pc_end,500_000));
   }
   $pa = _bi_powmod($pa, $t, $n);
-  if ($pa == 0) { push @factors, $n; return @factors; }
+  if ($pa == 0) { return ($n); }
   $f = Mgcd($pa-1, $n);
   if ($f == $n) {
     $q = $saveq;
@@ -10475,7 +10448,7 @@ sub pminus1_factor {
       while ($k <= $kmin) { $k *= $q; }
       $pa = _bi_powmod($pa, $k, $n);
       $f = Mgcd($pa-1, $n);
-      if ($f == $n) { push @factors, $n; return @factors; }
+      if ($f == $n) { return ($n); }
       last if $f != 1;
       $q = Mnext_prime($q);
     }
@@ -10502,7 +10475,7 @@ sub pminus1_factor {
         $precomp_bm[$qdiff] = _bi_powmod($bm, $diff, $n)
           unless defined $precomp_bm[$qdiff];
         $pa = ($pa * $precomp_bm[$qdiff]) % $n;
-        if ($pa == 0) { push @factors, $n; return @factors; }
+        if ($pa == 0) { return ($n); }
         $b *= ($pa-1);
         if (($j++ % 128) == 0) {
           $b %= $n;
@@ -10515,20 +10488,22 @@ sub pminus1_factor {
     }
     $f = Mgcd($b, $n);
   }
-  return _found_factor($f, $n, "pminus1-bigint $B1/$B2", @factors);
+  return _found_factor($f, $n, "pminus1-bigint $B1/$B2");
 }
 
-sub cheb_factor {
-  my($n, $B1, $initx, $skipbasic) = @_;
+sub pminus1_factor {
+  my($n, $B1, $B2) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($B1) if defined $B1;
-  validate_integer_nonneg($initx) if defined $initx;
+  validate_integer_nonneg($B2) if defined $B2;
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  (@f, _factor_pminus1($n, $B1, $B2));
+}
 
-  my @factors;
-  if (!$skipbasic) {
-    @factors = _basic_factor($n);
-    return @factors if $n < 4;
-  }
+sub _factor_cheb {
+  my($n, $B1, $initx) = @_;
 
   my $x = (defined $initx && $initx > 0)  ?  $initx  :  72;  # Arbitrary
   my $B = (defined $B1 && $B1 > 0) ? $B1 : Mmulint(Mpowint(Mlogint($n,2),2),8);
@@ -10549,18 +10524,24 @@ sub cheb_factor {
     $f = Mgcd($x-1, $n);
     last if $f != 1;
   }
-  return _found_factor($f, $n, "cheb", @factors);
+  return _found_factor($f, $n, "cheb");
 }
 
-sub holf_factor {
-  my($n, $rounds, $startrounds) = @_;
+sub cheb_factor {
+  my($n, $B1, $initx) = @_;
   validate_integer_nonneg($n);
-  if (defined $rounds) { validate_integer_nonneg($rounds); }
-  else                 { $rounds = 64*1024*1024; }
-  $startrounds = 1 if (!defined $startrounds) || ($startrounds < 1);
+  validate_integer_nonneg($B1) if defined $B1;
+  validate_integer_nonneg($initx) if defined $initx;
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  (@f, _factor_cheb($n, $B1, $initx));
+}
 
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
+sub _factor_holf {
+  my($n, $rounds, $startrounds) = @_;
+  $rounds = 64*1024*1024 unless defined $rounds;
+  $startrounds = 1 if (!defined $startrounds) || ($startrounds < 1);
 
   if (ref($n)) {
     for my $i ($startrounds .. $rounds) {
@@ -10569,13 +10550,13 @@ sub holf_factor {
       if (Mmulint($s,$s) == $ni) {
         # s^2 = n*i, so m = s^2 mod n = 0.  Hence f = GCD(n, s) = GCD(n, n*i)
         my $f = Mgcd($ni, $n);
-        return _found_factor($f, $n, "HOLF", @factors);
+        return _found_factor($f, $n, "HOLF");
       }
       $s = Madd1int($s);
       my $m = Msubint(Mmulint($s,$s),$ni);
       if (Mis_power($m, 2, \my $f)) {
         $f = Mgcd($n, $s > $f ? $s-$f : $f-$s);
-        return _found_factor($f, $n, "HOLF ($i rounds)", @factors);
+        return _found_factor($f, $n, "HOLF ($i rounds)");
       }
     }
   } else {
@@ -10589,39 +10570,43 @@ sub holf_factor {
       my $f = int(sqrt($m));
       next unless $f*$f == $m;
       $f = _gcd_ui($s - $f,  $n);
-      return _found_factor($f, $n, "HOLF ($i rounds)", @factors);
+      return _found_factor($f, $n, "HOLF ($i rounds)");
     }
   }
-  push @factors, $n;
-  @factors;
+  ($n);
 }
 
-sub fermat_factor {
-  my($n, $rounds) = @_;
+sub holf_factor {
+  my($n, $rounds, $startrounds) = @_;
   validate_integer_nonneg($n);
-  if (defined $rounds) { validate_integer_nonneg($rounds); }
-  else                 { $rounds = 64*1024*1024; }
+  validate_integer_nonneg($rounds) if defined $rounds;
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  (@f, _factor_holf($n, $rounds, $startrounds));
+}
 
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
+sub _factor_fermat {
+  my($n, $rounds) = @_;
+  $rounds = 64*1024*1024 unless defined $rounds;
 
   if (ref($n)) {
     my $pa = Msqrtint($n);
-    return _found_factor($pa, $n, "Fermat", @factors) if Mmulint($pa,$pa) == $n;
+    return _found_factor($pa, $n, "Fermat") if Mmulint($pa,$pa) == $n;
     $pa = Madd1int($pa);
     my $b2 = Msubint(Mmulint($pa,$pa),$n);
     my $lasta = Maddint($pa,$rounds);
     while ($pa <= $lasta) {
       if (Mis_power($b2, 2, \my $s)) {
         my $i = Msubint($pa,($lasta-$rounds))+1;
-        return _found_factor(Msubint($pa,$s), $n, "Fermat ($i rounds)", @factors);
+        return _found_factor(Msubint($pa,$s), $n, "Fermat ($i rounds)");
       }
       $pa = Madd1int($pa);
       $b2 = Msubint(Mmulint($pa,$pa),$n);
     }
   } else {
     my $pa = int(sqrt($n));
-    return _found_factor($pa, $n, "Fermat", @factors) if $pa*$pa == $n;
+    return _found_factor($pa, $n, "Fermat") if $pa*$pa == $n;
     $pa++;
     my $b2 = $pa*$pa - $n;
     my $lasta = $pa + $rounds;
@@ -10631,36 +10616,29 @@ sub fermat_factor {
         my $s = int(sqrt($b2));
         if ($s*$s == $b2) {
           my $i = $pa-($lasta-$rounds)+1;
-          return _found_factor($pa - $s, $n, "Fermat ($i rounds)", @factors);
+          return _found_factor($pa - $s, $n, "Fermat ($i rounds)");
         }
       }
       $pa++;
       $b2 = $pa*$pa-$n;
     }
   }
-  push @factors, $n;
-  @factors;
+  ($n);
+}
+
+sub fermat_factor {
+  my($n, $rounds) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_nonneg($rounds) if defined $rounds;
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  (@f, _factor_fermat($n, $rounds));
 }
 
 
-sub ecm_factor {
+sub _factor_ecm {
   my($n, $B1, $B2, $ncurves) = @_;
-  validate_integer_nonneg($n);
-
-  my @factors = _basic_factor($n);
-  return @factors if $n < 4;
-
-  if ($Math::Prime::Util::_GMPfunc{"ecm_factor"}) {
-    $B1 = 0 if !defined $B1;
-    $ncurves = 0 if !defined $ncurves;
-    my @ef = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
-    if (@ef > 1) {
-      my $ecmfac = reftyped($n, $ef[-1]);
-      return _found_factor($ecmfac, $n, "ECM (GMP) B1=$B1 curves $ncurves", @factors);
-    }
-    push @factors, $n;
-    return @factors;
-  }
 
   $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
 
@@ -10670,15 +10648,10 @@ sub ecm_factor {
     for my $mul (1, 10, 100, 1000, 10_000, 100_000, 1_000_000) {
       $B1 = 100 * $mul;
       $B2 = 10*$B1;
-      #warn "Trying ecm with $B1 / $B2\n";
-      my @nf = ecm_factor($n, $B1, $B2, $ncurves);
-      if (scalar @nf > 1) {
-        push @factors, @nf;
-        return @factors;
-      }
+      my @nf = _factor_ecm($n, $B1, $B2, $ncurves);
+      return @nf if @nf > 1;
     }
-    push @factors, $n;
-    return @factors;
+    return ($n);
   }
 
   $B2 = 10*$B1 unless defined $B2;
@@ -10738,7 +10711,7 @@ sub ecm_factor {
     my $f = Mgcd( $cb, $n );
     $f = Mgcd( $z, $n ) if $f == 1;
     next if $f == $n;
-    return _found_factor($f,$n, "ECM B1=$B1 curve $curve", @factors) if $f != 1;
+    return _found_factor($f,$n, "ECM B1=$B1 curve $curve") if $f != 1;
     $u = Minvmod($cb,$n);
     $ca = (($ca*$u) - 2) % $n;
 
@@ -10791,7 +10764,7 @@ sub ecm_factor {
       if ($f != 1) {
         next if $f == $n;
         #warn "ECM S2 1: B1 $B1 B2 $B2 curve $curve f=$f\n";
-        return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve", @factors);
+        return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve");
       }
 
       $x = $nqx[2*$D-1];
@@ -10829,13 +10802,33 @@ sub ecm_factor {
     next if $f == $n;
     if ($f != 1) {
       #warn "ECM found factors with B1 = $B1 in curve $curve\n";
-      return _found_factor($f, $n, "ECM B1=$B1 curve $curve", @factors);
+      return _found_factor($f, $n, "ECM B1=$B1 curve $curve");
     }
     # end of curve loop
   }
-  push @factors, $n;
-  @factors;
+  ($n);
 }
+
+sub ecm_factor {
+  my($n, $B1, $B2, $ncurves) = @_;
+  validate_integer_nonneg($n);
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
+  if ($Math::Prime::Util::_GMPfunc{"ecm_factor"}) {
+    $B1 = 0 if !defined $B1;
+    $ncurves = 0 if !defined $ncurves;
+    my @ef = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
+    if (@ef > 1) {
+      my $ecmfac = reftyped($n, $ef[-1]);
+      return (@f, _found_factor($ecmfac, $n, "ECM (GMP) B1=$B1 curves $ncurves"));
+    }
+    return (@f, $n);
+  }
+  (@f, _factor_ecm($n, $B1, $B2, $ncurves));
+}
+
+
 
 sub divisors {
   my($n,$k) = @_;
