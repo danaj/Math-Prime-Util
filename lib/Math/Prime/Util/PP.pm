@@ -81,6 +81,8 @@ our $_BIGINT;
 *Madd1int = \&Math::Prime::Util::add1int;
 *Msub1int = \&Math::Prime::Util::sub1int;
 *Mmulint = \&Math::Prime::Util::mulint;
+*Mmuladdint = \&Math::Prime::Util::muladdint;
+*Mmulsubint = \&Math::Prime::Util::mulsubint;
 *Mdivint = \&Math::Prime::Util::divint;
 *Mpowint = \&Math::Prime::Util::powint;
 *Mmodint = \&Math::Prime::Util::modint;
@@ -1467,7 +1469,7 @@ sub frobenius_number {
   return undef if $A[0] <= 1 || scalar(@A) <= 1;
   croak "Frobenius number set must be coprime" unless Mgcd(@A) == 1;
 
-  return Msubint(Msubint(Mmulint($A[0],$A[1]),$A[0]),$A[1]) if scalar(@A) == 2;
+  return Msubint(Mmulsubint($A[0],$A[1],$A[0]), $A[1]) if scalar(@A) == 2;
 
   # Basic Round Robin algorithm from Böcker and Lipták
   # https://bio.informatik.uni-jena.de/wp/wp-content/uploads/2024/01/BoeckerLiptak_FastSimpleAlgorithm_reprint_2007.pdf
@@ -1486,7 +1488,7 @@ sub frobenius_number {
       my $n = ($r == 0) ? 0
             : Mvecmin(grep {defined} @N[map { $r+$_*$d } 0..$nlend]);
       if (defined $n) {
-        if (Maddint($n,Mmulint($A[$i],$nlend-1)) <= INTMAX) {
+        if (Mmuladdint($A[$i], $nlend-1, $n) <= INTMAX) {
           for (1 .. $nlend-1) {
             $n += $A[$i];
             my $p = $n % $nlen;
@@ -1737,7 +1739,7 @@ sub dedekind_psi {
       push @P, Madd1int($f);
     } else {
       my $T = Mpowint($f,$e-1);
-      push @P, Maddint($T, Mmulint($T,$f));
+      push @P, Mmuladdint($T, $f, $T);
     }
   }
   Mvecprod(@P);
@@ -2318,7 +2320,7 @@ sub powerfree_sum {
       $nik = Mdivint($n, $ik);
       $T = Mrshiftint(Mmulint($nik, Madd1int($nik)));
       $sum = (scalar(@_) & 1) ? Msubint($sum, Mmulint($ik,$T)) :
-                                Maddint($sum, Mmulint($ik,$T));
+                                Mmuladdint($ik, $T, $sum);
     },
     Mrootint($n, $k)
   );
@@ -4397,7 +4399,7 @@ sub almost_prime_count_approx {
     return Mtoint($lo + ($hi - $lo) * $mult + 0.5) unless ref($lo) || ref($hi);
 
     my $imult = int($mult * (1<<16));
-    my $est = Maddint( Mlshiftint($lo,16), Mmulint(Msubint($hi,$lo),$imult) );
+    my $est = Mmuladdint(Msubint($hi,$lo), $imult, Mlshiftint($lo,16));
     return Mrshiftint($est,16);
   }
 }
@@ -4853,7 +4855,7 @@ sub _inverse_interpolate {
     #my $x3 = $x1 - int($pos+0.5);
     # Rather convoluted so it's all in integer.
     my $num = Mmulint($fx1, Msubint($x1,$x0));
-    my $d1  = Msubint(Mmulint($fx1,$fx1),Mmulint($fx0,$fx2));
+    my $d1  = Mmulsubint($fx1,$fx1,Mmulint($fx0,$fx2));
     my $den = Msqrtint(Mlshiftint($d1,64));
        $num = Mlshiftint($num, 32);
     my $pos = Mdivint(Maddint($num,$den>>1), $den);
@@ -5605,7 +5607,7 @@ sub powersum {
   my $a = Mrshiftint(Mmulint($n,Madd1int($n)));
   return $a if $k == 1;
   return Mmulint($a,$a) if $k == 3;
-  return Mdivint(Msubint(Mmulint(4,Mpowint($a,3)),Mmulint($a,$a)),3) if $k == 5;
+  return Mdivint(Mmulsubint(4,Mpowint($a,3),Mmulint($a,$a)), 3) if $k == 5;
 
   my @v;
   if ($k < $n) {
@@ -6191,7 +6193,7 @@ sub _allsqrtmodpk {
     my $pj = Mdivint($pk, $p);
     return map {
       my $qp = Mmulint($_,$p);
-      map Maddint($qp,Mmulint($_,$pj)), 0 .. $p - 1;
+      map Mmuladdint($_, $pj, $qp), 0 .. $p - 1;
     } _allsqrtmodpk(Mdivint($a2,$p), $p, $k - 2);
   }
   my $q = _sqrtmod_prime_power($a,$p,$k);
@@ -7219,7 +7221,7 @@ sub is_gaussian_prime {
   validate_integer_abs($b);
   return ((($b % 4) == 3) ? Mis_prime($b) : 0) if $a == 0;
   return ((($a % 4) == 3) ? Mis_prime($a) : 0) if $b == 0;
-  Mis_prime( Maddint( Mmulint($a,$a), Mmulint($b,$b) ) );
+  Mis_prime( Mmuladdint($a, $a, Mmulint($b,$b)) );
 }
 
 sub is_polygonal {
@@ -7251,9 +7253,9 @@ sub is_polygonal {
     $R = 2*$k-4;
   } else {
     if ($k == 3) {
-      $D = Maddint(1, Mmulint($n, 8));
+      $D = Mmuladdint($n, 8, 1);
     } else {
-      $D = Maddint(Mmulint($n, Mmulint(8, $k) - 16), Mmulint($k-4,$k-4));
+      $D = Mmuladdint($n, Mmulint(8, $k) - 16, Mmulint($k-4,$k-4));
     }
     return 0 unless _is_perfect_square($D);
     $D = Maddint( Msqrtint($D), $k-4 );
@@ -7591,7 +7593,7 @@ sub _FastIntegerInput {
     for my $i (1 .. $k>>1) {
       my $x = $L->[2*$i-2];
       my $y = $L->[2*$i-1];
-      push(@T, Maddint($x, Mmulint($B, $y)));
+      push @T, Mmuladdint($B, $y, $x);
     }
     push(@T, $L->[$k-1]) if ($k&1);
     $L = \@T;
@@ -7929,7 +7931,7 @@ sub stirling {
       my @S = (0)x($n+1);
       $S[1]=1;
       for my $k (2 .. $n) {
-        $S[$_] = addint($S[$_-1],mulint($k-1,$S[$_])) for reverse(1..$k);
+        $S[$_] = Mmuladdint($k-1, $S[$_], $S[$_-1]) for reverse(1..$k);
       }
       $s = $S[$m];
     } else {                      # Concrete Mathematics, eq 6.27
@@ -7946,11 +7948,11 @@ sub stirling {
 sub _harmonic_split { # From Fredrik Johansson
   my($a,$b) = @_;
   return (1, $a) if $b-$a == 1;
-  return (Mvecsum($a,$a,1), Maddint(Mmulint($a,$a),$a)) if $b-$a == 2;
+  return (Mvecsum($a,$a,1), Mmuladdint($a,$a,$a)) if $b-$a == 2;
   my $m = Mrshiftint(Maddint($a,$b));
   my ($p,$q) = _harmonic_split($a, $m);
   my ($r,$s) = _harmonic_split($m, $b);
-  (Maddint(Mmulint($p,$s),Mmulint($q,$r)), Mmulint($q,$s));
+  (Mmuladdint($p, $s, Mmulint($q,$r)), Mmulint($q,$s));
 }
 
 sub harmfrac {
@@ -8573,8 +8575,8 @@ sub from_contfrac {
   while (@_) {
     my $bi = shift @_;
     validate_integer_positive($bi);
-    ($A0,$A1) = ($A1, Maddint(Mmulint($bi,$A1),$A0));
-    ($B0,$B1) = ($B1, Maddint(Mmulint($bi,$B1),$B0));
+    ($A0,$A1) = ($A1, Mmuladdint($bi, $A1, $A0));
+    ($B0,$B1) = ($B1, Mmuladdint($bi, $B1, $B0));
   }
   return ($A1,$B1);
 }
@@ -8592,7 +8594,7 @@ sub convergents {
   push @result, [$p1, $q1];
   for my $i (1..$#cf) {
     my $a = $cf[$i];
-    my($p2,$q2) = (Maddint(Mmulint($a,$p1),$p0), Maddint(Mmulint($a,$q1),$q0));
+    my($p2,$q2) = (Mmuladdint($a, $p1, $p0), Mmuladdint($a, $q1,$q0));
     push @result, [$p2, $q2];
     ($p0,$q0) = ($p1,$q1);
     ($p1,$q1) = ($p2,$q2);
@@ -8641,13 +8643,13 @@ sub bestrational {
     my $a = Mtoint($rem);
     $rem -= $a;
 
-    my($p2,$q2) = (Maddint(Mmulint($a,$p1),$p0), Maddint(Mmulint($a,$q1),$q0));
+    my($p2,$q2) = (Mmuladdint($a,$p1,$p0), Mmuladdint($a,$q1,$q0));
 
     if ($q2 > $dbound) {
       # Next convergent overshoots; check best semiconvergent
       my $m = Mdivint(Msubint($dbound,$q0),$q1);
       if ($m >= 1) {
-        my($ps,$qs)=(Maddint(Mmulint($m,$p1),$p0),Maddint(Mmulint($m,$q1),$q0));
+        my($ps,$qs)=(Mmuladdint($m,$p1,$p0),Mmuladdint($m,$q1,$q0));
         # Is ps/qs closer than p1/q1?  Compare cross-multiplied absolute errors.
         if (abs($ps - $ax*$qs)*$q1 < abs($p1 - $ax*$q1)*$qs) {
           ($p1,$q1) = ($ps,$qs);
@@ -10659,7 +10661,7 @@ sub _factor_holf {
         return _found_factor($f, $n, "HOLF");
       }
       $s = Madd1int($s);
-      my $m = Msubint(Mmulint($s,$s),$ni);
+      my $m = Mmulsubint($s,$s,$ni);
       if (Mis_power($m, 2, \my $f)) {
         $f = Mgcd($n, $s > $f ? $s-$f : $f-$s);
         return _found_factor($f, $n, "HOLF ($i rounds)");
@@ -10700,7 +10702,7 @@ sub _factor_fermat {
     my $pa = Msqrtint($n);
     return _found_factor($pa, $n, "Fermat") if Mmulint($pa,$pa) == $n;
     $pa = Madd1int($pa);
-    my $b2 = Msubint(Mmulint($pa,$pa),$n);
+    my $b2 = Mmulsubint($pa,$pa,$n);
     my $lasta = Maddint($pa,$rounds);
     while ($pa <= $lasta) {
       if (Mis_power($b2, 2, \my $s)) {
@@ -10708,7 +10710,7 @@ sub _factor_fermat {
         return _found_factor(Msubint($pa,$s), $n, "Fermat ($i rounds)");
       }
       $pa = Madd1int($pa);
-      $b2 = Msubint(Mmulint($pa,$pa),$n);
+      $b2 = Mmulsubint($pa,$pa,$n);
     }
   } else {
     my $pa = int(sqrt($n));
@@ -11074,7 +11076,7 @@ sub _tauprime {
     my $T3;
     my $v4 = $v % 4;
     if ($v4 == 0) {
-      $T3 = Maddint(Mmulint(2,Mhclassno($v)), Mhclassno(Mmulint(4,$v)) );
+      $T3 = Mmuladdint(2, Mhclassno($v), Mhclassno(Mmulint(4,$v)));
     } elsif ($v4 == 3) {
       $T3 = Mmulint( $v%8 == 3 ? 6 : 4, Mhclassno($v) );
     } else {
@@ -11106,9 +11108,8 @@ sub _taupower {
 
   # Recurse -3
   my $F3 = Msubint(Mpowint($tp,3),Mvecprod(2,$tp,$p11));
-  my $F4 = Msubint(Mmulint($p11,$p11),Mvecprod($tp,$tp,$p11));
-  Maddint( Mmulint($F3,_taupower($p,$e-3,$tp)),
-           Mmulint($F4,_taupower($p,$e-4,$tp)) );
+  my $F4 = Mmulsubint($p11,$p11,Mvecprod($tp,$tp,$p11));
+  Mmuladdint($F3, _taupower($p,$e-3,$tp), Mmulint($F4,_taupower($p,$e-4,$tp)));
 }
 
 sub ramanujan_tau {
@@ -12086,7 +12087,7 @@ sub permtonum {
     for my $j ($i+1 .. $n-1) {
       $k++ if $A->[$j] < $A->[$i];
     }
-    $rank = Maddint($rank, Mmulint($k,$f));
+    $rank = Mmuladdint($k,$f,$rank);
     $f /= $n-$i-1;
   }
   $rank;
