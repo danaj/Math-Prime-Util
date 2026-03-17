@@ -8558,6 +8558,91 @@ sub from_contfrac {
   return ($A1,$B1);
 }
 
+sub convergents {
+  return () unless @_;
+  my @cf = @_;    # copy so validate can normalize in-place (args may be read-only)
+  validate_integer($cf[0]);
+  validate_integer_positive($cf[$_]) for 1..$#cf;
+
+  my @result;
+  my($p0,$q0) = (1, 0);        # convergent_{-1}
+  my($p1,$q1) = ($cf[0], 1);   # convergent_0
+
+  push @result, [$p1, $q1];
+  for my $i (1..$#cf) {
+    my $a = $cf[$i];
+    my($p2,$q2) = (Maddint(Mmulint($a,$p1),$p0), Maddint(Mmulint($a,$q1),$q0));
+    push @result, [$p2, $q2];
+    ($p0,$q0) = ($p1,$q1);
+    ($p1,$q1) = ($p2,$q2);
+  }
+  @result;
+}
+
+sub bestrational {
+  my($x, $dbound) = @_;
+  validate_integer_positive($dbound);
+
+  # In case they gave us a bigint
+  if (ref($x) && ref($x) ne 'Math::BigFloat') {
+    $x = $x <= INTMAX && $x >= INTMIN ? _bigint_to_int($x)
+                                      : _upgrade_to_float("$x");
+  }
+  # x is now a BigFloat or native or string.  Check dbound.
+
+  # This can overshoot a lot but better than not getting it right.
+  my $maxl = length("$dbound")>length("$x") ? length("$dbound") : length("$x");
+  my $prec = $maxl + 2;
+
+  $x = _upgrade_to_float("$x") if !ref($x) && $prec > 15;
+  if (ref($x)) {
+    my $acc = _find_big_acc($x);
+    $x->accuracy($prec) if $acc < $prec;
+  } else {
+    $x = 0.0 + $x;
+  }
+
+  my $neg = ($x < 0);
+  my $ax = $neg ? -$x : $x;
+
+  my($p0,$q0) = (1, 0);
+  my($p1,$q1) = (Mtoint($ax), 1);   # convergent_0 = floor(|x|)
+
+  my $rem = $ax - $p1;
+  # Threshold: loop until rem is negligible at working precision.
+  # The q2>dbound check (inside the loop) is the real termination condition.
+  # A dbound-based threshold is wrong: even when a>dbound we still need to
+  # run the semiconvergent check before breaking.
+  my $thresh = ref($x) ? Math::BigFloat->new("1e-" . ($prec - 2))
+                       : 1e-15;
+  while ($rem > $thresh) {
+    $rem  = ref($x) ? Math::BigFloat->bone->bdiv($rem) : 1.0/$rem;
+    my $a = Mtoint($rem);
+    $rem -= $a;
+
+    my($p2,$q2) = (Maddint(Mmulint($a,$p1),$p0), Maddint(Mmulint($a,$q1),$q0));
+
+    if ($q2 > $dbound) {
+      # Next convergent overshoots; check best semiconvergent
+      my $m = Mdivint(Msubint($dbound,$q0),$q1);
+      if ($m >= 1) {
+        my($ps,$qs)=(Maddint(Mmulint($m,$p1),$p0),Maddint(Mmulint($m,$q1),$q0));
+        # Is ps/qs closer than p1/q1?  Compare cross-multiplied absolute errors.
+        if (abs($ps - $ax*$qs)*$q1 < abs($p1 - $ax*$q1)*$qs) {
+          ($p1,$q1) = ($ps,$qs);
+        }
+      }
+      last;
+    }
+
+    ($p0,$q0) = ($p1,$q1);
+    ($p1,$q1) = ($p2,$q2);
+  }
+
+  $p1 = Mnegint($p1) if $neg;
+  ($p1,$q1);
+}
+
 sub next_calkin_wilf {
   my($num,$den) = @_;
   validate_integer_positive($num);

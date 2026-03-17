@@ -3,9 +3,9 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/contfrac from_contfrac/;
+use Math::Prime::Util qw/contfrac from_contfrac convergents bestrational/;
 
-plan tests => 7;
+plan tests => 9;
 
 subtest 'contfrac and from_contfrac roundtrip' => sub {
   my @data = (
@@ -136,5 +136,83 @@ subtest 'bigint' => sub {
     my($n,$d,$exp) = @$t;
     is_deeply( [map{"$_"}contfrac($n,$d)], [map{"$_"}@$exp], "contfrac($n,$d) bigint" );
     is_deeply( [map{"$_"}from_contfrac(@$exp)], [$n,$d], "from_contfrac bigint" );
+  }
+};
+
+subtest 'convergents' => sub {
+  # Empty input returns empty list
+  is_deeply( [convergents()], [], "convergents() = ()" );
+
+  # Single-element CF: just the integer itself
+  is_deeply( [map{[@$_]} convergents(0)],   [[0,1]], "convergents(0)" );
+  is_deeply( [map{[@$_]} convergents(3)],   [[3,1]], "convergents(3)" );
+  is_deeply( [map{[@$_]} convergents(-3)],  [[-3,1]], "convergents(-3)" );
+
+  # Two-term CF: [0;3] = 1/3
+  is_deeply( [map{[@$_]} convergents(0,3)], [[0,1],[1,3]], "convergents(0,3)" );
+
+  # Negative first element: [-3;7] → -3/1, (-3*7+1)/7 = -20/7
+  is_deeply( [map{[@$_]} convergents(-3,7)],
+             [[-3,1],[-20,7]], "convergents(-3,7)" );
+
+  # Pi: CF [3;7,15,1,292] gives the well-known convergents
+  my @pconv = map{[@$_]} convergents(3,7,15,1,292);
+  is_deeply( \@pconv,
+             [[3,1],[22,7],[333,106],[355,113],[103993,33102]],
+             "pi convergents [3;7,15,1,292]" );
+
+  # Verify last-convergent numerator/denominator via from_contfrac
+  my @last = @{(convergents(3,7,15,1,292))[-1]};
+  is_deeply( \@last, [103993, 33102], "last convergent of pi CF" );
+
+  is_deeply( [convergents(qw/2 590295810358705651712/)],
+             [[2,1],[qw/1180591620717411303425 590295810358705651712/]],
+             "convergents for a bigint" );
+};
+
+subtest 'bestrational' => sub {
+  # Exact values
+  is_deeply( [bestrational(0, 10)],   [0,  1], "bestrational(0,10)" );
+  is_deeply( [bestrational(1, 10)],   [1,  1], "bestrational(1,10)" );
+  is_deeply( [bestrational(7, 10)],   [7,  1], "bestrational(7,10)" );
+  is_deeply( [bestrational(0.5, 10)], [1,  2], "bestrational(0.5,10)" );
+  is_deeply( [bestrational(2.5, 10)], [5,  2], "bestrational(2.5,10)" );
+
+  # dbound=1: best integer (nearest rounding); rem=frac(x) can be < 1/dbound
+  # but we must still take the convergent step when floor(1/rem)=dbound exactly
+  is_deeply( [bestrational(1.618,  1)], [2, 1], "bestrational(phi,1)=2/1"  );
+  is_deeply( [bestrational(1.4,    1)], [1, 1], "bestrational(1.4,1)=1/1"  );
+  is_deeply( [bestrational(1.5,    1)], [1, 1], "bestrational(1.5,1)=1/1 (tie→lower)" );
+  is_deeply( [bestrational(-1.618, 1)], [-2, 1], "bestrational(-phi,1)=-2/1" );
+
+  # Negative
+  is_deeply( [bestrational(-0.5, 10)], [-1, 2], "bestrational(-0.5,10)" );
+  is_deeply( [bestrational(-2.5, 10)], [-5, 2], "bestrational(-2.5,10)" );
+
+  # Pi approximations with increasing dbound
+  # dbound=5:   best is 16/5 (semiconvergent; rem<1/dbound but loop must still run)
+  # dbound=7:   best is 22/7 (first convergent that fits)
+  # dbound=100: best is 311/99 (semiconvergent between 22/7 and 333/106)
+  # dbound=113: best is 355/113 (next convergent)
+  my $pi = 3.14159265358979;
+  is_deeply( [bestrational($pi,   5)], [ 16,   5], "bestrational(pi,5)"   );
+  is_deeply( [bestrational($pi,   7)], [ 22,   7], "bestrational(pi,7)"   );
+  is_deeply( [bestrational($pi, 100)], [311,  99], "bestrational(pi,100)" );
+  is_deeply( [bestrational($pi, 113)], [355, 113], "bestrational(pi,113)" );
+
+  # sqrt(2)≈[1;2,2,2,...]; cvgnts: 1/1, 3/2, 7/5, 17/12, 41/29, 99/70, 239/169
+  # dbound=70: best is 99/70 (convergent)
+  my $sqrt2 = 1.41421356237310;
+  is_deeply( [bestrational($sqrt2,  5)], [ 7,  5], "bestrational(sqrt2,5)"  );
+  is_deeply( [bestrational($sqrt2, 70)], [99, 70], "bestrational(sqrt2,70)" );
+
+  # Large dbound returning a bigint result via PP
+  {
+    do { require Math::BigFloat; Math::BigFloat->import(); }
+      unless defined $Math::BigFloat::VERSION;
+    my $bf = Math::BigFloat->new("3.14159265358979323846");
+    my($p,$q) = bestrational($bf, 1000);
+    is_deeply( [$p,$q], [355,113],
+               "bestrational(BigFloat pi, 1000) = 355/113" );
   }
 };

@@ -1553,6 +1553,9 @@ subtest 'rationals', sub {
   is(scalar farey(1445), 635141, "scalar farey(1445) = 635141");
   is_deeply(next_farey(188,[3,5]),[113,188],"next_farey");
   is_deeply([farey_rank(188,[3,5]),farey_rank(188,[113,188])],[6478,6479],"farey_rank");
+
+  is_deeply([convergents(3,7,15)], [[3,1],[22,7],[333,106]],"convergents");
+  is_deeply([bestrational(2.645751311,1000)], [2024,765],"bestrational");
 };
 
 ###############################################################################

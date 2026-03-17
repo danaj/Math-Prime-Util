@@ -288,6 +288,8 @@ sub entropy_bytes {
 *harmfrac = \&Math::Prime::Util::PP::harmfrac;
 *contfrac = \&Math::Prime::Util::PP::contfrac;
 *from_contfrac = \&Math::Prime::Util::PP::from_contfrac;
+*convergents = \&Math::Prime::Util::PP::convergents;
+*bestrational = \&Math::Prime::Util::PP::bestrational;
 *next_calkin_wilf = \&Math::Prime::Util::PP::next_calkin_wilf;
 *next_stern_brocot = \&Math::Prime::Util::PP::next_stern_brocot;
 *calkin_wilf_n = \&Math::Prime::Util::PP::calkin_wilf_n;

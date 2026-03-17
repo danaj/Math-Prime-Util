@@ -3353,6 +3353,55 @@ void from_contfrac(...)
     }
     XSRETURN(2);
 
+void convergents(...)
+  PROTOTYPE: @
+  PREINIT:
+    size_t len;
+    UV *L, *P, *Q;
+    int type;
+  PPCODE:
+    if (items == 0) XSRETURN(0);
+
+    type = array_to_int_array(aTHX_ &len, &L, 0, &ST(0), items);
+    /* We punt negative cases to PP */
+    if (!(type == IARR_TYPE_BAD || type == IARR_TYPE_NEG)) {
+      if (convergents(&P, &Q, L, len)) {
+        size_t i;
+        EXTEND(SP, (EXTEND_TYPE)len);
+        for (i = 0; i < len; i++)
+          PUSH_2ELEM_AREF(P[i], Q[i]);
+        Safefree(P);
+        Safefree(Q);
+        Safefree(L);
+        XSRETURN(len);
+      }
+    }
+    Safefree(L);
+    DISPATCHPP();
+    return;
+
+void bestrational(IN SV* svx, IN SV* svdbound)
+  PREINIT:
+    UV dbound, P, Q;
+  PPCODE:
+    if (_validate_and_set(&dbound, aTHX_ svdbound, IFLAG_POS) &&
+        !sv_isobject(svx)) {
+      NV x = SvNV(svx);
+      if (bestrational(&P, &Q, x, dbound)) {
+        if (x >= 0.0) {
+          XPUSHs(sv_2mortal(newSVuv(P)));
+          XPUSHs(sv_2mortal(newSVuv(Q)));
+          XSRETURN(2);
+        } else if (P <= IV_MAX) {
+          XPUSHs(sv_2mortal(newSViv(-(IV)P)));
+          XPUSHs(sv_2mortal(newSVuv(Q)));
+          XSRETURN(2);
+        }
+      }
+    }
+    DISPATCHPP();
+    XSRETURN(2);
+
 void next_calkin_wilf(IN SV* svnum, IN SV* svden)
   ALIAS:
     next_stern_brocot = 1

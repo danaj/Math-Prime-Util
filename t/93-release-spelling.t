@@ -43,7 +43,7 @@ add_stopwords(qw/-th
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal vecuniq
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
-                 vecsample vecfreq vecsingleton vecslide
+                 vecsample vecfreq vecsingleton vecslide vecprefixsum
                  vecsort vecsorti heapsort quicksort
                  sqrtint logint rootint powint addint subint mulint divint cdivint modint negint absint divrem tdivrem fdivrem cdivrem
                  qnr cornacchia
@@ -52,10 +52,10 @@ add_stopwords(qw/-th
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
                  lshiftint rshiftint rashiftint signint cmpint
                  biquadrate powerfree k-powerfree k-free workaround
-                 sumpowerful powersum
+                 sumpowerful powersum partitionsq
                  sumset setbinop setunion setintersect setminus setdelta toset
                  setcontains setcontainsany setinsert setremove setinvert
-                 contfrac farey
+                 contfrac farey convergents bestrational semiconvergent
                  sopf sopfr min max
                  _uvsize _ivsize _nvsize _uvbits _nvmantbits _nvmantdigits
                  pp 100ns/);

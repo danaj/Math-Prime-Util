@@ -115,7 +115,7 @@ my @functions =  qw(
       factorial factorialmod subfactorial binomial binomialmod
       multifactorial falling_factorial rising_factorial
       znorder znprimroot znlog legendre_phi
-      contfrac from_contfrac
+      contfrac from_contfrac convergents bestrational
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot

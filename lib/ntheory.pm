@@ -459,6 +459,8 @@ Tags:
 
   contfrac(n,d)                       list of continued fraction for n/d
   from_contfrac(@A)                   return (p,q) rational from cfrac list
+  convergents(@A)                     list of convergents (p,q) for cfrac list
+  bestrational(x,dbound)              best rational (p,q) for x with q<=dbound
   next_calkin_wilf(n,d)               next breadth-first CW rational
   next_stern_brocot(n,d)              next breadth-first SB rational
   calkin_wilf_n(n,d)                  index of breadth-first CW rational

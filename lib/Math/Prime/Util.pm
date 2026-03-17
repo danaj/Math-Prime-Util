@@ -122,7 +122,7 @@ our @EXPORT_OK =
       factorial factorialmod subfactorial binomial binomialmod
       multifactorial falling_factorial rising_factorial
       znorder znprimroot znlog legendre_phi
-      contfrac from_contfrac
+      contfrac from_contfrac convergents bestrational
       next_calkin_wilf next_stern_brocot
       calkin_wilf_n stern_brocot_n
       nth_calkin_wilf nth_stern_brocot
@@ -4344,6 +4344,38 @@ All successive input values must be non-negative and non-zero.
 This corresponds to a subset of Pari's C<contfracpnqn> function,
 Mathematica's C<FromContinuedFraction[list]> function,
 and one value of Sage's C<convergent(n)> method.
+
+=head2 convergents
+
+  my @convs = convergents(4,2,6,7);
+  # ([4,1], [9,2], [58,13], [415,93])
+
+Given an array of integers representing a simple continued fraction
+(as returned by C<contfrac>), returns a list of array references
+C<[p, q]> where each C<p/q> is a convergent of the continued fraction.
+The k-th convergent is the rational obtained by truncating the
+continued fraction at term k.
+
+The convergents are computed via the standard recurrence:
+C<p_k = a_k * p_{k-1} + p_{k-2}>, and likewise for C<q_k>.
+
+The first input value may be zero or negative (the whole-number part);
+all successive values must be positive integers.
+
+=head2 bestrational
+
+  my($p,$q) = bestrational(3.14159265358979, 1000);
+  # (355, 113)
+
+Given a real number C<x> (native floating-point, numeric string, or
+C<Math::BigFloat> object) and a positive integer C<dbound>, returns a
+pair C<(p, q)> such that C<p/q> is the best rational approximation to
+C<x> with denominator C<< q <= dbound >>.  Here "best" means no other
+fraction with denominator at most C<dbound> has a smaller absolute error
+C<|p/q - x|>.  For negative C<x>, C<p> is negative and C<q> is positive.
+
+The algorithm uses continued-fraction convergents, with a semiconvergent
+check at the final step.
 
 =head2 next_calkin_wilf
 

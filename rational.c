@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 
 #include "ptypes.h"
 #include "rational.h"
@@ -22,6 +23,39 @@ int contfrac(UV** cfrac, UV *rem, UV num, UV den)
   *rem = num;
   *cfrac = cf;
   return steps;
+}
+
+bool convergents(UV** P, UV** Q, UV* cfrac, size_t len)
+{
+  size_t i;
+  UV A0, A1, B0, B1, An, Bn, *ps, *qs;
+
+  if (len < 1 || len > 2 * BITS_PER_WORD || cfrac == 0)
+    return false;
+  New(0, ps, len, UV);
+  New(0, qs, len, UV);
+
+  A0 = 1;  A1 = cfrac[0];
+  B0 = 0;  B1 = 1;
+  ps[0] = A1;  qs[0] = B1;
+  for (i = 1; i < len; i++) {
+    UV a = cfrac[i];
+    if (a == 0 || UV_MAX/a < A1 || UV_MAX/a < B1) break;
+    An = a * A1;  Bn = a * B1;
+    if (UV_MAX - An < A0 || UV_MAX - Bn < B0) break;
+    An += A0;  Bn += B0;
+    A0 = A1;  A1 = An;
+    B0 = B1;  B1 = Bn;
+    ps[i] = A1;  qs[i] = B1;
+  }
+  if (i < len) {
+    Safefree(ps);
+    Safefree(qs);
+    return false;
+  }
+  *P = ps;
+  *Q = qs;
+  return true;
 }
 
 bool next_calkin_wilf(UV* num, UV* den)
@@ -369,3 +403,50 @@ bool kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
   return _walk_to_k(lo, n, k-cnt, p, q);
 }
 #endif
+
+
+bool bestrational(UV* n, UV* d, NV x, UV dbound)
+{
+  UV a, p0, q0, p1, q1, p2, q2, qlimit, ps, qs;
+  NV xabs, rem, invrem;
+  xabs = x < 0.0 ? -x : x;
+  if (xabs >= (NV)UV_MAX)
+    return 0;
+  p0 = 1;  q0 = 0;
+  p1 = (UV)xabs;  q1 = 1;
+  rem = xabs - (NV)p1;
+  while (rem > 1e-15) {
+    invrem = 1.0 / rem;
+    a      = (UV)invrem;
+    rem    = invrem - (NV)a;
+    if (a == 0) return 0;
+    /* qlimit = largest multiplier m s.t. m*q1+q0 <= dbound.
+     * Safe (no overflow): dbound >= q0 is a loop invariant, q1 >= 1.
+     * If a > qlimit then q2 > dbound (covers UV overflow of a*q1 too). */
+    qlimit = (dbound - q0) / q1;
+    if (a > qlimit) {
+      /* q2 > dbound: check best semiconvergent */
+      if (qlimit >= 1 && qlimit <= (UV_MAX - p0) / (p1 + 1)) {
+        ps = qlimit * p1 + p0;
+        qs = qlimit * q1 + q0;
+        if (fabs((NV)ps - xabs*(NV)qs) * (NV)q1 <
+            fabs((NV)p1 - xabs*(NV)q1) * (NV)qs) {
+          p1 = ps;  q1 = qs;
+        }
+      }
+      break;
+    }
+    /* a <= qlimit guarantees q2 = a*q1+q0 <= dbound <= UV_MAX: no overflow */
+    q2 = a * q1 + q0;
+    /* Check numerator overflow; if p2 doesn't fit in UV, fall back to PP */
+    if (UV_MAX/a < p1) return 0;
+    p2 = a * p1;
+    if (UV_MAX - p2 < p0) return 0;
+    p2 += p0;
+    p0 = p1;  q0 = q1;
+    p1 = p2;  q1 = q2;
+  }
+  *n = p1;
+  *d = q1;
+  return 1;
+}
