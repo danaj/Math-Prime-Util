@@ -200,6 +200,7 @@ t/18-10-unary_int.t
 t/18-15-cmpint.t
 t/18-20-addint.t
 t/18-22-mulint.t
+t/18-23-muladdint.t
 t/18-24-powint.t
 t/18-26-shiftint.t
 t/18-40-divmodrem.t

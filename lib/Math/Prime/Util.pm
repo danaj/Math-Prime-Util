@@ -37,7 +37,8 @@ our @EXPORT_OK =
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
-      signint cmpint addint subint add1int sub1int mulint powint
+      signint cmpint addint subint add1int sub1int
+      mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
       lucas_sequence fibonacci lucas_number
@@ -3084,6 +3085,14 @@ Given integer C<n>, returns C<n - 1>.
 =head2 mulint
 
 Given integers C<a> and C<b>, returns C<a * b>.
+
+=head2 muladdint
+
+Given integers C<n>, C<m>, and C<a>, returns C<n * m + a>.
+
+=head2 mulsubint
+
+Given integers C<n>, C<m>, and C<a>, returns C<n * m - a>.
 
 =head2 powint
 

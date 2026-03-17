@@ -313,6 +313,8 @@ Tags:
   subint(a,b)                         signed integer a - b
   add1int(n)                          signed integer n + 1
   sub1int(n)                          signed integer n - 1
+  muladdint(n,m,a)                    signed integer n * m + a
+  mulsubint(n,m,a)                    signed integer n * m - a
   divint(a,b)                         signed integer a / b     (floor)
   modint(a,b)                         signed integer a % b     (floor)
   cdivint(a,b)                        signed integer a / b     (ceilint)

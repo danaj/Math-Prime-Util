@@ -767,10 +767,18 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
 #endif
 
 #define RETURN_128(hi,lo) \
-  do { char str_[40]; \
-       uint32_t slen_ = to_string_128(str_, hi, lo); \
-       ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str_,slen_)) ); \
-       XSRETURN(1); } while(0)
+  do { \
+    if (hi == 0) \
+      ST(0) = sv_2mortal(newSVuv(lo)); \
+    else if (hi == -1 && lo > IV_MAX) \
+      ST(0) = sv_2mortal(newSViv((IV)lo)); \
+    else { \
+      char str_[40]; \
+      uint32_t slen_ = to_string_128(str_, hi, lo); \
+      ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str_,slen_)) ); \
+    } \
+    XSRETURN(1); \
+  } while(0)
 
 #define CREATE_RETURN_AV(av) \
   do { \
@@ -1763,24 +1771,22 @@ void sum_primes(IN SV* svlo, IN SV* svhi = 0)
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       UV count = 0;
-      int retok = 1;
       /* 32/64-bit, Legendre or table-accelerated sieving. */
-      retok = sum_primes(lo, hi, &count);
+      if (sum_primes(lo, hi, &count))
+        XSRETURN_UV(count);
       /* If that didn't work, try the 128-bit version if supported. */
-      if (retok == 0 && HAVE_SUM_PRIMES128) {
+      if (HAVE_SUM_PRIMES128) {
         UV hicount, lo_hic, lo_loc;
-        retok = sum_primes128(hi, &hicount, &count);
-        if (retok == 1 && lo > 2) {
+        int retok = sum_primes128(hi, &hicount, &count);
+        if (retok && lo > 2) {
           retok = sum_primes128(lo-1, &lo_hic, &lo_loc);
           hicount -= lo_hic;
           if (count < lo_loc) hicount--;
           count -= lo_loc;
         }
-        if (retok == 1 && hicount > 0)
-          RETURN_128(hicount, count);
+        if (retok)
+          RETURN_128((IV)hicount, count);
       }
-      if (retok == 1)
-        XSRETURN_UV(count);
     }
     DISPATCHPP();
     XSRETURN(1);
@@ -2336,10 +2342,8 @@ gcd(...)
         else             hi -= ((UV_MAX-n) >= lo);
         lo += n;
       }
-      if (status != 0 && hi != 0) {
-        if (hi == -1 && lo > IV_MAX) XSRETURN_IV((IV)lo);
-        else                         RETURN_128(hi, lo);
-      }
+      if (status != 0)
+        RETURN_128(hi, lo);
       ret = lo;
     } else if (ix == 5) {
       int sign = 1;
@@ -4486,6 +4490,57 @@ void addint(IN SV* sva, IN SV* svb)
     objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
 
+void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
+  ALIAS:
+    mulsubint = 1
+  PREINIT:
+    int astatus, bstatus, cstatus;
+    UV a, b, c;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+    cstatus = _validate_and_set(&c, aTHX_ svc, IFLAG_ANY);
+    if (astatus != 0 && bstatus != 0 && cstatus != 0) {
+      if (astatus == -1) a = neg_iv(a);
+      if (bstatus == -1) b = neg_iv(b);
+      if (cstatus == -1) c = neg_iv(c);
+      {
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+        /* 128-bit path: handles virtually all native inputs on 64-bit */
+        IV hi; UV lo;
+        if (muladd128(&hi,&lo, a,b,c, astatus,bstatus,(ix==1)?-cstatus:cstatus))
+          RETURN_128(hi, lo);
+#else
+        /* 32-bit or 64-bit without uint128_t */
+        int prodneg = (astatus == -1) ^ (bstatus == -1);
+        int cneg    = (cstatus == -1) ^ (ix == 1);
+        int retneg = 0, overflow;
+        UV prod, ret = 0;
+        overflow = (a > 0 && UV_MAX/a < b);
+        if (!overflow) {
+          prod = a * b;
+          if (prodneg == cneg) {
+            overflow = (UV_MAX - prod < c);
+            ret = prod + c;  retneg = prodneg;
+          } else if (prodneg) {
+            ret = (c >= prod) ? c - prod : prod - c;
+            retneg = (c < prod);
+          } else {
+            ret = (prod >= c) ? prod - c : c - prod;
+            retneg = (prod < c);
+          }
+        }
+        if (!overflow) {
+          if (!retneg) XSRETURN_UV(ret);
+          if (ret <= (UV)IV_MAX) XSRETURN_IV(neg_iv(ret));
+        }
+#endif
+      }
+    }
+    DISPATCHPP();
+    objectify_result(aTHX_ sva, ST(0));
+    XSRETURN(1);
+
 void add1int(IN SV* svn)
   ALIAS:
     sub1int = 1
@@ -4899,10 +4954,8 @@ void sumtotient(IN SV* svn)
       {  /* Overflow, try 128-bit. */
         UV hicount, count;
         int retok = sumtotient128(n, &hicount, &count);
-        if (retok == 1 && hicount > 0)
-          RETURN_128(hicount, count);
         if (retok == 1)
-          XSRETURN_UV(count);
+          RETURN_128((IV)hicount, count);
       }
     }
     DISPATCHPP();
@@ -6207,7 +6260,7 @@ void digital_root(SV* svn, int base = 10)
       } else {
         int i, len, digits[128];
         dr = n;
-        while (dr >= base) {
+        while (dr >= (uint32_t)base) {
           len = to_digit_array(digits, dr, base, -1);
           for (dr = 1, i = 0; i < len; i++)
             dr *= digits[i];

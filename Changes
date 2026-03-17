@@ -24,6 +24,8 @@ Revision history for Perl module Math::Prime::Util
     - partitionsq(n)                  number of partitions into distinct parts
     - convergents(@A)                 list of convergents (p,q) for cfrac list
     - bestrational(x,dbound)          best rational (p,q) for x with q<=dbound
+    - muladdint(n,m,a)                signed integer n*m + a
+    - mulsubint(n,m,a)                signed integer n*m - a
 
 
 0.74 2026-03-13

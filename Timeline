@@ -2,6 +2,8 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.75
+2026-03-17  muladdint(n,m,a)
+2026-03-17  mulsubint(n,m,a)
 2026-03-17  is_harshad(n[,base])
 2025-03-17  bestrational(x,dbound)
 2025-03-17  convergents(...)

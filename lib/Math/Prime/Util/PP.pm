@@ -5297,6 +5297,13 @@ sub sub1int {
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 
+sub muladdint {
+  Maddint(Mmulint($_[0],$_[1]),$_[2]);
+}
+sub mulsubint {
+  Msubint(Mmulint($_[0],$_[1]),$_[2]);
+}
+
 # For division / modulo, see:
 #
 # https://www.researchgate.net/publication/234829884_The_Euclidean_definition_of_the_functions_div_and_mod

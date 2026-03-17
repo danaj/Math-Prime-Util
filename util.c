@@ -2018,6 +2018,35 @@ UV ivmod(IV a, UV n) {   /* a mod n with signed a (0 <= r < n) */
   }
 }
 
+bool muladd128(IV* hi, UV* lo, UV n, UV m, UV a, int nsign, int msign, int asign) {
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+  uint128_t ret, prod = (uint128_t)n * (uint128_t)m;
+  UV H, L;
+  int retneg, prodneg = (nsign == -1) ^ (msign == -1), aneg = (asign == -1);
+
+  if (prodneg == aneg) {  /*  prod + a  or  -prod - a */
+    ret = prod + a;
+    retneg = prodneg;
+  } else if (prodneg) {   /* -prod + a */
+    ret = a >= prod  ?  a-prod  :  prod-a;
+    retneg = (a < prod);
+  } else {                /*  prod - a */
+    ret = prod >= a  ?  prod-a  :  a-prod;
+    retneg = (prod < a);
+  }
+  if (ret == 0) retneg = 0;
+  H = (ret >> 64) & UV_MAX;
+  L = (ret      ) & UV_MAX;
+  if (H > (UV)IV_MAX) return 0;
+  if      (!retneg) { *hi =  (IV)H;    *lo = L; }
+  else if (L == 0)  { *hi = -(IV)H;    *lo = L; }
+  else              { *hi = -(IV)H-1;  *lo = UV_MAX-L+1; }
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 #if 0
 int is_regular(UV a, UV n) {  /* there exists an x s.t. a^2*x = a mod n */
   UV d;
