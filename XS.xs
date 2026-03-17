@@ -4485,6 +4485,17 @@ void addint(IN SV* sva, IN SV* svb)
         if (ret <= (UV)IV_MAX)
           XSRETURN_IV(neg_iv(ret));
       }
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+      {
+        IV hi; UV lo;
+        if (nix == 0 && muladd128(&hi,&lo, a,1,b, postneg?-1:1,1,postneg?-1:1))
+          RETURN_128(hi, lo);
+        if (nix == 1 && muladd128(&hi,&lo, a,1,b, postneg?-1:1,1,postneg?1:-1))
+          RETURN_128(hi, lo);
+        if (nix == 2 && muladd128(&hi,&lo, a,b,0, postneg?-1:1,1,1))
+          RETURN_128(hi, lo);
+      }
+#endif
     }
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
