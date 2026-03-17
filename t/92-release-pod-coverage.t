@@ -64,7 +64,7 @@ sub mpu_public_regex {
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
-      is_palindrome is_safe_prime
+      is_harshad is_palindrome is_safe_prime
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem

@@ -188,6 +188,7 @@ sub entropy_bytes {
 *is_delicate_prime = \&Math::Prime::Util::PP::is_delicate_prime;
 *is_safe_prime = \&Math::Prime::Util::PP::is_safe_prime;
 *is_happy = \&Math::Prime::Util::PP::is_happy;
+*is_harshad = \&Math::Prime::Util::PP::is_harshad;
 *is_palindrome = \&Math::Prime::Util::PP::is_palindrome;
 *powerful_count = \&Math::Prime::Util::PP::powerful_count;
 *nth_powerful = \&Math::Prime::Util::PP::nth_powerful;

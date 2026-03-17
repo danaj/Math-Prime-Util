@@ -35,7 +35,7 @@ our @EXPORT_OK =
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
-      is_palindrome is_safe_prime
+      is_harshad is_palindrome is_safe_prime
       sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
       signint cmpint addint subint add1int sub1int mulint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
@@ -4085,6 +4085,23 @@ This is L<OEIS series A002113|http://oeis.org/A002113> (base 10), with
 some other bases such as A006995 (base 2), A014190 (base 3), A014192 (base 4).
 
 This corresponds to Mathematica's C<PalindromeQ> function (base 10 only).
+
+
+=head2 is_harshad
+
+  say "18 is a Harshad number" if is_harshad(18);
+  say "12 is Harshad in base 2" if is_harshad(12, 2);
+
+Given an integer C<n>, returns 1 if C<n> is a Harshad number in the
+given base (default 10), 0 otherwise.  A Harshad number (also called
+a Niven number) is a positive integer that is divisible by its digit
+sum.  For example, 18 is a Harshad number since 1+8=9 and 9 divides 18.
+Returns 0 for C<n E<lt>= 0>.
+
+An optional second argument specifies the base, which must be at least 2
+and defaults to 10.
+
+This is L<OEIS series A005349|http://oeis.org/A005349> (base 10).
 
 
 =head2 digital_root

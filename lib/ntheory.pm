@@ -306,6 +306,7 @@ Tags:
   is_delicate_prime(n)                is n a digitally delicate prime
   is_safe_prime(n)                    are both n and (n-1)/2 prime
   is_palindrom(n[,base])              is n a palindrome (default base 10)
+  is_harshad(n[,base])                is n a Harshad (Niven) number in base b
   powint(a,b)                         signed integer a^b
   mulint(a,b)                         signed integer a * b
   addint(a,b)                         signed integer a + b

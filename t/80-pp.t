@@ -1272,6 +1272,9 @@ subtest 'functions from v0.75', sub {
   is(is_palindrome(121),   1, "is_palindrome(121) = 1");
   is(is_palindrome(123),   0, "is_palindrome(123) = 0");
 
+  is(is_harshad(12345696),    1, "is_harshad(12345696)");
+  is(is_harshad(12345696,16), 1, "is_harshad(12345696,16)");
+
   is(digital_root(493),       7, "digital_root(493) = 7");
   is(mult_digital_root(77),   8, "mult_digital_root(77) = 8");
 

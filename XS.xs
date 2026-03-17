@@ -6041,13 +6041,12 @@ void is_happy(SV* svn, UV base = 10, UV k = 2)
     XSRETURN(1);
 
 void
-sumdigits(SV* svn, UV ibase = 255)
+sumdigits(SV* svn, UV base = 10)
   PREINIT:
-    UV base, sum;
+    UV sum;
     STRLEN i, len;
     const char* s;
   PPCODE:
-    base = (ibase == 255) ? 10 : ibase;
     if (base < 2 || base > 36) croak("sumdigits: invalid base %"UVuf, base);
     sum = 0;
     /* faster for integer input in base 10 */
@@ -6061,7 +6060,7 @@ sumdigits(SV* svn, UV ibase = 255)
     }
     s = SvPV(svn, len);
     /* If no base given and input is 0x... or 0b..., select base. */
-    if (ibase == 255 && len > 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'b')){
+    if (items < 2 && len > 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'b')){
       base = (s[1] == 'x') ? 16 : 2;
       s += 2;
       len -= 2;
@@ -6152,6 +6151,28 @@ void todigits(SV* svn, int base=10, int length=-1)
     DISPATCHPP();
     if (ix == 2) objectify_result(aTHX_ 0, ST(0));
     return;
+
+void is_harshad(SV* svn, int base = 10)
+  PREINIT:
+    int nstatus;
+    UV n;
+  PPCODE:
+    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (nstatus == -1 || (nstatus == 1 && n == 0))
+      RETURN_NPARITY(0);
+    if (nstatus == 1) {
+      UV N, t, sum;
+      uint32_t b = base;
+      for (sum = 0, N = n; N > 0; N = t) {
+        t = N / b;
+        sum += N - b*t;
+      }
+      RETURN_NPARITY(n % sum == 0);
+    }
+    /* We can read the string and sum the digits, but no way to mod here. */
+    DISPATCHPP();
+    XSRETURN(1);
 
 void is_palindrome(SV* svn, int base = 10)
   PREINIT:

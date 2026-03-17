@@ -14,6 +14,7 @@ Revision history for Perl module Math::Prime::Util
     - digital_root(n[,base])          iterated sum of digits (default base 10)
     - mult_digital_root(n[,base])     iterated product of digits
     - is_palindrome(n[,base])         is n a palindrome (default base 10)
+    - is_harshad(n[,base])            is n a Harshad (Niven) number in base b
     - abundance(n)                    sigma(n)-2n => deficient/abundant/perfect
     - bell_number(n)                  Bell number, count of set partitions
     - catalan_number(n)               Catalan number

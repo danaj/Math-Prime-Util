@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/todigits fromdigits todigitstring sumdigits
-                         is_palindrome digital_root mult_digital_root
+                         is_palindrome is_harshad digital_root mult_digital_root
                          vecsum factorial/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -14,6 +14,7 @@ plan tests => 1    # fromdigits
             + 1    # sumdigits
             + 1    # todigitstring
             + 1    # is_palindrome
+            + 1    # is_harshad
             + 1    # digital_root
             + 1    # mult_digital_root
             + 1;   # examples from Wolfram docs
@@ -97,6 +98,38 @@ subtest 'is_palindrome', sub {
   ok(is_palindrome($m) && is_palindrome($m,2) && is_palindrome($m,8),"$m is a palindrome in bases 2, 8, and 10");
   my $k = 532900;
   ok(is_palindrome($k,3) && is_palindrome($k,7),"$k is a palindrome in bases 3 and 7");
+};
+
+subtest 'is_harshad' => sub {
+  # OEIS A005349: 1..9 all Harshad; then 10, 12, 18, 20, 21, ...
+  my @yes10 = (1..9, 10, 12, 18, 20, 21, 24, 27, 30, 36, 40, 42, 45, 48,
+               50, 54, 60, 63, 70, 72, 80, 81, 84, 90, 100);
+  my @no10  = (11, 13, 14, 15, 16, 17, 19, 22, 23, 25, 26, 28, 29, 31);
+  is_deeply([map { is_harshad($_) } @yes10], [(1) x @yes10], "base-10 Harshad");
+  is_deeply([map { is_harshad($_) } @no10],  [(0) x @no10],  "base-10 non-Harshad");
+
+  # n <= 0 returns 0
+  is(is_harshad(0),   0, "is_harshad(0)=0");
+  is(is_harshad(-1),  0, "is_harshad(-1)=0");
+  is(is_harshad(-18), 0, "is_harshad(-18)=0");
+
+  # base 16: digit sum uses hex digit values
+  is(is_harshad(12345696, 16), 1, "12345696=0xBC6160: digitsum=11+12+6+1+6+0=36, 36|12345696");
+  is(is_harshad(12345697, 16), 0, "12345697=0xBC6161: digitsum=37 does not divide 12345697");
+
+  # base 2: Harshad iff n divisible by popcount(n); OEIS A049445
+  my @yes2 = (1, 2, 4, 6, 8, 10, 12, 16, 18, 20, 24);
+  my @no2  = (3, 5, 7, 9, 11, 13, 14, 15, 17, 19);
+  is_deeply([map { is_harshad($_, 2) } @yes2], [(1) x @yes2], "base-2 Harshad");
+  is_deeply([map { is_harshad($_, 2) } @no2],  [(0) x @no2],  "base-2 non-Harshad");
+
+  # spot checks
+  is(is_harshad(2016), 1, "2016: 2+0+1+6=9, 9|2016");
+  is(is_harshad(2017), 0, "2017: 2+0+1+7=10, 10 does not divide 2017");
+
+  # bigint
+  is(is_harshad("200000000000000000000"), 1, "2*10^20: digitsum=2, even");
+  is(is_harshad("200000000000000000002"), 0, "2*10^20+2: digitsum=4, not divisible");
 };
 
 subtest 'digital_root' => sub {

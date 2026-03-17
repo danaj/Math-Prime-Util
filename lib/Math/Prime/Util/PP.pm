@@ -7629,6 +7629,20 @@ sub fromdigits {
   return $n <= INTMAX ? _bigint_to_int($n) : $n;
 }
 
+sub is_harshad {
+  my($n,$base) = @_;
+  validate_integer($n);
+  if (defined $base) {
+    validate_integer_nonneg($base);
+    croak "is_harshad: Invalid base: $base" if $base < 2;
+  } else {
+     $base = 10;
+  }
+  return 0 if $n <= 0;
+  my $sum = Mvecsum(Mtodigits($n,$base));
+  Mis_divisible($n,$sum);
+}
+
 sub is_palindrome {
   my($n,$base) = @_;
   validate_integer_nonneg($n);
