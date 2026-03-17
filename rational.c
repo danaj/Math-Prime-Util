@@ -6,6 +6,8 @@
 #define FUNC_gcd_ui 1
 #include "util.h"
 #include "totients.h"
+#undef B0
+#undef B1
 
 
 int contfrac(UV** cfrac, UV *rem, UV num, UV den)
