@@ -5299,12 +5299,11 @@ sub sub1int {
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 
-sub muladdint {
-  Maddint(Mmulint($_[0],$_[1]),$_[2]);
-}
-sub mulsubint {
-  Msubint(Mmulint($_[0],$_[1]),$_[2]);
-}
+# We could streamline these, but there is little benefit, and in theory
+# if we end up here then GMP's muladdint/mulsubint aren't available.
+
+sub muladdint { Maddint(Mmulint($_[0],$_[1]),$_[2]); }
+sub mulsubint { Msubint(Mmulint($_[0],$_[1]),$_[2]); }
 
 # For division / modulo, see:
 #

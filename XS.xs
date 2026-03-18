@@ -214,6 +214,10 @@ static const gmp_info_t gmp_info[] = {
   {               "rashiftint", 53, 1, R_BIGINT },
   {                   "logint", 47, 1, R_BIGINT },  /* no root return */
   {                  "rootint", 40, 1, R_BIGINT },  /* no root return */
+  {                "muladdint", 54, 1, R_BIGINT },
+  {                "mulsubint", 54, 1, R_BIGINT },
+  {                "addmulint", 54, 1, R_BIGINT },
+  {                "submulint", 54, 1, R_BIGINT },
 
   {                   "invmod", 20, 1, R_BIGINT },
   {                  "znorder", 22, 1, R_BIGINT },
@@ -296,6 +300,8 @@ static const gmp_info_t gmp_info[] = {
   {                 "stirling", 26, 1, R_BIGINT },
   {                   "lucasu", 29, 1, R_BIGINT },
   {                   "lucasv", 29, 1, R_BIGINT },
+  {                "fibonacci", 54, 1, R_BIGINT },
+  {             "lucas_number", 54, 1, R_BIGINT },
   {                  "chinese", 32, 1, R_BIGINT },
   {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
   {                   "gcdext", 35, 3, R_BIGINT },
