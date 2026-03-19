@@ -8395,25 +8395,23 @@ sub rising_factorial {
 
 sub factorial {
   my($n) = @_;
-  return (1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600)[$n] if $n <= 12;
-  return Math::GMP::bfac($n) if ref($n) eq 'Math::GMP';
-  do { my $r = Math::GMPz->new(); Math::GMPz::Rmpz_fac_ui($r,$n); return $r; }
-    if ref($n) eq 'Math::GMPz';
-  if (Math::BigInt->config()->{lib} !~ /GMP|Pari/) {
-    # It's not a GMP or GMPz object, and we have a slow bigint library.
-    my $r;
-    if (defined $Math::GMPz::VERSION) {
-      $r = Math::GMPz->new(); Math::GMPz::Rmpz_fac_ui($r,$n);
-    } elsif (defined $Math::GMP::VERSION) {
-      $r = Math::GMP::bfac($n);
-    } elsif (defined &Math::Prime::Util::GMP::factorial && getconfig()->{'gmp'}) {
-      $r = Math::Prime::Util::GMP::factorial($n);
-    }
-    return reftyped($_[0], $r)    if defined $r;
+  return (1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600)[$n]
+    if $n <= 12;
+
+  my $r = tobigint(1);   # make sure $_BIGINT is loaded.
+
+  if ($_BIGINT eq 'Math::GMPz') {
+    $r = Math::GMPz->new();
+    Math::GMPz::Rmpz_fac_ui($r, $n);
+  } elsif ($_BIGINT eq 'Math::GMP') {
+    $r = Math::GMP::bfac($n);
+  } elsif ($Math::Prime::Util::_GMPfunc{"factorial"}) {
+    $r = maybetobigint(Math::Prime::Util::GMP::factorial($n));
+  } else {
+    $r = Math::BigInt->new("$n")->bfac();
+    $r = tobigint("$r") if $_BIGINT ne 'Math::BigInt';
   }
-  # maybe roll our own: https://oeis.org/A000142/a000142.pdf
-  my $r = Math::BigInt->new("$n")->bfac();
-  return $r <= INTMAX  ?  _bigint_to_int($r)  :  $r;
+  return ref $r && $r <= INTMAX  ?  _bigint_to_int($r)  :  $r;
 }
 
 sub factorialmod {
