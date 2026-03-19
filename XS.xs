@@ -302,6 +302,8 @@ static const gmp_info_t gmp_info[] = {
   {                   "lucasv", 29, 1, R_BIGINT },
   {                "fibonacci", 54, 1, R_BIGINT },
   {             "lucas_number", 54, 1, R_BIGINT },
+  {           "catalan_number", 54, 1, R_BIGINT },
+  {              "bell_number", 54, 1, R_BIGINT },
   {                  "chinese", 32, 1, R_BIGINT },
   {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
   {                   "gcdext", 35, 3, R_BIGINT },
