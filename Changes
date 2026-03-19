@@ -27,6 +27,9 @@ Revision history for Perl module Math::Prime::Util
     - muladdint(n,m,a)                signed integer n*m + a
     - mulsubint(n,m,a)                signed integer n*m - a
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - urandomm is up to 5x faster without GMP.
 
 0.74 2026-03-13
 

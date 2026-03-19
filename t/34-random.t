@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/irand irand64 drand urandomb urandomm
                          random_bytes entropy_bytes
-                         srand csrand
+                         srand csrand powint
                          mulmod addmod vecmin vecmax vecall/;
 
 my $use64 = (~0 > 4294967295);
@@ -21,7 +21,8 @@ plan tests => 1
             + 5  # drand range
             + 4  # identify rng and test srand/csrand
             + 4  # 0 / undef arguments to urandom*
-            + 1  # urandomb
+            + 1  # urandomb native range
+            + 1  # urandomb bigint range
             + 3  # urandomm
             + 4  # entropy_bytes
             + 0;
@@ -206,6 +207,22 @@ is(urandomm(1),0,"urandomm(1) returns 0");
     push @failb, $bits unless !ref($r) && $r <= $lim;
   }
   is_deeply(\@failb, [], "urandomb returns native int within range for 1..$maxbits");
+}
+
+{
+  my $lim128   = powint(2, 128);
+  my $lim71    = powint(2, 71);
+  my $top_mask = $lim71 - powint(2, 64);  # bits 64..70
+  my @vals128  = map { urandomb(128) } 1..20;
+  my @vals71   = map { urandomb(71)  } 1..30;
+  my $or71  = 0;        $or71  |= $_ for @vals71;
+  my $and71 = $lim71-1; $and71 &= $_ for @vals71;
+  my @fail128  = grep { $_ < 0 || $_ >= $lim128 } @vals128;
+  my @fail71   = grep { $_ < 0 || $_ >= $lim71  } @vals71;
+  my $top_bits_vary =    ($or71 & $top_mask) == $top_mask
+                      && ($and71 & $top_mask) != $top_mask  ?  1 : 0;
+  is_deeply([\@fail128, \@fail71, $top_bits_vary],  [[], [], 1],
+            "urandomb(128) and urandomb(71): in range and top 7 bits exercised");
 }
 
 #######

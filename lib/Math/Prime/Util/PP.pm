@@ -408,23 +408,29 @@ sub _toint_simple {
   $n;
 }
 
-sub _frombinary {
-  my($bstr) = @_;
-  $bstr =~ s/^0//;
-  return oct('0b' . $bstr) if length($bstr) <= 32;
-  # Avoid the useless portable warning that can't be silenced.
-  if (MPU_MAXBITS >= 64 && length($bstr) <= 64) {  # 64-bit Perl, 33-64 bit str
-    my $low = substr($bstr,-32,32,'');
-    return (oct('0b'.$bstr) << 32) + oct('0b'.$low);
+sub _fromhex {
+  my($hstr) = @_;
+  $hstr =~ s/^0+//;
+  return 0 unless length($hstr);
+  return hex($hstr) if length($hstr) <= 8;
+  if (MPU_MAXBITS >= 64 && length($hstr) <= 16) {
+    my $lo = hex(substr($hstr,-8,8,''));
+    return (hex($hstr) << 32) | $lo;
   }
-  # Length is bigger than word size, so must be a bigint
-  if (!defined $_BIGINT) {
-    return Math::BigInt->new("0b$bstr");
-  } elsif ($_BIGINT =~ /^Math::(BigInt|GMPz|GMP)$/) {
-    return $_BIGINT->new("0b$bstr");
-  } else {
-    return tobigint( Math::BigInt->new("0b$bstr") );
+  tobigint("0x$hstr");
+}
+sub _frombytes {
+  my($bytes) = @_;
+  if (defined $_BIGINT) {
+    if ($_BIGINT eq 'Math::GMPz') {
+      my $r = Math::GMPz::Rmpz_init();
+      Math::GMPz::Rmpz_import($r, length($bytes), 1, 1, 1, 0, $bytes);
+      return $r;
+    }
+    return Math::BigInt->from_bytes($bytes)
+      if $_BIGINT eq 'Math::BigInt' && Math::BigInt->can('from_bytes');
   }
+  return _fromhex(unpack("H*", $bytes));
 }
 
 ################################################################################
@@ -12773,12 +12779,15 @@ sub urandomb {
   return 0 if $n <= 0;
   return ( Math::Prime::Util::irand() >> (32-$n) ) if $n <= 32;
   return ( Math::Prime::Util::irand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
-  my $bytes = Math::Prime::Util::random_bytes(($n+7)>>3);
-  return _frombinary( substr(unpack("B*",$bytes),0,$n) );
+  my $nbytes = ($n+7)>>3;
+  my $randstr = Math::Prime::Util::random_bytes($nbytes);
+  my $r = _frombytes($randstr);
+  $r >>= ($nbytes*8 - $n) if $n & 7;
+  return $r;
 }
 sub urandomm {
   my($n) = @_;
-  # validate_integer_nonneg($n);
+  validate_integer_nonneg($n);
   return reftyped($_[0], Math::Prime::Util::GMP::urandomm($n))
     if $Math::Prime::Util::_GMPfunc{"urandomm"};
   return 0 if $n <= 1;
@@ -12790,11 +12799,10 @@ sub urandomm {
     my $rmin = (~0 - ($n-1)) % $n;
     do { $r = Math::Prime::Util::irand64(); } while $r < $rmin;
   } else {
-    # TODO: verify and try to optimize this
-    my $bytes = 1 + length(todigitstring($n,16));
-    my $rmax = Msub1int(Mpowint(2,$bytes*8));
+    my $nbytes   = (int(3.322*length("$n")) + 15) >> 3;
+    my $rmax     = Msub1int(Mpowint(2, $nbytes*8));
     my $overflow = $rmax - ($rmax % $n);
-    do { $r = Murandomb($bytes*8); } while $r >= $overflow;
+    do { $r = Murandomb($nbytes*8); } while $r >= $overflow;
   }
   return $r % $n;
 }
