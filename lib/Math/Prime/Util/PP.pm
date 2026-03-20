@@ -4016,8 +4016,8 @@ sub prime_count_lower {
   # Johnston 2021 Cor3.3 li(x)-logx*sqrtx/8Pi    x > 2657, x <= 1.101 * 10^26
 
   # Also see Dusart 2018: if RH and x >= 5639,
-  #     |pi(x)-li(x)|<= x * (logx-loglogx)/(8*Pi*sqrtx)
-  # TODO: evaluate this
+  #   |pi(x)-li(x)| <= sqrt(x)/(8*Pi) * log(x/log(x))    RH x >= 5639
+  #   li(x) - 2 * sqrt(x) / log(x)] <= pi(x) for 1090877 <= x <= 10^20
 
   if ($x < 599) {                         # Decent for small numbers
     $result = $x / ($fl1 - 0.7);
@@ -4033,24 +4033,31 @@ sub prime_count_lower {
     elsif ($x <    4500000) { $a = 2.31; }
     else                    { $a = 2.35; }
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2);
-  } elsif ($x < 1.1e26 || getconfig()->{'assume_rh'}){
-                                          # Büthe 2014/2015
-    my $lix = MLi($x);
-    my $sqx = sqrt($x);
-    if ($x < 1e19) {
-      $result = $lix - ($sqx/$fl1) * (1.94 + 3.88/$fl1 + 27.57/$fl2);
-    } else {
-      if (ref($x) eq 'Math::BigFloat') {
-        my $xdigits = _find_big_acc($x);
-        $result = $lix - ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
-      } else {
-        $result = $lix - ($fl1*$sqx / PI_TIMES_8);
-      }
-    }
-  } else {                                # Axler 2014 1.4
+  } elsif ($x <= 1e20) {
+    # Büthe 2015:  $lix - ($sqx/$fl1) * (1.94 + 3.88/$fl1 + 27.57/$fl2); # 1e19
+    # Dusart 2018: $lix - ($sqx/$fl1) * 2;                               # 1e20
+    my($lix,$sqx) = (MLi($x),sqrt($x));
+    $result = $lix - 2 * $sqx / $fl1;
+  } elsif (getconfig()->{'assume_rh'}) {
+    # Dusart 2018, Proposition 2.6:
+    my($lix,$sqx) = (MLi($x),sqrt($x));
+    my $pi8 = ref($x) ? Math::BigFloat->bpi(_find_big_acc($x))*8 : PI_TIMES_8;
+    $result = $lix - log($x/$fl1) * $sqx / $pi8;
+  } elsif ($x < 1.101e26) {
+    # Johnston 2021 Corollary 3.3
+    my($lix,$sqx) = (MLi($x),sqrt($x));
+    my $pi8 = ref($x) ? Math::BigFloat->bpi(_find_big_acc($x))*8 : PI_TIMES_8;
+    $result = $lix - $fl1 * $sqx / $pi8;
+  } else {
     my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
     my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
-    $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
+    # Axler 2014 Theorem 1.4:
+    # $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
+    # Axler 2022 Theorem 1.4:
+    #$result = $x / ($fl1 - $one - $one/$fl1 - 2.975666/$fl2 - 13.024334/$fl3 - 70.951332/$fl4 - 460.634397856444/$fl5 - 3444.031844143556/$fl6);
+    # Axler 2022 Corollary 5.5:
+    my $r = 1/$fl1;
+    $result = $x*$r * (1 + $r*(1 + $r*(2 + $r*(5.975666 + $r*(23.975666 + $r*(119.87833 + $r*(719.26998 + 5034.88986*$r)))))));
   }
   # This will truncate bigfloat or floats to native int or bigint class.
   Mtoint($result);
@@ -4082,8 +4089,8 @@ sub prime_count_upper {
   # Johnston 2021 Cor 3.3 Schoenfeld bounds hold to x <= 1.0e26
   # Skewes                li(x)                x < 1e14
 
-  # TODO: Also look at these from Dusart (2018) [paywalled].
-  # 1  If RH and x >= 5639, |pi(x)-li(x)|<= x * (logx-loglogx)/(8*Pi*sqrtx)
+  # Pierre Dusart graciously provided me with his 2018 paper:
+  # 1  If RH and x >= 5639, |pi(x)-li(x)| <= (logx-loglogx)*sqrtx/(8*Pi)
   # 2  pi(x) <= li(x) for all 2 <= x <= 10^20
   # 3  [li(x) - 2sqrt(x)/log(x)] <= pi(x) for 1090877 <= x <= 10^20
   #
@@ -4128,24 +4135,26 @@ sub prime_count_upper {
     elsif ($x < 2953652287) { $a = 2.362; }
     else                    { $a = 2.334; } # Dusart 2010, page 2
     $result = ($x/$fl1) * ($one + $one/$fl1 + $a/$fl2) + $one;
-  } elsif ($x < 1e19) {                     # Skewes number lower limit
-    $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : ($x < 10126e7) ? 0.021 : 0.0;
-    $result = MLi($x) - $a * $fl1*sqrt($x)/PI_TIMES_8;
-  } elsif ($x < 1.1e26 || getconfig()->{'assume_rh'}) {
-                                            # Schoenfeld / Büthe 2014 Th 7.4
-    my $lix = MLi($x);
-    my $sqx = sqrt($x);
-    if (ref($x) eq 'Math::BigFloat') {
-      my $xdigits = _find_big_acc($x);
-      $result = $lix + ($fl1*$sqx / (Math::BigFloat->bpi($xdigits)*8));
-    } else {
-      $result = $lix + ($fl1*$sqx / PI_TIMES_8);
+  } elsif ($x < 1e20) {                     # Skewes number lower limit
+    $result = MLi($x);
+    if ($x < 10126e7) {
+      $a = ($x < 110e7) ? 0.032 : ($x < 1001e7) ? 0.027 : 0.021;
+      $result -= $a * $fl1*sqrt($x)/PI_TIMES_8;
     }
-  } else {                                  # Axler 2014 1.3
-    my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
-    my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
-    $result = $x / ($fl1 - $one - $one/$fl1 - 3.35/$fl2 - 12.65/$fl3 - 71.7/$fl4 - 466.1275/$fl5 - 3489.8225/$fl6);
+  } elsif ($x < 1.101e26 || getconfig()->{'assume_rh'}) {
+    my($lix,$sqx) = (MLi($x),sqrt($x));     # Schoenfeld / Johnston 2021
+    my $pi8 = ref($x) ? Math::BigFloat->bpi(_find_big_acc($x))*8 : PI_TIMES_8;
+    $result = $lix + $fl1 * $sqx / $pi8;
+  } else {                                  # Axler 2022
+    # Axler 2022 Theorem 1.3:
+    #my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
+    #my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
+    #$result = $x / ($fl1 - $one - $one/$fl1 - 3.024334/$fl2 - 12.975666/$fl3 - 71.048668/$fl4 - 461.364417856444/$fl5 - 4331.1/$fl6);
+    # Axler 2022 Proposition 4.6:
+    my $r = 1/$fl1;
+    $result = $x*$r * (1 + $r*(1 + $r*(2 + $r*(6.024334 + $r*(24.024334 + $r*(120.12167 + $r*(720.73002 + 6098*$r)))))));
   }
+
   # This will truncate bigfloat or floats to native int or bigint class.
   Mtoint($result);
 }

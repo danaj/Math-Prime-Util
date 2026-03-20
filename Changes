@@ -31,6 +31,9 @@ Revision history for Perl module Math::Prime::Util
 
     - urandomm is up to 5x faster without GMP.
 
+    - Tightened prime count bounds (upper/lower) using Dusart 2018 and
+      Axler 2022.  Thanks to Pierre Dusart for sending me a copy of his paper.
+
 0.74 2026-03-13
 
     [API Changes]

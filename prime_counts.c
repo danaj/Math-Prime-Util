@@ -388,10 +388,8 @@ UV prime_count_lower(UV n)
       : (n <  38100000) ? -29.0L
       :                   -84.0L;
     lower = Li(fn) - (sqrtl(fn)/fl1) * (1.94L + 2.50L/fl1 + a/fl2);
-  } else if (fn < 1e19) {          /* Büthe 2015 1.9      1511.02032v1.pdf */
-    lower = Li(fn) - (sqrtl(fn)/fl1) * (1.94L + 3.88L/fl1 + 27.57L/fl2);
-  } else {                         /* Büthe 2014 v3 7.2   1410.7015v3.pdf */
-    lower = Li(fn) - fl1*sqrtl(fn)/25.132741228718345907701147L;
+  } else {                         /* Dusart 2018 Lemma 2.2 */
+    lower = Li(fn) - 2*sqrtl(fn)/fl1;
   }
   return (UV) ceill(lower);
 }
@@ -439,10 +437,14 @@ UV prime_count_upper(UV n)
 
   /* Axler 2014: https://arxiv.org/abs/1409.1780  (v7 2016), Cor 3.5
    *
-   * upper = fn/(fl1-1.0L-1.0L/fl1-3.35L/fl2-12.65L/(fl2*fl1)-89.6L/(fl2*fl2));
+   * upper = fn/(fl1-1.0L-1.0L/fl1-3.35L/fl2-12.65L/fl3-89.6L/fl4);
    * return (UV) floorl(upper);
    *
-   * Axler 2022: https://arxiv.org/pdf/2203.05917.pdf (v4 2022) improves this.
+   * Axler 2022: https://arxiv.org/pdf/2203.05917.pdf (v4 2022): Cor 4.4
+   *  Cor 4.4: fl2 3.024334L fl3 12.975666 fl4 71.048668 fl5 533.594
+   *  Thm 1.3: fl2,fl3,fl4 as above   fl5 461.364417856444 fl6 4331.1
+   *
+   * These do not improve on the bound of Li(x) which covers all 64-bit n.
    */
 
   if (BITS_PER_WORD == 32 || fn <= 821800000.0) {  /* Dusart 2010, page 2 */
@@ -451,14 +453,17 @@ UV prime_count_upper(UV n)
         break;
     a = (i < (int)NUPPER_THRESH)  ?  _upper_thresh[i].aval  :  2.334L;
     upper = fn/fl1 * (1.0L + 1.0L/fl1 + a/fl2);
-  } else if (fn < 1e19) {        /* Büthe 2015 1.10 Skewes number lower limit */
+  } else if (fn < 101260000000.0) {
+    /* For some smaller inputs we further tighten */
     a = (fn <   1100000000.0) ? 0.032    /* Empirical */
       : (fn <  10010000000.0) ? 0.027    /* Empirical */
       : (fn < 101260000000.0) ? 0.021    /* Empirical */
                               : 0.0;
     upper = Li(fn) - a * fl1*sqrtl(fn)/25.132741228718345907701147L;
-  } else {                       /* Büthe 2014 7.4 */
-    upper = Li(fn) + fl1*sqrtl(fn)/25.132741228718345907701147L;
+  } else {
+    /* Büthe  2015 1.10      : Pi(x) <= Li(x) for x <= 10^19 */
+    /* Dusart 2018 Lemma 2.2 : Pi(x) <= Li(x) for x <= 10^20 */
+    upper = Li(fn);
   }
   return (UV) floorl(upper);
 }
