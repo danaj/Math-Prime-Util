@@ -2948,7 +2948,7 @@ void inverse_li(IN SV* svn)
 
 NV inverse_li_nv(IN NV x)
   CODE:
-    RETVAL = ld_inverse_li(x);
+    RETVAL = ld_inverse_li(x,0);
   OUTPUT:
     RETVAL
 

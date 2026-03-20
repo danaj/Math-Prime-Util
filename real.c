@@ -291,7 +291,8 @@ NV Li(NV x) {
   /* Calculate directly using Ramanujan's series. */
   if (x > 1) {
     const LNV logx = loglnv(x);
-    LNV sum = 0, inner_sum = 0, old_sum, factorial = 1, power2 = 1;
+    SUM_INIT(inner_sum);
+    LNV sum = 0, old_sum, factorial = 1, power2 = 1;
     LNV q, p = -1;
     int k = 0, n = 0;
 
@@ -301,9 +302,9 @@ NV Li(NV x) {
       q = factorial * power2;
       power2 *= 2;
       for (; k <= (n - 1) / 2; k++)
-        inner_sum += LNV_ONE / (2 * k + 1);
+        SUM_ADD(inner_sum, LNV_ONE / (2 * k + 1));
       old_sum = sum;
-      sum += (p / q) * inner_sum;
+      sum += (p / q) * SUM_FINAL(inner_sum);
       if (fabslnv(sum - old_sum) <= LNV_EPSILON) break;
     }
     return euler_mascheroni + loglnv(logx) + sqrtlnv(x) * sum;
@@ -312,18 +313,21 @@ NV Li(NV x) {
   return Ei(loglnv(x));
 }
 
-long double ld_inverse_li(long double lx) {
+long double ld_inverse_li(long double lx, UV *ierr) {
   int i;
   long double t, term, old_term = 0;
+  /* Initial estimate */
+  if (lx < 2.719) { t = 2 + (lx>=1.668);
+  } else          { long double L=logl(lx);  t = lx * (L+logl(L)); }
   /* Iterate Halley's method until error grows. */
-  t = (lx <= 2)  ?  2  :  lx * logl(lx);
   for (i = 0; i < 4; i++) {
     long double dn = Li(t) - lx;
     term = dn*logl(t) / (1.0L + dn/(2*t));
-    if (i > 0 && fabsl(term) >= fabsl(old_term)) { t -= term/4; break; }
+    if (i > 0 && fabsl(term) >= fabsl(old_term)) break;
     old_term = term;
     t -= term;
   }
+  if (ierr != 0) *ierr = (UV) fabsl(old_term) + 2;
   return t;
 }
 
@@ -332,9 +336,8 @@ UV inverse_li(UV x) {
   long double lx = (long double) x;
 
   if (x <= 2) return x + (x > 0);
-  r = (UV) ceill( ld_inverse_li(lx) );
+  r = (UV) ceill( ld_inverse_li(lx,&i) ); /* 'i' set to about expected error */
   /* Meet our more stringent goal of an exact answer. */
-  i = (x > 4e16) ? 2048 : 128;
   if (Li(r-1) >= lx) {
     while (Li(r-i) >= lx) r -= i;
     for (i = i/2; i > 0; i /= 2)
