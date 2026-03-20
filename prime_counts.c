@@ -501,6 +501,26 @@ UV nth_prime_upper(UV n)
     return lo;
   }
 
+  /* Under RH, we could use Dusart 2018, Theorem 3.1.
+   * It is better than the below starting at 230779190522.
+   *
+   * long double klogk = fn*flogn, logklogk = logl(klogk);
+   * long double E = sqrt(klogk)*logklogk*logklogk/25.132741228718345907701147L;
+   * return inverse_li(n) + floorl(E);
+   *
+   * Empirically, x > 46254833, return inverse_li(n) + floorl(E * 2.0/flogn);
+   * e.g. 1e16 we get 1375558510 vs 1507803850527  3 orders better
+   * about 10x slower though.
+   * verified for x <= 1000000000 (1e9)
+   */
+#if 0
+  if (n > 46254833) {
+    long double klogk = fn*flogn, logklogk = logl(klogk);
+    long double E = sqrt(klogk)*logklogk*logklogk/25.132741228718345907701147L;
+    return inverse_li(n) + floorl( E * 2.0/flogn );
+  }
+#endif
+
   /* See: Axler 2013, Dusart 2010 */
   /*      Axler 2017: http://arxiv.org/pdf/1706.03651.pdf */
 
