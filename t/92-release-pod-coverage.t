@@ -158,7 +158,8 @@ sub mpu_public_regex {
       nth_stern_diatomic
       farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
+      irand irand64 drand urandomb urandomm urandomr csrand
+      random_bytes entropy_bytes
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
   return qr/$pattern/;

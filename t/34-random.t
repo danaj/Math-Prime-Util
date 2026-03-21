@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/irand irand64 drand urandomb urandomm
+use Math::Prime::Util qw/irand irand64 drand urandomb urandomm urandomr
                          random_bytes entropy_bytes
                          srand csrand powint
                          mulmod addmod vecmin vecmax vecall/;
@@ -24,6 +24,7 @@ plan tests => 1
             + 1  # urandomb native range
             + 1  # urandomb bigint range
             + 3  # urandomm
+            + 5  # urandomr
             + 4  # entropy_bytes
             + 0;
 
@@ -245,6 +246,33 @@ is(urandomm(1),0,"urandomm(1) returns 0");
   my @k = sort { $a<=>$b} keys(%dv);
   is(scalar(@k), 10, "urandomm(10) generated 10 distinct values");
   ok( vecmin(@k) == 0 && vecmax(@k) == 9, "urandomm(10) values between 0 and 9 (@k)" );
+}
+
+#######  urandomr
+
+is( urandomr(7, 3), undef, "urandomr(7,3) returns undef when lo > hi" );
+is( urandomr(5, 5), 5,     "urandomr(5,5) returns 5" );
+
+{
+  my @failr;
+  for my $lo (-3 .. 3) {
+    for my $hi ($lo .. $lo+5) {
+      my $r = urandomr($lo, $hi);
+      push @failr, [$lo,$hi,$r] unless defined($r) && $r >= $lo && $r <= $hi;
+    }
+  }
+  is_deeply(\@failr, [], "urandomr(lo,hi) always in [lo,hi] for small signed range");
+}
+
+{
+  my %dv;
+  for my $t (1..10000) {
+    $dv{urandomr(3, 8)}++;
+    last if $t > 100 && scalar(keys(%dv)) >= 6;
+  }
+  my @k = sort { $a <=> $b } keys(%dv);
+  is(scalar(@k), 6, "urandomr(3,8) generated all 6 distinct values");
+  ok( $k[0] == 3 && $k[-1] == 8, "urandomr(3,8) values between 3 and 8 (@k)" );
 }
 
 #######

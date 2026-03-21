@@ -3259,6 +3259,26 @@ void urandomm(IN SV* svn)
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
+void urandomr(IN SV* svlo, IN SV* svhi)
+  PREINIT:
+    UV lo, hi;
+    int lo_s, hi_s;
+  PPCODE:
+    lo_s = _validate_and_set(&lo, aTHX_ svlo, IFLAG_ANY);
+    hi_s = _validate_and_set(&hi, aTHX_ svhi, IFLAG_ANY);
+    if (lo_s == 1 && hi_s == 1) {
+      dMY_CXT;
+      if (lo > hi) XSRETURN_UNDEF;
+      if (lo == hi) XSRETURN_UV(lo);
+      if (lo == 0 && hi == UV_MAX)
+        XSRETURN_UV( BITS_PER_WORD == 64 ? irand64(MY_CXT.randcxt)
+                                         : irand32(MY_CXT.randcxt) );
+      XSRETURN_UV(lo + urandomm64(MY_CXT.randcxt, hi-lo+1));
+    }
+    DISPATCHPP();
+    objectify_result(aTHX_ svlo, ST(0));
+    XSRETURN(1);
+
 void pisano_period(IN SV* svn)
   ALIAS:
     partitions = 1

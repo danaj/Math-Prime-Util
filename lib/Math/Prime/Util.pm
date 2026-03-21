@@ -130,7 +130,8 @@ our @EXPORT_OK =
       nth_stern_diatomic
       farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand urandomb urandomm csrand random_bytes entropy_bytes
+      irand irand64 drand urandomb urandomm urandomr csrand
+      random_bytes entropy_bytes
   );
 our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
                     rand => [qw/srand rand irand irand64/],
@@ -6196,6 +6197,19 @@ between C<0> and C<2^b-1> inclusive.
 Given a positive integer C<n>, returns a random unsigned integer
 less than C<n>.  The results will be uniformly distributed between
 C<0> and C<n-1> inclusive.  Care is taken to prevent modulo bias.
+
+=head2 urandomr
+
+  $n = urandomr(1, 6);      # roll a die: random integer in [1, 6]
+  $n = urandomr(-10, 10);   # random integer in [-10, 10]
+  $n = urandomr($lo, $hi);  # random integer in [$lo, $hi]
+
+Given integers C<lo> and C<hi>, returns a uniformly distributed
+random integer in the inclusive range C<[lo, hi]>.  Care is taken
+to prevent modulo bias.  Returns C<undef> if C<lo E<gt> hi>.
+
+Both C<lo> and C<hi> may be negative or bigints.  For native-range
+non-negative inputs the function runs entirely in C.
 
 =head2 csrand
 

@@ -123,6 +123,7 @@ sub entropy_bytes {
 
 *urandomb = \&Math::Prime::Util::PP::urandomb;
 *urandomm = \&Math::Prime::Util::PP::urandomm;
+*urandomr = \&Math::Prime::Util::PP::urandomr;
 
 *sumdigits = \&Math::Prime::Util::PP::sumdigits;
 *todigits = \&Math::Prime::Util::PP::todigits;

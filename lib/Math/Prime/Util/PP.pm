@@ -138,6 +138,7 @@ our $_BIGINT;
 *Mstirling = \&Math::Prime::Util::stirling;
 *Mpowersum = \&Math::Prime::Util::powersum;
 *Murandomm = \&Math::Prime::Util::urandomm;
+*Murandomr = \&Math::Prime::Util::urandomr;
 *Murandomb = \&Math::Prime::Util::urandomb;
 *Mnext_prime = \&Math::Prime::Util::next_prime;
 *Mprev_prime = \&Math::Prime::Util::prev_prime;
@@ -12814,6 +12815,18 @@ sub urandomm {
     do { $r = Murandomb($nbytes*8); } while $r >= $overflow;
   }
   return $r % $n;
+}
+
+sub urandomr {
+  my($lo, $hi) = @_;
+  validate_integer($lo);
+  validate_integer($hi);
+  return undef if $lo > $hi;  ## no critic qw(ProhibitExplicitReturnUndef)
+  return $lo if $lo == $hi;
+  # Only pass non-negative inputs to GMP (GMP backend requires non-negative).
+  return reftyped($_[0], Math::Prime::Util::GMP::urandomr($lo, $hi))
+    if $Math::Prime::Util::_GMPfunc{"urandomr"} && $lo >= 0;
+  Maddint($lo, Murandomm(Madd1int(Msubint($hi, $lo))));
 }
 
 sub random_prime {

@@ -92,6 +92,7 @@ plan tests => 2 +  # require_ok
               1 +  # rationals
               1 +  # Goldbach
               1 +  # config
+              1 +  # random
               1;   # $_ is ok
 
 use Math::Prime::Util qw/:all/;
@@ -1584,6 +1585,35 @@ subtest 'config', sub {
   is(prime_get_config->{'assume_rh'}, 1, "We are now assuming it");
 };
 
+subtest 'random', sub {
+  my $r;
+
+  $r = urandomr(3, 7);
+  ok( defined($r) && $r >= 3 && $r <= 7, "urandomr(3,7) in range" );
+
+  #  irand
+  #  irand64
+  #  drand
+  #  random_bytes
+  #  entropy_bytes
+  #  urandomb
+  #  urandomm
+  #  csrand
+  #  rand
+  #  random_factored_integer
+  #
+  #  random_prime
+  #  random_ndigit_prime
+  #  random_nbit_prime
+  #  random_safe_prime
+  #  random_strong_prime
+  #  random_proven_prime
+  #  random_maurer_prime
+  #  random_shawe_taylor_prime
+  #  random_unrestricted_semiprime
+  #  random_semiprime
+};
+
 # Not here:
 #  is_provable_prime
 #  is_provable_prime_with_cert
@@ -1591,28 +1621,6 @@ subtest 'config', sub {
 #  verify_prime
 #
 #  print_primes
-#
-#  irand
-#  irand64
-#  drand
-#  random_bytes
-#  entropy_bytes
-#  urandomb
-#  urandomm
-#  csrand
-#  rand
-#  random_factored_integer
-#
-#  random_prime
-#  random_ndigit_prime
-#  random_nbit_prime
-#  random_safe_prime
-#  random_strong_prime
-#  random_proven_prime
-#  random_maurer_prime
-#  random_shawe_taylor_prime
-#  random_unrestricted_semiprime
-#  random_semiprime
 
 
 # foralmostprimes {...} k,[beg,],end  loop over k-almost-primes in range

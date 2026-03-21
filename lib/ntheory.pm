@@ -183,6 +183,7 @@ Tags:
   entropy_bytes(n)                    string with n entropy-source bytes
   urandomb(n)                         random integer less than 2^n
   urandomm(n)                         random integer less than n
+  urandomr(lo,hi)                     random integer in [lo,hi] inclusive
   csrand(data)                        seed the CSPRNG with binary data
   srand([seed])                       simple seed (exported with :rand)
   rand([limit])                       alias for drand (exported with :rand)
