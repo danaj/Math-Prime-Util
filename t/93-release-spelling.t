@@ -27,7 +27,7 @@ add_stopwords(qw/-th
                  unoptimized unusably orderings
                  coprime summatory
                  RiemannR LambertW
-                 csrand srand irand irand64 drand urandomb urandomm
+                 csrand srand irand irand64 drand urandomb urandomm urandomr
                  forprimes forcomposites foroddcomposites fordivisors
                  forpart forcomp forcomb forperm forderange formultiperm forsetproduct
                  forsemiprimes forfactored foralmostprimes
@@ -45,7 +45,10 @@ add_stopwords(qw/-th
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
                  vecsample vecfreq vecsingleton vecslide vecprefixsum
                  vecsort vecsorti heapsort quicksort
-                 sqrtint logint rootint powint addint subint mulint divint cdivint modint negint absint divrem tdivrem fdivrem cdivrem
+                 toint
+                 sqrtint logint rootint powint addint subint mulint divint
+                 cdivint modint negint absint divrem tdivrem fdivrem cdivrem
+                 muladdint mulsubint
                  qnr cornacchia
                  todigits todigitstring fromdigits sumdigits hammingweight
                  tozeckendorf fromzeckendorf

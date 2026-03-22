@@ -376,20 +376,6 @@ static const gmp_info_t gmp_info[] = {
 
 /******************************************************************************/
 
-#if BITS_PER_WORD == 32
-  static const unsigned int uvmax_maxlen = 10;
-  static const unsigned int ivmax_maxlen = 10;
-  static const char uvmax_str[] = "4294967295";
-  /* static const char ivmax_str[] = "2147483648"; */
-  static const char ivmin_str[] = "2147483648";
-#else
-  static const unsigned int uvmax_maxlen = 20;
-  static const unsigned int ivmax_maxlen = 19;
-  static const char uvmax_str[] = "18446744073709551615";
-  /* static const char ivmax_str[] =  "9223372036854775808"; */
-  static const char ivmin_str[] =  "9223372036854775808";
-#endif
-
 #define MY_CXT_KEY "Math::Prime::Util::API_guts"
 #define CINTS 100
 typedef struct {
@@ -421,6 +407,107 @@ static int _is_sv_bigint(pTHX_ SV* n)
 
 /******************************************************************************/
 
+#if BITS_PER_WORD == 32
+  static const unsigned int uvmax_maxlen = 10;
+  static const unsigned int ivmax_maxlen = 10;
+  static const char uvmax_str[] = "4294967295";
+  /* static const char ivmax_str[] = "2147483648"; */
+  static const char ivmin_str[] = "2147483648";
+  static const NV nvuvmaxval =  4294967295.0;
+  static const NV nvivminval = -2147483648.0;
+#else
+  static const unsigned int uvmax_maxlen = 20;
+  static const unsigned int ivmax_maxlen = 19;
+  static const char uvmax_str[] = "18446744073709551615";
+  /* static const char ivmax_str[] =  "9223372036854775808"; */
+  static const char ivmin_str[] =  "9223372036854775808";
+  /* TODO, why not             562949953421312 or nvmantbits? */
+  static const NV nvuvmaxval =  70368744177664.0;  /* 2^46 */
+  static const NV nvivminval = -35184372088832.0;  /* -2^45 */
+#endif
+
+
+#define SNUMFLAG_UV       0x00000000U
+#define SNUMFLAG_NEG      0x00000001U
+#define SNUMFLAG_BIGINT   0x00000002U
+#define SNUMFLAG_FP       0x00000004U
+#define SNUMFLAG_INVALID  0x00000008U
+
+/* Parse any numeric string.  Returns:
+ *   SNUMFLAG_UV               non-negative integer, fits in UV
+ *   SNUMFLAG_NEG              negative integer, fits in IV
+ *   SNUMFLAG_BIGINT [|NEG]    integer too large for native word
+ *   SNUMFLAG_FP    [|NEG]     valid floating-point (non-integer) number
+ *   SNUMFLAG_INVALID          not a valid number
+ *
+ * There is a good argument that we should be using Perl's numeric.c functions.
+ */
+static uint32_t _parse_strnum(const char* s, STRLEN len)
+{
+  STRLEN i = 0, sig_start;
+  STRLEN maxlen;
+  const char* maxstr;
+  uint32_t flag = 0;
+  int had_zeros = 0;
+
+  if (s == 0 || len == 0) return SNUMFLAG_UV;   /* null/empty → 0 */
+
+  /* Sign */
+  if      (s[i] == '-') { flag |= SNUMFLAG_NEG; i++; }
+  else if (s[i] == '+') { i++; }
+  if (i > 0 && i == len) return SNUMFLAG_INVALID;  /* lone sign character */
+
+  /* Strip leading zeros, noting if any existed */
+  while (i < len && s[i] == '0') { i++; had_zeros = 1; }
+  if (i == len) return SNUMFLAG_UV;      /* zero */
+  sig_start = i;
+
+  /* Scan integer digits */
+  while (i < len && isDIGIT(s[i])) i++;
+
+  if (i == len) {
+    /* Pure integer: range check */
+    STRLEN sig_len = i - sig_start;
+    if (flag & SNUMFLAG_NEG) { maxlen = ivmax_maxlen; maxstr = ivmin_str; }
+    else                     { maxlen = uvmax_maxlen; maxstr = uvmax_str; }
+    if (sig_len > maxlen) return flag | SNUMFLAG_BIGINT;
+    if (sig_len == maxlen) {
+      STRLEN j;
+      for (j = 0; j < maxlen; j++)
+        if (s[sig_start + j] != maxstr[j]) break;
+      if (j < maxlen && s[sig_start + j] > maxstr[j])
+        return flag | SNUMFLAG_BIGINT;
+    }
+    return flag;   /* SNUMFLAG_UV or SNUMFLAG_NEG */
+  }
+
+  /* Not a pure integer — try to parse as float */
+  /*   [+-]? digit* (. digit*)? ([eE] [+-]? digit+)? */
+  {
+    int has_frac = 0;
+    int has_int  = (i > sig_start || had_zeros);  /* had any integer digits? */
+
+    if (i < len && s[i] == '.') {
+      i++;
+      while (i < len && isDIGIT(s[i])) { i++; has_frac = 1; }
+    }
+
+    /* Reject lone ".", ".e5", bare "e5", etc. */
+    if (!has_int && !has_frac) return SNUMFLAG_INVALID;
+
+    if (i < len && (s[i] == 'e' || s[i] == 'E')) {
+      i++;
+      if (i < len && (s[i] == '+' || s[i] == '-')) i++;
+      if (i >= len || !isDIGIT(s[i])) return SNUMFLAG_INVALID;
+      while (i < len && isDIGIT(s[i])) i++;
+    }
+
+    return (i == len) ? flag | SNUMFLAG_FP : SNUMFLAG_INVALID;
+  }
+}
+
+/******************************************************************************/
+
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
  * Returns 0 if it is an object or a string too large for a UV.
@@ -430,10 +517,9 @@ static int _is_sv_bigint(pTHX_ SV* n)
 static int _validate_int(pTHX_ SV* n, int negok)
 {
   const char* mustbe = (negok) ? "must be an integer" : "must be a non-negative integer";
-  const char* maxstr;
-  char* ptr;
+  const char* maxstr, *sptr;
   STRLEN i, len, maxlen;
-  int ret, isbignum = 0, isneg = 0;
+  uint32_t stype, isbignum = 0;
 
   /* TODO: magic, grok_number, etc. */
   if (SVNUMTEST(n)) { /* If defined as number, use it */
@@ -446,33 +532,16 @@ static int _validate_int(pTHX_ SV* n, int negok)
     if (!isbignum) return 0;
   }
   if (!SvOK(n))  croak("Parameter must be defined");
-  if (SvGAMAGIC(n) && !isbignum)   ptr = SvPV(n, len);
-  else                             ptr = SvPV_nomg(n, len);
-  if (len == 0 || ptr == 0)  croak("Parameter %s", mustbe);
-  if (ptr[0] == '-' && negok) {
-    isneg = 1; ptr++; len--;           /* Read negative sign */
-  } else if (ptr[0] == '+') {
-    ptr++; len--;                      /* Allow a single plus sign */
+  if (SvGAMAGIC(n) && !isbignum)   sptr = SvPV(n, len);
+  else                             sptr = SvPV_nomg(n, len);
+  if (len == 0 || sptr == 0)  croak("Parameter %s", mustbe);
+  stype = _parse_strnum(sptr, len);
+  if (stype == SNUMFLAG_UV)      return 1;
+  if (negok || !(stype & SNUMFLAG_NEG)) {
+    if (stype == SNUMFLAG_NEG)   return -1;
+    if (stype & SNUMFLAG_BIGINT) return 0;
   }
-  /* Empty string or non-numeric */
-  if (len == 0 || !isDIGIT(ptr[0])) croak("Parameter '%" SVf "' %s", n, mustbe);
-  /* Leading zeros and if left with only zero */
-  while (len > 0 && *ptr == '0')       /* Strip all leading zeros */
-    { ptr++; len--; }
-  if (len == 0)                        /* 0 or -0 */
-    return 1;
-  /* We're going to look more carefully at the string to ensure it's a number */
-  if (isneg) { ret = -1;  maxlen = ivmax_maxlen;  maxstr = ivmin_str; }
-  else       { ret =  1;  maxlen = uvmax_maxlen;  maxstr = uvmax_str; }
-  for (i = 0; i < len; i++)            /* Ensure all characters are digits */
-    if (!isDIGIT(ptr[i]))
-      croak("Parameter '%" SVf "' %s", n, mustbe);
-  if (len > maxlen)  return 0;         /* Obvious bigint */
-  if (len < maxlen)  return ret;       /* Valid small integer */
-  for (i = 0; i < maxlen; i++)         /* Check if in range */
-    if (ptr[i] != maxstr[i])
-      return ptr[i] < maxstr[i] ? ret : 0;
-  return ret;                          /* value = UV_MAX/UV_MIN.  That's ok */
+  croak("Parameter '%" SVf "' %s", n, mustbe);
 }
 
 #define IFLAG_ANY      0x00000000U
@@ -3277,6 +3346,56 @@ void urandomr(IN SV* svlo, IN SV* svhi)
     }
     DISPATCHPP();
     objectify_result(aTHX_ svlo, ST(0));
+    XSRETURN(1);
+
+void toint(IN SV* svn)
+  PREINIT:
+    const char *s;
+    STRLEN len;
+    uint32_t stype;
+  PPCODE:
+    if (!SvOK(svn)) XSRETURN_UV(0);  /* undef returns 0 without warning */
+    /* Fastest path: if it is already a native int then we're done. */
+    /* TODO: verify 5.6.2 */
+    if (SVNUMTEST(svn)) {
+      if (SvIsUV(svn)) XSRETURN_UV(SvUVX(svn));
+      XSRETURN_IV(SvIVX(svn));
+    }
+    /* Simple NV within native UV/IV range — truncate toward zero */
+    if (SvNOK(svn) && !SvROK(svn)) {
+      NV x = SvNV(svn);
+      /* This is a NV, there is no way to recover possible lost precision */
+      if (x >= 0.0 && x < (NV)UV_MAX + 1.0) XSRETURN_UV((UV)x);
+      if (x <  0.0 && x > (NV)IV_MIN - 1.0) XSRETURN_IV((IV)x);
+    }
+    /* Get the string and determine what kind of number it is */
+    s = SvPV(svn, len);
+    if (s == 0 || len == 0) XSRETURN_UV(0);  /* Empty string return 0 */
+    stype = _parse_strnum(s, len);
+
+    if (stype == SNUMFLAG_UV)  XSRETURN_UV(PSTRTOULL(s, NULL, 10));
+    if (stype == SNUMFLAG_NEG) XSRETURN_IV(PSTRTOLL(s,NULL,10));
+
+    if (stype & SNUMFLAG_FP) {
+      NV x = SvNV(svn);  /* This might lose user precision, so check */
+      if (x >= 0.0 && x < nvuvmaxval+1.0) XSRETURN_UV((UV)x);
+      if (x <  0.0 && x > nvivminval-1.0) XSRETURN_IV((IV)x);
+      /* Doesn't fit, so go through Math::BigFloat */
+      ST(0) = call_sv_to_func(aTHX_ svn, "Math::Prime::Util::_int_from_float");
+      XSRETURN(1);
+    }
+    if (stype & SNUMFLAG_BIGINT) {
+      /* TODO: this assumes the input bigint is the correct class */
+      if (!sv_isobject(svn) || !_is_sv_bigint(aTHX_ svn)) {
+        /* Not a bigint object, so convert it to one. */
+        /* CALLROOTSUB_ONE_SCALAR("_to_bigint"); */
+        /* ST(0) = sv_to_bigint(aTHX_ sv_2mortal(newSVpv(s,len))); */
+        ST(0) = sv_to_bigint(aTHX_ svn);
+      }
+      XSRETURN(1);
+    }
+    /* It doesn't look like a number, but let Math::BigFloat decide. */
+    ST(0) = call_sv_to_func(aTHX_ svn, "Math::Prime::Util::_int_from_float");
     XSRETURN(1);
 
 void pisano_period(IN SV* svn)

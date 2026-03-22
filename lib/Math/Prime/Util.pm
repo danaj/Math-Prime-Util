@@ -36,7 +36,7 @@ our @EXPORT_OK =
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime
-      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
+      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint toint
       signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
@@ -359,6 +359,34 @@ sub _bigint_to_int {
   return (OLD_PERL_VERSION && $_[0] >= 0) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
                             : int("$_[0]");
 }
+sub _int_from_float {
+  my $rs = "$_[0]";
+  my($r,$n);
+  if (ref($_[0]) eq 'Math::BigFloat') {
+    $r = $_[0]->copy;
+  } else {
+    if ($rs =~ /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/) {
+      my $rf = 0.0 + $rs;
+      # Use *very* conservative thresholds rather than 1 << _nvmantbits().
+      return int($rf)
+        if ($rf >= 0 && $rf < (MPU_32BIT ?  4294967295 :  70368744177664)) ||
+           ($rf <  0 && $rf > (MPU_32BIT ? -2147483648 : -35184372088832));
+    }
+    # Otherwise, load up the slow but reliable module
+    do { require Math::BigFloat; Math::BigFloat->import(); }
+      unless defined $Math::BigFloat::VERSION;
+    $r = Math::BigFloat->new($rs);
+  }
+  # Take the Math::BigFloat $r, truncate and make $n the integer string
+  if (Math::BigFloat->can('bint')) { $n = $r->bint->as_int->bstr; }
+  elsif ($r->is_non_negative)      { $n = $r->bfloor->as_int->bstr; }
+  else                             { $n = $r->bceil->as_int->bstr; }
+  croak "toint: '$rs' is not a valid number" if $n =~ tr/-0-9//c;
+  # Turn $n into either a native int or proper-class bigint.
+  _validate_integer($n);
+  return $n;
+}
+
 sub _to_bigint {
   return undef unless defined($_[0]);
   _load_bigint() unless defined $_BIGINT;
@@ -3191,6 +3219,22 @@ Given integer C<n>, return C<|n|>, i.e. the absolute value of C<n>.
 =head2 negint
 
 Given integer C<n>, return C<-n>.
+
+=head2 toint
+
+  $n = toint(3.7);        # 3     (truncate toward zero, like int())
+  $n = toint(-3.7);       # -3
+  $n = toint("42");       # 42    (integer string)
+  $n = toint("3.7");      # 3     (float string)
+  $n = toint($bigfloat);  # truncated, returned as native or bigint
+  $n = toint($bigint);    # native if it fits, else our bigint type
+
+Convert any numeric value to an integer by truncating toward zero.
+Returns a native integer if the result fits in a Perl native integer
+(UV or IV), otherwise returns the configured bigint type.
+
+Truncation toward zero is done, just like Perl's C<int(n)> or an integer
+cast in C.
 
 
 =head2 fibonacci

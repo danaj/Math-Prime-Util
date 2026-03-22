@@ -260,6 +260,7 @@ Tags:
 
 =head2 MATH
 
+  toint(n)                            truncate value to integer (best form)
   todigits(n[,base[,len]])            convert n to digit array in base
   todigitstring(n[,base[,len]])       convert n to string in base
   fromdigits(\@d,[,base])             convert base digit vector to number

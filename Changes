@@ -26,6 +26,7 @@ Revision history for Perl module Math::Prime::Util
     - bestrational(x,dbound)          best rational (p,q) for x with q<=dbound
     - muladdint(n,m,a)                signed integer n*m + a
     - mulsubint(n,m,a)                signed integer n*m - a
+    - toint(n)                        truncate input to integer (best form)
     - urandomr(lo,hi)                 random integer in [lo,hi] inclusive
 
     [FUNCTIONALITY AND PERFORMANCE]

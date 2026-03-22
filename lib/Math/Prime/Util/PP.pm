@@ -76,6 +76,7 @@ our $_BIGINT;
 *maybetobigintall = \&Math::Prime::Util::_maybe_bigint_allargs;
 *getconfig = \&Math::Prime::Util::prime_get_config;
 
+*Mtoint = \&Math::Prime::Util::toint;
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
 *Madd1int = \&Math::Prime::Util::add1int;
@@ -138,7 +139,6 @@ our $_BIGINT;
 *Mstirling = \&Math::Prime::Util::stirling;
 *Mpowersum = \&Math::Prime::Util::powersum;
 *Murandomm = \&Math::Prime::Util::urandomm;
-*Murandomr = \&Math::Prime::Util::urandomr;
 *Murandomb = \&Math::Prime::Util::urandomb;
 *Mnext_prime = \&Math::Prime::Util::next_prime;
 *Mprev_prime = \&Math::Prime::Util::prev_prime;
@@ -189,10 +189,6 @@ if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION
   *Sdivint = \&Math::Prime::Util::divint;
   *Spowint = \&Math::Prime::Util::powint;
 }
-
-# We don't have this function yet.  Use a simple version for now.
-*Mtoint = \&_toint_simple;
-
 
 sub _is_nonneg_int {
   ((defined $_[0]) && $_[0] ne '' && ($_[0] !~ tr/0123456789//c));
@@ -357,53 +353,40 @@ sub _binary_search {
 
 ################################################################################
 
-# TODO: this is in progress.
-#   It's TBD what should be done on failures (undef? croak?)
-#   Handling of trivial floats is terrible.
-#   A single native int should be as fast as possible
-sub _toint {
-  my @v = @_;  # copy them all
-  my @out;
-  for my $v (@v) {
-    if (!defined $v) { push @out, 0; next; }
-    if (ref($v)) {
-      $v = $v->as_int() if ref($v) eq 'Math::BigFloat';
-    } elsif ($v =~ /^[+-]?\d+\z/) {
-      # Good as-is
-    } elsif ($v =~ /e/i || $v =~ /\./) {
-      $v = _upgrade_to_float($v)->as_int();
-    } else {
-      $v = int($v);
-    }
-    if ($v =~ /^nan\z/i) { push @out, undef; next; }
-
-    validate_integer($v);
-    push @out, $v;
-  }
-  @out;
+sub _truncate_bigfloat_to_string {
+  return $_[0]->copy->bint->as_int->bstr if Math::BigFloat->can('bint');
+  return $_[0]->copy->bfloor->as_int->bstr if $_[0]->is_non_negative;
+  return $_[0]->copy->bceil->as_int->bstr;
 }
 
-sub _toint_simple {
+sub toint {
+  croak "toint: requires an argument" unless @_;
   my($n) = @_;
-  if ($n >= 0) {
-    my $max = MPU_32BIT ? 4294967295 : 70368744177664;  # 2^46
-    if ($n =~ /^[+]?\d+\z/) {
-      return int("$n") if $n < $max;
-    } elsif ($n < $max) {
-      return int("$n");
-    } else {
-      $n = "" . _upgrade_to_float("$n")->bfloor;
-    }
+  return 0 unless defined $n && length("$n");   # undef and "" return 0
+  my $ns = "$n";
+
+  # Spiffy regex to parse decimal numbers, but we want to use Math::BigFloat
+  # $ns =~ /\A[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\z/;
+
+  if (ref($n)) {
+    $n = _truncate_bigfloat_to_string($n) if ref($n) eq 'Math::BigFloat';
   } else {
-    my $min = MPU_32BIT ? -2147483648 : -35184372088832;  # -2^45
-    if ($n =~ /^[-]\d+\z/) {
-      return int($n) if $n > $min;
-    } elsif ($n > $min) {
-      return int($n);
+    # Be careful with int($ns) on non-NV input, as it is limited to NV's
+    # precision.  On post-5.6.2 we should be able to use 1 << _nvmantbits()
+    # as the unsigned threshold, but for various reasons we are being very
+    # conservative.
+    # In XS we can safely and efficiently discover the full values.
+    if ($ns !~ tr/0-9//c) {
+      my $max = MPU_32BIT ?  4294967295 :  70368744177664;  # 2^46
+      return int($ns) if $n < $max;
+    } elsif ($ns =~ /\A[-]\d+\z/) {
+      my $min = MPU_32BIT ? -2147483648 : -35184372088832;  # -2^45
+      return int($ns) if $n > $min;
     } else {
-      $n = "" . _upgrade_to_float("$n")->bceil;
+      $n = _truncate_bigfloat_to_string(_upgrade_to_float($ns));
     }
   }
+  croak "toint: '$ns' is not a valid number" if $n =~ tr/-0-9//c;
   validate_integer($n);
   $n = tobigint($n) if ref($n) && defined $_BIGINT && ref($n) ne $_BIGINT;
   $n;

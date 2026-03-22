@@ -207,6 +207,7 @@ t/18-40-divmodrem.t
 t/18-50-sqrtint.t
 t/18-52-rootint.t
 t/18-60-logint.t
+t/18-70-toint.t
 t/18-90-int_rtype.t
 t/18-91-edge.t
 t/19-chebyshev.t

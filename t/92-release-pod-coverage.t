@@ -65,7 +65,7 @@ sub mpu_public_regex {
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime
-      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint
+      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint toint
       signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
@@ -174,7 +174,7 @@ sub mpu_factor_regex {
 sub mpu_PPM_regex {
   my @funcs = qw(
       Maddint Msubint Mmulint Mdivint Mcdivint Mpowint Mabsint Mnegint
-      Madd1int Msub1int
+      Madd1int Msub1int Mmuladdint Mmulsubint
       Mdivrem Mtdivrem
       Mmodint Mlogint Mrootint Msqrtint Mcmpint
       Mlshiftint Mrshiftint
