@@ -30,6 +30,8 @@
 #include "lucas_seq.h"
 #include "factor.h"
 #include "totients.h"
+#include "moebius.h"
+#include "factmod.h"
 #include "lehmer.h"
 #include "lmo.h"
 #include "legendre_phi.h"

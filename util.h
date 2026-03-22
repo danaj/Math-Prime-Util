@@ -49,13 +49,6 @@ extern unsigned char* range_issquarefree(UV lo, UV hi);
 
 extern UV powersum(UV n, UV k) ISCONSTFUNC;
 
-extern signed char* range_moebius(UV low, UV high);
-extern signed char* range_liouville(UV low, UV high);
-
-extern int liouville(UV n);
-extern IV  mertens(UV n);
-extern IV  sumliouville(UV n);
-
 extern int kronecker_uu(UV a, UV b) ISCONSTFUNC;
 extern int kronecker_su(IV a, UV b) ISCONSTFUNC;
 extern int kronecker_ss(IV a, IV b) ISCONSTFUNC;
@@ -96,15 +89,11 @@ extern UV ivmod(IV a, UV n) ISCONSTFUNC;       /* Returns a mod n (trunc) */
 
 extern bool muladd128(IV* hi, UV* lo, UV n, UV m, UV a, int nsign, int msign, int asign);
 
-extern UV   carmichael_lambda(UV n);
-extern int  moebius(UV n);
 extern UV   exp_mangoldt(UV n);
 extern UV   znprimroot(UV n);
 extern UV   znorder(UV a, UV n);
 /* nprime says to assume n = p or n = 2p.  Skips power and primality tests. */
 extern bool is_primitive_root(UV a, UV n, bool nprime);
-extern UV   factorialmod(UV n, UV m);
-extern bool binomialmod(UV *res, UV n, UV k, UV m);
 
 extern bool is_square_free(UV n);
 extern bool is_perfect_number(UV n);

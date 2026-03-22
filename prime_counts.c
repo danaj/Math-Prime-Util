@@ -47,15 +47,6 @@ static const unsigned char prime_sieve30[] =
    0x3c,0xda,0xf5,0xcf};
 #define NPRIME_SIEVE30 (sizeof(prime_sieve30)/sizeof(prime_sieve30[0]))
 
-static const unsigned short primes_small[] =
-  {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
-   101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
-   193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
-   293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
-   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499};
-#define NPRIMES_SMALL (sizeof(primes_small)/sizeof(primes_small[0]))
-
-
 static const unsigned char byte_zeros[256] =
   {8,7,7,6,7,6,6,5,7,6,6,5,6,5,5,4,7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,
    7,6,6,5,6,5,5,4,6,5,5,4,5,4,4,3,6,5,5,4,5,4,4,3,5,4,4,3,4,3,3,2,
@@ -480,8 +471,8 @@ UV nth_prime_upper(UV n)
 {
   long double fn, flogn, flog2n, upper, c, d;
 
-  if (n < NPRIMES_SMALL)
-    return primes_small[n];
+  if (n < NPRIMES_TINY)
+    return primes_tiny[n];
   if (n >= MPU_MAX_PRIME_IDX)
     return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
@@ -567,8 +558,8 @@ UV nth_prime_lower(UV n)
   double fn, flogn, flog2n;
   UV plower;
 
-  if (n < NPRIMES_SMALL)
-    return primes_small[n];
+  if (n < NPRIMES_TINY)
+    return primes_tiny[n];
   if (n >= MPU_MAX_PRIME_IDX)
     return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
@@ -598,7 +589,7 @@ UV nth_prime_lower(UV n)
 
 UV nth_prime_approx(UV n)
 {
-  return (n < NPRIMES_SMALL)  ?  primes_small[n]  :  inverse_R(n);
+  return (n < NPRIMES_TINY)  ?  primes_tiny[n]  :  inverse_R(n);
 }
 
 
@@ -609,8 +600,8 @@ UV nth_prime(UV n)
   UV upper_limit, segbase, segment_size, p, count, target;
 
   /* If very small, return the table entry */
-  if (n < NPRIMES_SMALL)
-    return primes_small[n];
+  if (n < NPRIMES_TINY)
+    return primes_tiny[n];
   if (n >= MPU_MAX_PRIME_IDX)
     return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 

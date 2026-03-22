@@ -65,6 +65,8 @@ WriteMakefile1(
                     'rootmod.o '      .
                     'sort.o '         .
                     'totients.o '     .
+                    'moebius.o '      .
+                    'factmod.o '      .
                     'util.o '         .
                     'inverse_interpolate.o ' .
                     'entropy.o '      .

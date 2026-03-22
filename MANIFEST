@@ -43,6 +43,8 @@ ds_iset.h
 ds_iset.c
 entropy.h
 entropy.c
+factmod.h
+factmod.c
 factor.h
 factor.c
 goldbach.h
@@ -60,6 +62,8 @@ lucas_seq.h
 lucas_seq.c
 lucky_numbers.h
 lucky_numbers.c
+moebius.h
+moebius.c
 omega_primes.h
 omega_primes.c
 perfect_powers.h

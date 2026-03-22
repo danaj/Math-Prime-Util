@@ -12,6 +12,8 @@ extern int sumtotient128(UV n, UV *hisum, UV *losum);
 
 extern UV  jordan_totient(UV k, UV n);
 
+extern UV  carmichael_lambda(UV n);
+
 extern UV  dedekind_psi(UV n);
 
 extern bool is_totient(UV n);

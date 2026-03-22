@@ -10,6 +10,7 @@
 #include "powerfree.h"
 #include "util.h"
 #include "factor.h"
+#include "moebius.h"
 #include "real.h"
 
 static INLINE UV T(UV n) {

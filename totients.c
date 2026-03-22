@@ -4,6 +4,7 @@
 
 #define FUNC_isqrt 1
 #define FUNC_ipow 1
+#define FUNC_lcm_ui 1
 #include "ptypes.h"
 #include "sort.h"
 #include "totients.h"
@@ -322,6 +323,10 @@ int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
   if (n <= 2)  { *hi_sum = 0;  *lo_sum = n; return 1; }
   /* sumtotient(2^64-1) < 2^128, so we can't overflow. */
 
+  /* I tried the algorithm from https://arxiv.org/abs/2506.07386v1.
+   * It uses less memory, but it came out 2 to 5 times slower.
+   * Probably still worth investigating later. */
+
   cbrtn = icbrt(n);
   csize = 0.6 * cbrtn * cbrtn;
   hsize = 8 * cbrtn;         /* 12.5% filled with csize = 1 * n^(2/3) */
@@ -396,6 +401,46 @@ UV jordan_totient(UV k, UV n) {
       totient *= pk;
   }
   return totient;
+}
+
+/******************************************************************************/
+
+UV carmichael_lambda(UV n) {
+  const unsigned char _totient[8] = {0,1,1,2,2,4,2,6};
+  uint32_t i;
+  UV lambda = 1;
+
+  if (n < 8) return _totient[n];
+  if ((n & (n-1)) == 0) return n >> 2;
+
+  i = ctz(n);
+  if (i > 0) {
+    n >>= i;
+    lambda <<= (i>2) ? i-2 : i-1;
+  }
+  {
+#if 1 /* This is very slightly faster */
+    UV fac[MPU_MAX_FACTORS+1];
+    uint32_t nfactors = factor(n, fac);
+    for (i = 0; i < nfactors; i++) {
+      UV p = fac[i], pk = p-1;
+      while (i+1 < nfactors && p == fac[i+1]) {
+        i++;
+        pk *= p;
+      }
+      lambda = lcm_ui(lambda, pk);
+    }
+#else
+    factored_t nf = factorint(n);
+    for (i = 0; i < nf.nfactors; i++) {
+      UV p = nf.f[i], pk = p-1, e = nf.e[i];
+      while (e-- > 1)
+        pk *= p;
+      lambda = lcm_ui(lambda, pk);
+    }
+#endif
+  }
+  return lambda;
 }
 
 /******************************************************************************/
