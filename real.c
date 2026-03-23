@@ -749,9 +749,8 @@ NV chebyshev_psi(UV n)
   UV k;
   SUM_INIT(sum);
 
-  for (k = log2floor(n); k > 0; k--) {
+  for (k = log2floor(n); k > 0; k--)
     SUM_ADD(sum, chebyshev_theta(rootint(n,k)));
-  }
   return SUM_FINAL(sum);
 }
 
@@ -894,10 +893,16 @@ NV chebyshev_theta(UV n)
   LNV initial_sum, prod = LNV_ONE;
   SUM_INIT(sum);
 
-  if (n < 500) {
-    for (i = 1;  (tp = primes_tiny[i]) <= n; i++) {
-      SUM_ADD(sum, loglnv(tp));
+  if (n < primes_small[NPRIMES_SMALL-1]) {
+    for (i = 1;  (tp = primes_small[i]) <= n; i++) {
+      if (i % 4) {
+        prod *= (LNV) tp;
+      } else {
+        SUM_ADD(sum, loglnv(prod));
+        prod = (LNV) tp;
+      }
     }
+    if (prod > LNV_ONE) SUM_ADD(sum, loglnv(prod));
     return SUM_FINAL(sum);
   }
 

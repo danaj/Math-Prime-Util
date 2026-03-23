@@ -471,8 +471,8 @@ UV nth_prime_upper(UV n)
 {
   long double fn, flogn, flog2n, upper, c, d;
 
-  if (n < NPRIMES_TINY)
-    return primes_tiny[n];
+  if (n < NPRIMES_SMALL)
+    return primes_small[n];
   if (n >= MPU_MAX_PRIME_IDX)
     return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
@@ -558,8 +558,8 @@ UV nth_prime_lower(UV n)
   double fn, flogn, flog2n;
   UV plower;
 
-  if (n < NPRIMES_TINY)
-    return primes_tiny[n];
+  if (n < NPRIMES_SMALL)
+    return primes_small[n];
   if (n >= MPU_MAX_PRIME_IDX)
     return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 
@@ -589,7 +589,7 @@ UV nth_prime_lower(UV n)
 
 UV nth_prime_approx(UV n)
 {
-  return (n < NPRIMES_TINY)  ?  primes_tiny[n]  :  inverse_R(n);
+  return (n < NPRIMES_SMALL)  ?  primes_small[n]  :  inverse_R(n);
 }
 
 
@@ -600,8 +600,8 @@ UV nth_prime(UV n)
   UV upper_limit, segbase, segment_size, p, count, target;
 
   /* If very small, return the table entry */
-  if (n < NPRIMES_TINY)
-    return primes_tiny[n];
+  if (n < NPRIMES_SMALL)
+    return primes_small[n];
   if (n >= MPU_MAX_PRIME_IDX)
     return n == MPU_MAX_PRIME_IDX  ?  MPU_MAX_PRIME  :  0;
 

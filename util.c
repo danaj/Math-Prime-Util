@@ -5,8 +5,8 @@
 
 #include "ptypes.h"
 #define FUNC_isqrt 1
-#define FUNC_lcm_ui 1
 #define FUNC_ctz 1
+#define FUNC_gcd_ui 1
 #define FUNC_log2floor 1
 #define FUNC_is_perfect_square
 #define FUNC_next_prime_in_sieve 1
@@ -131,13 +131,27 @@ static const unsigned char prime_sieve30[] =
    0x3c,0xda,0xf5,0xcf};
 #define NPRIME_SIEVE30 (sizeof(prime_sieve30)/sizeof(prime_sieve30[0]))
 
-/* Small table of primes; primes_tiny[0]=0 (sentinel), then 2, 3, 5, 7, ...503 */
-const unsigned short primes_tiny[] =
+/* Small table of primes; primes_small[0]=0 then 2, 3, 5, 7, ... 2011 */
+const unsigned short primes_small[] =
   {0,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
    101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
    193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
    293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
-   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503};
+   409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,
+   521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,
+   641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,
+   757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,
+   881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,
+   1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069,1087,1091,1093,
+   1097,1103,1109,1117,1123,1129,1151,1153,1163,1171,1181,1187,1193,1201,
+   1213,1217,1223,1229,1231,1237,1249,1259,1277,1279,1283,1289,1291,1297,
+   1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,1399,1409,1423,1427,
+   1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,1489,1493,1499,
+   1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,
+   1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,1709,
+   1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,
+   1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,
+   1949,1951,1973,1979,1987,1993,1997,1999,2003,2011};
 
 /* Return true if n is prime, false if not.  Do it fast. */
 bool is_prime(UV n)
@@ -1210,7 +1224,7 @@ bool is_semiprime(UV n) {
   /* 27% of random inputs left */
   n3 = icbrt(n);
   for (sp = 4; sp < 60; sp++) {
-    p = primes_tiny[sp];
+    p = primes_small[sp];
     if (p > n3)
       break;
     if ((n % p) == 0)
@@ -1243,14 +1257,14 @@ bool is_almost_prime(UV k, UV n) {
   while (k > 0 && !(n% 7)) { k--; n /=  7; }
   p = 11;
   if (k >= 5) {
-    for (sp = 5; k > 1 && n > 1 && sp < NPRIMES_TINY-1; sp++) {
-      p = primes_tiny[sp];
+    for (sp = 5; k > 1 && n > 1 && sp < NPRIMES_SMALL-1; sp++) {
+      p = primes_small[sp];
       if (n < ipowsafe(p,k))
         return 0;
       while ((n % p) == 0 && k > 0)
         { k--; n /= p; }
     }
-    p = primes_tiny[sp];
+    p = primes_small[sp];
   }
   if (k == 0) return (n == 1);
   if (k == 1) return is_prob_prime(n);
@@ -2559,8 +2573,8 @@ UV consecutive_integer_lcm(UV n)
 
   ilcm = 1;
   sqrtn = isqrt(n);
-  for (i = 1; i < NPRIMES_TINY; i++) {
-    uint32_t p = primes_tiny[i];
+  for (i = 1; i < NPRIMES_SMALL; i++) {
+    uint32_t p = primes_small[i];
     if (p > n) break;
     if (p <= sqrtn) p = ipow(p, logint(n,p));
     if (ilcm > UV_MAX/p) return 0;
@@ -2789,13 +2803,14 @@ bool is_smooth(UV n, UV k) {
 
   SMOOTH_TEST(n, k, 3,  5);  /* after this, k >=  5, n > 3*3 */
   SMOOTH_TEST(n, k, 5,  7);  /* after this, k >=  7, n > 5*5 */
-  SMOOTH_TEST(n, k, 7, 11);  /* after this, k >= 11, n > 7*7 */
 
-  /* Remove tiny factors.  Tests to 499. */
-  for (i = 5, pn = primes_tiny[i]; i < NPRIMES_TINY-1; i++) {
-    p = pn;  pn = primes_tiny[i+1];
+  /* Remove tiny factors. */
+  for (i = 4; i < NPRIMES_SMALL-1; i++) {
+    p  = primes_small[i];
+    pn = primes_small[i+1];
     SMOOTH_TEST(n, k, p, pn);
-  }
+    if (pn >= 1000) break;      /* Tests to here */
+  }                                           /* suppose pn = 503, then ... */
   if (k < pn || n < pn*pn) return (n <= k);   /* k >= 503 and n >= 503*503. */
 
   if (is_prime(n)) return 0;

@@ -35,10 +35,10 @@
 #endif
 
 
-/* Small table of primes; 0,2,3,5,7,...   primes_tiny[n] is the nth prime.
- * Defined in util.c; 97 entries (index 0 + primes 2..503). */
-extern const unsigned short primes_tiny[];
-#define NPRIMES_TINY 97
+/* Small table of primes; 0,2,3,5,7,...   primes_small[n] is the nth prime.
+ * Defined in util.c; 306 entries (index 0 + primes 2..2011). */
+extern const unsigned short primes_small[];
+#define NPRIMES_SMALL 306
 
 /****************************************************************************/
 /* Configuration */

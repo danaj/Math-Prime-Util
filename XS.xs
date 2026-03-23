@@ -519,8 +519,8 @@ static uint32_t _parse_strnum(const char* s, STRLEN len)
 static int _validate_int(pTHX_ SV* n, int negok)
 {
   const char* mustbe = (negok) ? "must be an integer" : "must be a non-negative integer";
-  const char* maxstr, *sptr;
-  STRLEN i, len, maxlen;
+  const char* sptr;
+  STRLEN len;
   uint32_t stype, isbignum = 0;
 
   /* TODO: magic, grok_number, etc. */
@@ -2781,7 +2781,7 @@ void fibonacci(IN SV* svk)
       N = ix == 0 ? fibonacci_number(k) : lucas_number(k);
       if (k == 0 || N > 0) {
         /* fib(-n) = -fib(n) for even n, luc(-n) = -luc(n) for odd n */
-        if (kstatus == 1 || k % 2 != ix)
+        if (kstatus == 1 || k % 2 != (UV)ix)
           XSRETURN_UV(N);
         else if (N <= IV_MAX)
           XSRETURN_IV(-(IV)N);

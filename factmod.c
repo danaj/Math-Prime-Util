@@ -36,7 +36,7 @@ static UV _facmod(UV n, UV m) {
     void* ctx = start_segment_primes(7, n, &segment);
 
     for (i = 1; i <= 3; i++) {  /* Handle 2,3,5 assume n>=25*/
-      UV p = primes_tiny[i];
+      UV p = primes_small[i];
       res = mulmod(res, powmod(p,_powersin(p, n),m), m);
     }
     while (res!=0 && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
@@ -86,7 +86,7 @@ static UV _facmod_mont(UV n, UV m) {
     void* ctx = start_segment_primes(7, n, &segment);
 
     for (i = 1; i <= 3; i++) {  /* Handle 2,3,5 assume n>=25*/
-      UV p = primes_tiny[i];
+      UV p = primes_small[i];
       UV mp = mont_geta(p,m);
       res = mont_mulmod(res, mont_powmod(mp,_powersin(p,n),m), m);
     }
