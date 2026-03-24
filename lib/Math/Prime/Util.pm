@@ -288,6 +288,7 @@ sub prime_set_config {
       my $class = _load_bigint_class($value);
       if (defined $class) {
         $_BIGINT = $_Config{'bigintclass'} = $class;
+        Math::Prime::Util::_XS_set_bigint_class($_BIGINT) if $_Config{'xs'};
       } else {
         carp "ntheory could not load bigint class from '$value'"
           unless $param =~ /try/;
@@ -353,6 +354,7 @@ sub _load_bigint {
 
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
   $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
+  _XS_set_bigint_class($_BIGINT) if $_Config{'xs'};
 }
 
 sub _bigint_to_int {
@@ -3243,7 +3245,7 @@ cast in C.
 
 Given an integer C<k>, returns C<F(k)>, the C<k>-th Fibonacci
 number.  The sequence begins C<F(0)=0>, C<F(1)=1>, with each subsequent
-term the sum of the two preceding terms.  The sequence can be run in 
+term the sum of the two preceding terms.  The sequence can be run in
 reverse so negative C<k> is valid.
 
 This is equivalent to C<lucasu(1,-1,k)> but can be faster.

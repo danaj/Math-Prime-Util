@@ -388,6 +388,8 @@ typedef struct {
   void* randcxt;            /* per-thread csprng context */
   uint16_t forcount;        /* Track nesting level of for loops */
   char     forexit;         /* Boolean whether we should exit early */
+  const char* bigintname;   /* name of desired bigint class */
+  HV*         bigintstash;
 } my_cxt_t;
 
 START_MY_CXT
@@ -402,6 +404,28 @@ static int _is_sv_bigint(pTHX_ SV* n)
           strEQ(hvname, "Math::GMPq")   || strEQ(hvname, "Math::AnyNum") ||
           strEQ(hvname, "Math::Pari")   || strEQ(hvname, "Math::BigInt::Lite"))
         return 1;
+    }
+  }
+  return 0;
+}
+/* Related to above, this returns true if we should use overloaded operators
+ * (Perl's amagic) with this.  That would be if:
+ *
+ *   1) it's a bigint class
+ *   2) either no GMP backend enabled or it's faster in-place.
+ *
+ * This means Math::GMPz and Math::GMP, which are efficient.
+ */
+static int _bigint_use_amagic(pTHX_ SV* sv) {
+  if (sv_isobject(sv)) {
+    const char *hvname = HvNAME_get(SvSTASH(SvRV(sv)));
+    if (hvname != NULL) {
+      if (strEQ(hvname, "Math::GMPz") || strEQ(hvname, "Math::GMP"))
+        return 1;
+      if (strEQ(hvname, "Math::BigInt")      || strEQ(hvname, "Math::GMPq")  ||
+          strEQ(hvname, "Math::AnyNum")       || strEQ(hvname, "Math::Pari")  ||
+          strEQ(hvname, "Math::BigInt::Lite"))
+        return !_XS_get_callgmp();
     }
   }
   return 0;
@@ -805,6 +829,62 @@ static void objectify_result(pTHX_ SV* input, SV* output) {
   }
 }
 
+/* Takes an SV and returns a mortalized SV of the correct native/bigint form.
+ *
+ * INPUT                  OUTPUT           COMMENTS
+ * ---------------------  ---------------  -----------
+ * UV or IV               UV / IV          fast path
+ * string fits in UV/IV   UV / IV
+ * bigint object fits     UV / IV
+ * big string             BIGINT object
+ * BIGINT object          BIGINT object    no work needed
+ * other bigint class     BIGINT object    converted class
+ */
+static SV* xs_to_canonical(pTHX_ SV* sv) {
+  dMY_CXT;
+  const char* str;
+  STRLEN len;
+  uint32_t stype;
+
+  if (SVNUMTEST(sv)) return sv;
+
+  str = SvPV_nomg(sv, len);
+  stype = _parse_strnum(str, len);
+
+  if (stype == SNUMFLAG_UV)
+    return sv_2mortal(newSVuv((UV)PSTRTOULL(str, NULL, 10)));
+  if (stype == SNUMFLAG_NEG)
+    return sv_2mortal(newSViv((IV)PSTRTOLL(str, NULL, 10)));
+  if (stype & SNUMFLAG_BIGINT) {
+    /* If we've never been here before, lazy load the class */
+    if (!MY_CXT.bigintname)
+      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_load_bigint", 0, 0);
+    /* Check to see if it's already the right class */
+    if (sv_isobject(sv) && MY_CXT.bigintstash &&
+        SvSTASH(SvRV(sv)) == MY_CXT.bigintstash)
+      return sv;
+    /* Construct canonical bigint: MY_CXT.bigintname->new(str) */
+    if (MY_CXT.bigintname) {
+      dSP;
+      SV* r;
+      ENTER; SAVETMPS;
+      PUSHMARK(SP);
+      XPUSHs(sv_2mortal(newSVpv(MY_CXT.bigintname, 0)));
+      XPUSHs(sv_2mortal(newSVpvn(str, len)));
+      PUTBACK;
+      call_method("new", G_SCALAR);
+      SPAGAIN;
+      r = SvREFCNT_inc(POPs);
+      PUTBACK;
+      FREETMPS; LEAVE;
+      return sv_2mortal(r);
+    }
+  }
+  /* We can't understand the input.  Return it unchanged. */
+  croak("Invalid bigint result");
+  return sv;
+}
+
 static SV* call_sv_to_func(pTHX_ SV* r, const char* name) {
   dSP;  ENTER;  PUSHMARK(SP);
   XPUSHs(r);
@@ -823,6 +903,9 @@ static SV* sv_to_bigint_abs(pTHX_ SV* r) {
 }
 static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
   return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_nonneg");
+}
+static SV* sv_to_canonical(pTHX_ SV* r) {
+  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_canonical");
 }
 
 #define NEWSVINT(sign,v) (((sign) > 0) ? newSVuv(v) : newSViv(v))
@@ -854,7 +937,9 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
     else { \
       char str_[40]; \
       uint32_t slen_ = to_string_128(str_, hi, lo); \
-      ST(0) = sv_to_bigint( aTHX_ sv_2mortal(newSVpv(str_,slen_)) ); \
+      ST(0) = sv_2mortal(newSVpv(str_, slen_)); \
+      PL_stack_sp = PL_stack_base + ax; \
+      CALLROOTSUB_ONE_SCALAR("_to_bigint"); \
     } \
     XSRETURN(1); \
   } while(0)
@@ -912,6 +997,33 @@ static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
     ST(0) = sv_2mortal(newRV_noinc((SV*) av_)); \
     XSRETURN(1); \
   }
+
+#if 0
+#define TRY_MAGIC_UNARY(sv, op) \
+  do { \
+    if (_bigint_use_amagic(aTHX_ sv) && (SvGETMAGIC(sv),SvAMAGIC(sv))) { \
+      SV* tsv_ = amagic_call(sv, &PL_sv_undef, op, AMGf_noright|AMGf_unary); \
+      if (tsv_) { \
+        ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
+        XSRETURN(1); \
+      } \
+    } \
+  } while(0)
+#define TRY_MAGIC_BINARY(sva, svb, op) \
+  do { \
+    if ((_bigint_use_amagic(aTHX_ sva) && (SvGETMAGIC(sva),SvAMAGIC(sva))) || \
+        (_bigint_use_amagic(aTHX_ svb) && (SvGETMAGIC(svb),SvAMAGIC(svb))) ) { \
+      SV* tsv_ = amagic_call(sva, svb, op, 0); \
+      if (tsv_) { \
+        ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
+        XSRETURN(1); \
+      } \
+    } \
+  } while(0)
+#else
+#define TRY_MAGIC_UNARY(sv, op)
+#define TRY_MAGIC_BINARY(sva, svb, op)
+#endif
 
 /******************************************************************************/
 
@@ -1534,6 +1646,8 @@ BOOT:
       csprng_init_seed(MY_CXT.randcxt);
       MY_CXT.forcount = 0;
       MY_CXT.forexit = 0;
+      MY_CXT.bigintname = NULL;
+      MY_CXT.bigintstash = NULL;
    }
 }
 
@@ -1560,6 +1674,8 @@ PPCODE:
     /* NOTE:  There is no thread destroy, so these never get freed... */
     MY_CXT.forcount = 0;
     MY_CXT.forexit = 0;
+    MY_CXT.bigintname = NULL;
+    MY_CXT.bigintstash = NULL;
   }
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
@@ -1581,6 +1697,10 @@ PPCODE:
     SvREFCNT_dec_NN(sv);
   } /* stashes are owned by stash tree, no refcount on them in MY_CXT */
   Safefree(MY_CXT.randcxt); MY_CXT.randcxt = 0;
+  MY_CXT.forcount = 0;
+  MY_CXT.forexit = 0;
+  MY_CXT.bigintname = NULL;
+  MY_CXT.bigintstash = NULL;
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
 
 
@@ -1692,6 +1812,19 @@ UV _is_csprng_well_seeded()
     }
   OUTPUT:
     RETVAL
+
+void
+_XS_set_bigint_class(IN SV* sv)
+  CODE:
+    dMY_CXT;
+    if (!SvOK(sv) || SvCUR(sv) == 0) {
+      MY_CXT.bigintstash = NULL;
+      MY_CXT.bigintname  = NULL;
+    } else {
+      HV* stash = gv_stashsv(sv, GV_ADD);
+      MY_CXT.bigintstash = stash;
+      MY_CXT.bigintname  = HvNAME(stash);
+    }
 
 bool _validate_integer(SV* svn)
   ALIAS:
@@ -3390,9 +3523,7 @@ void toint(IN SV* svn)
       /* TODO: this assumes the input bigint is the correct class */
       if (!sv_isobject(svn) || !_is_sv_bigint(aTHX_ svn)) {
         /* Not a bigint object, so convert it to one. */
-        /* CALLROOTSUB_ONE_SCALAR("_to_bigint"); */
-        /* ST(0) = sv_to_bigint(aTHX_ sv_2mortal(newSVpv(s,len))); */
-        ST(0) = sv_to_bigint(aTHX_ svn);
+        CALLROOTSUB_ONE_SCALAR("_to_bigint");
       }
       XSRETURN(1);
     }
@@ -4646,6 +4777,11 @@ void addint(IN SV* sva, IN SV* svb)
       }
 #endif
     }
+    {
+      static const int amg_dispatch[] = {add_amg,subtr_amg,mult_amg,div_amg,modulo_amg,fallback_amg,fallback_amg,pow_amg};
+      if (amg_dispatch[ix] != fallback_amg)
+        TRY_MAGIC_BINARY(sva,svb,amg_dispatch[ix]);
+    }
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
@@ -4717,6 +4853,8 @@ void add1int(IN SV* svn)
       if (ix == 0 || (ix == 1 && (IV)n > IV_MIN))
         XSRETURN_IV( (ix==0) ? (IV)n+1 : (IV)n-1 );
     }
+    { dMY_CXT;  SV* svone = MY_CXT.const_int[2];
+      TRY_MAGIC_BINARY(svn, svone, ix==0 ? add_amg : subtr_amg); }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
@@ -4735,6 +4873,7 @@ void absint(IN SV* svn)
       if      (status == -1) XSRETURN_UV(neg_iv(n));
       else if (status ==  1) XSRETURN_IV(neg_iv(n));
     }
+    TRY_MAGIC_UNARY(svn, ix==0 ? abs_amg : neg_amg);
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
