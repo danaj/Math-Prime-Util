@@ -1973,69 +1973,6 @@ char* pidigits(uint32_t digits)
   return out;
 }
 
-static int strnum_parse(const char **sp, STRLEN *slen)
-{
-  const char* s = *sp;
-  STRLEN i = 0, len = *slen;
-  int neg = 0;
-
-  if (s != 0 && len > 0) {
-    neg = (s[0] == '-');
-    if (s[0] == '-' || s[0] == '+') { s++; len--; }
-    while (len > 0 && *s == '0') { s++; len--; }
-    if (len == 0) { s--; len = 1; neg = 0; }  /* value is 0 */
-    for (i = 0; i < len; i++)
-      if (!isDIGIT(s[i]))
-        break;
-  }
-  if (s == 0 || len == 0 || i < len) croak("Parameter must be an integer");
-  *sp = s;
-  *slen = len;
-  return neg;
-}
-int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen) {
-  STRLEN i;
-  int aneg = strnum_parse(&a, &alen);
-  int bneg = strnum_parse(&b, &blen);
-  if (aneg != bneg)  return (bneg) ? 1 : -1;
-  if (aneg) { /* swap a and b if both negative */
-    const char* t = a;  STRLEN tlen = alen;
-    a = b; b = t;  alen = blen;  blen = tlen;
-  }
-  if (alen != blen)  return (alen > blen) ? 1 : -1;
-  for (i = 0; i < blen; i++)
-    if (a[i] != b[i])
-      return  (a[i] > b[i]) ? 1 : -1;
-  return 0;
-}
-
-/* 1. Perform signed integer validation on b/blen.
- * 2. Compare to a/alen using min or max based on first arg.
- * 3. Return 0 to select a, 1 to select b.
- */
-bool strnum_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN blen)
-{
-  int aneg, bneg;
-  STRLEN i;
-
-  /* a is checked, process b */
-  bneg = strnum_parse(&b, &blen);
-
-  if (a == 0) return 1;
-
-  aneg = (a[0] == '-');
-  if (a[0] == '-' || a[0] == '+') { a++; alen--; }
-  while (alen > 0 && *a == '0') { a++; alen--; }
-
-  if (aneg != bneg)  return  min  ?  (bneg == 1)  :  (aneg == 1);
-  if (aneg == 1)  min = !min;
-  if (alen != blen)  return  min  ?  (alen > blen) :  (blen > alen);
-
-  for (i = 0; i < blen; i++)
-    if (a[i] != b[i])
-      return  min  ?  (a[i] > b[i])  :  (b[i] > a[i]);
-  return 0; /* equal */
-}
 
 bool from_digit_string(UV* rn, const char* s, int base)
 {

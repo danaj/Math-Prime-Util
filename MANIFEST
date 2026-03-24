@@ -101,6 +101,8 @@ sieve_cluster.h
 sieve_cluster.c
 sort.h
 sort.c
+strops.h
+strops.c
 threadlock.h
 totients.h
 totients.c

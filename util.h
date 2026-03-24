@@ -132,9 +132,6 @@ extern IV ramanujan_tau(UV n);
 
 extern char* pidigits(uint32_t digits);
 
-/* min defines if min or max.  Return of 0 means select a, 1 means select b. */
-extern bool strnum_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN blen);
-extern int strnum_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 extern bool from_digit_string(UV* n, const char* s, int base);
 extern bool from_digit_to_UV(UV* rn, const UV* r, int len, int base);

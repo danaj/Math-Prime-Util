@@ -25,6 +25,7 @@
 #include "sieve.h"
 #include "sieve_cluster.h"
 #include "util.h"
+#include "strops.h"
 #include "sort.h"
 #include "primality.h"
 #include "lucas_seq.h"

@@ -67,6 +67,7 @@ WriteMakefile1(
                     'totients.o '     .
                     'moebius.o '      .
                     'factmod.o '      .
+                    'strops.o '       .
                     'util.o '         .
                     'inverse_interpolate.o ' .
                     'entropy.o '      .
