@@ -4800,9 +4800,12 @@ void addint(IN SV* sva, IN SV* svb)
       }
     }
     { /* Try amagic if either argument is a bigint */
-      static const int amg_dispatch[] = {add_amg,subtr_amg,mult_amg,div_amg,modulo_amg,fallback_amg,fallback_amg,pow_amg};
-      if (amg_dispatch[ix] != fallback_amg)
-        TRY_MAGIC_BINARY(sva,svb,amg_dispatch[ix]);
+      static const int amg_dispatch[] = {add_amg,subtr_amg,mult_amg,div_amg,modulo_amg,fallback_amg,fallback_amg,fallback_amg};
+      int op = amg_dispatch[ix];
+      if (op == div_amg && (astatus != 1 || bstatus != 1))
+        op = fallback_amg;
+      if (op != fallback_amg)
+        TRY_MAGIC_BINARY(sva,svb,op);
     }
     /* Dispatch to GMP or PP */
     DISPATCHPP();
