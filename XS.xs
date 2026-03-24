@@ -2606,10 +2606,10 @@ gcd(...)
       STRLEN alen, blen;
       char *aptr, *bptr;
       aptr = SvPV(ST(0), alen);
-      (void) strnum_minmax(minmax, 0, 0, aptr, alen);
+      (void) strint_minmax(minmax, 0, 0, aptr, alen);
       for (i = 1; i < items; i++) {
         bptr = SvPV(ST(i), blen);
-        if (strnum_minmax(minmax, aptr, alen, bptr, blen)) {
+        if (strint_minmax(minmax, aptr, alen, bptr, blen)) {
           aptr = bptr;
           alen = blen;
           retindex = i;
@@ -4771,6 +4771,7 @@ void addint(IN SV* sva, IN SV* svb)
           XSRETURN_IV(neg_iv(ret));
       }
 #if BITS_PER_WORD == 64 && HAVE_UINT128
+      /* TODO: the string op for add/sub is FASTER than this */
       {
         IV hi; UV lo;
         if (nix == 0 && muladd128(&hi,&lo, a,1,b, postneg?-1:1,1,postneg?-1:1))
@@ -4782,11 +4783,28 @@ void addint(IN SV* sva, IN SV* svb)
       }
 #endif
     }
-    {
+    if (ix == 0 || ix == 1) {
+      /*   1) If Math::GMPz or Math::GMP, then have it do the work. */
+      TRY_FAST_MAGIC_BINARY(sva, svb, ix==0 ? add_amg : subtr_amg);
+      { /* 2) Add the strings */
+        STRLEN lena, lenb;
+        const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb,lenb);
+        SV* tmp = sv_2mortal(newSV(1 + (lena > lenb ? lena : lenb)));
+        STRLEN blen = (ix==0) ? strint_add(SvPVX(tmp), sa, lena, sb, lenb)
+                              : strint_sub(SvPVX(tmp), sa, lena, sb, lenb);
+        SvCUR_set(tmp, blen);
+        SvPOK_on(tmp);
+        *SvEND(tmp) = '\0';
+        ST(0) = xs_to_canonical(aTHX_ tmp);
+        XSRETURN(1);
+      }
+    }
+    { /* Try amagic if either argument is a bigint */
       static const int amg_dispatch[] = {add_amg,subtr_amg,mult_amg,div_amg,modulo_amg,fallback_amg,fallback_amg,pow_amg};
       if (amg_dispatch[ix] != fallback_amg)
         TRY_MAGIC_BINARY(sva,svb,amg_dispatch[ix]);
     }
+    /* Dispatch to GMP or PP */
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
@@ -4867,7 +4885,7 @@ void add1int(IN SV* svn)
       STRLEN len;
       const char* s = SvPV_nomg(svn, len);
       SV* tmp = sv_2mortal(newSV(len + 1));
-      STRLEN blen = (ix==0) ? strincr(SvPVX(tmp), s, len) : strdecr(SvPVX(tmp), s, len);
+      STRLEN blen = (ix==0) ? strint_incr(SvPVX(tmp), s, len) : strint_decr(SvPVX(tmp), s, len);
       SvCUR_set(tmp, blen);
       SvPOK_on(tmp);
       *SvEND(tmp) = '\0';
@@ -4933,7 +4951,7 @@ void cmpint(IN SV* sva, IN SV* svb)
       char *aptr, *bptr;
       aptr = SvPV(sva, alen);
       bptr = SvPV(svb, blen);
-      ret = strnum_cmp(aptr, alen, bptr, blen);
+      ret = strint_cmp(aptr, alen, bptr, blen);
     }
     RETURN_NPARITY(ret);
 
