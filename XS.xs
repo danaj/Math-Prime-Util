@@ -395,42 +395,34 @@ typedef struct {
 
 START_MY_CXT
 
-static int _is_sv_bigint(pTHX_ SV* n)
-{
-  if (sv_isobject(n)) {
+static int _sv_is_bigint(pTHX_ SV* n) {
+  if (SvROK(n) && SvOBJECT(SvRV(n))) {
     const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
-    if (hvname != 0) {
-      if (strEQ(hvname, "Math::BigInt") || /* BigFloat not here, force to PP */
-          strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
-          strEQ(hvname, "Math::GMPq")   || strEQ(hvname, "Math::AnyNum") ||
-          strEQ(hvname, "Math::Pari")   || strEQ(hvname, "Math::BigInt::Lite"))
-        return 1;
-    }
+    if (hvname != 0 &&
+        (strEQ(hvname, "Math::BigInt") || /* BigFloat not here, force to PP */
+         strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP") ||
+         strEQ(hvname, "Math::GMPq")   || strEQ(hvname, "Math::AnyNum") ||
+         strEQ(hvname, "Math::Pari")   || strEQ(hvname, "Math::BigInt::Lite")))
+      return 1;
   }
   return 0;
 }
-/* Related to above, this returns true if we should use overloaded operators
- * (Perl's amagic) with this.  That would be if:
- *
- *   1) it's a bigint class
- *   2) either no GMP backend enabled or it's faster in-place.
- *
- * This means Math::GMPz and Math::GMP, which are efficient.
- */
-static int _bigint_use_amagic(pTHX_ SV* sv) {
-  if (sv_isobject(sv)) {
-    const char *hvname = HvNAME_get(SvSTASH(SvRV(sv)));
-    if (hvname != NULL) {
-      if (strEQ(hvname, "Math::GMPz") || strEQ(hvname, "Math::GMP"))
-        return 1;
-      if (strEQ(hvname, "Math::BigInt")      || strEQ(hvname, "Math::GMPq")  ||
-          strEQ(hvname, "Math::AnyNum")       || strEQ(hvname, "Math::Pari")  ||
-          strEQ(hvname, "Math::BigInt::Lite"))
-        return !_XS_get_callgmp();
-    }
+static int _sv_is_bigint_fast(pTHX_ SV* n) {
+  if (SvROK(n) && SvOBJECT(SvRV(n))) {
+    const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
+    if (hvname != 0 &&
+        (strEQ(hvname, "Math::GMPz")   || strEQ(hvname, "Math::GMP")))
+      return 1;
   }
   return 0;
 }
+
+#define SV_USE_BIGINT_AMAGIC(svn) \
+  (    (_sv_is_bigint_fast(aTHX_ svn) || (!_XS_get_callgmp() && _sv_is_bigint(aTHX_ svn))) \
+    && (SvGETMAGIC(svn),SvAMAGIC(svn)) )
+
+#define SV_USE_FAST_BIGINT_AMAGIC(svn) \
+  ( _sv_is_bigint_fast(aTHX_ svn) && (SvGETMAGIC(svn),SvAMAGIC(svn)) )
 
 /******************************************************************************/
 
@@ -555,7 +547,7 @@ static int _validate_int(pTHX_ SV* n, int negok)
     else croak("Parameter '%" SVf "' %s", n, mustbe);
   }
   if (sv_isobject(n)) {
-    isbignum = _is_sv_bigint(aTHX_ n);
+    isbignum = _sv_is_bigint(aTHX_ n);
     if (!isbignum) return 0;
   }
   if (!SvOK(n))  croak("Parameter must be defined");
@@ -1002,7 +994,7 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
 #if 1
 #define TRY_MAGIC_UNARY(sv, op) \
   do { \
-    if (_bigint_use_amagic(aTHX_ sv) && (SvGETMAGIC(sv),SvAMAGIC(sv))) { \
+    if (SV_USE_BIGINT_AMAGIC(sv)) { \
       SV* tsv_ = amagic_call(sv, &PL_sv_undef, op, AMGf_noright|AMGf_unary); \
       if (tsv_) { \
         ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
@@ -1012,8 +1004,19 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
   } while(0)
 #define TRY_MAGIC_BINARY(sva, svb, op) \
   do { \
-    if ((_bigint_use_amagic(aTHX_ sva) && (SvGETMAGIC(sva),SvAMAGIC(sva))) || \
-        (_bigint_use_amagic(aTHX_ svb) && (SvGETMAGIC(svb),SvAMAGIC(svb))) ) { \
+    if (SV_USE_BIGINT_AMAGIC(sva) || \
+        SV_USE_BIGINT_AMAGIC(svb) ) { \
+      SV* tsv_ = amagic_call(sva, svb, op, 0); \
+      if (tsv_) { \
+        ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
+        XSRETURN(1); \
+      } \
+    } \
+  } while(0)
+#define TRY_FAST_MAGIC_BINARY(sva, svb, op) \
+  do { \
+    if (SV_USE_FAST_BIGINT_AMAGIC(sva) || \
+        SV_USE_FAST_BIGINT_AMAGIC(svb) ) { \
       SV* tsv_ = amagic_call(sva, svb, op, 0); \
       if (tsv_) { \
         ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
@@ -1024,6 +1027,7 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
 #else
 #define TRY_MAGIC_UNARY(sv, op)
 #define TRY_MAGIC_BINARY(sva, svb, op)
+#define TRY_FAST_MAGIC_BINARY(sva, svb, op)
 #endif
 
 /******************************************************************************/
@@ -1859,10 +1863,10 @@ bool _validate_integer(SV* svn)
         /* TODO: if given a positive bigint, no need for this */
         sv_setsv(svn, sv_to_bigint_abs(aTHX_ svn));
       } else if (mask & IFLAG_NONNEG) {
-        if (!_is_sv_bigint(aTHX_ svn))
+        if (!_sv_is_bigint(aTHX_ svn))
           sv_setsv(svn, sv_to_bigint_nonneg(aTHX_ svn));
       } else {
-        if (!_is_sv_bigint(aTHX_ svn))
+        if (!_sv_is_bigint(aTHX_ svn))
           sv_setsv(svn, sv_to_bigint(aTHX_ svn));
       }
     }
@@ -3522,7 +3526,7 @@ void toint(IN SV* svn)
     }
     if (stype & SNUMFLAG_BIGINT) {
       /* TODO: this assumes the input bigint is the correct class */
-      if (!sv_isobject(svn) || !_is_sv_bigint(aTHX_ svn)) {
+      if (!sv_isobject(svn) || !_sv_is_bigint(aTHX_ svn)) {
         /* Not a bigint object, so convert it to one. */
         CALLROOTSUB_ONE_SCALAR("_to_bigint");
       }
@@ -4854,11 +4858,22 @@ void add1int(IN SV* svn)
       if (ix == 0 || (ix == 1 && (IV)n > IV_MIN))
         XSRETURN_IV( (ix==0) ? (IV)n+1 : (IV)n-1 );
     }
-    { dMY_CXT;  SV* svone = MY_CXT.const_int[2];
-      TRY_MAGIC_BINARY(svn, svone, ix==0 ? add_amg : subtr_amg); }
-    DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    { /* Do amagic if and only if the input is Math::GMPz or Math::GMP. */
+      dMY_CXT;
+      SV* svone = MY_CXT.const_int[2];
+      TRY_FAST_MAGIC_BINARY(svn, svone, ix==0 ? add_amg : subtr_amg);
+    }
+    { /* Do the operation on the string, then turn into canonical form. */
+      STRLEN len;
+      const char* s = SvPV_nomg(svn, len);
+      SV* tmp = sv_2mortal(newSV(len + 1));
+      STRLEN blen = (ix==0) ? strincr(SvPVX(tmp), s, len) : strdecr(SvPVX(tmp), s, len);
+      SvCUR_set(tmp, blen);
+      SvPOK_on(tmp);
+      *SvEND(tmp) = '\0';
+      ST(0) = xs_to_canonical(aTHX_ tmp);
+      XSRETURN(1);
+    }
 
 void absint(IN SV* svn)
   ALIAS:
@@ -6486,7 +6501,7 @@ void todigits(SV* svn, int base=10, int length=-1)
         if (from_digit_string(&n, SvPV_nolen(svn), base)) {
           XSRETURN_UV(n);
         }
-      } else if (!_is_sv_bigint(aTHX_ svn)) {     /* array ref of digits */
+      } else if (!_sv_is_bigint(aTHX_ svn)) {     /* array ref of digits */
         UV* r = 0;
         int len = arrayref_to_digit_array(aTHX_ &r, (AV*) SvRV(svn), base);
         if (from_digit_to_UV(&n, r, len, base)) {
