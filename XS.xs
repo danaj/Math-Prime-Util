@@ -998,7 +998,7 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
     XSRETURN(1); \
   }
 
-#if 0
+#if 1
 #define TRY_MAGIC_UNARY(sv, op) \
   do { \
     if (_bigint_use_amagic(aTHX_ sv) && (SvGETMAGIC(sv),SvAMAGIC(sv))) { \
