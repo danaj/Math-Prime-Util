@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 
 #include "ptypes.h"
@@ -155,6 +156,34 @@ static STRLEN mag_sub(char* out, const char* a, STRLEN alen, const char* b, STRL
   return alen - start;
 }
 
+/* Multiply two unsigned decimal digit strings.
+ * out needs alen+blen bytes.  Returns result length (no leading zeros). */
+static STRLEN mag_mul(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
+{
+  STRLEN i, j, rlen = alen + blen, start;
+  uint32_t carry;
+  /* Accumulate products into LSB-first uint32_t array, deferring carry.
+   * This moves the division-by-10 from the O(m*n) inner loop to a
+   * single O(m+n) pass, and simplifies the index arithmetic. */
+  uint32_t *acc = (uint32_t*)calloc(rlen, sizeof(uint32_t));
+  for (i = 0; i < blen; i++) {
+    uint32_t bd = b[blen - 1 - i] - '0';
+    if (bd == 0) continue;
+    for (j = 0; j < alen; j++)
+      acc[i + j] += bd * (uint32_t)(a[alen - 1 - j] - '0');
+  }
+  carry = 0;
+  for (i = 0; i < rlen; i++) {
+    uint32_t d = acc[i] + carry;
+    carry = d / 10;
+    out[rlen - 1 - i] = '0' + d % 10;
+  }
+  free(acc);
+  for (start = 0; start < rlen - 1 && out[start] == '0'; start++) ;
+  if (start > 0) memmove(out, out + start, rlen - start);
+  return rlen - start;
+}
+
 /* Core signed addition with signs already parsed and stripped. */
 static STRLEN str_add_impl(char* out,
                             const char* a, STRLEN alen, int aneg,
@@ -180,7 +209,7 @@ static STRLEN str_add_impl(char* out,
 
 /* Add 1 to the signed decimal integer string s/len.
  * Write result to out (caller ensures at least len+2 bytes).
- * Returns the result length (no NUL terminator written).
+ * Returns the result length (no NULL terminator written).
  * Input must be a canonical decimal integer (no leading zeros except "0"). */
 STRLEN strint_incr(char* out, const char* s, STRLEN len)
 {
@@ -199,7 +228,7 @@ STRLEN strint_incr(char* out, const char* s, STRLEN len)
 
 /* Subtract 1 from the signed decimal integer string s/len.
  * Write result to out (caller ensures at least len+2 bytes).
- * Returns the result length (no NUL terminator written).
+ * Returns the result length (no NULL terminator written).
  * Input must be a canonical decimal integer (no leading zeros except "0"). */
 STRLEN strint_decr(char* out, const char* s, STRLEN len)
 {
@@ -216,32 +245,49 @@ STRLEN strint_decr(char* out, const char* s, STRLEN len)
   }
 }
 
-/* Add two signed decimal integer strings.
- * Write result to out (caller ensures at least max(alen,blen)+1 bytes).
- * Returns the result length (no NUL terminator written). */
-STRLEN strint_add(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
-{
-  int aneg, bneg;
-  if (alen == 0 || (alen == 1 && a[0] == '0')) { memcpy(out, b, blen); return blen; }
-  if (blen == 0 || (blen == 1 && b[0] == '0')) { memcpy(out, a, alen); return alen; }
-  aneg = (a[0] == '-'); if (aneg) { a++; alen--; }
-  bneg = (b[0] == '-'); if (bneg) { b++; blen--; }
-  return str_add_impl(out, a, alen, aneg, b, blen, bneg);
-}
-
-/* Subtract b from a (signed decimal integer strings).
- * Write result to out (caller ensures at least max(alen,blen)+1 bytes).
- * Returns the result length (no NUL terminator written). */
-STRLEN strint_sub(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
+/* Add or subtract two signed decimal integer strings.
+ * If negate_b is false, computes a+b; if true, computes a-b (i.e. a+(-b)).
+ * Write result to out; caller must ensure at least max(alen,blen)+2 bytes
+ * (the +2 is tight for subtraction when a is negative and blen >= alen).
+ * Returns the result length (no NULL terminator written). */
+STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, bool negate_b)
 {
   int aneg, bneg;
   if (blen == 0 || (blen == 1 && b[0] == '0')) { memcpy(out, a, alen); return alen; }
   if (alen == 0 || (alen == 1 && a[0] == '0')) {
+    if (!negate_b) { memcpy(out, b, blen); return blen; }
     /* 0 - b = -b */
     if (b[0] == '-') { memcpy(out, b + 1, blen - 1); return blen - 1; }
     out[0] = '-'; memcpy(out + 1, b, blen); return blen + 1;
   }
   aneg = (a[0] == '-'); if (aneg) { a++; alen--; }
   bneg = (b[0] == '-'); if (bneg) { b++; blen--; }
-  return str_add_impl(out, a, alen, aneg, b, blen, !bneg);
+  return str_add_impl(out, a, alen, aneg, b, blen, bneg ^ negate_b);
+}
+
+/* Multiply two signed decimal integer strings.
+ * Write result to out (caller ensures at least alen+blen bytes).
+ * Returns the result length (no NULL terminator written). */
+STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
+{
+  int aneg, bneg;
+  STRLEN off, rlen;
+  if (alen == 0 || (alen == 1 && a[0] == '0') ||
+      blen == 0 || (blen == 1 && b[0] == '0'))
+    { out[0] = '0'; return 1; }
+  aneg = (a[0] == '-'); if (aneg) { a++; alen--; }
+  bneg = (b[0] == '-'); if (bneg) { b++; blen--; }
+  off = (aneg != bneg) ? 1 : 0;
+  rlen = mag_mul(out + off, a, alen, b, blen);
+  if (off) out[0] = '-';
+  return rlen + off;
+}
+
+STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, const char* c, STRLEN clen, bool negate_c)
+{
+  char *abres = (char*) malloc((alen+blen) * sizeof(char));
+  STRLEN rlen = strint_mul(abres, a, alen, b, blen);
+  rlen = strint_add_s(out, abres, rlen, c, clen, negate_c);
+  free(abres);
+  return rlen;
 }

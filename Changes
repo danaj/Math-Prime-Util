@@ -36,6 +36,14 @@ Revision history for Perl module Math::Prime::Util
     - Tightened prime count bounds (upper/lower) using Dusart 2018 and
       Axler 2022.  Thanks to Pierre Dusart for sending me a copy of his paper.
 
+    - Use amagic calls from XS to perform some integer ops directly using the
+      bigint objects rather than calling into Perl.  Streamlined conversion
+      of output to canonical form.  1.5 to 3x faster for some examples.
+
+    - simple add/sub/mul operations directly on the string input integers.
+      Mostly bypassed if we see Math::GMPz or Math::GMP, but with other classes
+      this can be a 2-8x speedup.
+
 0.74 2026-03-13
 
     [API Changes]

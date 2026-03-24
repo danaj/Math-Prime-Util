@@ -4770,36 +4770,30 @@ void addint(IN SV* sva, IN SV* svb)
         if (ret <= (UV)IV_MAX)
           XSRETURN_IV(neg_iv(ret));
       }
-#if BITS_PER_WORD == 64 && HAVE_UINT128
-      /* TODO: the string op for add/sub is FASTER than this */
-      {
-        IV hi; UV lo;
-        if (nix == 0 && muladd128(&hi,&lo, a,1,b, postneg?-1:1,1,postneg?-1:1))
-          RETURN_128(hi, lo);
-        if (nix == 1 && muladd128(&hi,&lo, a,1,b, postneg?-1:1,1,postneg?1:-1))
-          RETURN_128(hi, lo);
-        if (nix == 2 && muladd128(&hi,&lo, a,b,0, postneg?-1:1,1,1))
-          RETURN_128(hi, lo);
-      }
-#endif
+      /* If we have uint128_t, then for add,sub,mul, we could do:
+       *    muladd128 => RETURN_128
+       * but it turns out our string add,sub,mul are as fast or faster.
+       */
     }
-    if (ix == 0 || ix == 1) {
+    if (ix == 0 || ix == 1 || ix == 2) {  /* add, sub, mul */
       /*   1) If Math::GMPz or Math::GMP, then have it do the work. */
-      TRY_FAST_MAGIC_BINARY(sva, svb, ix==0 ? add_amg : subtr_amg);
-      { /* 2) Add the strings */
-        STRLEN lena, lenb;
-        const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb,lenb);
-        SV* tmp = sv_2mortal(newSV(1 + (lena > lenb ? lena : lenb)));
-        STRLEN blen = (ix==0) ? strint_add(SvPVX(tmp), sa, lena, sb, lenb)
-                              : strint_sub(SvPVX(tmp), sa, lena, sb, lenb);
-        SvCUR_set(tmp, blen);
+      static const int fast_op[] = {add_amg, subtr_amg, mult_amg};
+      TRY_FAST_MAGIC_BINARY(sva, svb, fast_op[ix]);
+      { /* 2) Operate on the strings */
+        STRLEN lena, lenb, rlen;
+        const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb);
+        SV* tmp = sv_2mortal(newSV(2 + lena + lenb));
+        if      (ix == 0) rlen = strint_add(SvPVX(tmp), sa, lena, sb, lenb);
+        else if (ix == 1) rlen = strint_sub(SvPVX(tmp), sa, lena, sb, lenb);
+        else              rlen = strint_mul(SvPVX(tmp), sa, lena, sb, lenb);
+        SvCUR_set(tmp, rlen);
         SvPOK_on(tmp);
         *SvEND(tmp) = '\0';
         ST(0) = xs_to_canonical(aTHX_ tmp);
         XSRETURN(1);
       }
     }
-    { /* Try amagic if either argument is a bigint */
+    { /*   3) Try amagic if either argument is a bigint */
       static const int amg_dispatch[] = {add_amg,subtr_amg,mult_amg,div_amg,modulo_amg,fallback_amg,fallback_amg,fallback_amg};
       int op = amg_dispatch[ix];
       if (op == div_amg && (astatus != 1 || bstatus != 1))
@@ -4807,7 +4801,7 @@ void addint(IN SV* sva, IN SV* svb)
       if (op != fallback_amg)
         TRY_MAGIC_BINARY(sva,svb,op);
     }
-    /* Dispatch to GMP or PP */
+    /*     4) Dispatch to GMP or PP */
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
@@ -4859,6 +4853,17 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
 #endif
       }
     }
+    {
+      STRLEN lena, lenb, lenc, rlen;
+      const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sc = SvPV_nomg(svc, lenc);
+      SV* tmp = sv_2mortal(newSV(2 + lena + lenb + lenc));
+      rlen = strint_muladd_s(SvPVX(tmp), sa,lena, sb,lenb, sc,lenc, ix);
+      SvCUR_set(tmp, rlen);
+      SvPOK_on(tmp);
+      *SvEND(tmp) = '\0';
+      ST(0) = xs_to_canonical(aTHX_ tmp);
+      XSRETURN(1);
+    }
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
@@ -4887,8 +4892,9 @@ void add1int(IN SV* svn)
     { /* Do the operation on the string, then turn into canonical form. */
       STRLEN len;
       const char* s = SvPV_nomg(svn, len);
-      SV* tmp = sv_2mortal(newSV(len + 1));
-      STRLEN blen = (ix==0) ? strint_incr(SvPVX(tmp), s, len) : strint_decr(SvPVX(tmp), s, len);
+      SV* tmp = sv_2mortal(newSV(1 + len));
+      STRLEN blen = (ix==0) ? strint_incr(SvPVX(tmp), s, len)
+                            : strint_decr(SvPVX(tmp), s, len);
       SvCUR_set(tmp, blen);
       SvPOK_on(tmp);
       *SvEND(tmp) = '\0';
