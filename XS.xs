@@ -4803,6 +4803,23 @@ void addint(IN SV* sva, IN SV* svb)
         XSRETURN(1);
       }
     }
+    /* Fast Path 3: strint_pow for powint when exponent fits in UV */
+    if (ix == 7 && bstatus == 1) {
+      STRLEN lena;
+      const char *sa = SvPV_nomg(sva, lena);
+      if (lena > 0 && b <= (UV)(UVCONST(10000000) / lena)) {
+        STRLEN limit = (STRLEN)(b * lena) + 2;
+        SV* tmp = sv_2mortal(newSV(limit + 1));
+        STRLEN rlen = strint_pow(SvPVX(tmp), sa, lena, b, limit);
+        if (rlen > 0) {
+          SvCUR_set(tmp, rlen);
+          SvPOK_on(tmp);
+          *SvEND(tmp) = '\0';
+          ST(0) = xs_to_canonical(aTHX_ tmp);
+          XSRETURN(1);
+        }
+      }
+    }
     /* Others get dispatched here */
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));

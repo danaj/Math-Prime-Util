@@ -31,6 +31,12 @@ extern STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, S
  * out must have at least max(alen+blen,clen)+2 bytes. */
 extern STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, const char* c, STRLEN clen, bool negate_c);
 
+/* Raise a to non-negative integer power exp.
+ * out must have at least limit+1 bytes (limit for magnitude + 1 for sign).
+ * Returns 0 if result magnitude would exceed limit digits.
+ * Returns the result length. */
+extern STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit);
+
 /* Signed floor division and remainder.
  * Either qout or rout (and its companion length pointer) may be NULL.
  * qout needs alen+1 bytes; rout needs blen bytes.

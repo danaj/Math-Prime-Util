@@ -260,6 +260,79 @@ STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STR
   return rlen;
 }
 
+/******************************************************************************/
+/*                             EXPONENTIATION                                 */
+/******************************************************************************/
+
+/* a^exp (unsigned magnitudes) using binary exponentiation.
+ * out must have at least limit+1 bytes.
+ * Returns 0 if result would exceed limit digits; otherwise result length. */
+static STRLEN mag_pow(char* out, STRLEN limit, const char* a, STRLEN alen, UV exp)
+{
+  char *base, *acc, *tmp;
+  STRLEN baselen, acclen;
+
+  if (exp == 1) {
+    if (alen > limit) return 0;
+    memcpy(out, a, alen);
+    return alen;
+  }
+  /* a^exp < 10^(exp*alen), so result has at most exp*alen digits */
+  if (exp > limit / alen) return 0;
+
+  base = (char*) malloc(limit + 2);
+  acc  = (char*) malloc(limit + 2);
+  tmp  = (char*) malloc(2 * limit + 4);  /* mag_mul needs acclen+baselen bytes */
+
+  memcpy(base, a, alen);  baselen = alen;
+  acc[0] = '1';           acclen  = 1;
+
+  while (exp > 0) {
+    if (exp & 1) {
+      acclen = mag_mul(tmp, acc, acclen, base, baselen);
+      memcpy(acc, tmp, acclen);
+    }
+    exp >>= 1;
+    if (exp > 0) {
+      baselen = mag_mul(tmp, base, baselen, base, baselen);
+      memcpy(base, tmp, baselen);
+    }
+  }
+
+  memcpy(out, acc, acclen);
+  free(tmp);  free(base);  free(acc);
+  return acclen;
+}
+
+/* Raise a to non-negative integer power exp.
+ * out must have at least limit+1 bytes (limit for magnitude + 1 for sign).
+ * Returns 0 if result magnitude would exceed limit digits. */
+STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit)
+{
+  STRLEN off, rlen;
+  int aneg;
+
+  /* exp = 0: a^0 = 1 for all a (including 0) */
+  if (exp == 0) { out[0] = '1'; return 1; }
+
+  aneg = strint_parse(&a, &alen);
+
+  /* 0^exp = 0 for exp > 0 */
+  if (alen == 1 && a[0] == '0') { out[0] = '0'; return 1; }
+
+  /* 1^exp = 1; (-1)^exp = +/-1 */
+  if (alen == 1 && a[0] == '1') {
+    if (aneg && (exp & 1)) { out[0] = '-'; out[1] = '1'; return 2; }
+    out[0] = '1'; return 1;
+  }
+
+  off  = (aneg && (exp & 1)) ? 1 : 0;
+  rlen = mag_pow(out + off, limit, a, alen, exp);
+  if (rlen == 0) return 0;
+  if (off) out[0] = '-';
+  return rlen + off;
+}
+
 
 /******************************************************************************/
 /*                                 DIVISION                                   */
