@@ -4997,6 +4997,15 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
       if (svret) sv_setuv(SvRV(svret), ix == 0 ? ipow(k,root) : ipow(root,k));
       XSRETURN_UV(root);
     }
+    /* Fast path: strint_logint for bigint n, base k already UV */
+    if (ix == 0 && svret == 0 && _XS_get_callgmp() < 47) {
+      /* GMP backend is fast.  PP not so fast even with Math::GMPz. */
+      STRLEN lenn;
+      const char* sn = SvPV_nomg(svn, lenn);
+      UV result = strint_logint(sn, lenn, k);
+      if (result != UV_MAX)
+        XSRETURN_UV(result);
+    }
     DISPATCHPP_GMPONLYIF(svret == 0);
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);

@@ -37,6 +37,10 @@ extern STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char*
  * Returns the result length. */
 extern STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit);
 
+/* floor(log_base(a)) for a >= 1, base >= 2.
+ * Returns UV_MAX on error (a < 1 or base < 2). */
+extern UV strint_logint(const char* a, STRLEN alen, UV base);
+
 /* Signed floor division and remainder.
  * Either qout or rout (and its companion length pointer) may be NULL.
  * qout needs alen+1 bytes; rout needs blen bytes.

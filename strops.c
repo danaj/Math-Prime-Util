@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -494,4 +495,80 @@ STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRL
     qlen = strint_add_s(out, out, qlen, "1", 1, 0);
   free(rem);
   return qlen;
+}
+
+
+/******************************************************************************/
+/*                                INTEGER LOG                                 */
+/******************************************************************************/
+
+/* Write UV v as a decimal string; return length.  buf must have >= 21 bytes. */
+static STRLEN uv_to_str(char* buf, UV v)
+{
+  STRLEN i = 0, j;
+  if (v == 0) { buf[0] = '0'; return 1; }
+  while (v > 0) { buf[i++] = '0' + (char)(v % 10); v /= 10; }
+  for (j = 0; j < i / 2; j++) {
+    char c = buf[j]; buf[j] = buf[i-1-j]; buf[i-1-j] = c;
+  }
+  return i;
+}
+
+/* Returns floor(log_base(a)), or UV_MAX on error (a < 1 or base < 2).
+ * Uses a floating-point estimate to land within 1-2 of the answer,
+ * then verifies/adjusts with strint_mul and strint_divint. */
+UV strint_logint(const char* a, STRLEN alen, UV base)
+{
+  char base_str[24];
+  STRLEN base_len, nd, i, pow_limit;
+  UV k;
+  char *pow_buf, *next_buf;
+  STRLEN pow_len, next_len;
+  int aneg;
+  double approx, log10_a, k_est_f;
+
+  if (base < 2) return UV_MAX;
+
+  aneg = strint_parse(&a, &alen);
+  if (aneg || (alen == 1 && a[0] == '0')) return UV_MAX;
+
+  base_len = uv_to_str(base_str, base);
+
+  /* Floating-point estimate: log10(a) via leading digits + digit count */
+  nd = (alen < 15) ? alen : 15;
+  approx = 0.0;
+  for (i = 0; i < nd; i++)
+    approx = approx * 10.0 + (double)(a[i] - '0');
+  log10_a = (double)(alen - nd) + log10(approx);
+  k_est_f = log10_a / log10((double)base);
+  k = (k_est_f <= 1.0) ? 0 : (UV)k_est_f - 1;  /* start one below estimate */
+
+  /* Buffers large enough for base^k (≤ a) and base^(k+1).
+   * pow_limit must satisfy k ≤ pow_limit/base_len so mag_pow's conservative
+   * check doesn't trigger.  (k+2)*base_len gives comfortable headroom. */
+  pow_limit = (STRLEN)(k + 2) * base_len + alen + 4;
+  pow_buf   = (char*) malloc(pow_limit + 2);
+  next_buf  = (char*) malloc(pow_limit + base_len + 2);
+
+  pow_len = strint_pow(pow_buf, base_str, base_len, k, pow_limit);
+
+  /* Float overshot (very rare): step down by dividing until base^k ≤ a */
+  while (k > 0 && strint_cmp(pow_buf, pow_len, a, alen) > 0) {
+    pow_len = strint_divint(next_buf, pow_buf, pow_len, base_str, base_len);
+    memcpy(pow_buf, next_buf, pow_len);
+    k--;
+  }
+
+  /* Step up while base^(k+1) ≤ a */
+  for (;;) {
+    next_len = strint_mul(next_buf, pow_buf, pow_len, base_str, base_len);
+    if (strint_cmp(next_buf, next_len, a, alen) > 0) break;
+    memcpy(pow_buf, next_buf, next_len);
+    pow_len = next_len;
+    k++;
+  }
+
+  free(pow_buf);
+  free(next_buf);
+  return k;
 }
