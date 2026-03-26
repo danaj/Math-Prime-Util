@@ -21,7 +21,8 @@ extern STRLEN strint_decr(char* out, const char* s, STRLEN len);
 /* Add or subtract two signed decimal integer strings (a+b or a-b).
  * negate_b=false for addition, negate_b=true for subtraction.
  * Result is written to out; caller must ensure out has at least
- * max(alen,blen)+2 bytes.  Returns the length of the result. */
+ * max(alen,blen)+2 bytes.  out may alias a; out must not alias b.
+ * Returns the length of the result. */
 extern STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, bool negate_b);
 #define strint_add(out, a, alen, b, blen) strint_add_s(out, a, alen, b, blen, 0)
 #define strint_sub(out, a, alen, b, blen) strint_add_s(out, a, alen, b, blen, 1)
@@ -34,5 +35,23 @@ extern STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, S
 /* Return a*b+c or a*b-c to out.
  * out must have at least max(alen+blen,clen)+2 bytes. */
 extern STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, const char* c, STRLEN clen, bool negate_c);
+
+/* Signed floor division and remainder.
+ * Either qout or rout (and its companion length pointer) may be NULL.
+ * qout needs alen+1 bytes; rout needs blen bytes.
+ * Remainder carries the sign of b (floor convention).
+ * Returns false if b = 0, true otherwise. */
+extern bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
+                          const char* a, STRLEN alen,
+                          const char* b, STRLEN blen);
+
+/* Three division helpers, all using strint_divmod but more convenient. */
+
+/* out needs alen+1 bytes.  Returns 0 on failure. */
+extern STRLEN strint_divint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
+/* out needs blen bytes.  Returns 0 on failure. */
+extern STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
+/* out needs alen+2 bytes.  Returns 0 on failure. */
+extern STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 #endif
