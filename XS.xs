@@ -4775,42 +4775,35 @@ void addint(IN SV* sva, IN SV* svb)
        * but it turns out our string add,sub,mul are as fast or faster.
        */
     }
-    if (ix <= 5) { /* String fast path: add/sub/mul/div/mod/cdiv */
-      /*   1) If Math::GMPz or Math::GMP, then have it do the work. */
+    /* Fast Path 1: amagic with Math::GMPz / Math::GMP. */
+    if (ix <= 5) {
       static const int fast_amg[] = {add_amg, subtr_amg, mult_amg, div_amg, modulo_amg};
       /* div_amg might be a different mode, so only run on all-pos case */
-      if (ix == 0 || ix == 1 || ix == 2 || ix == 4 || (ix == 3 && astatus == 1 && bstatus == 1))
+      if (ix != 3 || (ix == 3 && astatus == 1 && bstatus == 1))
         TRY_FAST_MAGIC_BINARY(sva, svb, fast_amg[ix]);
-      { /* 2) Operate on the strings */
-        STRLEN lena, lenb, rlen;
-        const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb);
-        SV* tmp = sv_2mortal(newSV(lena + lenb + 2)); /* safe for all six ops */
-        switch (ix) {
-          case 0:  rlen = strint_add(SvPVX(tmp), sa, lena, sb, lenb);     break;
-          case 1:  rlen = strint_sub(SvPVX(tmp), sa, lena, sb, lenb);     break;
-          case 2:  rlen = strint_mul(SvPVX(tmp), sa, lena, sb, lenb);     break;
-          case 3:  rlen = strint_divint(SvPVX(tmp), sa, lena, sb, lenb);  break;
-          case 4:  rlen = strint_modint(SvPVX(tmp), sa, lena, sb, lenb);  break;
-          default: rlen = strint_cdivint(SvPVX(tmp), sa, lena, sb, lenb); break;
-        }
-        if (rlen > 0) {
-          SvCUR_set(tmp, rlen);
-          SvPOK_on(tmp);
-          *SvEND(tmp) = '\0';
-          ST(0) = xs_to_canonical(aTHX_ tmp);
-          XSRETURN(1);
-        }
+    }
+    /* Fast Path 2: decimal string arithmetic */
+    if (ix <= 5) {
+      STRLEN lena, lenb, rlen;
+      const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb);
+      SV* tmp = sv_2mortal(newSV(lena + lenb + 2)); /* safe for all six ops */
+      switch (ix) {
+        case 0:  rlen = strint_add(SvPVX(tmp), sa, lena, sb, lenb);     break;
+        case 1:  rlen = strint_sub(SvPVX(tmp), sa, lena, sb, lenb);     break;
+        case 2:  rlen = strint_mul(SvPVX(tmp), sa, lena, sb, lenb);     break;
+        case 3:  rlen = strint_divint(SvPVX(tmp), sa, lena, sb, lenb);  break;
+        case 4:  rlen = strint_modint(SvPVX(tmp), sa, lena, sb, lenb);  break;
+        default: rlen = strint_cdivint(SvPVX(tmp), sa, lena, sb, lenb); break;
+      }
+      if (rlen > 0) {
+        SvCUR_set(tmp, rlen);
+        SvPOK_on(tmp);
+        *SvEND(tmp) = '\0';
+        ST(0) = xs_to_canonical(aTHX_ tmp);
+        XSRETURN(1);
       }
     }
-    { /*   3) Try amagic if either argument is a bigint */
-      static const int amg_dispatch[] = {add_amg,subtr_amg,mult_amg,div_amg,modulo_amg,fallback_amg,fallback_amg,fallback_amg};
-      int op = amg_dispatch[ix];
-      if (op == div_amg && (astatus != 1 || bstatus != 1))
-        op = fallback_amg;
-      if (op != fallback_amg)
-        TRY_MAGIC_BINARY(sva,svb,op);
-    }
-    /*     4) Dispatch to GMP or PP */
+    /* Others get dispatched here */
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
