@@ -73,6 +73,8 @@ bool strint_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN b
   return 0; /* equal */
 }
 
+/******************************************************************************/
+
 /* Increment the decimal digits in buf[0..len-1] in place.
  * Returns len+1 on carry-out (all 9s), len otherwise. */
 static STRLEN mag_incr(char* buf, STRLEN len)
@@ -177,44 +179,6 @@ static STRLEN str_add_impl(char* out,
                    : mag_sub(out + off, b, blen, a, alen);
   if (neg_result) out[0] = '-';
   return rlen + off;
-}
-
-/* Add 1 to the signed decimal integer string s/len.
- * Write result to out (caller ensures at least len+2 bytes).
- * Returns the result length (no NULL terminator written).
- * Input must be a canonical decimal integer (no leading zeros except "0"). */
-STRLEN strint_incr(char* out, const char* s, STRLEN len)
-{
-  if (len == 0 || (len == 1 && s[0] == '0'))
-    { out[0] = '1'; return 1; }
-  if (s[0] != '-') {
-    memcpy(out, s, len);
-    return mag_incr(out, len);
-  } else {
-    s++; len--;
-    if (len == 1 && s[0] == '1') { out[0] = '0'; return 1; }
-    out[0] = '-';  memcpy(out + 1, s, len);
-    return 1 + mag_decr(out + 1, len);
-  }
-}
-
-/* Subtract 1 from the signed decimal integer string s/len.
- * Write result to out (caller ensures at least len+2 bytes).
- * Returns the result length (no NULL terminator written).
- * Input must be a canonical decimal integer (no leading zeros except "0"). */
-STRLEN strint_decr(char* out, const char* s, STRLEN len)
-{
-  if (len == 0 || (len == 1 && s[0] == '0'))
-    { out[0] = '-'; out[1] = '1'; return 2; }
-  if (s[0] != '-') {
-    if (len == 1 && s[0] == '1') { out[0] = '0'; return 1; }
-    memcpy(out, s, len);
-    return mag_decr(out, len);
-  } else {
-    s++; len--;
-    out[0] = '-';  memcpy(out + 1, s, len);
-    return 1 + mag_incr(out + 1, len);
-  }
 }
 
 /* Add or subtract two signed decimal integer strings.

@@ -12,11 +12,6 @@ extern int  strint_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);
  * Returns 0 to select a, 1 to select b. */
 extern bool strint_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
-/* Add 1 to or subtract 1 from a signed decimal integer string s(len).
- * Result is written to out; caller must ensure out has at
- * least len+1 bytes.  Returns the length of the result. */
-extern STRLEN strint_incr(char* out, const char* s, STRLEN len);
-extern STRLEN strint_decr(char* out, const char* s, STRLEN len);
 
 /* Add or subtract two signed decimal integer strings (a+b or a-b).
  * negate_b=false for addition, negate_b=true for subtraction.
