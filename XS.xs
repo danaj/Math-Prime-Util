@@ -991,6 +991,13 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
     XSRETURN(1); \
   }
 
+#define RETURN_STRING_BIGINT(sv,len) \
+  { \
+    SvCUR_set(sv, len);  SvPOK_on(sv);  *SvEND(sv) = '\0'; \
+    ST(0) = xs_to_canonical(aTHX_ sv); \
+    XSRETURN(1); \
+  }
+
 #if 1
 #define TRY_MAGIC_UNARY(sv, op) \
   do { \
@@ -4795,13 +4802,7 @@ void addint(IN SV* sva, IN SV* svb)
         case 4:  rlen = strint_modint(SvPVX(tmp), sa, lena, sb, lenb);  break;
         default: rlen = strint_cdivint(SvPVX(tmp), sa, lena, sb, lenb); break;
       }
-      if (rlen > 0) {
-        SvCUR_set(tmp, rlen);
-        SvPOK_on(tmp);
-        *SvEND(tmp) = '\0';
-        ST(0) = xs_to_canonical(aTHX_ tmp);
-        XSRETURN(1);
-      }
+      if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
     }
     /* Fast Path 3: strint_pow for powint when exponent fits in UV */
     if (ix == 7 && bstatus == 1) {
@@ -4811,13 +4812,7 @@ void addint(IN SV* sva, IN SV* svb)
         STRLEN limit = (STRLEN)(b * lena) + 2;
         SV* tmp = sv_2mortal(newSV(limit + 1));
         STRLEN rlen = strint_pow(SvPVX(tmp), sa, lena, b, limit);
-        if (rlen > 0) {
-          SvCUR_set(tmp, rlen);
-          SvPOK_on(tmp);
-          *SvEND(tmp) = '\0';
-          ST(0) = xs_to_canonical(aTHX_ tmp);
-          XSRETURN(1);
-        }
+        if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
       }
     }
     /* Others get dispatched here */
@@ -4877,11 +4872,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sc = SvPV_nomg(svc, lenc);
       SV* tmp = sv_2mortal(newSV(2 + lena + lenb + lenc));
       rlen = strint_muladd_s(SvPVX(tmp), sa,lena, sb,lenb, sc,lenc, ix);
-      SvCUR_set(tmp, rlen);
-      SvPOK_on(tmp);
-      *SvEND(tmp) = '\0';
-      ST(0) = xs_to_canonical(aTHX_ tmp);
-      XSRETURN(1);
+      RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
     objectify_result(aTHX_ sva, ST(0));
@@ -4913,11 +4904,7 @@ void add1int(IN SV* svn)
       const char* s = SvPV_nomg(svn, len);
       SV* tmp = sv_2mortal(newSV(1 + len));
       len = strint_add_s(SvPVX(tmp), s, len, "1", 1, ix);
-      SvCUR_set(tmp, len);
-      SvPOK_on(tmp);
-      *SvEND(tmp) = '\0';
-      ST(0) = xs_to_canonical(aTHX_ tmp);
-      XSRETURN(1);
+      RETURN_STRING_BIGINT(tmp,len);
     }
 
 void absint(IN SV* svn)
@@ -4997,14 +4984,22 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
       if (svret) sv_setuv(SvRV(svret), ix == 0 ? ipow(k,root) : ipow(root,k));
       XSRETURN_UV(root);
     }
+    /* GMP backend is fast.  PP not so fast even with Math::GMPz. */
     /* Fast path: strint_logint for bigint n, base k already UV */
     if (ix == 0 && svret == 0 && _XS_get_callgmp() < 47) {
-      /* GMP backend is fast.  PP not so fast even with Math::GMPz. */
       STRLEN lenn;
       const char* sn = SvPV_nomg(svn, lenn);
       UV result = strint_logint(sn, lenn, k);
       if (result != UV_MAX)
         XSRETURN_UV(result);
+    }
+    /* Fast path: strint_rootint for bigint n, k already UV */
+    if (ix == 1 && svret == 0 && _XS_get_callgmp() < 40) {
+      STRLEN lenn;
+      const char* sn = SvPV_nomg(svn, lenn);
+      SV* tmp = sv_2mortal(newSV(lenn + 2));
+      STRLEN rlen = strint_rootint(SvPVX(tmp), sn, lenn, k);
+      if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP_GMPONLYIF(svret == 0);
     objectify_result(aTHX_ svn, ST(0));
@@ -5253,6 +5248,15 @@ void sqrtint(IN SV* svn)
         default: break;
       }
       XSRETURN_UV(r);
+    }
+    /* GMP backend is very fast.  PP sorta-fast with Math::GMPz/Math::GMP */
+    /* Fast path: strint_rootint for bigint n */
+    if (ix == 0 && _XS_get_callgmp() < 40) {
+      STRLEN lenn;
+      const char* sn = SvPV_nomg(svn, lenn);
+      SV* tmp = sv_2mortal(newSV(lenn + 2));
+      STRLEN rlen = strint_rootint(SvPVX(tmp), sn, lenn, 2);
+      if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
