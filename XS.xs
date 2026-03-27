@@ -4922,6 +4922,13 @@ void absint(IN SV* svn)
       else if (status ==  1) XSRETURN_IV(neg_iv(n));
     }
     TRY_MAGIC_UNARY(svn, ix==0 ? abs_amg : neg_amg);
+    {
+      STRLEN len;
+      const char* s = SvPV_nomg(svn, len);
+      SV* tmp = sv_2mortal(newSV(1 + len));
+      len = ix==0 ? strint_abs(SvPVX(tmp),s,len) : strint_neg(SvPVX(tmp),s,len);
+      RETURN_STRING_BIGINT(tmp,len);
+    }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);

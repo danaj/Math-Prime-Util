@@ -64,4 +64,9 @@ extern STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b
 /* out needs alen+2 bytes.  Returns 0 on failure. */
 extern STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
+/* Absolute value.  out needs alen bytes. */
+extern STRLEN strint_abs(char* out, const char* a, STRLEN alen);
+/* Negation.  out needs alen+1 bytes. */
+extern STRLEN strint_neg(char* out, const char* a, STRLEN alen);
+
 #endif

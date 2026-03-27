@@ -45,7 +45,7 @@ Revision history for Perl module Math::Prime::Util
       this can be a 2-8x speedup.
 
     - string bigint accelerations of logint, rootint, and sqrtint
-      for 5x to 100x speedup.
+      for 5x to 100x speedup.  absint and negint, can be 5x faster.
 
 0.74 2026-03-13
 

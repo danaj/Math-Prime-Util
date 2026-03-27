@@ -577,35 +577,45 @@ done:
 /******************************************************************************/
 
 
+/* Strip sign and leading zeros from an already-validated decimal string.
+ * No character-by-character validation — caller guarantees valid input.
+ * Returns 1 if negative, 0 otherwise. */
+static int strint_strip(const char **sp, STRLEN *slen)
+{
+  const char *s = *sp;
+  STRLEN len = *slen;
+  int neg = (len > 0 && s[0] == '-');
+  if (len > 0 && (s[0] == '-' || s[0] == '+')) { s++;  len--; }
+  while (len > 1 && s[0] == '0') { s++;  len--; }
+  if (neg && len == 1 && s[0] == '0') neg = 0;   /* -0 → 0 */
+  *sp = s;
+  *slen = len;
+  return neg;
+}
+
 /* Parse a signed decimal integer string: strip optional sign and leading
  * zeros, validate that all remaining characters are digits, and update *sp
  * and *slen to point to the canonical digit sequence.  Returns 1 if negative,
  * 0 otherwise.  Croaks on invalid input. */
 static int strint_parse(const char **sp, STRLEN *slen)
 {
-  const char* s = *sp;
-  STRLEN i = 0, len = *slen;
+  STRLEN i = 0;
   int neg = 0;
-
-  if (s != 0 && len > 0) {
-    neg = (s[0] == '-');
-    if (s[0] == '-' || s[0] == '+') { s++; len--; }
-    while (len > 0 && *s == '0') { s++; len--; }
-    if (len == 0) { s--; len = 1; neg = 0; }  /* value is 0 */
-    for (i = 0; i < len; i++)
-      if (!isDIGIT(s[i]))
+  if (*sp != NULL) {
+    neg = strint_strip(sp, slen);
+    for (i = 0; i < *slen; i++)
+      if (!isDIGIT((*sp)[i]))
         break;
   }
-  if (s == 0 || len == 0 || i < len) croak("Parameter must be an integer");
-  *sp = s;
-  *slen = len;
+  if (*sp == NULL || *slen == 0 || i < *slen)
+    croak("Parameter must be an integer");
   return neg;
 }
 
 int strint_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen) {
   STRLEN i;
-  int aneg = strint_parse(&a, &alen);
-  int bneg = strint_parse(&b, &blen);
+  int aneg = strint_strip(&a, &alen);
+  int bneg = strint_strip(&b, &blen);
   if (aneg != bneg)  return (bneg) ? 1 : -1;
   if (aneg) { /* swap a and b if both negative */
     const char* t = a;  STRLEN tlen = alen;
@@ -646,6 +656,27 @@ bool strint_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN b
   return 0; /* equal */
 }
 
+/* Absolute value.  out needs alen bytes. */
+STRLEN strint_abs(char* out, const char* a, STRLEN alen)
+{
+  if (alen > 0 && a[0] == '-') { a++;  alen--; }
+  memcpy(out, a, alen);
+  return alen;
+}
+
+/* Negation.  out needs alen+1 bytes. */
+STRLEN strint_neg(char* out, const char* a, STRLEN alen)
+{
+  int neg = strint_strip(&a, &alen);
+  if (!neg && !(alen == 1 && a[0] == '0')) {
+    out[0] = '-';
+    memcpy(out+1, a, alen);
+    return alen+1;
+  }
+  memcpy(out, a, alen);
+  return alen;
+}
+
 /* Add or subtract two signed decimal integer strings.
  * If negate_b is false, computes a+b; if true, computes a-b (i.e. a+(-b)).
  * Write result to out; caller must ensure at least max(alen,blen)+2 bytes
@@ -663,7 +694,7 @@ STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN
     if (b[0] == '-') { memcpy(out, b + 1, blen - 1); return blen - 1; }
     out[0] = '-'; memcpy(out + 1, b, blen); return blen + 1;
   }
-#if 1
+  /* Fast +1 / -1 for cases with no carry */
   if (blen == 1 && b[0] == '1') {
     int aneg = a[0] == '-', negb = !!negate_b;
     if ((aneg==negb && a[alen-1] != '9') || (aneg!=negb && a[alen-1] != '0')) {
@@ -672,7 +703,6 @@ STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN
       return alen;
     }
   }
-#endif
   b9_init(&A);  b9_init(&B);
   b9_set_str(&A, a, alen);
   b9_set_str(&B, b, blen);
@@ -836,48 +866,47 @@ static STRLEN uv_to_str(char* buf, UV v)
  * then verifies/adjusts with b9 arithmetic. */
 UV strint_logint(const char* a, STRLEN alen, UV base)
 {
-    STRLEN nd, i;
-    UV k;
-    double approx, log10_a, k_est_f;
-    int aneg;
-    b9_t bn, bbase, pow, tmp;
+  STRLEN nd, i;
+  UV k;
+  double approx, log10_a, k_est_f;
+  b9_t bn, bbase, pow, tmp;
 
-    if (base < 2) return UV_MAX;
+  if (base < 2) return UV_MAX;
 
-    aneg = strint_parse(&a, &alen);
-    if (aneg || (alen == 1 && a[0] == '0')) return UV_MAX;
+  if (strint_strip(&a, &alen) || (alen == 1 && a[0] == '0'))
+    return UV_MAX;
 
-    /* Floating-point estimate: log10(a) via leading digits + digit count */
-    nd = (alen < 15) ? alen : 15;
-    approx = 0.0;
-    for (i = 0; i < nd; i++)
-        approx = approx * 10.0 + (double)(a[i] - '0');
-    log10_a = (double)(alen - nd) + log10(approx);
-    k_est_f = log10_a / log10((double)base);
-    k = (k_est_f <= 1.0) ? 0 : (UV)k_est_f - 1;  /* start one below estimate */
+  /* Floating-point estimate: log10(a) via leading digits + digit count */
+  nd = (alen < 15) ? alen : 15;
+  approx = 0.0;
+  for (i = 0; i < nd; i++)
+    approx = approx * 10.0 + (double)(a[i] - '0');
+  log10_a = (double)(alen - nd) + log10(approx);
+  k_est_f = log10_a / log10((double)base);
+  k = (k_est_f <= 1.0) ? 0 : (UV)k_est_f - 1;  /* start one below estimate */
 
-    b9_init(&bn);  b9_init(&bbase);  b9_init(&pow);  b9_init(&tmp);
-    b9_set_str(&bn, a, alen);
-    b9_set_uv(&bbase, base);
-    b9_pow(&pow, &bbase, k);
+  b9_init(&bn);  b9_init(&bbase);  b9_init(&pow);  b9_init(&tmp);
+  b9_set_str(&bn, a, alen);
+  b9_set_uv(&bbase, base);
+  b9_pow(&pow, &bbase, k);
 
-    /* Float overshot (very rare): step down by dividing until base^k ≤ a */
-    while (k > 0 && b9_cmp(&pow, &bn) > 0) {
-        b9_divmod(&tmp, NULL, &pow, &bbase);
-        b9_swap(&pow, &tmp);
-        k--;
-    }
+  /* Float overshot (very rare): step down by dividing until base^k ≤ a */
+  while (k > 0 && b9_cmp(&pow, &bn) > 0) {
+    b9_divmod(&tmp, NULL, &pow, &bbase);
+    b9_swap(&pow, &tmp);
+    k--;
+  }
 
-    /* Step up while base^(k+1) ≤ a */
-    for (;;) {
-        b9_mul(&tmp, &pow, &bbase);
-        if (b9_cmp(&tmp, &bn) > 0) break;
-        b9_swap(&pow, &tmp);
-        k++;
-    }
+  /* Step up while base^(k+1) ≤ a */
+  for (;;) {
+    b9_mul(&tmp, &pow, &bbase);
+    if (b9_cmp(&tmp, &bn) > 0) break;
+    b9_swap(&pow, &tmp);
+    k++;
+  }
 
-    b9_free(&bn);  b9_free(&bbase);  b9_free(&pow);  b9_free(&tmp);
-    return k;
+  b9_free(&bn);  b9_free(&bbase);  b9_free(&pow);  b9_free(&tmp);
+  return k;
 }
 
 /* floor(n^(1/k)) via Newton's method, starting from above.
@@ -885,80 +914,79 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
  * Returns the length of the result, or 0 on error (k==0, n<0). */
 STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
 {
-    STRLEN nd, i, rlen;
-    double approx, log10_a, r_est_f;
-    int aneg;
-    b9_t bn, bkm1, bk, r, pk1, q, tmp;
+  STRLEN nd, i, rlen;
+  double approx, log10_a, r_est_f;
+  b9_t bn, bkm1, bk, r, pk1, q, tmp;
 
-    if (k == 0) return 0;
+  if (k == 0) return 0;
 
-    aneg = strint_parse(&a, &alen);
-    if (aneg) return 0;
+  if (strint_strip(&a, &alen))
+    return 0;
 
-    if (k == 1) { memcpy(out, a, alen); return alen; }
+  if (k == 1) { memcpy(out, a, alen); return alen; }
 
-    if (alen == 1 && (a[0] == '0' || a[0] == '1')) { out[0] = a[0]; return 1; }
+  if (alen == 1 && (a[0] == '0' || a[0] == '1')) { out[0] = a[0]; return 1; }
 
-    /* Float estimate of floor(log10(n^(1/k))) */
-    nd = (alen < 15) ? alen : 15;
-    approx = 0.0;
-    for (i = 0; i < nd; i++)
-        approx = approx * 10.0 + (double)(a[i] - '0');
-    log10_a = (double)(alen - nd) + log10(approx);
-    r_est_f = log10_a / (double)k;
+  /* Float estimate of floor(log10(n^(1/k))) */
+  nd = (alen < 15) ? alen : 15;
+  approx = 0.0;
+  for (i = 0; i < nd; i++)
+      approx = approx * 10.0 + (double)(a[i] - '0');
+  log10_a = (double)(alen - nd) + log10(approx);
+  r_est_f = log10_a / (double)k;
 
-    b9_init(&bn);  b9_init(&bkm1);  b9_init(&bk);  b9_init(&r);
-    b9_set_str(&bn, a, alen);
-    b9_set_uv(&bkm1, k - 1);
-    b9_set_uv(&bk,   k);
+  b9_init(&bn);  b9_init(&bkm1); b9_init(&bk);  b9_init(&r);
+  b9_init(&pk1); b9_init(&q);    b9_init(&tmp);
 
-    b9_init(&pk1);  b9_init(&q);  b9_init(&tmp);
+  b9_set_str(&bn, a, alen);
+  b9_set_uv(&bkm1, k - 1);
+  b9_set_uv(&bk,   k);
 
-    /* Initial r: float within ~0.02% of true root, biased above.
-     * r_est_f = q_exp + frac.  r_mantissa ≈ 10^frac * 1.0002e8 (9 sig figs).
-     * For q_exp >= mlen-1: r = r_mantissa * 10^(q_exp+1-mlen) (char temp, one malloc).
-     * For q_exp < mlen-1:  r_est_f < 9, direct UV. */
-    {
-        UV q_exp = (r_est_f >= 1.0) ? (UV)r_est_f : 0;
-        double frac = r_est_f - (double)q_exp;
-        UV r_mantissa = (UV)(pow(10.0, frac) * 1.0002e8) + 1;
-        char mant_buf[12];
-        STRLEN mlen = uv_to_str(mant_buf, r_mantissa);
-        if (q_exp + 1 >= mlen) {
-            char *r_char = (char*) malloc(q_exp + 4);
-            memcpy(r_char, mant_buf, mlen);
-            memset(r_char + mlen, '0', q_exp + 1 - mlen);
-            b9_set_str(&r, r_char, q_exp + 1);
-            free(r_char);
-        } else {
-            b9_set_uv(&r, (UV)(pow(10.0, r_est_f) * 1.0002) + 1);
-        }
+  /* Initial r: float within ~0.02% of true root, biased above.
+   * r_est_f = q_exp + frac.  r_mantissa ≈ 10^frac * 1.0002e8 (9 sig figs).
+   * For q_exp >= mlen-1: r = r_mantissa * 10^(q_exp+1-mlen) (char temp, one malloc).
+   * For q_exp < mlen-1:  r_est_f < 9, r fits in a UV. */
+  {
+    UV q_exp = (r_est_f >= 1.0) ? (UV)r_est_f : 0;
+    double frac = r_est_f - (double)q_exp;
+    UV r_mantissa = (UV)(pow(10.0, frac) * 1.0002e8) + 1;
+    char mant_buf[12];
+    STRLEN mlen = uv_to_str(mant_buf, r_mantissa);
+    if (q_exp + 1 >= mlen) {
+      char *r_char = (char*) malloc(q_exp + 4);
+      memcpy(r_char, mant_buf, mlen);
+      memset(r_char + mlen, '0', q_exp + 1 - mlen);
+      b9_set_str(&r, r_char, q_exp + 1);
+      free(r_char);
+    } else {
+      b9_set_uv(&r, (UV)(pow(10.0, r_est_f) * 1.0002) + 1);
     }
+  }
 
-    /* Newton: r_new = floor(((k-1)*r + floor(n/r^(k-1))) / k).
-     * Converges from above; terminate when r_new >= r. */
-    for (;;) {
-        /* pk1 = r^(k-1) */
-        b9_pow(&pk1, &r, k - 1);
+  /* Newton: r_new = floor(((k-1)*r + floor(n/r^(k-1))) / k).
+   * Converges from above; terminate when r_new >= r. */
+  for (;;) {
+    /* pk1 = r^(k-1) */
+    b9_pow(&pk1, &r, k - 1);
 
-        /* q = floor(n / r^(k-1)) */
-        b9_divmod(&q, NULL, &bn, &pk1);
+    /* q = floor(n / r^(k-1)) */
+    b9_divmod(&q, NULL, &bn, &pk1);
 
-        /* tmp = (k-1)*r + q */
-        b9_mul(&tmp, &bkm1, &r);
-        b9_add(&tmp, &tmp, &q);
+    /* tmp = (k-1)*r + q */
+    b9_mul(&tmp, &bkm1, &r);
+    b9_add(&tmp, &tmp, &q);
 
-        /* pk1 = floor(tmp / k)  (reuse as r_new) */
-        b9_divmod(&pk1, NULL, &tmp, &bk);
+    /* pk1 = floor(tmp / k)  (reuse as r_new) */
+    b9_divmod(&pk1, NULL, &tmp, &bk);
 
-        if (b9_cmp(&pk1, &r) >= 0) break;
+    if (b9_cmp(&pk1, &r) >= 0) break;
 
-        /* r = r_new */
-        b9_swap(&r, &pk1);
-    }
+    /* r = r_new */
+    b9_swap(&r, &pk1);
+  }
 
-    rlen = b9_get_str(out, &r);
-    b9_free(&bn);  b9_free(&bkm1);  b9_free(&bk);
-    b9_free(&r);   b9_free(&pk1);   b9_free(&q);  b9_free(&tmp);
-    return rlen;
+  rlen = b9_get_str(out, &r);
+  b9_free(&bn);  b9_free(&bkm1);  b9_free(&bk);
+  b9_free(&r);   b9_free(&pk1);   b9_free(&q);  b9_free(&tmp);
+  return rlen;
 }
