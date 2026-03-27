@@ -32,8 +32,8 @@ extern STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, S
 extern STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, const char* c, STRLEN clen, bool negate_c);
 
 /* Raise a to non-negative integer power exp.
- * out must have at least limit+1 bytes (limit for magnitude + 1 for sign).
- * Returns 0 if result magnitude would exceed limit digits.
+ * out must have at least limit bytes.
+ * Returns 0 if result would not fit in limit characters.
  * Returns the result length. */
 extern STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit);
 

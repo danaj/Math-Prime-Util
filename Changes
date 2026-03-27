@@ -40,9 +40,12 @@ Revision history for Perl module Math::Prime::Util
       bigint objects rather than calling into Perl.  Streamlined conversion
       of output to canonical form.  1.5 to 3x faster for some examples.
 
-    - simple add/sub/mul operations directly on the string input integers.
+    - simple add/sub/mul/div/pow operations directly on the string input.
       Mostly bypassed if we see Math::GMPz or Math::GMP, but with other classes
       this can be a 2-8x speedup.
+
+    - string bigint accelerations of logint, rootint, and sqrtint
+      for 5x to 50x speedup.
 
 0.74 2026-03-13
 
