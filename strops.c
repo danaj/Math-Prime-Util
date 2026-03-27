@@ -499,7 +499,7 @@ STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRL
 
 
 /******************************************************************************/
-/*                                INTEGER LOG                                 */
+/*                           INTEGER LOG AND ROOT                             */
 /******************************************************************************/
 
 /* Write UV v as a decimal string; return length.  buf must have >= 21 bytes. */
@@ -571,4 +571,113 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
   free(pow_buf);
   free(next_buf);
   return k;
+}
+
+/* floor(n^(1/k)) via Newton's method, starting from above.
+ * out must have at least alen+2 bytes.
+ * Returns the length of the result, or 0 on error (k==0, n<0). */
+STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
+{
+  char k_str[24], km1_str[24];
+  STRLEN k_len, km1_len;
+  char *r_buf, *pow_buf, *tmp_buf;
+  STRLEN r_len, pow_len, tmp_len, pk1_limit, buf_size;
+  STRLEN nd, i;
+  double approx, log10_a, r_est_f;
+  int aneg;
+  UV r_digits;
+
+  if (k == 0) return 0;
+
+  aneg = strint_parse(&a, &alen);
+  if (aneg) return 0;
+
+  /* k==1: result is n */
+  if (k == 1) { memcpy(out, a, alen); return alen; }
+
+  /* n==0 or n==1: result is n */
+  if (alen == 1 && (a[0] == '0' || a[0] == '1')) {
+    out[0] = a[0]; return 1;
+  }
+
+  /* Float estimate of floor(log10(n^(1/k))) */
+  nd = (alen < 15) ? alen : 15;
+  approx = 0.0;
+  for (i = 0; i < nd; i++)
+    approx = approx * 10.0 + (double)(a[i] - '0');
+  log10_a = (double)(alen - nd) + log10(approx);
+  r_est_f = log10_a / (double)k;
+
+  /* Start at 10^(floor(r_est_f)+2): guaranteed strictly above the true root.
+   * The +2 absorbs floating-point error in r_est_f. */
+  r_digits = (r_est_f < 0.0) ? 1 : (UV)r_est_f + 2;
+
+  /* pk1_limit: upper bound on digits of r^(k-1).
+   * r has r_digits+1 magnitude digits; r^(k-1) has at most (k-1)*(r_digits+1) digits.
+   * We need pk1_limit >= (k-1)*(r_digits+1) so mag_pow's check doesn't trigger. */
+  pk1_limit = (k - 1) * (r_digits + 2) + 4;
+  buf_size  = pk1_limit + alen + 8;
+
+  tmp_buf = (char*) malloc(2*buf_size + r_digits+4);
+  pow_buf = tmp_buf + buf_size;
+  r_buf   = tmp_buf + 2*buf_size;
+
+  k_len   = uv_to_str(k_str,   k);
+  km1_len = uv_to_str(km1_str, k - 1);
+
+  /* Better initial r: use float to get within ~0.01% of the true root.
+   * r_est_f = q + f, q integer, f in [0,1).  True root ≈ 10^f * 10^q.
+   * Build r_init = r_mantissa * 10^(q-mlen+1), where r_mantissa is a
+   * ceil(10^f * 1.0002) rounded up to mlen significant digits.
+   * The 0.02% upward bias guarantees r_init >= true root despite float
+   * error in r_est_f (actual error is < 7e-15 relative).
+   * 1.0002e8 fits safely in a 32-bit UV (< 4.29e9). */
+  {
+    UV q = (r_est_f >= 1.0) ? (UV)r_est_f : 0;
+    double frac = r_est_f - (double)q;
+    UV r_mantissa = (UV)(pow(10.0, frac) * 1.0002e8) + 1;
+    char mant_buf[12];   /* scratch: holds up to 10-digit mantissa safely */
+    STRLEN mlen = uv_to_str(mant_buf, r_mantissa);
+    if (q + 1 >= mlen) {
+      /* Large result: copy mantissa into r_buf and pad with trailing zeros. */
+      memcpy(r_buf, mant_buf, mlen);
+      memset(r_buf + mlen, '0', q + 1 - mlen);
+      r_len = q + 1;
+    } else {
+      /* Small result (r_est_f < 9): compute initial r directly from float.
+       * pow(10, r_est_f) < 10^9 < UV_MAX on both 32- and 64-bit. */
+      UV r_direct = (UV)(pow(10.0, r_est_f) * 1.0002) + 1;
+      r_len = uv_to_str(r_buf, r_direct);
+    }
+  }
+
+  /* Newton: r_new = floor(((k-1)*r + floor(n/r^(k-1))) / k).
+   * Converges from above: each r_new < r until r = floor(n^(1/k)). */
+  for (;;) {
+    STRLEN new_len;
+
+    /* r^(k-1) */
+    pow_len = strint_pow(pow_buf, r_buf, r_len, k - 1, pk1_limit);
+    if (pow_len == 0) break;  /* should not happen with correct pk1_limit */
+
+    /* q = floor(n / r^(k-1)) */
+    tmp_len = strint_divint(tmp_buf, a, alen, pow_buf, pow_len);
+
+    /* numerator = (k-1)*r + q */
+    pow_len = strint_mul(pow_buf, r_buf, r_len, km1_str, km1_len);
+    pow_len = strint_add_s(pow_buf, pow_buf, pow_len, tmp_buf, tmp_len, 0);
+
+    /* r_new = floor(numerator / k) */
+    new_len = strint_divint(tmp_buf, pow_buf, pow_len, k_str, k_len);
+
+    /* Converged: r is floor(n^(1/k)) when Newton no longer decreases it. */
+    if (strint_cmp(tmp_buf, new_len, r_buf, r_len) >= 0) break;
+
+    memcpy(r_buf, tmp_buf, new_len);
+    r_len = new_len;
+  }
+
+  memcpy(out, r_buf, r_len);
+  free(tmp_buf);
+  return r_len;
 }

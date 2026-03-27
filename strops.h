@@ -41,6 +41,11 @@ extern STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN l
  * Returns UV_MAX on error (a < 1 or base < 2). */
 extern UV strint_logint(const char* a, STRLEN alen, UV base);
 
+/* floor(a^(1/k)) for a >= 0, k >= 1.
+ * out must have at least alen+2 bytes.
+ * Returns 0 on error (k==0, a<0). */
+extern STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k);
+
 /* Signed floor division and remainder.
  * Either qout or rout (and its companion length pointer) may be NULL.
  * qout needs alen+1 bytes; rout needs blen bytes.
