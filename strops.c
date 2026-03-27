@@ -39,31 +39,58 @@
 /* Limbs needed for a decimal string of len digits. */
 #define B9_NLIMBS(len)  (((len) + B9_DIGS - 1) / B9_DIGS)
 
+/* Inline limb slots: 2 UVs worth, so 4 limbs on 64-bit (36 digits)
+ * or 2 limbs on 32-bit with uint64_t (12 digits).
+ * Avoids malloc for many real-world inputs. */
+#define B9_INLINE_LIMBS  (2 * sizeof(UV) / sizeof(b9limb_t))
+
 /******************************************************************************/
-/*                       B9 ARITHMETIC  (GMP-STYLE INTERFACE)                */
+/*                       B9 ARITHMETIC  (GMP-STYLE INTERFACE)                 */
 /*                                                                            */
-/* b9_t holds a signed big integer as a managed little-endian limb array.    */
-/* All b9_* functions are static (file-scope only).                          */
+/* b9_t holds a signed big integer as a managed little-endian limb array.     */
+/* d points to d_small when the value fits in B9_INLINE_LIMBS limbs,          */
+/* otherwise to a heap allocation.  All b9_* functions are static.            */
 /******************************************************************************/
 
 typedef struct {
-    b9limb_t *d;      /* limb array, little-endian */
-    uint32_t  alloc;  /* allocated limb slots */
-    uint32_t  n;      /* significant limbs (0 means value is zero) */
-    int       neg;    /* 1 if negative, 0 otherwise */
+    b9limb_t *d;         /* (b9limb_t*)d_small when inline, else heap */
+    UV        d_small[2];/* inline storage: 2 UVs = B9_INLINE_LIMBS limbs */
+    uint32_t  alloc;     /* allocated limb slots */
+    uint32_t  n;         /* significant limbs (0 means value is zero) */
+    int       neg;       /* 1 if negative, 0 otherwise */
 } b9_t;
 
 static void b9_init(b9_t *x)
-  { x->d = NULL;  x->alloc = 0;  x->n = 0;  x->neg = 0; }
+  { x->d = (b9limb_t*)x->d_small;  x->alloc = B9_INLINE_LIMBS;  x->n = 0;  x->neg = 0; }
 
 static void b9_free(b9_t *x)
-  { free(x->d);  x->d = NULL;  x->alloc = 0;  x->n = 0;  x->neg = 0; }
+{
+  if (x->d != (b9limb_t*)x->d_small) free(x->d);
+  x->d = (b9limb_t*)x->d_small;  x->alloc = B9_INLINE_LIMBS;  x->n = 0;  x->neg = 0;
+}
 
 static void b9_ensure(b9_t *x, uint32_t need)
 {
   if (x->alloc >= need) return;
-  x->d     = (b9limb_t *) realloc(x->d, (size_t)need * sizeof(b9limb_t));
+  if (x->d == (b9limb_t*)x->d_small) {
+    x->d = (b9limb_t *) malloc((size_t)need * sizeof(b9limb_t));
+    if (x->n) memcpy(x->d, x->d_small, x->n * sizeof(b9limb_t));
+  } else {
+    x->d = (b9limb_t *) realloc(x->d, (size_t)need * sizeof(b9limb_t));
+  }
   x->alloc = need;
+}
+
+/* Exchange two b9_t values, correctly handling inline storage. */
+static void b9_swap(b9_t *a, b9_t *b)
+{
+  int a_inline = (a->d == (b9limb_t*)a->d_small);
+  int b_inline = (b->d == (b9limb_t*)b->d_small);
+  UV  a0 = a->d_small[0],  a1 = a->d_small[1];
+  UV  b0 = b->d_small[0],  b1 = b->d_small[1];
+  b9_t tmp = *a;  *a = *b;  *b = tmp;
+  if (b_inline) { a->d = (b9limb_t*)a->d_small;  a->d_small[0] = b0;  a->d_small[1] = b1; }
+  if (a_inline) { b->d = (b9limb_t*)b->d_small;  b->d_small[0] = a0;  b->d_small[1] = a1; }
 }
 
 static void b9_neg(b9_t *x)
@@ -372,12 +399,12 @@ static void b9_pow(b9_t *out, const b9_t *a, UV exp)
     while (exp > 0) {
         if (exp & 1) {
             b9_mul(&tmp, out, &sq);
-            b9_free(out);  *out = tmp;  b9_init(&tmp);
+            b9_swap(out, &tmp);  b9_free(&tmp);
         }
         exp >>= 1;
         if (exp > 0) {
             b9_mul(&tmp, &sq, &sq);
-            b9_free(&sq);  sq = tmp;  b9_init(&tmp);
+            b9_swap(&sq, &tmp);  b9_free(&tmp);
         }
     }
     b9_free(&sq);  b9_free(&tmp);
@@ -829,15 +856,15 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
     k_est_f = log10_a / log10((double)base);
     k = (k_est_f <= 1.0) ? 0 : (UV)k_est_f - 1;  /* start one below estimate */
 
-    b9_init(&bn);    b9_set_str(&bn, a, alen);
-    b9_init(&bbase); b9_set_uv(&bbase, base);
-    b9_init(&pow);   b9_pow(&pow, &bbase, k);
-    b9_init(&tmp);
+    b9_init(&bn);  b9_init(&bbase);  b9_init(&pow);  b9_init(&tmp);
+    b9_set_str(&bn, a, alen);
+    b9_set_uv(&bbase, base);
+    b9_pow(&pow, &bbase, k);
 
     /* Float overshot (very rare): step down by dividing until base^k ≤ a */
     while (k > 0 && b9_cmp(&pow, &bn) > 0) {
         b9_divmod(&tmp, NULL, &pow, &bbase);
-        { b9_t s = pow;  pow = tmp;  tmp = s; }
+        b9_swap(&pow, &tmp);
         k--;
     }
 
@@ -845,7 +872,7 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
     for (;;) {
         b9_mul(&tmp, &pow, &bbase);
         if (b9_cmp(&tmp, &bn) > 0) break;
-        { b9_t s = pow;  pow = tmp;  tmp = s; }
+        b9_swap(&pow, &tmp);
         k++;
     }
 
@@ -880,13 +907,14 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
     log10_a = (double)(alen - nd) + log10(approx);
     r_est_f = log10_a / (double)k;
 
-    b9_init(&bn);   b9_set_str(&bn, a, alen);
-    b9_init(&bkm1); b9_set_uv(&bkm1, k - 1);
-    b9_init(&bk);   b9_set_uv(&bk,   k);
-    b9_init(&r);
+    b9_init(&bn);  b9_init(&bkm1);  b9_init(&bk);  b9_init(&r);
+    b9_set_str(&bn, a, alen);
+    b9_set_uv(&bkm1, k - 1);
+    b9_set_uv(&bk,   k);
+
     b9_init(&pk1);  b9_init(&q);  b9_init(&tmp);
 
-    /* Better initial r: float within ~0.02% of true root, biased above.
+    /* Initial r: float within ~0.02% of true root, biased above.
      * r_est_f = q_exp + frac.  r_mantissa ≈ 10^frac * 1.0002e8 (9 sig figs).
      * For q_exp >= mlen-1: r = r_mantissa * 10^(q_exp+1-mlen) (char temp, one malloc).
      * For q_exp < mlen-1:  r_est_f < 9, direct UV. */
@@ -926,7 +954,7 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
         if (b9_cmp(&pk1, &r) >= 0) break;
 
         /* r = r_new */
-        { b9_t s = r;  r = pk1;  pk1 = s; }
+        b9_swap(&r, &pk1);
     }
 
     rlen = b9_get_str(out, &r);
