@@ -4783,7 +4783,7 @@ void addint(IN SV* sva, IN SV* svb)
        */
     }
     /* Fast Path 1: amagic with Math::GMPz / Math::GMP. */
-    if (ix <= 5) {
+    if (ix <= 4) {
       static const int fast_amg[] = {add_amg, subtr_amg, mult_amg, div_amg, modulo_amg};
       /* div_amg might be a different mode, so only run on all-pos case */
       if (ix != 3 || (ix == 3 && astatus == 1 && bstatus == 1))
@@ -4993,20 +4993,37 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
     }
     /* GMP backend is fast.  PP not so fast even with Math::GMPz. */
     /* Fast path: strint_logint for bigint n, base k already UV */
-    if (ix == 0 && svret == 0 && _XS_get_callgmp() < 47) {
+    if (ix == 0 && _XS_get_callgmp() < 47) {
       STRLEN lenn;
       const char* sn = SvPV_nomg(svn, lenn);
       UV result = strint_logint(sn, lenn, k);
-      if (result != UV_MAX)
+      if (result != UV_MAX) {
+        if (svret) {
+          STRLEN klen;
+          const char* kstr = SvPV_nomg(sv_2mortal(newSVuv(k)), klen);
+          SV* vtmp = sv_2mortal(newSV(lenn + 2));
+          STRLEN vlen = strint_pow(SvPVX(vtmp), kstr, klen, result, lenn + 2);
+          SvCUR_set(vtmp, vlen);  SvPOK_on(vtmp);  *SvEND(vtmp) = '\0';
+          sv_setsv(SvRV(svret), xs_to_canonical(aTHX_ vtmp));
+        }
         XSRETURN_UV(result);
+      }
     }
     /* Fast path: strint_rootint for bigint n, k already UV */
-    if (ix == 1 && svret == 0 && _XS_get_callgmp() < 40) {
+    if (ix == 1 && _XS_get_callgmp() < 40) {
       STRLEN lenn;
       const char* sn = SvPV_nomg(svn, lenn);
       SV* tmp = sv_2mortal(newSV(lenn + 2));
       STRLEN rlen = strint_rootint(SvPVX(tmp), sn, lenn, k);
-      if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
+      if (rlen > 0) {
+        if (svret) {
+          SV* vtmp = sv_2mortal(newSV(lenn + 2));
+          STRLEN vlen = strint_pow(SvPVX(vtmp), SvPVX(tmp), rlen, k, lenn + 2);
+          SvCUR_set(vtmp, vlen);  SvPOK_on(vtmp);  *SvEND(vtmp) = '\0';
+          sv_setsv(SvRV(svret), xs_to_canonical(aTHX_ vtmp));
+        }
+        RETURN_STRING_BIGINT(tmp, rlen);
+      }
     }
     DISPATCHPP_GMPONLYIF(svret == 0);
     objectify_result(aTHX_ svn, ST(0));
