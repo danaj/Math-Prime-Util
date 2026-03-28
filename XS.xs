@@ -5095,6 +5095,17 @@ void lshiftint(IN SV* svn, IN SV* svk = 0)
            XSRETURN_IV(-nk);
         /* Fall through -- left shift needs more bits */
       }
+      if (k < 1600) { /* String fast path for relatively small shifts */
+        STRLEN len;
+        const char* s = SvPV_nomg(svn, len);
+        SV* tmp = sv_2mortal(newSV(len + (nix == 0 ? 3 + k*.302 : 0)));
+        switch (nix) {
+          case 0:  len = strint_lshiftint( SvPVX(tmp), s, len, k);   break;
+          case 1:  len = strint_rshiftint( SvPVX(tmp), s, len, k);   break;
+          default: len = strint_rashiftint(SvPVX(tmp), s, len, k);   break;
+        }
+        if (len > 0) RETURN_STRING_BIGINT(tmp,len);
+      }
     }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));

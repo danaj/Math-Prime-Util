@@ -69,4 +69,14 @@ extern STRLEN strint_abs(char* out, const char* a, STRLEN alen);
 /* Negation.  out needs alen+1 bytes. */
 extern STRLEN strint_neg(char* out, const char* a, STRLEN alen);
 
+/* Left shift: a * 2^k.
+ * out needs alen + ceil(k * log10(2)) + 2 bytes. */
+extern STRLEN strint_lshiftint(char* out, const char* a, STRLEN alen, UV k);
+/* Right shift truncating toward zero: sign(a) * floor(|a| / 2^k).
+ * out needs alen bytes. */
+extern STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k);
+/* Arithmetic right shift (floor division): floor(a / 2^k).
+ * out needs alen bytes. */
+extern STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k);
+
 #endif

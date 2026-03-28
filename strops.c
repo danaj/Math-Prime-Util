@@ -62,6 +62,7 @@ typedef struct {
 
 static void b9_init(b9_t *x)
   { x->d = (b9limb_t*)x->d_small;  x->alloc = B9_INLINE_LIMBS;  x->n = 0;  x->neg = 0; }
+/* b9_init_set, b9_init_set_uv, b9_init_set_str are defined later */
 
 static void b9_free(b9_t *x)
 {
@@ -91,6 +92,16 @@ static void b9_swap(b9_t *a, b9_t *b)
   b9_t tmp = *a;  *a = *b;  *b = tmp;
   if (b_inline) { a->d = (b9limb_t*)a->d_small;  a->d_small[0] = b0;  a->d_small[1] = b1; }
   if (a_inline) { b->d = (b9limb_t*)b->d_small;  b->d_small[0] = a0;  b->d_small[1] = a1; }
+}
+
+/* Free dst, move src into dst.  src is blanked. */
+static void b9_move(b9_t *dst, b9_t *src)
+{
+  b9_free(dst);
+  *dst = *src;
+  if (src->d == (b9limb_t*)src->d_small)
+      dst->d = (b9limb_t*)dst->d_small;
+  b9_init(src);
 }
 
 static void b9_neg(b9_t *x)
@@ -177,6 +188,20 @@ static void b9_set_uv(b9_t *x, UV v)
   if (v == 0) { x->n = 0;  return; }
   while (v > 0) { x->d[n++] = (b9limb_t)((UV)(v % B9_BASE)); v /= (UV)B9_BASE; }
   x->n = n;
+}
+
+/* Simpler helpers */
+static void b9_init_set_uv(b9_t *x, UV v)
+  { b9_init(x);  b9_set_uv(x,v); }
+static void b9_init_set_str(b9_t *x, const char *s, STRLEN len)
+  { b9_init(x);  b9_set_str(x,s,len); }
+static void b9_init_set(b9_t *x, const b9_t *y)
+{
+  b9_init(x);
+  b9_ensure(x, y->n);
+  if (y->n) memcpy(x->d, y->d, y->n * sizeof(b9limb_t));
+  x->n = y->n;
+  x->neg = y->neg;
 }
 
 /* Signed comparison.  Returns -1, 0, or 1. */
@@ -338,8 +363,7 @@ static void b9_sub(b9_t *out, const b9_t *a, const b9_t *b)
 static void b9_add_uv(b9_t *out, const b9_t *a, UV v)
 {
   b9_t b;
-  b9_init(&b);
-  b9_set_uv(&b, v);
+  b9_init_set_uv(&b, v);
   b9_add(out, a, &b);
   b9_free(&b);
 }
@@ -385,29 +409,36 @@ static void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
   out->neg = (out->n == 1 && out->d[0] == 0) ? 0 : neg;
 }
 
-/* out = a^exp.  out must not alias a; a is not modified. */
+/* out = a^exp.  out can alias a. */
 static void b9_pow(b9_t *out, const b9_t *a, UV exp)
 {
-    b9_t sq, tmp;
-    b9_init(&sq);
-    /* sq = copy of a */
-    b9_ensure(&sq, a->n);
-    if (a->n) memcpy(sq.d, a->d, a->n * sizeof(b9limb_t));
-    sq.n = a->n;  sq.neg = a->neg;
-    b9_set_uv(out, 1);
-    b9_init(&tmp);
-    while (exp > 0) {
-        if (exp & 1) {
-            b9_mul(&tmp, out, &sq);
-            b9_swap(out, &tmp);  b9_free(&tmp);
-        }
-        exp >>= 1;
-        if (exp > 0) {
-            b9_mul(&tmp, &sq, &sq);
-            b9_swap(&sq, &tmp);  b9_free(&tmp);
-        }
+  b9_t sq, tmp;
+  b9_init_set(&sq, a);  /* sq is a copy of a */
+  b9_set_uv(out, 1);
+  b9_init(&tmp);
+  while (exp > 0) {
+    if (exp & 1) {
+      b9_mul(&tmp, out, &sq);
+      b9_move(out, &tmp);
     }
-    b9_free(&sq);  b9_free(&tmp);
+    exp >>= 1;
+    if (exp > 0) {
+      b9_mul(&tmp, &sq, &sq);
+      b9_move(&sq, &tmp);
+    }
+  }
+  b9_free(&sq);  b9_free(&tmp);
+}
+
+/* There are a few places that want a power of two.  This wraps it. */
+static void b9_init_set_pow2(b9_t *x, UV k)
+{
+  if (k <= 31) {
+    b9_init_set_uv(x, 1U << k);
+  } else {
+    b9_init_set_uv(x, 2);
+    b9_pow(x, x, k);
+  }
 }
 
 /* Signed floor division and remainder (floor convention: rem has sign of b).
@@ -597,7 +628,7 @@ static int strint_strip(const char **sp, STRLEN *slen)
  * zeros, validate that all remaining characters are digits, and update *sp
  * and *slen to point to the canonical digit sequence.  Returns 1 if negative,
  * 0 otherwise.  Croaks on invalid input. */
-static int strint_parse(const char **sp, STRLEN *slen)
+static int strint_strip_and_validate(const char **sp, STRLEN *slen)
 {
   STRLEN i = 0;
   int neg = 0;
@@ -638,7 +669,7 @@ bool strint_minmax(bool min, const char* a, STRLEN alen, const char* b, STRLEN b
   STRLEN i;
 
   /* a is checked, process b */
-  bneg = strint_parse(&b, &blen);
+  bneg = strint_strip_and_validate(&b, &blen);
 
   if (a == 0) return 1;
 
@@ -703,9 +734,8 @@ STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN
       return alen;
     }
   }
-  b9_init(&A);  b9_init(&B);
-  b9_set_str(&A, a, alen);
-  b9_set_str(&B, b, blen);
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
   if (negate_b) b9_neg(&B);
   b9_add(&A, &A, &B);
   rlen = b9_get_str(out, &A);
@@ -725,9 +755,9 @@ STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, STRLEN b
   b9_t A, B, R;
   STRLEN rlen;
 
-  b9_init(&A);  b9_init(&B);  b9_init(&R);
-  b9_set_str(&A, a, alen);
-  b9_set_str(&B, b, blen);
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init(&R);
   b9_mul(&R, &A, &B);
 
   rlen = b9_get_str(out, &R);
@@ -741,10 +771,9 @@ STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STR
   b9_t A, B, C;
   STRLEN rlen;
 
-  b9_init(&A);  b9_init(&B);  b9_init(&C);
-  b9_set_str(&A, a, alen);
-  b9_set_str(&B, b, blen);
-  b9_set_str(&C, c, clen);
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init_set_str(&C, c, clen);
   if (negate_c) b9_neg(&C);
 
   b9_mul(&A, &A, &B);
@@ -779,8 +808,8 @@ STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit)
     return alen;
   }
 
-  b9_init(&base);  b9_init(&result);
-  b9_set_str(&base, a, alen);
+  b9_init_set_str(&base, a, alen);
+  b9_init(&result);
   b9_pow(&result, &base, exp);
   rlen = b9_length(&result) > limit  ?  0  :  b9_get_str(out, &result);
   b9_free(&base);  b9_free(&result);
@@ -803,10 +832,10 @@ bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
                    const char* b, STRLEN blen)
 {
   b9_t ba, bb, bq, br;
-  b9_init(&ba);  b9_init(&bb);  b9_init(&bq);  b9_init(&br);
-  b9_set_str(&ba, a, alen);
-  b9_set_str(&bb, b, blen);
+  b9_init_set_str(&ba, a, alen);
+  b9_init_set_str(&bb, b, blen);
   if (bb.n == 0) { b9_free(&ba);  b9_free(&bb);  return 0; }
+  b9_init(&bq);  b9_init(&br);
   b9_divmod(&bq, &br, &ba, &bb);
   if (qout) { STRLEN l = b9_get_str(qout, &bq);  if (qlen) *qlen = l; }
   if (rout) { STRLEN l = b9_get_str(rout, &br);  if (rlen) *rlen = l; }
@@ -832,10 +861,10 @@ STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRL
 {
   STRLEN len;
   b9_t ba, bb, bq, br;
-  b9_init(&ba);  b9_init(&bb);  b9_init(&bq);  b9_init(&br);
-  b9_set_str(&ba, a, alen);
-  b9_set_str(&bb, b, blen);
+  b9_init_set_str(&ba, a, alen);
+  b9_init_set_str(&bb, b, blen);
   if (bb.n == 0) { b9_free(&ba);  b9_free(&bb);  return 0; }
+  b9_init(&bq);  b9_init(&br);
   b9_divmod(&bq, &br, &ba, &bb);
   if (br.n > 0)
     b9_add_uv(&bq, &bq, 1);
@@ -885,10 +914,11 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
   k_est_f = log10_a / log10((double)base);
   k = (k_est_f <= 1.0) ? 0 : (UV)k_est_f - 1;  /* start one below estimate */
 
-  b9_init(&bn);  b9_init(&bbase);  b9_init(&pow);  b9_init(&tmp);
-  b9_set_str(&bn, a, alen);
-  b9_set_uv(&bbase, base);
+  b9_init_set_str(&bn, a, alen);
+  b9_init_set_uv(&bbase, base);
+  b9_init(&pow);
   b9_pow(&pow, &bbase, k);
+  b9_init(&tmp);
 
   /* Float overshot (very rare): step down by dividing until base^k ≤ a */
   while (k > 0 && b9_cmp(&pow, &bn) > 0) {
@@ -935,12 +965,10 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
   log10_a = (double)(alen - nd) + log10(approx);
   r_est_f = log10_a / (double)k;
 
-  b9_init(&bn);  b9_init(&bkm1); b9_init(&bk);  b9_init(&r);
-  b9_init(&pk1); b9_init(&q);    b9_init(&tmp);
-
-  b9_set_str(&bn, a, alen);
-  b9_set_uv(&bkm1, k - 1);
-  b9_set_uv(&bk,   k);
+  b9_init_set_str(&bn, a, alen);
+  b9_init_set_uv(&bkm1, k - 1);
+  b9_init_set_uv(&bk,   k);
+  b9_init(&r);  b9_init(&pk1);  b9_init(&q);  b9_init(&tmp);
 
   /* Initial r: float within ~0.02% of true root, biased above.
    * r_est_f = q_exp + frac.  r_mantissa ≈ 10^frac * 1.0002e8 (9 sig figs).
@@ -988,5 +1016,49 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
   rlen = b9_get_str(out, &r);
   b9_free(&bn);  b9_free(&bkm1);  b9_free(&bk);
   b9_free(&r);   b9_free(&pk1);   b9_free(&q);  b9_free(&tmp);
+  return rlen;
+}
+
+STRLEN strint_lshiftint(char* out, const char* a, STRLEN alen, UV k)
+{
+  b9_t n, pow2;
+  STRLEN rlen;
+  if (k == 0) { memcpy(out, a, alen); return alen; }
+  b9_init_set_str(&n, a, alen);
+  b9_init_set_pow2(&pow2, k);
+  b9_mul(&n, &n, &pow2);
+  rlen = b9_get_str(out, &n);
+  b9_free(&n);  b9_free(&pow2);
+  return rlen;
+}
+
+STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k)
+{
+  b9_t n, pow2, q;
+  STRLEN rlen;
+  int neg;
+  if (k == 0) { memcpy(out, a, alen); return alen; }
+  b9_init_set_str(&n, a, alen);
+  b9_init_set_pow2(&pow2, k);
+  neg = n.neg;  n.neg = 0;
+  b9_init(&q);
+  b9_divmod(&q, NULL, &n, &pow2);
+  q.neg = (q.n != 0) ? neg : 0;
+  rlen = b9_get_str(out, &q);
+  b9_free(&n);  b9_free(&pow2);  b9_free(&q);
+  return rlen;
+}
+
+STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k)
+{
+  b9_t n, pow2, q;
+  STRLEN rlen;
+  if (k == 0) { memcpy(out, a, alen); return alen; }
+  b9_init_set_str(&n, a, alen);
+  b9_init_set_pow2(&pow2, k);
+  b9_init(&q);
+  b9_divmod(&q, NULL, &n, &pow2);
+  rlen = b9_get_str(out, &q);
+  b9_free(&n);  b9_free(&pow2);  b9_free(&q);
   return rlen;
 }
