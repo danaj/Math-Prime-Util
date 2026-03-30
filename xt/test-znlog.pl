@@ -3,12 +3,14 @@ use strict;
 use warnings;
 $| = 1;  # fast pipes
 
-use Math::Prime::Util qw/random_nbit_prime znprimroot znlog powmod/;
+use Math::Prime::Util qw/random_nbit_prime znprimroot znlog powmod
+                         csrand urandomm/;
 
 # This test uses znlog with prime modulus, similar to FLINT's tests.
 # Our znlog will handle non-primes, so another interesting test would
 # be using random integer p values.
 my $ebits = 63;
+#csrand(3);
 
 print "1..",$ebits-3,"\n";
 for my $bits (4 .. $ebits) {
@@ -18,8 +20,10 @@ for my $bits (4 .. $ebits) {
   for my $tn (1 .. $ntests) {
     my $p = random_nbit_prime( $bits );
     my $root = znprimroot($p);
-    my $b = int(rand($p-1)) + 1;
+    my $b = 1 + urandomm($p-2);
+    #print "   znlog($b,$root,$p) ...";
     my $d = znlog($b, $root, $p);
+    #print "   DONE\n";
     my $res = powmod($root, $d, $p);
     next if $res == $b;
     $ok = "not ok";

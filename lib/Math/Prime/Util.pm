@@ -6029,6 +6029,10 @@ on the group order to possibly reduce the problem to a set of smaller
 problems.  The solutions are then performed using a mixture of trial,
 Shanks' BSGS, and Pollard's DLP Rho.
 
+We will solve even when C<p> is not prime.
+This is reasonable if C<g> and C<p> are co-prime.
+If not, the function can be B<very> slow.
+
 The PP implementation is less sophisticated, with only a memory-heavy BSGS
 being used.
 

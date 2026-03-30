@@ -1571,7 +1571,7 @@ unsigned char* range_nfactor_sieve(UV lo, UV hi, bool with_multiplicity) {
 
 static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
   UV k, t;
-  if (maxrounds > p) maxrounds = p;
+  if (maxrounds >= p) maxrounds = p-1;
 
 #if USE_MONTMATH
   if (p&1) {
@@ -1625,6 +1625,7 @@ typedef struct prho_state_t {
   UV W;
   UV round;
   int failed;
+  int nrestarts;
   int verbose;
 } prho_state_t;
 
@@ -1646,8 +1647,17 @@ static UV dlp_prho_uvw(UV a, UV g, UV p, UV n, UV rounds, prho_state_t *s) {
       UV r1, r2, G, G2;
       r1 = submod(v, V, n);
       if (r1 == 0) {
-        if (verbose) printf("DLP Rho failure, r=0\n");
-        s->failed = 1;
+        if (s->nrestarts >= 4) {
+          if (verbose) printf("DLP Rho failure, r=0 (no more restarts)\n");
+          s->failed = 1;
+        } else {
+          if (verbose) printf("DLP Rho r1=0, restart %d\n", s->nrestarts+1);
+          s->nrestarts++;
+          s->u = s->U = powmod(g, (UV)s->nrestarts, p);
+          s->v = s->V = 0;
+          s->w = s->W = (UV)s->nrestarts;
+          s->round = 0;
+        }
         k = 0;
         break;
       }
@@ -1684,17 +1694,11 @@ static UV dlp_prho_uvw(UV a, UV g, UV p, UV n, UV rounds, prho_state_t *s) {
   return k;
 }
 
-#if 0
 static UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds) {
-#ifdef DEBUG
-  int const verbose = _XS_get_verbose()
-#else
-  int const verbose = 0;
-#endif
-  prho_state_t s = {1, 0, 0, 1, 0, 0,   0, 0, verbose};
+  int const verbose = _XS_get_verbose();
+  prho_state_t s = {1,0,0, 1,0,0,  0,0,0, verbose};
   return dlp_prho_uvw(a, g, p, n, maxrounds, &s);
 }
-#endif
 
 
 /******************************************************************************/
@@ -1793,12 +1797,8 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, bool race_rho) {
   UV i, m, maxm, hashmap_count;
   UV aa, S, gm, T, gs_i, bs_i;
   UV result = 0;
-#ifdef DEBUG
   int const verbose = _XS_get_verbose();
-#else
-  int const verbose = 0;
-#endif
-  prho_state_t rho_state = {1, 0, 0, 1, 0, 0,   0, 0, verbose};
+  prho_state_t rho_state = {1,0,0, 1,0,0,  0,0,0, verbose};
 
   if (n <= 2) return 0;   /* Shouldn't be here with gorder this low */
 
@@ -1814,10 +1814,9 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, bool race_rho) {
 
   maxm = isqrt(n);
   m = (maxent > maxm) ? maxm : maxent;
+  if (m > 40000000) m = 40000000;  /* cap to match hash table capacity */
 
-  hashmap_count = (m < 65537) ? 65537 :
-                  (m > 40000000) ? 40000003 :
-                  next_prime(m);               /* Ave depth around 2 */
+  hashmap_count = (m < 65537) ? 65537 : next_prime(m);  /* Ave depth around 2 */
 
   /* Create table.  Size: 8*hashmap_count bytes. */
   PAGES.size = hashmap_count;
@@ -1894,10 +1893,11 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent, bool race_rho) {
   return result;
 }
 
+
 /* Find smallest k where a = g^k mod p */
-#define DLP_TRIAL_NUM  10000
+#define DLP_TRIAL_NUM  20000
 UV znlog_solve(UV a, UV g, UV p, UV n) {
-  UV k, sqrtn;
+  UV k;
   const int verbose = _XS_get_verbose();
 
   if (a >= p) a %= p;
@@ -1908,36 +1908,41 @@ UV znlog_solve(UV a, UV g, UV p, UV n) {
 
   if (verbose > 1 && n != p-1) printf("  g=%"UVuf" p=%"UVuf", order %"UVuf"\n", g, p, n);
 
-  /* printf(" solving znlog(%"UVuf",%"UVuf",%"UVuf") n=%"UVuf"\n", a, g, p, n); */
+  /* n = 0 means p is composite AND g is not coprime to p.
+   * There may still be solutions, e.g. znlog(12,98,100) = 19
+   * But most of the algorithms for DLP don't work in this case.
+   */
+  if (n == 0) {
+    k = dlp_trial(a, g, p, p-1);
+    if (verbose) printf("  dlp full trial %s\n", k!=0 ? "success" : "failure");
+    return k;
+  }
 
-  if (n == 0 || n <= DLP_TRIAL_NUM) {
+  /* If n = znorder(g,p) is small, then do a simple search */
+  if (n <= DLP_TRIAL_NUM) {
+    k = dlp_prho(a, g, p, n, isqrt(n)*4);
+    if (k != 0) {
+      if (verbose) printf("  dlp prho small success\n");
+      return k;
+    }
     k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
     if (verbose) printf("  dlp trial 10k %s\n", (k!=0 || p <= DLP_TRIAL_NUM) ? "success" : "failure");
-    if (k != 0 || (n > 0 && n <= DLP_TRIAL_NUM)) return k;
+    return k;
   }
 
-  { /* Existence checks */
-    UV aorder, gorder = n;
-    if (gorder != 0 && powmod(a, gorder, p) != 1) return 0;
-    aorder = znorder(a,p);
-    if (aorder == 0 && gorder != 0) return 0;
-    if (aorder != 0 && gorder % aorder != 0) return 0;
-  }
-
-  /* This is confusing */
-  sqrtn = (n == 0) ? 0 : isqrt(n);
-  if (n == 0) n = p-1;
+  /* Existence check, n != 0 here, meaning g is coprime to p. */
+  if (powmod(a, n /* n is gorder */, p) != 1) return 0;
 
   {
-    UV maxent = (sqrtn > 0) ? sqrtn+1 : 100000;
-    k = dlp_bsgs(a, g, p, n, maxent/2, /* race rho */ 1);
+    UV maxent = (isqrt(n)+1) / 2;
+    bool racerho = maxent > 1000000;
+    k = dlp_bsgs(a, g, p, n, maxent, racerho);
     if (verbose) printf("  dlp bsgs %"UVuf"k %s\n", maxent/1000, k!=0 ? "success" : "failure");
     if (k != 0) return k;
-    if (sqrtn > 0 && sqrtn < maxent) return 0;
   }
 
   if (verbose) printf("  dlp doing exhaustive trial\n");
-  k = dlp_trial(a, g, p, p);
+  k = dlp_trial(a, g, p, p-1);
   return k;
 }
 
@@ -1947,7 +1952,7 @@ static UV znlog_ph(UV a, UV g, UV p, UV p1) {
   UV x, sol[MPU_MAX_DFACTORS], mod[MPU_MAX_DFACTORS];
   uint32_t i;
 
-  if (p1 == 0) return 0;   /* TODO: Should we plow on with p1=p-1? */
+  if (p1 == 0) return 0;
   pf = factorint(p1);
   if (pf.nfactors == 1)
     return znlog_solve(a, g, p, p1);
@@ -1966,7 +1971,7 @@ static UV znlog_ph(UV a, UV g, UV p, UV p1) {
 
 /* Find smallest k where a = g^k mod p */
 UV znlog(UV a, UV g, UV p) {
-  UV k, gorder, aorder;
+  UV k, gorder;
   const int verbose = _XS_get_verbose();
 
   if (a >= p) a %= p;
@@ -1975,24 +1980,18 @@ UV znlog(UV a, UV g, UV p) {
   if (a == 1 || g == 0 || p <= 2)
     return 0;
 
-  /* TODO: We call znorder with the same p many times.  We should have a
-   * method for znorder given {phi,nfactors,fac,exp} */
-
   gorder = znorder(g,p);
   if (gorder != 0 && powmod(a, gorder, p) != 1) return 0;
-  /* TODO: Can these tests every fail?  Do we need aorder? */
-  aorder = znorder(a,p);
-  if (aorder == 0 && gorder != 0) return 0;
-  if (aorder != 0 && gorder % aorder != 0) return 0;
 
-  /* TODO: Come up with a better solution for a=0 */
-  if (a == 0 || p < DLP_TRIAL_NUM || (gorder > 0 && gorder < DLP_TRIAL_NUM)) {
+  if (a == 0) {
+    if (is_prob_prime(p)) return 0;  /* prime p can never make a=0 */
+    /* We could factor p and do a smarter search. */
     if (verbose > 1) printf("  dlp trial znlog(%"UVuf",%"UVuf",%"UVuf")\n",a,g,p);
-    k = dlp_trial(a, g, p, p);
+    k = dlp_trial(a, g, p, p-1);
     return k;
   }
 
-  if (!is_prob_prime(gorder)) {
+  if (gorder != 0 && !is_prob_prime(gorder)) {
     k = znlog_ph(a, g, p, gorder);
     if (verbose) printf("  dlp PH %s\n", k!=0 ? "success" : "failure");
     if (k != 0) return k;
@@ -2001,6 +2000,39 @@ UV znlog(UV a, UV g, UV p) {
   return znlog_solve(a, g, p, gorder);
 }
 
+/******************************************************************************/
+
+UV sopfr(UV n)
+{
+  factored_t nf;
+  UV sum;
+  uint32_t i;
+
+  if (n <= 5) return n - (n==1);
+
+  nf = factorint(n);
+  sum = 0;
+  for (i = 0; i < nf.nfactors; i++)
+    sum += (nf.f[i] * (UV)nf.e[i]);
+  return sum;
+}
+
+UV sopf(UV n)
+{
+  factored_t nf;
+  UV sum;
+  uint32_t i;
+
+  if (n <= 3) return n - (n==1);
+
+  nf = factorint(n);
+  sum = 0;
+  for (i = 0; i < nf.nfactors; i++)
+    sum += nf.f[i];
+  return sum;
+}
+
+/******************************************************************************/
 
 /* Compile with:
  *  gcc -O3 -fomit-frame-pointer -march=native -Wall -DSTANDALONE -DFACTOR_STANDALONE factor.c util.c primality.c cache.c sieve.c chacha.c csprng.c prime_counts.c prime_count_cache.c lmo.c legendre_phi.c real.c inverse_interpolate.c rootmod.c lucas_seq.c prime_powers.c sort.c -lm
@@ -2047,33 +2079,3 @@ int main(int argc, char *argv[])
   return(0);
 }
 #endif
-
-UV sopfr(UV n)
-{
-  factored_t nf;
-  UV sum;
-  uint32_t i;
-
-  if (n <= 5) return n - (n==1);
-
-  nf = factorint(n);
-  sum = 0;
-  for (i = 0; i < nf.nfactors; i++)
-    sum += (nf.f[i] * (UV)nf.e[i]);
-  return sum;
-}
-
-UV sopf(UV n)
-{
-  factored_t nf;
-  UV sum;
-  uint32_t i;
-
-  if (n <= 3) return n - (n==1);
-
-  nf = factorint(n);
-  sum = 0;
-  for (i = 0; i < nf.nfactors; i++)
-    sum += nf.f[i];
-  return sum;
-}
