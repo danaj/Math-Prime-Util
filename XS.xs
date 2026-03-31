@@ -164,7 +164,8 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #else
 #  define EXTEND_TYPE SSize_t
 #endif
-#define MAX_EXTEND ((Size_t)((EXTEND_TYPE)-1))
+#define MAX_EXTEND  ((Size_t)((EXTEND_TYPE)-1))
+#define MAX_SSIZET  ((SSize_t)((Size_t)(-1) >> 1))
 
 /******************************************************************************/
 /******************************************************************************/
@@ -7744,6 +7745,83 @@ CODE:
       { ST(i) = sv_2mortal(retsvarr[i]);  retsvarr[i]=0; }
     Safefree(retsvarr);
     XSRETURN(items-2);
+}
+
+void
+vecwindow(SV* block, SV* svstep, SV* svsize, ...)
+PROTOTYPE: &$$@
+PREINIT:
+    SSize_t i, j, nlist, step, size;
+    UV ustep, usize;
+    CV *subcv;
+    SV **list;
+    AV *result_av;
+PPCODE:
+{   /* Generalized sliding window: block, step, size, list.
+       Each window of 'size' elements is passed as @_ to block;
+       all return values are collected and returned (like map). */
+    SETSUBREF(subcv, block);
+
+    if (!_validate_and_set(&ustep, aTHX_ svstep, IFLAG_POS) ||
+        !_validate_and_set(&usize, aTHX_ svsize, IFLAG_POS) ||
+        ustep > (UV)MAX_SSIZET || usize > (UV)MAX_SSIZET) {
+      DISPATCHPP();
+      return;
+    }
+    step = (SSize_t)ustep;
+    size = (SSize_t)usize;
+    /* ST(0)=block, ST(1)=step, ST(2)=size, ST(3..)=list */
+    nlist = items - 3;
+    list  = &PL_stack_base[ax+3];
+    if (nlist < size) XSRETURN_EMPTY;
+    result_av = (AV*)sv_2mortal((SV*)newAV());
+#if USE_MULTICALL
+    if (!CvISXSUB(subcv)) {
+        dMULTICALL;
+        SV **before_sp;
+        I32 gimme = G_ARRAY;
+        DECL_MULTICALL_SCOPE(subcv);
+        AV *av = save_ary(PL_defgv);
+        AvREAL_off(av);
+        PUSH_MULTICALL(subcv);
+        for (i = 0; i + size <= nlist; i += step) {
+            av_fill(av, size - 1);
+            for (j = 0; j < size; j++)
+                AvARRAY(av)[j] = list[i + j];
+            before_sp = PL_stack_sp;
+            SCOPED_MULTICALL;
+            for (j = 1; before_sp + j <= PL_stack_sp; j++)
+                av_push(result_av, newSVsv(*(before_sp + j)));
+            PL_stack_sp = before_sp;
+        }
+        FIX_MULTICALL_REFCOUNT;
+        POP_MULTICALL;
+    }
+    else
+#endif
+    {
+        for (i = 0; i + size <= nlist; i += step) {
+            I32 k, nret;
+            PUSHMARK(SP);  EXTEND(SP, (EXTEND_TYPE)size);
+            for (j = 0; j < size; j++)  PUSHs(list[i + j]);
+            PUTBACK;
+            nret = call_sv((SV*)subcv, G_ARRAY);
+            SPAGAIN;
+            for (k = 0; k < nret; k++)
+                av_push(result_av, newSVsv(SP[k + 1 - nret]));
+            SP -= nret;  PUTBACK;
+        }
+    }
+
+    {
+        SSize_t total = (SSize_t)av_count(result_av);
+        SV **res = AvARRAY(result_av);
+        AvREAL_off(result_av);          /* transfer ownership to stack mortals */
+        EXTEND(SP, (EXTEND_TYPE)total);
+        for (i = 0; i < total; i++)
+            PUSHs(sv_2mortal(res[i]));
+        XSRETURN(total);
+    }
 }
 
 void

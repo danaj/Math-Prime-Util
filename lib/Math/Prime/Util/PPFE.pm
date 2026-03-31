@@ -356,6 +356,7 @@ sub entropy_bytes {
 *vecuniq = \&Math::Prime::Util::PP::vecuniq;
 *vecfreq = \&Math::Prime::Util::PP::vecfreq;
 *vecsingleton = \&Math::Prime::Util::PP::vecsingleton;
+*vecwindow = \&Math::Prime::Util::PP::vecwindow;
 *vecsort = \&Math::Prime::Util::PP::vecsort;
 *vecsorti = \&Math::Prime::Util::PP::vecsorti;
 *setbinop = \&Math::Prime::Util::PP::setbinop;

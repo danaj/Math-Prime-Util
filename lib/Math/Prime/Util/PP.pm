@@ -12279,6 +12279,18 @@ sub vecsingleton {
          @_;
 }
 
+sub vecwindow (&$$@) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $step, $size) = (shift, shift, shift);
+  croak 'Not a subroutine reference' unless (ref($sub) || '') eq 'CODE';
+  croak 'vecwindow: step must be a positive integer' unless $step >= 1;
+  croak 'vecwindow: size must be a positive integer' unless $size >= 1;
+  my @result;
+  for (my $i = 0; $i + $size <= @_; $i += $step) {
+    push @result, $sub->(@_[$i .. $i+$size-1]);
+  }
+  @result;
+}
+
 # SET/VEC generic.
 
 # Assume two (sorted,uniqed,validated) sets as input, merge $T into $S.

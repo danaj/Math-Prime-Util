@@ -43,7 +43,7 @@ add_stopwords(qw/-th
                  bernfrac bernreal harmfrac harmreal stirling hclassno
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal vecuniq
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
-                 vecsample vecfreq vecsingleton vecslide vecprefixsum
+                 vecsample vecfreq vecsingleton vecslide vecwindow vecprefixsum
                  vecsort vecsorti heapsort quicksort
                  toint
                  sqrtint logint rootint powint addint subint mulint divint

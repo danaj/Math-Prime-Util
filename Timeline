@@ -2,6 +2,7 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.75
+2026-03-31  vecwindow {...} $step,$size,@L
 2026-03-22  toint(n)
 2026-03-21  urandomr(lo,hi)
 2026-03-17  muladdint(n,m,a)

@@ -18,7 +18,6 @@ Revision history for Perl module Math::Prime::Util
     - abundance(n)                    sigma(n)-2n => deficient/abundant/perfect
     - bell_number(n)                  Bell number, count of set partitions
     - catalan_number(n)               Catalan number
-    - vecprefixsum(@list)             prefix sum / cumulative sum of list
     - multifactorial(n,k)             k-step multifactorial of n
     - dedekind_psi(n)                 Dedekind psi function, n*prod(1+1/p)
     - partitionsq(n)                  number of partitions into distinct parts
@@ -28,6 +27,9 @@ Revision history for Perl module Math::Prime::Util
     - mulsubint(n,m,a)                signed integer n*m - a
     - toint(n)                        truncate input to integer (best form)
     - urandomr(lo,hi)                 random integer in [lo,hi] inclusive
+    - vecprefixsum(@list)             prefix sum / cumulative sum of list
+    - vecwindow { } $step,$size,@list calls block with windows of size objects
+
 
     [FUNCTIONALITY AND PERFORMANCE]
 

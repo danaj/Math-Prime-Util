@@ -103,7 +103,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecuniq vecsort vecsorti vecfreq vecsingleton vecslide
+      vecuniq vecsort vecsorti vecfreq vecsingleton vecslide vecwindow
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setcontainsany setinsert setremove setinvert
@@ -3700,6 +3700,41 @@ second example.
 This is identical to L<List::MoreUtils::slide>.
 
 
+=head2 vecwindow
+
+  # Consecutive differences
+  my @diffs = vecwindow { $_[1]-$_[0] } 1, 2, @primes;
+
+  # Non-overlapping chunks of 3, summed
+  my @sums = vecwindow { vecsum @_ } 3, 3, @data;
+
+  # Overlapping windows of 4 passed as array refs
+  my @wins = vecwindow { [@_] } 1, 4, @data;
+
+  # Like List::Util pairs (without the ->key/->value methods)
+  for my $pref (vecwindow { [@_] } 2,2,@L) { my($key,$val) = @$pref; ... }
+
+Given a code block, a step size, a window size, and a list, calls the
+code block once for each window of C<size> consecutive elements, advancing
+by C<step> between calls.  The window elements are passed as C<@_> to the
+block.  All return values from each block call are collected and returned
+as a flat list (like C<map>).  Incomplete trailing windows are silently
+dropped.
+
+Both C<step> and C<size> must be positive integers.
+When C<step E<gt> size> there are gaps between windows.
+
+The combination of selectable step and window size allows this to
+emulate many other window-type functions.
+It offers similar functionality as L<List::MoreUtils/slideatatime>,
+though in a list form rather than an iterator.
+With C<< step == size >> we get chunking like C<natatime> and C<pairs>.
+With C<< step == 1 >> we get sliding windows like C<slide>,
+calculating moving averages, n-grams, etc.
+With C<< step > size >> we can do things like pick the first of each
+group of three.
+
+
 =head2 toset
 
    my $set = toset(52,-6,14,-6,0);  # $set = [-6,0,14,52]
@@ -6030,7 +6065,7 @@ problems.  The solutions are then performed using a mixture of trial,
 Shanks' BSGS, and Pollard's DLP Rho.
 
 We will solve even when C<p> is not prime.
-This is reasonable if C<g> and C<p> are co-prime.
+This is reasonable if C<g> and C<p> are coprime.
 If not, the function can be B<very> slow.
 
 The PP implementation is less sophisticated, with only a memory-heavy BSGS

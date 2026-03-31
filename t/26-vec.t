@@ -11,7 +11,7 @@ use Math::Prime::Util qw/vecreduce
                          vecuniq
                          vecsingleton
                          vecfreq
-                         vecslide
+                         vecslide vecwindow
                          vecsort vecsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
@@ -134,6 +134,7 @@ plan tests => 1    # vecmin
             + 1    # vecfreq
             + 1    # vecsort
             + 1    # vecslide
+            + 1    # vecwindow
             + 0;
 
 ###### vecmin
@@ -404,6 +405,32 @@ subtest 'vecsort', sub {
   is($sctx, scalar(@actx), "returning vecsort(\@L) gives the number of items");
 };
 sub return_sort { return vecsort(@_); }
+
+###### vecwindow
+subtest 'vecwindow', sub {
+  # empty / short list
+  is_deeply([vecwindow {@_} 1,3,()],    [], "vecwindow: empty list");
+  is_deeply([vecwindow {@_} 1,3,1,2],   [], "vecwindow: list shorter than size");
+  is_deeply([vecwindow {@_} 1,3,1,2,3], [1,2,3], "vecwindow: list exactly size");
+
+  # step == size (natatime / non-overlapping chunks)
+  is_deeply([vecwindow {@_}         2,2,1..6], [1,2,3,4,5,6],   "vecwindow 2,2: pairs");
+  is_deeply([vecwindow {vecsum @_}  3,3,1..9], [6,15,24],        "vecwindow 3,3: chunk sums");
+  is_deeply([vecwindow {reverse @_} 4,4,1..8],[4,3,2,1,8,7,6,5],"vecwindow 4,4: reverse chunks");
+  # trailing partial window is dropped
+  is_deeply([vecwindow {@_} 3,3,1..7],[1,2,3,4,5,6],             "vecwindow 3,3: partial tail dropped");
+
+  # step == 1 (sliding / maximum overlap)
+  is_deeply([vecwindow {$_[1]-$_[0]} 1,2,1..5], [1,1,1,1],      "vecwindow 1,2: consecutive diffs");
+  is_deeply([vecwindow {vecsum @_}   1,3,1..5], [6,9,12],        "vecwindow 1,3: running sum of 3");
+
+  # step > size (gaps between windows)
+  is_deeply([vecwindow {vecsum @_}   3,2,1..8], [3,9,15],        "vecwindow 3,2: step>size gaps");
+
+  # block returning multiple values (list context — G_ARRAY)
+  is_deeply([vecwindow {($_[1],$_[0])} 2,2,1..4],[2,1,4,3],      "vecwindow: block returns list");
+  is_deeply([vecwindow {@_}            1,2,1..3],[1,2,2,3],       "vecwindow: sliding pairs as list");
+};
 
 ###### vecslide
 subtest 'vecslide', sub {

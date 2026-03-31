@@ -1529,6 +1529,8 @@ subtest 'vector (list) functions', sub {
   is(scalar @{[vecsample(4,[8..11])]}, 4, "vecsample returns all items with exact k");
 
   is_deeply([vecslide {$a+$b} 1..5],[3,5,7,9],"vecslide {\$a+\$b} 1..5");
+
+  is_deeply([vecwindow {reverse @_} 4,3,(14,7,1,9,13,4,-6,17,15,2)],[1,7,14,-6,4,13],"vecwindow {reverse} 4,3,\@L");
 };
 
 ###############################################################################

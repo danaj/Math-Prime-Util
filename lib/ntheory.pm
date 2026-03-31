@@ -230,6 +230,7 @@ Tags:
   vecpmex(@list)                      return least positive value not in list
   vecsample(k,@list)                  return k random elements of list
   vecslide { ... } @list              calls block for each pair in list
+  vecwindow { ... } $step,$size,@list calls block with windows of size objects
 
   toset(...)                          convert to int set (unique sorted aref)
   setinsert(\@A,$v)                   insert integer v into integer set A
