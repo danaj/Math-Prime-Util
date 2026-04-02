@@ -1958,10 +1958,13 @@ static UV znlog_ph(UV a, UV g, UV p, UV p1) {
     return znlog_solve(a, g, p, p1);
   for (i = 0; i < pf.nfactors; i++) {
     UV pi = ipow(pf.f[i],pf.e[i]);
-    UV delta = powmod(a,p1/pi,p);
-    UV gamma = powmod(g,p1/pi,p);
+    UV delta = powmod(a, p1/pi, p);
+    UV gamma = powmod(g, p1/pi, p);
     /* printf(" solving znlog(%"UVuf",%"UVuf",%"UVuf")\n", delta, gamma, p); */
-    sol[i] = znlog_solve( delta, gamma, p, znorder(gamma,p) );
+    /* Does a solution for this sub-problem exist? */
+    if (delta != 1 && powmod(delta, pi, p) != 1) return 0;
+    sol[i] = znlog_solve(delta, gamma, p, znorder(gamma,p));
+    if (delta != 1 && sol[i] == 0) return 0;  /* found no k. */
     mod[i] = pi;
   }
   if (chinese(&x, 0, sol, mod, pf.nfactors) == 1 && powmod(g, x, p) == a)
@@ -1994,7 +1997,7 @@ UV znlog(UV a, UV g, UV p) {
   if (gorder != 0 && !is_prob_prime(gorder)) {
     k = znlog_ph(a, g, p, gorder);
     if (verbose) printf("  dlp PH %s\n", k!=0 ? "success" : "failure");
-    if (k != 0) return k;
+    return k;  /* solution or 0 (no solution exists) */
   }
 
   return znlog_solve(a, g, p, gorder);
