@@ -64,6 +64,18 @@ extern STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b
 /* out needs alen+2 bytes.  Returns 0 on failure. */
 extern STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
+/* Return a mod b as a UV.  b > 0.  For negative a, returns |a| mod b. */
+extern UV strint_moduv(const char* a, STRLEN alen, UV b);
+
+/* Extract all small prime factors (up to 47 on 64-bit, 23 on 32-bit) from a.
+ * Factors found, with repetition, are appended to out_f[0..*nf); *nf is updated.
+ * Returns 0 if the remaining cofactor fits in a UV (*uv_out is set).
+ * Returns the cofactor string length otherwise (written to str_out, may alias a;
+ * str_out needs alen+1 bytes). */
+extern STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
+                                          UV* out_f, int* nf,
+                                          const char* a, STRLEN alen);
+
 /* Absolute value.  out needs alen bytes. */
 extern STRLEN strint_abs(char* out, const char* a, STRLEN alen);
 /* Negation.  out needs alen+1 bytes. */

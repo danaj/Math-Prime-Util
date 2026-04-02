@@ -3,20 +3,57 @@
 #include <string.h>
 
 #include "ptypes.h"
+#include "mulmod.h"
 #include "strops.h"
 
 /******************************************************************************/
-/*               BASE-B9 INTERNAL REPRESENTATION FOR FAST ARITHMETIC         */
+/* Helper functions. */
+/******************************************************************************/
+
+/* Write UV v as a decimal string; return length.  buf must have >= 21 bytes. */
+static STRLEN uv_to_str(char* buf, UV v)
+{
+  STRLEN i = 0, j;
+  if (v == 0) { buf[0] = '0'; return 1; }
+  while (v > 0) { buf[i++] = '0' + (char)(v % 10); v /= 10; }
+  for (j = 0; j < i / 2; j++) {
+    char c = buf[j]; buf[j] = buf[i-1-j]; buf[i-1-j] = c;
+  }
+  return i;
+}
+
+static UV gcduv(UV x, UV y) {
+  while (y) { UV t = y; y = x % y; x = t; }
+  return x;
+}
+
+/* Parse a canonical decimal string (no sign, no leading zeros) to UV.
+ * Returns 1 if it fits in UV, 0 on overflow. */
+static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
+  UV v = 0;
+  STRLEN i;
+  for (i = 0; i < slen; i++) {
+    UV d = (UV)(s[i] - '0');
+    if (v > (UV_MAX - d) / 10) return 0;
+    v = v * 10 + d;
+  }
+  *out = v;
+  return 1;
+}
+
+
+/******************************************************************************/
+/*               BASE-B9 INTERNAL REPRESENTATION FOR FAST ARITHMETIC          */
 /*                                                                            */
-/* Numbers are stored internally as little-endian arrays of b9limb_t, each   */
-/* holding B9_DIGS decimal digits (one "digit" in base B9_BASE).  The        */
+/* Numbers are stored internally as little-endian arrays of b9limb_t, each    */
+/* holding B9_DIGS decimal digits (one "digit" in base B9_BASE).  The         */
 /* accumulator type b9acc_t is wide enough that the schoolbook inner-product  */
 /* loop never overflows for any practical input length.                       */
 /*                                                                            */
-/* Tier selection is based on compile-time capability flags from ptypes.h:   */
-/*   HAVE_UINT128: base 10^9, 128-bit accumulator (unlimited safe length)    */
+/* Tier selection is based on compile-time capability flags from ptypes.h:    */
+/*   HAVE_UINT128: base 10^9, 128-bit accumulator (unlimited safe length)     */
 /*   HAVE_UINT64:  base 10^6,  64-bit accumulator (per-row flush, any length) */
-/*   else:         base 10^4,  32-bit accumulator (uses per-row carry flush) */
+/*   else:         base 10^4,  32-bit accumulator (uses per-row carry flush)  */
 /******************************************************************************/
 
 #if HAVE_UINT128
@@ -602,6 +639,37 @@ done:
   if (!r) b9_free(&r_tmp);
 }
 
+/* Compute b9 value a mod small UV p (read-only). */
+static UV b9_mod_small(const b9_t* a, UV p) {
+  UV r = 0;
+  uint32_t i;
+  for (i = a->n; i-- > 0; )
+    r = (r * (UV)B9_BASE + (UV)a->d[i]) % p;
+  return r;
+}
+
+/* Divide b9 value a in-place by small UV p.  Caller must ensure p | a. */
+static void b9_div_small(b9_t* a, UV p) {
+  UV rem = 0;
+  uint32_t i;
+  for (i = a->n; i-- > 0; ) {
+    UV cur = rem * (UV)B9_BASE + (UV)a->d[i];
+    a->d[i] = (b9limb_t)(cur / p);
+    rem = cur % p;
+  }
+  while (a->n > 0 && a->d[a->n-1] == 0) a->n--;
+}
+
+/* Convert a small b9 value to UV.  Caller must verify fit with the
+ * n*B9_DIGS < sizeof(UV)*3 check before calling. */
+static UV b9_to_uv(const b9_t* x) {
+  UV v = 0;
+  uint32_t i;
+  for (i = x->n; i-- > 0; )
+    v = v * (UV)B9_BASE + (UV)x->d[i];
+  return v;
+}
+
 
 /******************************************************************************/
 /******************************************************************************/
@@ -857,6 +925,86 @@ STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b, STRLE
   return len;
 }
 
+UV strint_moduv(const char* a, STRLEN alen, UV b)
+{
+  UV r = 0;
+  STRLEN i;
+  if (b <= 1) return 0;
+  strint_strip(&a, &alen);
+  for (i = 0; i < alen; i++)
+    r = muladdmod(r, 10, (UV)(a[i] - '0'), b);
+  return r;
+}
+
+/******************************************************************************/
+/*                        SMALL FACTOR EXTRACTION                             */
+/******************************************************************************/
+
+STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
+                                   UV* out_f, int* nf,
+                                   const char* a, STRLEN alen)
+{
+#if BITS_PER_WORD == 64
+  static const UV P = UVCONST(614889782588491410); /* primorial(47) */
+  static const UV sprimes[] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47};
+  static const int nsp = 15;
+#else
+  static const UV P = UVCONST(223092870);           /* primorial(23) */
+  static const UV sprimes[] = {2,3,5,7,11,13,17,19,23};
+  static const int nsp = 9;
+#endif
+  UV g;
+  int pi;
+
+  g = gcduv(strint_moduv(a, alen, P), P);
+
+  if (g > 1) {
+    b9_t n;
+    b9_init_set_str(&n, a, alen);
+
+    for (pi = 0; pi < nsp && g > 1; pi++) {
+      UV p = sprimes[pi];
+      if (g % p != 0) continue;
+
+      while (b9_mod_small(&n, p) == 0) {
+        b9_div_small(&n, p);
+        out_f[(*nf)++] = p;
+
+        /* Early UV detection: switch to UV arithmetic for the remaining tail */
+        if ((STRLEN)n.n * B9_DIGS < sizeof(UV) * 3) {
+          UV v = b9_to_uv(&n);
+          b9_free(&n);
+          while (v % p == 0) { v /= p; out_f[(*nf)++] = p; }
+          while (g % p == 0) g /= p;
+          for (pi++; pi < nsp && g > 1; pi++) {
+            UV q = sprimes[pi];
+            if (g % q == 0) {
+              while (v % q == 0) { v /= q; out_f[(*nf)++] = q; }
+              while (g % q == 0) g /= q;
+            }
+          }
+          *uv_out = v;
+          return 0;
+        }
+      }
+      while (g % p == 0) g /= p;
+    }
+
+    {
+      STRLEN rlen = b9_get_str(str_out, &n);
+      b9_free(&n);
+      if (str_to_uv_s(str_out, rlen, uv_out)) return 0;
+      return rlen;
+    }
+  }
+
+  /* g == 1: no small factors */
+  strint_strip(&a, &alen);
+  if (str_out != a) memmove(str_out, a, alen);
+  if (str_to_uv_s(str_out, alen, uv_out)) return 0;
+  return alen;
+}
+
 STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
   STRLEN len;
@@ -877,18 +1025,6 @@ STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRL
 /******************************************************************************/
 /*                           INTEGER LOG AND ROOT                             */
 /******************************************************************************/
-
-/* Write UV v as a decimal string; return length.  buf must have >= 21 bytes. */
-static STRLEN uv_to_str(char* buf, UV v)
-{
-  STRLEN i = 0, j;
-  if (v == 0) { buf[0] = '0'; return 1; }
-  while (v > 0) { buf[i++] = '0' + (char)(v % 10); v /= 10; }
-  for (j = 0; j < i / 2; j++) {
-    char c = buf[j]; buf[j] = buf[i-1-j]; buf[i-1-j] = c;
-  }
-  return i;
-}
 
 /* Returns floor(log_base(a)), or UV_MAX on error (a < 1 or base < 2).
  * Uses a floating-point estimate to land within 1-2 of the answer,
