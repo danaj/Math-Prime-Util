@@ -8944,7 +8944,7 @@ sub _dlp_trial {
       return $k if $t == $a;
       $t = Mmulmod($t, $g, $p);
     }
-    return 0;
+    return undef;
   }
 
   ($a, $g, $p, $limit) = map { tobigint($_) } ($a, $g, $p, $limit);
@@ -8954,13 +8954,14 @@ sub _dlp_trial {
     $t *= $g;
     $t %= $p;
   }
-  0;
+  return undef;
 }
 sub _dlp_bsgs {
-  my ($a,$g,$p,$_verbose) = @_;
+  my ($a,$g,$p,$gorder,$_verbose) = @_;
   my $invg = Minvmod($g, $p);
   return 0 unless defined $invg;
-  my $N = Madd1int(Msqrtint($p-1));
+  my $size = defined($gorder) ? $gorder : Msubint($p, 1);
+  my $N = Madd1int(Msqrtint($size));
   # Limit for time and space.
   my $b = $N > 4_000_000 ? 4_000_000 : $N;
 
@@ -9001,32 +9002,111 @@ sub _dlp_bsgs {
   0;
 }
 
+sub _znlog_prime_power {
+  my ($delta, $gamma, $n, $p, $e, $_verbose) = @_;
+  # Find k in [0, p^e) with gamma^k == delta (mod n), where gamma has order p^e.
+  # Uses Pohlig-Hellman digit extraction: e inner DLPs each of order p.
+  my $pe     = Mpowint($p, $e);
+  my $gamma0 = Mpowmod($gamma, Mpowint($p, $e-1), $n);  # has order p
+  my $k = 0;
+  for my $j (0 .. $e-1) {
+    # h = (delta * gamma^{-k})^{p^{e-1-j}} mod n
+    my $t = ($k == 0)
+      ? $delta
+      : Mmulmod($delta, Mpowmod($gamma, Msubint($pe, $k), $n), $n);
+    my $h = ($j == $e-1)
+      ? $t
+      : Mpowmod($t, Mpowint($p, $e-1-$j), $n);
+    # Solve gamma0^{xj} == h (mod n), xj in {0..p-1}
+    my $xj;
+    if ($h == 1) {
+      $xj = 0;
+    } else {
+      $xj = _znlog_solve($h, $gamma0, $n, $p, $_verbose);
+      return undef unless defined $xj;
+    }
+    $k = Mmuladdint($xj, Mpowint($p, $j), $k);
+  }
+  $k;
+}
+
+sub _znlog_solve {
+  my($a,$g,$n,$gorder,$_verbose) = @_;
+  ($a,$g,$n,$gorder) = map { tobigint($_) } ($a,$g,$n,$gorder);
+  my $x = _dlp_bsgs($a, $g, $n, $gorder, $_verbose);
+  $x = _bigint_to_int($x) if ref($x) && $x <= INTMAX;
+  return $x if Mpowmod($g,$x,$n) == $a;
+  print "  BSGS giving up\n" if $x == 0 && $_verbose;
+  print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
+  $x = _dlp_trial($a, $g, $n, $gorder-1);
+  $x = _bigint_to_int($x) if defined $x && ref($x) && $x <= INTMAX;
+  return $x;
+}
+
 sub znlog {
   my($a, $g, $n) = @_;
   validate_integer($a);
   validate_integer($g);
   validate_integer_abs($n);
-  return (undef,0,1)[$n] if $n <= 1;
+  return (undef,0)[$n] if $n <= 1;
   $a = Mmodint($a, $n);
   $g = Mmodint($g, $n);
-  return 0 if $a == 1 || $g == 0 || $n < 2;
+  if ($g == 0) { return $a == 0 ? 1 : $a == 1 ? 0 : undef }
+  if ($g == 1) { return $a == 1 ? 0 : undef; }
+  return 0 if $a == 1;
 
   my $_verbose = getconfig()->{'verbose'};
 
-  # For large p, znorder can be very slow.  Do a small trial test first.
-  my $x = _dlp_trial($a, $g, $n, 200);
-
-  if ($x == 0) {
-    ($a,$g,$n) = map { tobigint($_) } ($a,$g,$n);
-    $x = _dlp_bsgs($a, $g, $n, $_verbose);
-    $x = _bigint_to_int($x) if ref($x) && $x <= INTMAX;
-    return $x if $x > 0 && Mpowmod($g,$x,$n) == $a;
-    print "  BSGS giving up\n" if $x == 0 && $_verbose;
-    print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
-    $x = _dlp_trial($a,$g,$n);
+  if ($a == 0) {
+    return undef if Mis_prime($n);
+    my $radn = squarefree_kernel($n);
+    return undef if $g % $radn != 0;
+    my $k = 1;
+    for my $pe (Mfactor_exp($n)) {
+      my ($q, $e) = @$pe;
+      my $vg = Mvaluation($g, $q);
+      my $ki = Mcdivint($e,$vg);
+      $k = $ki if $ki > $k;
+    }
+    return $k;
   }
-  $x = _bigint_to_int($x) if ref($x) && $x <= INTMAX;
-  return ($x == 0) ? undef : $x;
+
+  { # Before factoring n in znorder, optimistically look for a small k.
+    my $k = _dlp_trial($a, $g, $n, 200);
+    return $k if defined $k || $n <= 200;;
+  }
+
+  my $gorder = Mznorder($g,$n);
+  if (!defined $gorder) {
+    # n is composite AND g is not coprime to n
+    print "  znlog gorder undefined, trial to $n\n" if $_verbose;
+    return _dlp_trial($a,$g,$n);
+  } else {
+    return undef if Mpowmod($a,$gorder,$n) != 1;
+  }
+
+  if (!Mis_prime($gorder)) {  # PH Silver-Pohlig-Hellman
+    my($k,@kmod);
+    foreach my $f (Mfactor_exp($gorder)) {
+      my ($p, $e) = @$f;
+      my $P = Mpowint($p, $e);
+      my $G = Mdivint($gorder, $P);
+      my $delta = Mpowmod($a, $G, $n);
+      if ($delta == 1) {
+        $k = 0;
+      } else {
+        return undef if Mpowmod($delta, $P, $n) != 1;
+        my $gamma = Mpowmod($g, $G, $n);
+        $k = _znlog_prime_power($delta, $gamma, $n, $p, $e, $_verbose);
+        return undef unless defined $k;
+      }
+      push @kmod, [$k, $P];
+    }
+    $k = Mchinese(@kmod);
+    return defined $k && Mpowmod($g, $k, $n) == $a  ?  $k  : undef;
+  }
+
+  _znlog_solve($a, $g, $n, $gorder, $_verbose);
 }
 
 sub znprimroot {

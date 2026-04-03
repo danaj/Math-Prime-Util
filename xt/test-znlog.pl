@@ -9,7 +9,7 @@ use Math::Prime::Util qw/random_nbit_prime znprimroot znlog powmod
 # This test uses znlog with prime modulus, similar to FLINT's tests.
 # Our znlog will handle non-primes, so another interesting test would
 # be using random integer p values.
-my $ebits = 63;
+my $ebits = 64;
 #csrand(3);
 
 print "1..",$ebits-3,"\n";

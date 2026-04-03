@@ -51,6 +51,9 @@ Revision history for Perl module Math::Prime::Util
 
     - lshiftint, rshiftint, rashiftint similar, for small shift amounts.
 
+    - znlog faster, PP znlog much faster.
+
+
 0.74 2026-03-13
 
     [API Changes]

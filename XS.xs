@@ -3975,6 +3975,9 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
+      /* TODO: for 65-128 bit inputs without GMP, strint_remove_small_factors
+       * gives ~20% speedup at 72 bits by extracting small primes in C first.
+       * Revisit when uint128_t factoring is added. */
       DISPATCHPP();
       return;
     }
@@ -4331,8 +4334,14 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
                  if (b == 0) retundef = 1;
                  else        ret = mulmod(a, b, n);
                  break;
-        case 4:  ret = znlog(a, b, n);
-                 if (ret == 0 && (b == 0 || a != 1))  retundef = 1;
+        case 4:  if (b == 0) {  /* g == 0: sequence is 1, 0, 0, 0, ... */
+                   if      (a == 1) { ret = 0; }
+                   else if (a == 0) { ret = 1; }
+                   else             { retundef = 1; }
+                 } else {
+                   ret = znlog(a, b, n);
+                   if (ret == 0 && a != 1) retundef = 1;
+                 }
                  break;
         default: break;
       }
