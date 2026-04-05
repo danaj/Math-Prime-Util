@@ -30,6 +30,7 @@
 #include "primality.h"
 #include "lucas_seq.h"
 #include "factor.h"
+#include "factor128.h"
 #include "totients.h"
 #include "moebius.h"
 #include "factmod.h"
@@ -898,9 +899,11 @@ static SV* sv_to_bigint_abs(pTHX_ SV* r) {
 static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
   return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_nonneg");
 }
+#if 0  /* use xs_to_canonical instead */
 static SV* sv_to_canonical(pTHX_ SV* r) {
   return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_canonical");
 }
+#endif
 
 #define NEWSVINT(sign,v) (((sign) > 0) ? newSVuv(v) : newSViv(v))
 #define SETSVINT(sv,setpos,posv,negv) \
@@ -1638,13 +1641,18 @@ BOOT:
     int i;
     HV * stash = gv_stashpv("Math::Prime::Util", TRUE);
 
-    newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
     newCONSTSUB(stash, "_ivsize", newSViv(IVSIZE));
     newCONSTSUB(stash, "_uvsize", newSViv(UVSIZE));
     newCONSTSUB(stash, "_uvbits", newSViv(UVSIZE * 8));
     newCONSTSUB(stash, "_nvsize", newSViv(NVSIZE));
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
     newCONSTSUB(stash, "_nvmantdigits", newSViv((IV)((NVMANTBITS+1) / 3.322)));
+    newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+    newCONSTSUB(stash, "_XS_factor_bits", newSViv(128));
+#else
+    newCONSTSUB(stash, "_XS_factor_bits", newSViv(BITS_PER_WORD));
+#endif
 
     {
       MY_CXT_INIT;
@@ -3975,9 +3983,68 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-      /* TODO: for 65-128 bit inputs without GMP, strint_remove_small_factors
-       * gives ~20% speedup at 72 bits by extracting small primes in C first.
-       * Revisit when uint128_t factoring is added. */
+#if 1 && BITS_PER_WORD == 64 && HAVE_UINT128
+      /* If we have uint128_t and do NOT have GMP, then use this. */
+      if (_XS_get_callgmp() < 49) {
+        STRLEN slen;
+        const char *str = SvPV_nomg(svn, slen);
+        /* 2^128 ≈ 3.4e38, so 39 digits max. > 39 is definitely too big.
+         * Use a pre-multiplication guard: n128*10+d overflows iff
+         * n128 > (UINT128_MAX - d) / 10.  The post-multiply n128<prev check
+         * misses double-wrapping (e.g. ~2.7*2^128 wraps twice, landing above
+         * the old value). */
+        if (slen <= 39) {
+          factored128_t nf;
+          uint128_t n128 = 0, uint128_max = (uint128_t)-1;
+          bool overflow = 0;
+          for (STRLEN j = 0; j < slen; j++) {
+            uint8_t d = (uint8_t)(str[j] - '0');
+            if (n128 > (uint128_max - d) / 10) { overflow = 1; break; }
+            n128 = n128 * 10 + d;
+          }
+          if (!overflow && factorintp128(&nf, n128)) {
+            if (ix == 0) {
+              /* flat list */
+              uint32_t total = 0;
+              for (uint16_t fi = 0; fi < nf.nfactors; fi++) total += nf.e[fi];
+              if (nf.flarge) total++;
+              if (gimme_v == G_SCALAR) XSRETURN_UV(total);
+              EXTEND(SP, (EXTEND_TYPE)total);
+              for (uint16_t fi = 0; fi < nf.nfactors; fi++)
+                for (uint8_t ei = 0; ei < nf.e[fi]; ei++)
+                  PUSHs(sv_2mortal(newSVuv(nf.f[fi])));
+              if (nf.flarge) {
+                char fbuf[40];
+                uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
+                PUTBACK;
+                PUSHs(sv_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen))));
+              }
+            } else {
+              /* [p, e] pairs */
+              uint32_t total = nf.nfactors + (nf.flarge ? 1 : 0);
+              if (gimme_v == G_SCALAR) XSRETURN_UV(total);
+              EXTEND(SP, (EXTEND_TYPE)total);
+              for (uint16_t fi = 0; fi < nf.nfactors; fi++)
+                PUSH_2ELEM_AREF(nf.f[fi], nf.e[fi]);
+              if (nf.flarge) {
+                char fbuf[40];
+                uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
+                PUTBACK;
+                AV* av_ = newAV();
+                av_push(av_, SvREFCNT_inc(sv_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen)))));
+                av_push(av_, newSVuv(1));
+                PUSHs(sv_2mortal(newRV_noinc((SV*)av_)));
+              }
+            }
+            PUTBACK;
+            return;
+          }
+        }
+      }
+#endif
+      /* For 65-128 bit inputs without GMP, strint_remove_small_factors gives
+       * ~20% speedup at 72 bits by extracting small primes in C first.
+       * Leave it, the GMP backend and uint128_t above should be enough. */
       DISPATCHPP();
       return;
     }

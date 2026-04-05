@@ -47,6 +47,8 @@ factmod.h
 factmod.c
 factor.h
 factor.c
+factor128.h
+factor128.c
 goldbach.h
 goldbach.c
 inverse_interpolate.h

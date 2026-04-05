@@ -36,6 +36,7 @@ WriteMakefile1(
 
     OBJECT       => 'cache.o '        .
                     'factor.o '       .
+                    'factor128.o '    .
                     'primality.o '    .
                     'lucas_seq.o '    .
                     'aks.o '          .

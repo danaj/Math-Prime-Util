@@ -33,6 +33,12 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - On platforms with support for 128-bit integers, but without the GMP
+      backend, we factor 128-bit integers in C.
+      This is 300 to 1000 times faster than factoring in Perl.
+      In turn this can speed up some other functions that require factoring.
+      Installing the GMP backend is preferred.
+
     - urandomm is up to 5x faster without GMP.
 
     - Tightened prime count bounds (upper/lower) using Dusart 2018 and

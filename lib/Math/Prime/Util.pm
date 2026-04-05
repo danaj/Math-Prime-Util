@@ -183,8 +183,9 @@ BEGIN {
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Math::Prime::Util::VERSION);
     prime_precalc(0);
-    $_Config{'maxbits'} = _XS_prime_maxbits();
     $_Config{'xs'} = 1;
+    $_Config{'maxbits'} = _XS_prime_maxbits();
+    $_Config{'xs_factor_bits'} = _XS_factor_bits();
     1;
   } or do {
     carp "Using Pure Perl implementation: $@"
@@ -192,6 +193,7 @@ BEGIN {
 
     $_Config{'xs'} = 0;
     $_Config{'maxbits'} = MPU_MAXBITS;
+    $_Config{'xs_factor_bits'} = 0;
 
     # Load PP front end code
     require Math::Prime::Util::PPFE;
@@ -6641,6 +6643,7 @@ the configuration, so changing it has no effect.  The settings include:
   maxprimeidx     the index of maxprime, without bigint
   assume_rh       whether to assume the Riemann hypothesis (default 0)
   secure          disable ability to manually seed the CSPRNG
+  xs_factor_bits  factor() uses XS for this many bits (up to 128)
 
 =head2 prime_set_config
 

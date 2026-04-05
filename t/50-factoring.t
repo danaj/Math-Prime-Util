@@ -5,12 +5,13 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/factor factor_exp divisors divisor_sum is_prime
                          prime_bigomega prime_omega
-                         prime_signature sopfr sopf/;
+                         prime_signature sopfr sopf
+                         prime_get_config/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $use64  = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $usexs  = Math::Prime::Util::prime_get_config->{'xs'};
-my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
+my $use64  = prime_get_config->{'maxbits'} > 32;
+my $usexs  = prime_get_config->{'xs'};
+my $usegmp = prime_get_config->{'gmp'};
 
 if ($use64) {
   # Simple test:  perl -e 'die if 18446744073709550592 == ~0'
@@ -62,8 +63,8 @@ push @testn, qw/9999986200004761 99999989237606677 999999866000004473/
 
 # For time savings, trim these if we're pure Perl.
 if (    !$extra
-     && !Math::Prime::Util::prime_get_config->{'xs'}
-     && !Math::Prime::Util::prime_get_config->{'gmp'} ) {
+     && !prime_get_config->{'xs'}
+     && !prime_get_config->{'gmp'} ) {
   @testn = grep {    $_ != 10023859281455311421
                   && $_ != 3369738766071892021
                 } @testn;
@@ -98,6 +99,7 @@ plan tests => 1      # factor and factor_exp
             + 1      # divisors
             + 1      # individual algorithms
             + 1      # more factoring for code coverage
+            + 1      # XS 128-bit
             + 1      # omega and bigomega
             + 1      # prime_signature
             + 1      # sopfr
@@ -226,6 +228,31 @@ subtest 'specific cases for factoring code coverage', sub {
   }
 };
 
+subtest '128-bit factoring', sub {
+  my $use128 = prime_get_config->{'xs_factor_bits'} >= 128;
+  plan skip_all => 'Only run with fast 128-bit factoring (GMP or XS)'
+    unless $usegmp || $use128;
+
+  my @F = (
+   ["P-1",     qw/             36803912137803496523 4284736327 8589539549/],
+   ["SQUFOF",  qw/             36832540935240707603 4293801221 8578073143/],
+   ["ECM 2k",  qw/             36229885226416288369 4236334523 8552177603/],
+   ["ECM 10k", qw/            159148910892498789959 10239357517 15542861027/],
+  );
+  my @FE = (
+   ["ECM 50k", qw/         159296141441228087346473 372491819179 427650040187/],
+   ["ECM 800k",qw/218982842494462491067056151006591 14647002528063163 14950693295430157/],
+   ["128-bit",qw/319597265657157251479407470066539244821 17509893208272848147 18252382344979583543/],
+  );
+  for my $f (@F) {
+    my($name,$N,@factors) = @$f;
+    is_deeply([factor($N)], \@factors, "$N  ($name)");
+  }
+  for my $f (@FE) {
+    my($name,$N,@factors) = @$f;
+    is_deeply([factor($N)], \@factors, "$N  ($name)")  if $extra;;
+  }
+};
 
 sub extra_factor_test {
   my $fname = shift;
