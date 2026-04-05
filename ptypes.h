@@ -174,23 +174,28 @@ typedef __int8 int8_t;
 #if defined(__SIZEOF_INT128__) && !defined(__CUDACC__)
   #define HAVE_UINT128 1
   typedef unsigned __int128 uint128_t;
+  typedef   signed __int128  int128_t;
 #elif (__GNUC__ >= 4) && (defined(__x86_64__) || defined(__powerpc64__))
   #if __clang__ && (__clang_major__ > 4 || (__clang_major__ == 4 && __clang_minor__ >= 2))
     #define HAVE_UINT128 1
     typedef unsigned __int128 uint128_t;
+    typedef   signed __int128  int128_t;
   #elif __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 4)
     #define HAVE_UINT128 0
   #elif __GNUC__ == 4 && __GNUC_MINOR__ >= 4 && __GNUC_MINOR__ < 6
     #define HAVE_UINT128 1
     typedef unsigned int uint128_t __attribute__ ((__mode__ (TI)));
+    typedef   signed int  int128_t __attribute__ ((__mode__ (TI)));
   #else
     #define HAVE_UINT128 1
     typedef unsigned __int128 uint128_t;
+    typedef   signed __int128  int128_t;
   #endif
 #elif defined(__BITINT_MAXWIDTH__) && __BITINT_MAXWIDTH__ >= 128
   /* Should have included <stdint.h> and <limits.h> already */
   #define HAVE_UINT128 1
   typedef unsigned _BitInt(128) uint128_t;
+  typedef   signed _BitInt(128)  int128_t;
 #else
   #define HAVE_UINT128 0
 #endif
