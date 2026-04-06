@@ -10333,40 +10333,58 @@ my @_fsublist = (
 );
 
 sub factor {
-  my($n) = @_;
-  validate_integer_nonneg($n);
+  my($N) = @_;
+  validate_integer_nonneg($N);
 
   my @factors;
-  if ($n < 4) {
-    @factors = ($n == 1) ? () : ($n);
+  if ($N < 4) {
+    @factors = ($N == 1) ? () : ($N);
     return @factors;
   }
 
   if ($Math::Prime::Util::_GMPfunc{"factor"}) {
-    my @factors = Math::Prime::Util::GMP::factor($n);
+    my @factors = Math::Prime::Util::GMP::factor($N);
     return ref($_[0]) ? maybetobigintall(@factors) : @factors;
   }
 
   my $lim = 4999;  # How much trial factoring to do
   # For native integers, we could save a little time by doing hardcoded trials
   # by 2-29 here.  Skipping it.
-  push @factors, Mtrial_factor($n, $lim);
+  push @factors, Mtrial_factor($N, $lim);
   my $lim_sq = $lim * $lim;
   return @factors if $factors[-1] < $lim_sq;
+
+  my $verbose = getconfig()->{'verbose'};
+  my $xsbits = getconfig()->{'xs'} ? getconfig()->{'xs_factor_bits'} : 0;
+  my $xsmax = $xsbits == 0 ? 0 : Msub1int(Mlshiftint(1,$xsbits));
 
   my @nstack = (pop(@factors));
   # @factors is all primes, @nstack has the numbers we need to factor
   while (@nstack) {
-    $n = pop @nstack;
+    my $n = pop @nstack;
     $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
-    if ($n < $lim_sq || _is_prime7($n)) {
-      push @factors, $n if $n > 1;;
+
+    # Obviously small factor left
+    if ($n < $lim_sq) { push @factors, $n if $n > 1; next; }
+
+    # If subfactor small enough for XS to handle, let it do everything
+    if ($n <= $xsmax && $n < $N) {
+      print "  PP factor calling XS for subfactor\n" if $verbose > 1;
+      push @factors, Math::Prime::Util::factor($n);
       next;
     }
+
+    # Check primality and found a prime factor if so.
+    if (_is_prime7($n)) {
+      push @factors, $n;
+      next;
+    }
+
+    # The main factoring loop.  Go through our algorithm recipe.
     my @ftry;
     $_holf_r = 1;
     for my $sub (@_fsublist) {
-      print "  starting $sub->[0]\n" if getconfig()->{'verbose'} > 1;
+      print "  starting $sub->[0]\n" if $verbose > 1;
       @ftry = $sub->[1]->($n);
       last if @ftry >= 2;
     }
