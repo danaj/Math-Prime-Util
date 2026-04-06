@@ -3983,26 +3983,17 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-#if 1 && BITS_PER_WORD == 64 && HAVE_UINT128
-      /* If we have uint128_t and do NOT have GMP, then use this. */
-      if (_XS_get_callgmp() < 49) {
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+      if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
         STRLEN slen;
         const char *str = SvPV_nomg(svn, slen);
-        /* 2^128 ≈ 3.4e38, so 39 digits max. > 39 is definitely too big.
-         * Use a pre-multiplication guard: n128*10+d overflows iff
-         * n128 > (UINT128_MAX - d) / 10.  The post-multiply n128<prev check
-         * misses double-wrapping (e.g. ~2.7*2^128 wraps twice, landing above
-         * the old value). */
-        if (slen <= 39) {
+        if (strint_cmp(str,slen,"340282366920938463463374607431768211456",39) < 0) {
+          /* str is a decimal string between 0 and 2^128-1 */
           factored128_t nf;
-          uint128_t n128 = 0, uint128_max = (uint128_t)-1;
-          bool overflow = 0;
-          for (STRLEN j = 0; j < slen; j++) {
-            uint8_t d = (uint8_t)(str[j] - '0');
-            if (n128 > (uint128_max - d) / 10) { overflow = 1; break; }
-            n128 = n128 * 10 + d;
-          }
-          if (!overflow && factorintp128(&nf, n128)) {
+          uint128_t n128 = 0;
+          for (STRLEN j = 0; j < slen; j++)
+            n128 = n128 * 10 + (uint8_t)(str[j] - '0');
+          if (factorintp128(&nf, n128)) {
             if (ix == 0) {
               /* flat list */
               uint32_t total = 0;
