@@ -31,6 +31,17 @@ extern STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, S
  * out must have at least max(alen+blen,clen)+2 bytes. */
 extern STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen, const char* c, STRLEN clen, bool negate_c);
 
+/* Return (a*b+c) mod m or (a*b-c) mod m.
+ * negate_c=false for addition, negate_c=true for subtraction.
+ * Result is in [0, m-1].  out must have at least mlen bytes. */
+extern STRLEN strint_muladdmod_s(char* out,
+                                 const char* a, STRLEN alen,
+                                 const char* b, STRLEN blen,
+                                 const char* c, STRLEN clen, bool negate_c,
+                                 const char* m, STRLEN mlen);
+#define strint_muladdmod(out,a,al,b,bl,c,cl,m,ml) strint_muladdmod_s(out,a,al,b,bl,c,cl,0,m,ml)
+#define strint_mulsubmod(out,a,al,b,bl,c,cl,m,ml) strint_muladdmod_s(out,a,al,b,bl,c,cl,1,m,ml)
+
 /* Raise a to non-negative integer power exp.
  * out must have at least limit bytes.
  * Returns 0 if result would not fit in limit characters.

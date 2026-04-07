@@ -853,6 +853,43 @@ STRLEN strint_muladd_s(char* out, const char* a, STRLEN alen, const char* b, STR
   return rlen;
 }
 
+STRLEN strint_muladdmod_s(char* out,
+                          const char* a, STRLEN alen,
+                          const char* b, STRLEN blen,
+                          const char* c, STRLEN clen, bool negate_c,
+                          const char* m, STRLEN mlen)
+{
+  b9_t A, B, C, M, R;
+  STRLEN rlen;
+
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init_set_str(&C, c, clen);
+  b9_init_set_str(&M, m, mlen);
+  if (M.neg) M.neg = 0;         /* work with |M| */
+  b9_init(&R);
+  if (negate_c) b9_neg(&C);
+
+  /* Reduce A and B mod M to keep the intermediate product small */
+  if (b9_cmp(&A, &M) >= 0) {
+    b9_divmod(NULL, &R, &A, &M);
+    b9_move(&A, &R);
+  }
+  if (b9_cmp(&B, &M) >= 0) {
+    b9_divmod(NULL, &R, &B, &M);
+    b9_move(&B, &R);
+  }
+
+  b9_mul(&A, &A, &B);
+  b9_add(&A, &A, &C);
+  b9_divmod(NULL, &R, &A, &M);
+
+  rlen = b9_get_str(out, &R);
+  b9_free(&A);  b9_free(&B);  b9_free(&C);  b9_free(&M);  b9_free(&R);
+
+  return rlen;
+}
+
 /******************************************************************************/
 /*                             EXPONENTIATION                                 */
 /******************************************************************************/
