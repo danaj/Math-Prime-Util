@@ -1025,6 +1025,10 @@ subtest 'misc number theory functions', sub {
 
   is(join(" ",map{fubini($_)}0..6,18),"1 1 3 13 75 541 4683 3385534663256845323","fubini(n) for n in {0..6,18}");
 
+  is_deeply([map{integer_complexity($_)}0..22],
+            [undef,1,2,3,4,5,5,6,6,6,7,8,7,8,8,8,8,9,8,9,9,9,10],
+            "integer_complexity(0..22)");
+
   is_deeply([numtoperm(11,33967658)],[9,3,6,4,7,1,10,0,5,2,8],"numtoperm");
   is(permtonum([9,3,6,4,7,1,10,0,5,2,8]),33967658,"permtonum");
   {

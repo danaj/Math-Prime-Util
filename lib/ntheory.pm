@@ -415,6 +415,7 @@ Tags:
   catalan_number(n)                   Catalan number
   bell_number(n)                      Bell number, count of set partitions
   fubini(n)                           Fubini (Ordered Bell) number
+  integer_complexity(n)               minimum 1s to represent n using + and *
   numtoperm(n,k)                      kth lexico permutation of n elems
   permtonum([a,b,...])                permutation number of given perm
   randperm(n,[k])                     random permutation of n elems

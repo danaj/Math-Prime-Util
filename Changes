@@ -18,6 +18,7 @@ Revision history for Perl module Math::Prime::Util
     - abundance(n)                    sigma(n)-2n => deficient/abundant/perfect
     - bell_number(n)                  Bell number, count of set partitions
     - catalan_number(n)               Catalan number
+    - integer_complexity(n)           minimum 1s to represent n using + and *
     - multifactorial(n,k)             k-step multifactorial of n
     - dedekind_psi(n)                 Dedekind psi function, n*prod(1+1/p)
     - partitionsq(n)                  number of partitions into distinct parts

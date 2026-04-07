@@ -271,6 +271,7 @@ sub entropy_bytes {
 *catalan_number = \&Math::Prime::Util::PP::catalan_number;
 *bell_number = \&Math::Prime::Util::PP::bell_number;
 *fubini = \&Math::Prime::Util::PP::fubini;
+*integer_complexity = \&Math::Prime::Util::PP::integer_complexity;
 *falling_factorial = \&Math::Prime::Util::PP::falling_factorial;
 *rising_factorial = \&Math::Prime::Util::PP::rising_factorial;
 

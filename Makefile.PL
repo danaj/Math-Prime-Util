@@ -60,8 +60,8 @@ WriteMakefile1(
                     'perfect_powers.o ' .
                     'congruent_numbers.o ' .
                     'powerfree.o '    .
-                    'powerful.o '    .
-                    'rational.o '      .
+                    'powerful.o '     .
+                    'rational.o '     .
                     'real.o '         .
                     'rootmod.o '      .
                     'sort.o '         .
@@ -70,6 +70,7 @@ WriteMakefile1(
                     'factmod.o '      .
                     'strops.o '       .
                     'util.o '         .
+                    'intcomplexity.o '.
                     'inverse_interpolate.o ' .
                     'entropy.o '      .
                     'csprng.o '       .

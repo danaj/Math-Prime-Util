@@ -53,6 +53,7 @@
 #include "prime_counts.h"
 #include "prime_sums.h"
 #include "congruent_numbers.h"
+#include "intcomplexity.h"
 #include "powerfree.h"
 #include "powerful.h"
 #include "lucky_numbers.h"
@@ -5396,9 +5397,10 @@ void factorial(IN SV* svn)
     subfactorial = 1
     bell_number = 2
     fubini = 3
-    primorial = 4
-    pn_primorial = 5
-    catalan_number = 6
+    integer_complexity = 4
+    primorial = 5
+    pn_primorial = 6
+    catalan_number = 7
   PREINIT:
     UV n, r;
   PPCODE:
@@ -5409,11 +5411,13 @@ void factorial(IN SV* svn)
         case 1:  r = subfactorial(n);   break;
         case 2:  r = bell_number(n);    break;
         case 3:  r = fubini(n);         break;
-        case 4:  r = primorial(n);      break;
-        case 5:  r = pn_primorial(n);   break;
-        case 6:  r = catalan_number(n); break;
+        case 4:  r = integer_complexity(n); break;
+        case 5:  r = primorial(n);      break;
+        case 6:  r = pn_primorial(n);   break;
+        case 7:  r = catalan_number(n); break;
         default: break;
       }
+      if (n == 0 && ix == 4) XSRETURN_UNDEF;
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();

@@ -8512,6 +8512,7 @@ sub bell_number {
 }
 
 my $_fubinis = [1,1,3,13,75];
+_register_free_sub(sub { $_fubinis = [1,1,3,13,75]; });
 sub _add_fubini {  # Add the next Fubini sequence term to an array reference.
   my($A)= @_;
   my $N = @$A;
@@ -8527,7 +8528,6 @@ sub _add_fubini {  # Add the next Fubini sequence term to an array reference.
                           $t = Sdivint($t, $_+1);
                           $x } 0..$N-1);
 }
-_register_free_sub(sub { $_fubinis = [1,1,3,13,75]; });
 sub fubini {
   my($n) = @_;
   validate_integer_nonneg($n);
@@ -8539,6 +8539,62 @@ sub fubini {
   my @F = @$_fubinis;  # copy the cached values to our own.
   _add_fubini(\@F) until defined $F[$n];
   return $F[$n];
+}
+
+
+my @_A000792 = ();
+my @_A005245 = (0,1,2,3);
+_register_free_sub(sub { @_A000792=(); @_A005245=(0,1,2,3); });
+sub _expand_A005245 {  # Based on Martin N. Fuller's code from OEIS.
+  my($n) = @_;
+
+  if (@_A000792 < 128) {
+    my $calcg = sub { my($n,$res)=(shift,1); while ($n >= 5 || $n == 3) { $res=Mmulint($res,3); $n -= 3; } Mlshiftint($res,$n >> 1); };
+    @_A000792 = map { $calcg->($_) } 0 .. 127;
+  }
+
+  my $first = $#_A005245+1;
+  return if $first > $n;
+
+  my $A = \@_A005245;
+  $A->[$_] = 127 for $first .. $n;
+
+  # Calcs for first .. n based on existing data
+  for my $i (2 .. $first-1) {
+    my $ij = $i;
+    for my $j (2 .. $i) {
+      $ij += $i;
+      last if $ij > $n;
+      next if $ij < $first;
+      $A->[$ij] = $A->[$i] + $A->[$j] if $A->[$i]+$A->[$j] < $A->[$ij];
+    }
+  }
+  # Now complete the rest
+  for my $i ($first .. $n) {
+    my($t,$k) = ($A->[$i-1],1);
+    $A->[$i] = $t+1 if $t+1 < $A->[$i];
+    $k++ while $k < ($t>>1) && $_A000792[$k+1]+$_A000792[$t-$k-1] >= $i;
+    for my $j (6 .. $_A000792[$k]) {  # 2-5 cannot be better than 1
+      $A->[$i] = $A->[$j] + $A->[$i-$j] if $A->[$j]+$A->[$i-$j] < $A->[$i];
+    }
+    my $ij = $i;
+    for my $j (2 .. $i) {
+      $ij += $i;
+      last if $ij > $n;
+      $A->[$ij] = $A->[$i] + $A->[$j] if $A->[$i]+$A->[$j] < $A->[$ij];
+    }
+  }
+  1;
+}
+sub integer_complexity {
+  my($n) = @_;
+  validate_integer_nonneg($n);
+  if ($n == 0) {  # clear the cache in addition to returning undef
+    @_A000792=(); @_A005245=(0,1,2,3);
+    return undef;
+  }
+  _expand_A005245($n+1024) unless defined $_A005245[$n];
+  $_A005245[$n];
 }
 
 

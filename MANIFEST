@@ -51,6 +51,8 @@ factor128.h
 factor128.c
 goldbach.h
 goldbach.c
+intcomplexity.h
+intcomplexity.c
 inverse_interpolate.h
 inverse_interpolate.c
 keyval.h
@@ -254,6 +256,7 @@ t/26-factorial.t
 t/26-factorialmod.t
 t/26-frobeniusnum.t
 t/26-goldbach.t
+t/26-intcomplexity.t
 t/26-isalmostprime.t
 t/26-iscarmichael.t
 t/26-iscyclic.t

@@ -119,7 +119,7 @@ our @EXPORT_OK =
       digital_root mult_digital_root
       kronecker is_qr qnr
       ramanujan_tau ramanujan_sum
-      stirling bell_number catalan_number fubini
+      stirling bell_number catalan_number fubini integer_complexity
       factorial factorialmod subfactorial binomial binomialmod
       multifactorial falling_factorial rising_factorial
       znorder znprimroot znlog legendre_phi
@@ -5587,6 +5587,28 @@ also called the ordered Bell numbers, or the number of ordered partitions
 of C<n>.  It is the count of rankings of C<n> items allowing for ties.
 
 This is the L<OEIS series A000670|http://oeis.org/A000670>.
+
+=head2 integer_complexity
+
+  say integer_complexity(6);   # 5,  since 6 = (1+1)*(1+1+1)
+  say integer_complexity(100); # 13, since 100 = ((1+1+1)*(1+1+1)+1)*(1+1+1+1+1)
+
+Given a non-negative integer C<n>, returns the integer complexity of C<n>:
+the minimum number of 1s needed to represent C<n> using addition and
+multiplication only.  C<n=0> returns undef.
+
+The complexity satisfies C<f(2^k) = 2k> and C<f(3^k) = 3k>, since powers
+of 2 and 3 have optimal factorization trees.  In general,
+C<f(n) >= 3 * log(n) / log(3)>.
+
+Results are cached internally, so repeated calls are efficient.
+When computing C<integer_complexity(n)> for many values up to some
+maximum C<N>, performance is best if the first call uses the largest
+value (or if values are requested in decreasing order), as the cache is
+built incrementally.
+Calling C<integer_complexity(0)> will flush the cache.
+
+This is the L<OEIS series A005245|http://oeis.org/A005245>.
 
 =head2 factorial
 
