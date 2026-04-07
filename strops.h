@@ -87,6 +87,17 @@ extern STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
                                           UV* out_f, int* nf,
                                           const char* a, STRLEN alen);
 
+/* Trial-factor a decimal integer string by primes in primes[0..nprimes).
+ * Factors found (with repetition) are appended to out_f[0..*nf); *nf is updated.
+ * Caller must ensure out_f has room for at least alen*4 entries.
+ * Returns 0 if the remaining cofactor fits in a UV (*uv_out is set).
+ * Returns the cofactor string length otherwise (written to str_out, may alias a;
+ * str_out needs alen+1 bytes). */
+extern STRLEN strint_trial_factor(char* str_out, UV* uv_out,
+                                  UV* out_f, int* nf,
+                                  const char* a, STRLEN alen,
+                                  const uint32_t* primes, uint32_t nprimes);
+
 /* Absolute value.  out needs alen bytes. */
 extern STRLEN strint_abs(char* out, const char* a, STRLEN alen);
 /* Negation.  out needs alen+1 bytes. */

@@ -4093,6 +4093,41 @@ trial_factor(IN SV* svn, ...)
      /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1 */
   PPCODE:
     if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) || ix == 10) {
+      if (ix == 0 && !_XS_get_callgmp()) {
+        UV limit = (items >= 2) ? my_svuv(ST(1)) : 0;
+        if (limit > 0 && limit <= 1000000) {
+          STRLEN slen;
+          const char *str = SvPV_nomg(svn, slen);
+          uint32_t *primes = NULL;
+          uint32_t nprimes;
+          int nf = 0, fi;
+          int nf_alloc = (int)(slen * 4) + 16;
+          UV *fac_buf, cofactor_uv;
+          char *cofactor_str;
+          STRLEN cofactor_len;
+          Newx(fac_buf, nf_alloc, UV);
+          Newx(cofactor_str, slen + 1, char);
+          nprimes = range_prime_sieve_32(&primes, (uint32_t)limit, 0);
+          cofactor_len = strint_trial_factor(cofactor_str, &cofactor_uv,
+                                             fac_buf, &nf,
+                                             str, slen, primes, nprimes);
+          Safefree(primes);
+          EXTEND(SP, nf + 1);
+          for (fi = 0; fi < nf; fi++)
+            PUSHs(sv_2mortal(newSVuv(fac_buf[fi])));
+          if (cofactor_len == 0) {
+            if (cofactor_uv > 1)
+              PUSHs(sv_2mortal(newSVuv(cofactor_uv)));
+          } else {
+            PUTBACK;   /* sync before sv_to_bigint uses SPAGAIN/PUTBACK internally */
+            PUSHs(sv_to_bigint(aTHX_ sv_2mortal(newSVpvn(cofactor_str, cofactor_len))));
+          }
+          Safefree(fac_buf);
+          Safefree(cofactor_str);
+          PUTBACK;
+          return;
+        }
+      }
       DISPATCHPP();
       return;
     }

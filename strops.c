@@ -51,9 +51,9 @@ static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
 /* loop never overflows for any practical input length.                       */
 /*                                                                            */
 /* Tier selection is based on compile-time capability flags from ptypes.h:    */
-/*   HAVE_UINT128: base 10^9, 128-bit accumulator (unlimited safe length)     */
-/*   HAVE_UINT64:  base 10^6,  64-bit accumulator (per-row flush, any length) */
-/*   else:         base 10^4,  32-bit accumulator (uses per-row carry flush)  */
+/*   HAVE_UINT128: base 10^9, 128-bit accumulator (no flush needed)           */
+/*   HAVE_UINT64:  base 10^6,  64-bit accumulator (no flush needed in practice) */
+/*   else:         base 10^4,  32-bit accumulator (per-row carry flush needed)*/
 /******************************************************************************/
 
 #if HAVE_UINT128
@@ -408,9 +408,15 @@ static void b9_add_uv(b9_t *out, const b9_t *a, UV v)
 /* out = a * b (signed).
  * Reads all of a->d and b->d before writing to out->d, so out may alias
  * a or b (b9_ensure is called only after the multiply loop). */
+
+/* Small multiplications use a stack buffer to avoid malloc overhead.
+ * 64 limbs covers 576 digits (base 10^9), 384 (10^6), 256 (10^4). */
+#define B9_MUL_STACK_LIMBS 64
+
 static void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
 {
   uint32_t i, j, rn;
+  b9acc_t  stack_acc[B9_MUL_STACK_LIMBS + 1];
   b9acc_t *acc;
   int neg;
 
@@ -418,19 +424,27 @@ static void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
 
   neg = (a->neg != b->neg) ? 1 : 0;
   rn  = a->n + b->n;
-  acc = (b9acc_t*) calloc((size_t)(rn + 1), sizeof(b9acc_t));
+
+  if (rn <= B9_MUL_STACK_LIMBS) {
+    acc = stack_acc;
+    memset(acc, 0, (rn + 1) * sizeof(b9acc_t));
+  } else {
+    acc = (b9acc_t*) calloc((size_t)(rn + 1), sizeof(b9acc_t));
+  }
 
   for (i = 0; i < a->n; i++) {
     if (a->d[i] == 0) continue;
     for (j = 0; j < b->n; j++)
       acc[i + j] += (b9acc_t)a->d[i] * b->d[j];
-#if !HAVE_UINT128
+    /* Per-row carry flush: only needed for base 10^4 (32-bit uint32_t acc).
+     * With uint64_t (base 10^6) overflow needs 18M products/position. */
+#if !HAVE_UINT128 && !HAVE_UINT64
     for (j = i; j <= i + b->n && j < rn; j++) {
       acc[j + 1] += acc[j] / B9_BASE;
       acc[j]     %= B9_BASE;
     }
 #endif
-}
+  }
 
   /* a->d and b->d fully consumed; safe to resize out even if aliased */
   b9_ensure(out, rn);
@@ -439,7 +453,7 @@ static void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
     acc[i]     %= B9_BASE;
     out->d[i]   = (b9limb_t)acc[i];
   }
-  free(acc);
+  if (acc != stack_acc) free(acc);
 
   while (rn > 1 && out->d[rn-1] == 0) rn--;
   out->n   = rn;
@@ -640,24 +654,52 @@ done:
 }
 
 /* Compute b9 value a mod small UV p (read-only). */
-static UV b9_mod_small(const b9_t* a, UV p) {
-  UV r = 0;
+/* Compute a mod p for a non-zero uint32_t p.
+ *
+ * With p < 2^32, rem < p < 2^32 always, so rem*B9_BASE + d[i] is at most
+ * (2^32-1)*B9_BASE + B9_BASE-1 < 2^32 * B9_BASE.  Since B9_BASE <= 10^9 < 2^30,
+ * this is under 2^62, fitting in uint64_t for all three B9 tiers.
+ * On the rare platform with neither uint64_t nor uint128_t (B9_BASE=10^4),
+ * fall back to b9_divmod. */
+static uint32_t b9_mod_u32(const b9_t* a, uint32_t p) {
+#if HAVE_UINT64
+  uint32_t r = 0;
   uint32_t i;
   for (i = a->n; i-- > 0; )
-    r = (r * (UV)B9_BASE + (UV)a->d[i]) % p;
+    r = (uint32_t)(((uint64_t)r * B9_BASE + a->d[i]) % p);
   return r;
+#else
+  b9_t bp, bq, br;
+  uint32_t result;
+  b9_init_set_uv(&bp, (UV)p);
+  b9_init(&bq);  b9_init(&br);
+  b9_divmod(&bq, &br, a, &bp);
+  result = (uint32_t)b9_to_uv(&br);
+  b9_free(&bp);  b9_free(&bq);  b9_free(&br);
+  return result;
+#endif
 }
 
-/* Divide b9 value a in-place by small UV p.  Caller must ensure p | a. */
-static void b9_div_small(b9_t* a, UV p) {
-  UV rem = 0;
+/* Divide b9 value a in-place by uint32_t p.  Caller must ensure p | a exactly.
+ * Same overflow analysis as b9_mod_u32: uint64_t always suffices when available. */
+static void b9_divexact_u32(b9_t* a, uint32_t p) {
+#if HAVE_UINT64
+  uint32_t rem = 0;
   uint32_t i;
   for (i = a->n; i-- > 0; ) {
-    UV cur = rem * (UV)B9_BASE + (UV)a->d[i];
+    uint64_t cur = (uint64_t)rem * B9_BASE + a->d[i];
     a->d[i] = (b9limb_t)(cur / p);
-    rem = cur % p;
+    rem = (uint32_t)(cur % p);
   }
   while (a->n > 0 && a->d[a->n-1] == 0) a->n--;
+#else
+  b9_t bp, bq, br;
+  b9_init_set_uv(&bp, (UV)p);
+  b9_init(&bq);  b9_init(&br);
+  b9_divmod(&bq, &br, a, &bp);
+  b9_move(a, &bq);
+  b9_free(&bp);  b9_free(&br);
+#endif
 }
 
 /* Convert a small b9 value to UV.  Caller must verify fit with the
@@ -983,11 +1025,11 @@ STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
 {
 #if BITS_PER_WORD == 64
   static const UV P = UVCONST(614889782588491410); /* primorial(47) */
-  static const UV sprimes[] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47};
+  static const uint32_t sprimes[] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47};
   static const int nsp = 15;
 #else
   static const UV P = UVCONST(223092870);           /* primorial(23) */
-  static const UV sprimes[] = {2,3,5,7,11,13,17,19,23};
+  static const uint32_t sprimes[] = {2,3,5,7,11,13,17,19,23};
   static const int nsp = 9;
 #endif
   UV g;
@@ -1000,11 +1042,11 @@ STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
     b9_init_set_str(&n, a, alen);
 
     for (pi = 0; pi < nsp && g > 1; pi++) {
-      UV p = sprimes[pi];
+      uint32_t p = sprimes[pi];
       if (g % p != 0) continue;
 
-      while (b9_mod_small(&n, p) == 0) {
-        b9_div_small(&n, p);
+      while (b9_mod_u32(&n, p) == 0) {
+        b9_divexact_u32(&n, p);
         out_f[(*nf)++] = p;
 
         /* Early UV detection: switch to UV arithmetic for the remaining tail */
@@ -1014,7 +1056,7 @@ STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
           while (v % p == 0) { v /= p; out_f[(*nf)++] = p; }
           while (g % p == 0) g /= p;
           for (pi++; pi < nsp && g > 1; pi++) {
-            UV q = sprimes[pi];
+            uint32_t q = sprimes[pi];
             if (g % q == 0) {
               while (v % q == 0) { v /= q; out_f[(*nf)++] = q; }
               while (g % q == 0) g /= q;
@@ -1026,7 +1068,6 @@ STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
       }
       while (g % p == 0) g /= p;
     }
-
     {
       STRLEN rlen = b9_get_str(str_out, &n);
       b9_free(&n);
@@ -1040,6 +1081,91 @@ STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
   if (str_out != a) memmove(str_out, a, alen);
   if (str_to_uv_s(str_out, alen, uv_out)) return 0;
   return alen;
+}
+
+STRLEN strint_trial_factor(char* str_out, UV* uv_out,
+                           UV* out_f, int* nf,
+                           const char* a, STRLEN alen,
+                           const uint32_t* primes, uint32_t nprimes)
+{
+  b9_t n;
+  int have_b9 = 0;
+  uint32_t pi = 0;
+
+  /* Process primes in batches whose product fits in a single integer.
+   * Before b9 init: use UV-sized batches + strint_moduv (avoids b9 init
+   * entirely for the common no-factor case).
+   * After b9 init: cap batches at UINT32_MAX so b9_mod_u32 can be used. */
+  while (pi < nprimes) {
+    UV batch_cap  = have_b9 ? (UV)UINT32_MAX : UV_MAX;
+    UV batch_prod = 1;
+    uint32_t batch_start = pi;
+
+    while (pi < nprimes && batch_prod <= batch_cap / primes[pi])
+      batch_prod *= (UV)primes[pi++];
+
+    /* Quick filter: skip batch if gcd(n mod batch_prod, batch_prod) == 1 */
+    UV rem  = have_b9 ? (UV)b9_mod_u32(&n, (uint32_t)batch_prod)
+                      : strint_moduv(a, alen, batch_prod);
+    UV g    = gcduv(rem, batch_prod);
+    if (g == 1) continue;
+
+    /* At least one prime in this batch divides n */
+    if (!have_b9) {
+      b9_init_set_str(&n, a, alen);
+      n.neg = 0;
+      have_b9 = 1;
+    }
+
+    for (uint32_t j = batch_start; j < pi; j++) {
+      uint32_t p = primes[j];
+      if (g % p != 0) continue;  /* not in gcd, skip */
+
+      /* p divides n (guaranteed by gcd); divide it out completely */
+      do {
+        b9_divexact_u32(&n, p);
+        out_f[(*nf)++] = p;
+        if ((STRLEN)n.n * B9_DIGS < sizeof(UV) * 3) {
+          UV v = b9_to_uv(&n);
+          b9_free(&n);
+          /* p may still divide v (e.g. p^2 | original n) */
+          while (v % p == 0) { v /= p;  out_f[(*nf)++] = p; }
+          /* Finish current batch in UV */
+          for (j++; j < pi; j++) {
+            UV q = (UV)primes[j];
+            if (g % q != 0) continue;
+            while (v % q == 0) { v /= q;  out_f[(*nf)++] = q; }
+          }
+          /* Remaining batches: plain UV loop with q*q > v termination */
+          for (; pi < nprimes; pi++) {
+            UV q = (UV)primes[pi];
+            if (q * q > v) break;
+            while (v % q == 0) { v /= q;  out_f[(*nf)++] = q; }
+          }
+          *uv_out = v;
+          return 0;
+        }
+      } while (b9_mod_u32(&n, p) == 0);
+
+      while (g % p == 0) g /= p;  /* consumed this prime from g */
+    }
+  }
+
+  if (!have_b9) {
+    /* No factors found; copy the stripped input as the cofactor */
+    strint_strip(&a, &alen);
+    if (str_out != a) memmove(str_out, a, alen);
+    if (str_to_uv_s(str_out, alen, uv_out)) return 0;
+    return alen;
+  }
+
+  /* All primes tried; write out the remaining cofactor */
+  {
+    STRLEN rlen = b9_get_str(str_out, &n);
+    b9_free(&n);
+    if (str_to_uv_s(str_out, rlen, uv_out)) return 0;
+    return rlen;
+  }
 }
 
 STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
