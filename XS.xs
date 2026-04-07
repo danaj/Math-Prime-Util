@@ -4407,6 +4407,17 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
       if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
+    if (!_XS_get_callgmp() && ix <= 2) {
+      STRLEN lena, lenb, lenn, rlen;
+      const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sn = SvPV_nomg(svn, lenn);
+      SV* tmp = sv_2mortal(newSV(0 + lenn));
+      switch (ix) {
+        case 0:  rlen = strint_muladdmod_s(SvPVX(tmp), "1",1, sa,lena, sb,lenb, 0, sn,lenn); break;
+        case 1:  rlen = strint_muladdmod_s(SvPVX(tmp), "1",1, sa,lena, sb,lenb, 1, sn,lenn); break;
+        default: rlen = strint_muladdmod_s(SvPVX(tmp), sa,lena, sb,lenb, "0",1, 0, sn,lenn); break;
+      }
+      RETURN_STRING_BIGINT(tmp, rlen);
+    }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
@@ -4430,6 +4441,13 @@ void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
       _mod_with(&c, cstatus, n);
       ret = (ix==0)  ?  muladdmod(a,b,c,n)  :  mulsubmod(a,b,c,n);
       XSRETURN_UV(ret);
+    }
+    if (!_XS_get_callgmp()) {
+      STRLEN lena, lenb, lenc, lenn, rlen;
+      const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sc = SvPV_nomg(svc, lenc), *sn = SvPV_nomg(svn, lenn);
+      SV* tmp = sv_2mortal(newSV(0 + lenn));
+      rlen = strint_muladdmod_s(SvPVX(tmp), sa,lena, sb,lenb, sc,lenc, ix, sn,lenn);
+      RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
     objectify_result(aTHX_ svn, ST(0));
