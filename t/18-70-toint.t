@@ -19,6 +19,7 @@ plan tests => 1  # native ints
             + 1  # scientific notation strings
             + 1  # bigints
             + 1  # bigfloat
+            + 1  # high-precision float regressions
             + 1  # undef and empty strings
             + 1  # invalid
             + 1  # check return types
@@ -170,6 +171,56 @@ subtest 'BigFloat objects — truncate toward zero' => sub {
 
 ###############################################################################
 
+subtest 'high-precision float inputs keep exact truncated digits' => sub {
+  my @cases = (
+    ["716115441142294636.4004",
+     "716115441142294636",
+     "string old-MBF precision regression value truncates exactly"],
+    [Math::BigFloat->new("716115441142294636.4004"),
+     "716115441142294636",
+     "BigFloat old-MBF precision regression value truncates exactly"],
+    ["1234567890123456789012345678901234567890.99999999999999999999999",
+     "1234567890123456789012345678901234567890",
+     "string huge decimal truncates exactly"],
+    ["-1234567890123456789012345678901234567890.99999999999999999999999",
+     "-1234567890123456789012345678901234567890",
+     "string huge negative truncates exactly"],
+    ["12345678901234567890.987654321e25",
+     "123456789012345678909876543210000000000000000",
+     "string huge scientific truncates exactly"],
+    ["-12345678901234567890.987654321e25",
+     "-123456789012345678909876543210000000000000000",
+     "string huge negative scientific truncates exactly"],
+    [Math::BigFloat->new("1234567890123456789012345678901234567890.99999999999999999999999"),
+     "1234567890123456789012345678901234567890",
+     "BigFloat huge decimal truncates exactly"],
+    [Math::BigFloat->new("-1234567890123456789012345678901234567890.99999999999999999999999"),
+     "-1234567890123456789012345678901234567890",
+     "BigFloat huge negative truncates exactly"],
+    [Math::BigFloat->new("12345678901234567890.987654321e25"),
+     "123456789012345678909876543210000000000000000",
+     "BigFloat huge scientific truncates exactly"],
+    [Math::BigFloat->new("-12345678901234567890.987654321e25"),
+     "-123456789012345678909876543210000000000000000",
+     "BigFloat huge negative scientific truncates exactly"],
+    ["9999999999999999999999999999999999999999.0000000000000000000001",
+     "9999999999999999999999999999999999999999",
+     "string huge with tiny fractional residue truncates exactly"],
+    [Math::BigFloat->new("-0.0000000000000000000000000000001"),
+     "0",
+     "BigFloat tiny negative truncates to zero"],
+  );
+  for my $case (@cases) {
+    my($in, $exp, $label) = @$case;
+    my $r = toint($in);
+    is("$r", $exp, $label);
+    ok(is_bigint($r), "$label returns bigint")
+      if $exp =~ /^-?\d{20,}$/;
+  }
+};
+
+###############################################################################
+
 subtest 'undef and empty string return 0' => sub {
   is(toint(undef), 0, "toint(undef) = 0");
   is(toint(""),    0, "toint('') = 0");
@@ -185,7 +236,8 @@ subtest 'invalid inputs croak' => sub {
     "hello",     # pure alphabetic
     "3..14",     # double decimal point
     "e5",        # exponent without mantissa
-    "3e",        # incomplete exponent
+    #"3e",        # incomplete exponent (old MBF accepts this)
+    "3f",        # not an exponent spcifier
     ".",         # lone decimal point
     "+-3",       # double sign
     "1 2",       # embedded space

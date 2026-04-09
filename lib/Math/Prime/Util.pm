@@ -382,9 +382,11 @@ sub _int_from_float {
     $r = Math::BigFloat->new($rs);
   }
   # Take the Math::BigFloat $r, truncate and make $n the integer string
-  if (Math::BigFloat->can('bint')) { $n = $r->bint->as_int->bstr; }
-  elsif ($r->is_non_negative)      { $n = $r->bfloor->as_int->bstr; }
-  else                             { $n = $r->bceil->as_int->bstr; }
+  # Previous to 1.99, as_int drops precision
+  if (Math::BigFloat->can('bint')) { $n = $r->bint->bstr; }
+  elsif ($r->{sign} eq '+')        { $n = $r->bfloor->bstr; }
+  else                             { $n = $r->bceil->bstr; }
+  $n =~ s/\.0*$//;
   croak "toint: '$rs' is not a valid number" if $n =~ tr/-0-9//c;
   # Turn $n into either a native int or proper-class bigint.
   _validate_integer($n);

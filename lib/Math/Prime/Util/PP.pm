@@ -373,9 +373,12 @@ sub _binary_search {
 ################################################################################
 
 sub _truncate_bigfloat_to_string {
-  return $_[0]->copy->bint->as_int->bstr if Math::BigFloat->can('bint');
-  return $_[0]->copy->bfloor->as_int->bstr if $_[0]->is_non_negative;
-  return $_[0]->copy->bceil->as_int->bstr;
+  my $ns;
+  if (Math::BigFloat->can('bint')) { $ns = $_[0]->copy->bint->bstr; }
+  elsif ($_[0]->{sign} eq '+')     { $ns = $_[0]->copy->bfloor->bstr; }
+  else                             { $ns = $_[0]->copy->bceil->bstr; }
+  $ns =~ s/\.0*$//;
+  return $ns;
 }
 
 sub toint {

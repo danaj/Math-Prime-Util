@@ -156,6 +156,22 @@ subtest 'arithmetic ops', sub {
   is(rootmod(2,-11,4725),4412,"rootmod with neg k = invmod of pos k");
   is(rootmod(577,3,137),95,"rootmod");
 
+  is("".toint("12345678901234567890.987654321e25"),
+     "123456789012345678909876543210000000000000000",
+     "toint large scientific string truncates exactly (PP)");
+  is("".toint("716115441142294636.4004"),
+     "716115441142294636",
+     "toint old-MBF precision regression string truncates exactly (PP)");
+  is("".toint(Math::BigFloat->new("-1234567890123456789012345678901234567890.99999999999999999999999")),
+     "-1234567890123456789012345678901234567890",
+     "toint huge negative BigFloat truncates exactly (PP)");
+  is("".toint(Math::BigFloat->new("716115441142294636.4004")),
+     "716115441142294636",
+     "toint old-MBF precision regression BigFloat truncates exactly (PP)");
+  is("".toint(Math::BigFloat->new("-0.0000000000000000000000000000001")),
+     "0",
+     "toint tiny negative BigFloat truncates to zero (PP)");
+
   is_deeply([allsqrtmod(4,13791)],[2,4595,9196,13789],"allsqrtmod");
   is_deeply([allrootmod(581,5,151)],[34,42,43,62,121],"allrootmod");
 
