@@ -1099,7 +1099,7 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
   while (pi < nprimes) {
     UV batch_cap  = have_b9 ? (UV)UINT32_MAX : UV_MAX;
     UV batch_prod = 1;
-    uint32_t batch_start = pi;
+    uint32_t j, batch_start = pi;
 
     while (pi < nprimes && batch_prod <= batch_cap / primes[pi])
       batch_prod *= (UV)primes[pi++];
@@ -1117,7 +1117,7 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
       have_b9 = 1;
     }
 
-    for (uint32_t j = batch_start; j < pi; j++) {
+    for (j = batch_start; j < pi; j++) {
       uint32_t p = primes[j];
       if (g % p != 0) continue;  /* not in gcd, skip */
 

@@ -646,25 +646,51 @@ static void _mod_with(UV *a, int astatus, UV n) {
 static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int minversion)
 {
     GV* gv = NULL;
+    const char* classname = NULL;
     dMY_CXT;
     Size_t namelen = strlen(name);
-    /* If given a GMP function, and GMP enabled, and function exists, use it. */
-    int use_gmp = stashflags & VCALL_GMP && _XS_get_callgmp() && _XS_get_callgmp() >= minversion;
+    /* Try GMP if (1) caller asks, (2) GMP enabled, (3) new enough version. */
+    int callgmp = (stashflags & VCALL_GMP) ? _XS_get_callgmp() : 0;
+    int try_gmp = callgmp > 0 && callgmp >= minversion;
+    int try_pp  = stashflags & VCALL_PP;
+
     assert(!(stashflags & ~(VCALL_PP|VCALL_GMP)));
-    if (use_gmp && hv_exists(MY_CXT.MPUGMP,name,namelen)) {
-      GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
-      if (gvp) gv = *gvp;
+
+    if (try_gmp) {
+      if (hv_exists(MY_CXT.MPUGMP,name,namelen)) {
+        GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUGMP,name,namelen,0);
+        if (gvp) {
+          gv = *gvp;
+          classname = "Math::Prime::Util::GMP";
+        }
+      }
+      /* Fall-through is ok here. */
     }
-    if (!gv && (stashflags & VCALL_PP))
+    if (!gv && try_pp) {
       perl_require_pv("Math/Prime/Util/PP.pm");
-    if (!gv) {
-      GV ** gvp = (GV**)hv_fetch(stashflags & VCALL_PP? MY_CXT.MPUPP : MY_CXT.MPUroot, name,namelen,0);
-      if (gvp) gv = *gvp;
+      GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUPP, name, namelen, 0);
+      if (gvp) {
+        gv = *gvp;
+        classname = "Math::Prime::Util::PP";
+      }
     }
-    /* use PL_stack_sp in PUSHMARK macro directly it will be read after
-      the possible mark stack extend */
+    if (!gv && !try_pp) {
+      GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUroot, name, namelen, 0);
+      if (gvp) {
+        gv = *gvp;
+        classname = "Math::Prime::Util";
+      }
+    }
+    if (!gv) { /* If not found, die with a hopefully useful error message. */
+      classname = try_pp ? "Math::Prime::Util::PP" : "Math::Prime::Util";
+      if (try_gmp)
+        croak("internal callback '%s' not found in Math::Prime::Util::GMP or %s", name, classname);
+      croak("internal callback '%s' not found in %s", name, classname);
+    }
+    /* Use PL_stack_sp in PUSHMARK macro directly.
+       It will be read after the possible mark stack extend. */
     PUSHMARK(PL_stack_sp-nargs);
-    /* no PUTBACK bc we didn't move global SP */
+    /* No PUTBACK because we didn't move global SP. */
     return call_sv((SV*)gv, flags);
 }
 
@@ -711,10 +737,6 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
 
 #define CALLROOTSUB(fn) \
   (void)_vcallsubn(aTHX_ GIMME_V, VCALL_ROOT, fn, items, 0)
-#define CALLROOTSUB_ONE_SCALAR(fn) \
-  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_ROOT, fn, 1, 0)
-#define CALLROOTSUB_VOID(fn) \
-  (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, fn, items, 0)
 
 #define OBJECTIFY_STACK(n) \
   do { \
@@ -802,27 +824,79 @@ static bool cv_needs_scope(pTHX_ const CV *cv) {
        else                      { PUSHs(sv_2mortal(newSViv(r_))); } \
   } while (0)
 
-static void objectify_result(pTHX_ SV* input, SV* output) {
+/* Callback helper stack contract:
+ *  - Any helper that makes a Perl call must PUTBACK before call_*.
+ *  - Any helper that uses SP after call_* must SPAGAIN first.
+ *  - Scalar helpers should POPs the return and PUTBACK before returning.
+ */
+static SV* xs_call_root_1_sv(pTHX_ const char* name, SV* arg) {
+  dSP;
+  SV* ret;
+  char fqname[96];
+  int namelen = snprintf(fqname, sizeof(fqname), "Math::Prime::Util::%s", name);
+  if (namelen < 0 || namelen >= (int)sizeof(fqname))
+    croak("Root callback name too long");
+  ENTER; SAVETMPS;
+  PUSHMARK(SP);
+  XPUSHs(arg);
+  PUTBACK;
+  (void)call_pv(fqname, G_SCALAR);
+  SPAGAIN;
+  ret = SvREFCNT_inc(POPs);
+  PUTBACK;
+  FREETMPS; LEAVE;
+  return sv_2mortal(ret);
+}
+
+static SV* xs_call_method_1_sv(pTHX_ SV* object, const char* method, SV* arg) {
+  dSP;
+  SV* ret;
+  ENTER; SAVETMPS;
+  PUSHMARK(SP);
+  XPUSHs(object);
+  XPUSHs(arg);
+  PUTBACK;
+  (void)call_method(method, G_SCALAR);
+  SPAGAIN;
+  ret = SvREFCNT_inc(POPs);
+  PUTBACK;
+  FREETMPS; LEAVE;
+  return sv_2mortal(ret);
+}
+
+static SV* xs_call_cv_noinput_1_sv(pTHX_ CV* subcv) {
+  dSP;
+  SV* ret;
+  PUSHMARK(SP);
+  PUTBACK;
+  (void)call_sv((SV*)subcv, G_SCALAR);
+  SPAGAIN;
+  ret = POPs;
+  PUTBACK;
+  return ret;
+}
+
+static SV* xs_objectify_result(pTHX_ SV* input, SV* output) {
   /* Leave unchanged: undef, objects, small integers */
   if (!SvOK(output) || sv_isobject(output) || SVNUMTEST(output))
-    return;
+    return output;
   /* If they didn't give us a bigint, then try to be smart */
   if (!input || !sv_isobject(input)) {
-    CALLROOTSUB_ONE_SCALAR("_to_bigint_if_needed");
+    return xs_call_root_1_sv(aTHX_ "_to_bigint_if_needed", sv_2mortal(newSVsv(output)));
   } else {
     const char *iname = HvNAME_get(SvSTASH(SvRV(input)));
     if (strEQ(iname, "Math::BigInt")) {
-      CALLROOTSUB_ONE_SCALAR("_to_bigint");
+      return xs_call_root_1_sv(aTHX_ "_to_bigint", sv_2mortal(newSVsv(output)));
     } else if (strEQ(iname, "Math::GMPz")) {
-      CALLROOTSUB_ONE_SCALAR("_to_gmpz");
+      return xs_call_root_1_sv(aTHX_ "_to_gmpz", sv_2mortal(newSVsv(output)));
     } else if (strEQ(iname, "Math::GMP")) {
-      CALLROOTSUB_ONE_SCALAR("_to_gmp");
+      return xs_call_root_1_sv(aTHX_ "_to_gmp", sv_2mortal(newSVsv(output)));
     } else { /* Return it as: ref(input)->new(result) */
-      dSP;  (void)POPs;  ENTER;  PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newSVpv(iname, 0)));  XPUSHs(output);
-      PUTBACK;  call_method("new", G_SCALAR);  LEAVE;
+      return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(iname, 0)), "new",
+                                       sv_2mortal(newSVsv(output)));
     }
   }
+  return output;
 }
 
 /* Takes an SV and returns a mortalized SV of the correct native/bigint form.
@@ -861,19 +935,9 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
       return sv;
     /* Construct canonical bigint: MY_CXT.bigintname->new(str) */
     if (MY_CXT.bigintname) {
-      dSP;
-      SV* r;
-      ENTER; SAVETMPS;
-      PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newSVpv(MY_CXT.bigintname, 0)));
-      XPUSHs(sv_2mortal(newSVpvn(str, len)));
-      PUTBACK;
-      call_method("new", G_SCALAR);
-      SPAGAIN;
-      r = SvREFCNT_inc(POPs);
-      PUTBACK;
-      FREETMPS; LEAVE;
-      return sv_2mortal(r);
+      return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(MY_CXT.bigintname, 0)),
+                                        "new",
+                                        sv_2mortal(newSVpvn(str, len)));
     }
   }
   /* We can't understand the input.  Return it unchanged. */
@@ -881,28 +945,18 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
   return sv;
 }
 
-static SV* call_sv_to_func(pTHX_ SV* r, const char* name) {
-  dSP;  ENTER;  PUSHMARK(SP);
-  XPUSHs(r);
-  PUTBACK;
-  call_pv(name, G_SCALAR);
-  SPAGAIN;
-  r = POPs;
-  PUTBACK; LEAVE;
-  return r;
+static SV* xs_to_bigint(pTHX_ SV* r) {
+  return xs_call_root_1_sv(aTHX_ "_to_bigint", r);
 }
-static SV* sv_to_bigint(pTHX_ SV* r) {
-  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint");
+static SV* xs_to_bigint_abs(pTHX_ SV* r) {
+  return xs_call_root_1_sv(aTHX_ "_to_bigint_abs", r);
 }
-static SV* sv_to_bigint_abs(pTHX_ SV* r) {
-  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_abs");
-}
-static SV* sv_to_bigint_nonneg(pTHX_ SV* r) {
-  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_bigint_nonneg");
+static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
+  return xs_call_root_1_sv(aTHX_ "_to_bigint_nonneg", r);
 }
 #if 0  /* use xs_to_canonical instead */
 static SV* sv_to_canonical(pTHX_ SV* r) {
-  return call_sv_to_func(aTHX_ r, "Math::Prime::Util::_to_canonical");
+  return xs_call_root_1_sv(aTHX_ "_to_canonical", r);
 }
 #endif
 
@@ -935,9 +989,7 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
     else { \
       char str_[40]; \
       uint32_t slen_ = to_string_128(str_, hi, lo); \
-      ST(0) = sv_2mortal(newSVpv(str_, slen_)); \
-      PL_stack_sp = PL_stack_base + ax; \
-      CALLROOTSUB_ONE_SCALAR("_to_bigint"); \
+      ST(0) = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn(str_, slen_))); \
     } \
     XSRETURN(1); \
   } while(0)
@@ -1002,6 +1054,14 @@ static SV* sv_to_canonical(pTHX_ SV* r) {
     ST(0) = xs_to_canonical(aTHX_ sv); \
     XSRETURN(1); \
   }
+
+#define PUSH_BIGINT_STR(str,len) \
+  do { \
+    PUTBACK; \
+    SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn((str), (len)))); \
+    SPAGAIN; \
+    PUSHs(sv_); \
+  } while (0)
 
 #if 1
 #define TRY_MAGIC_UNARY(sv, op) \
@@ -1878,13 +1938,13 @@ bool _validate_integer(SV* svn)
     } else {  /* Status 0 = bigint */
       if (mask & IFLAG_ABS) {
         /* TODO: if given a positive bigint, no need for this */
-        sv_setsv(svn, sv_to_bigint_abs(aTHX_ svn));
+        sv_setsv(svn, xs_to_bigint_abs(aTHX_ svn));
       } else if (mask & IFLAG_NONNEG) {
         if (!_sv_is_bigint(aTHX_ svn))
-          sv_setsv(svn, sv_to_bigint_nonneg(aTHX_ svn));
+          sv_setsv(svn, xs_to_bigint_nonneg(aTHX_ svn));
       } else {
         if (!_sv_is_bigint(aTHX_ svn))
-          sv_setsv(svn, sv_to_bigint(aTHX_ svn));
+          sv_setsv(svn, xs_to_bigint(aTHX_ svn));
       }
     }
     RETVAL = TRUE;
@@ -1994,7 +2054,7 @@ void prime_count_upper(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 
@@ -2037,7 +2097,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
       else     XSRETURN_UNDEF;
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svlo, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svlo, ST(0));
     XSRETURN(1);
 
 void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
@@ -2636,7 +2696,7 @@ gcd(...)
       XSRETURN(1);
     }
     DISPATCHPP();
-    if (ix == 0 || ix == 1) objectify_result(aTHX_ 0, ST(0));
+    if (ix == 0 || ix == 1) ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
     XSRETURN(1);
 
 void
@@ -2833,7 +2893,7 @@ chinese(...)
       }
     }
     DISPATCHPP();
-    if (ix == 0) objectify_result(aTHX_ svfirstmod, ST(0));
+    if (ix == 0) ST(0) = xs_objectify_result(aTHX_ svfirstmod, ST(0));
     XSRETURN(1 + ix);
 
 void cornacchia(IN SV* svd, IN SV* svn)
@@ -3076,7 +3136,7 @@ void powerfree_count(IN SV* svn, IN int k = 2)
       }
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void
@@ -3245,7 +3305,7 @@ void nth_perfect_power(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void nth_ramanujan_prime(IN SV* svn)
@@ -3351,7 +3411,7 @@ void next_prime(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void next_prime_power(IN SV* svn)
@@ -3388,7 +3448,7 @@ void next_perfect_power(IN SV* svn)
       XSRETURN_IV(neg_iv(n));
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void prev_perfect_power(IN SV* svn)
@@ -3407,7 +3467,7 @@ void prev_perfect_power(IN SV* svn)
         XSRETURN_IV(neg_iv(n));
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void next_chen_prime(IN SV* svn)
@@ -3469,7 +3529,7 @@ void urandomb(IN UV bits)
       if (res || ix == 0) XSRETURN_UV(res);
     }
     DISPATCHPP_GMPONLYIF(ix != 1 || bits != uvmax_maxlen);
-    objectify_result(aTHX_ 0, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
     XSRETURN(1);
 
 void urandomm(IN SV* svn)
@@ -3482,7 +3542,7 @@ void urandomm(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void urandomr(IN SV* svlo, IN SV* svhi)
@@ -3502,7 +3562,7 @@ void urandomr(IN SV* svlo, IN SV* svhi)
       XSRETURN_UV(lo + urandomm64(MY_CXT.randcxt, hi-lo+1));
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svlo, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svlo, ST(0));
     XSRETURN(1);
 
 void toint(IN SV* svn)
@@ -3538,19 +3598,19 @@ void toint(IN SV* svn)
       if (x >= 0.0 && x < nvuvmaxval+1.0) XSRETURN_UV((UV)x);
       if (x <  0.0 && x > nvivminval-1.0) XSRETURN_IV((IV)x);
       /* Doesn't fit, so go through Math::BigFloat */
-      ST(0) = call_sv_to_func(aTHX_ svn, "Math::Prime::Util::_int_from_float");
+      ST(0) = xs_call_root_1_sv(aTHX_ "_int_from_float", svn);
       XSRETURN(1);
     }
     if (stype & SNUMFLAG_BIGINT) {
       /* TODO: this assumes the input bigint is the correct class */
       if (!sv_isobject(svn) || !_sv_is_bigint(aTHX_ svn)) {
         /* Not a bigint object, so convert it to one. */
-        CALLROOTSUB_ONE_SCALAR("_to_bigint");
+        ST(0) = xs_call_root_1_sv(aTHX_ "_to_bigint", svn);
       }
       XSRETURN(1);
     }
     /* It doesn't look like a number, but let Math::BigFloat decide. */
-    ST(0) = call_sv_to_func(aTHX_ svn, "Math::Prime::Util::_int_from_float");
+    ST(0) = xs_call_root_1_sv(aTHX_ "_int_from_float", svn);
     XSRETURN(1);
 
 void pisano_period(IN SV* svn)
@@ -3574,7 +3634,7 @@ void pisano_period(IN SV* svn)
         XSRETURN_UV(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void random_factored_integer(IN SV* svn)
@@ -3986,44 +4046,46 @@ factor(IN SV* svn)
     } else {
 #if BITS_PER_WORD == 64 && HAVE_UINT128
       if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
-        STRLEN slen;
+        STRLEN slen, j;
         const char *str = SvPV_nomg(svn, slen);
         if (strint_cmp(str,slen,"340282366920938463463374607431768211456",39) < 0) {
           /* str is a decimal string between 0 and 2^128-1 */
           factored128_t nf;
           uint128_t n128 = 0;
-          for (STRLEN j = 0; j < slen; j++)
+          for (j = 0; j < slen; j++)
             n128 = n128 * 10 + (uint8_t)(str[j] - '0');
           if (factorintp128(&nf, n128)) {
+            uint16_t fi, ei;
             if (ix == 0) {
               /* flat list */
               uint32_t total = 0;
-              for (uint16_t fi = 0; fi < nf.nfactors; fi++) total += nf.e[fi];
+              for (fi = 0; fi < nf.nfactors; fi++) total += nf.e[fi];
               if (nf.flarge) total++;
               if (gimme_v == G_SCALAR) XSRETURN_UV(total);
               EXTEND(SP, (EXTEND_TYPE)total);
-              for (uint16_t fi = 0; fi < nf.nfactors; fi++)
-                for (uint8_t ei = 0; ei < nf.e[fi]; ei++)
+              for (fi = 0; fi < nf.nfactors; fi++)
+                for (ei = 0; ei < nf.e[fi]; ei++)
                   PUSHs(sv_2mortal(newSVuv(nf.f[fi])));
               if (nf.flarge) {
                 char fbuf[40];
                 uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
-                PUTBACK;
-                PUSHs(sv_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen))));
+                PUSH_BIGINT_STR(fbuf, flen);
               }
             } else {
               /* [p, e] pairs */
               uint32_t total = nf.nfactors + (nf.flarge ? 1 : 0);
               if (gimme_v == G_SCALAR) XSRETURN_UV(total);
               EXTEND(SP, (EXTEND_TYPE)total);
-              for (uint16_t fi = 0; fi < nf.nfactors; fi++)
+              for (fi = 0; fi < nf.nfactors; fi++)
                 PUSH_2ELEM_AREF(nf.f[fi], nf.e[fi]);
               if (nf.flarge) {
                 char fbuf[40];
                 uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
                 PUTBACK;
                 AV* av_ = newAV();
-                av_push(av_, SvREFCNT_inc(sv_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen)))));
+                SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen)));
+                SPAGAIN;
+                av_push(av_, SvREFCNT_inc(sv_));
                 av_push(av_, newSVuv(1));
                 PUSHs(sv_2mortal(newRV_noinc((SV*)av_)));
               }
@@ -4119,8 +4181,7 @@ trial_factor(IN SV* svn, ...)
             if (cofactor_uv > 1)
               PUSHs(sv_2mortal(newSVuv(cofactor_uv)));
           } else {
-            PUTBACK;   /* sync before sv_to_bigint uses SPAGAIN/PUTBACK internally */
-            PUSHs(sv_to_bigint(aTHX_ sv_2mortal(newSVpvn(cofactor_str, cofactor_len))));
+            PUSH_BIGINT_STR(cofactor_str, cofactor_len);
           }
           Safefree(fac_buf);
           Safefree(cofactor_str);
@@ -4298,7 +4359,7 @@ jordan_totient(IN SV* sva, IN SV* svn)
     }
     overflow:
     DISPATCHPP();
-    objectify_result(aTHX_ sva, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
 
 void almost_prime_count(IN SV* svk, IN SV* svn)
@@ -4325,7 +4386,7 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void nth_almost_prime(IN SV* svk, IN SV* svn)
@@ -4398,7 +4459,7 @@ void powmod(IN SV* sva, IN SV* svg, IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
@@ -4454,7 +4515,7 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
       RETURN_STRING_BIGINT(tmp, rlen);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
@@ -4485,7 +4546,7 @@ void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
       RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
@@ -4525,7 +4586,7 @@ void factorialmod(IN SV* sva, IN SV* svn)
       XSRETURN_UV( factorialmod(a, n) );
     }
     DISPATCHPP_GMPONLYIF(astatus == 1);
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void invmod(IN SV* sva, IN SV* svn)
@@ -4555,7 +4616,7 @@ void invmod(IN SV* sva, IN SV* svn)
       XSRETURN_UV(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void allsqrtmod(IN SV* sva, IN SV* svn)
@@ -4645,7 +4706,7 @@ void qnr(IN SV* svn)
       else          XSRETURN_UV(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void
@@ -4756,7 +4817,7 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
       if (ret > 0) XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 
@@ -4939,7 +5000,7 @@ void addint(IN SV* sva, IN SV* svb)
     }
     /* Others get dispatched here */
     DISPATCHPP();
-    objectify_result(aTHX_ sva, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
 
 void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
@@ -4997,7 +5058,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ sva, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ sva, ST(0));
     XSRETURN(1);
 
 void add1int(IN SV* svn)
@@ -5052,7 +5113,7 @@ void absint(IN SV* svn)
       RETURN_STRING_BIGINT(tmp,len);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void signint(IN SV* svn)
@@ -5148,7 +5209,7 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
       }
     }
     DISPATCHPP_GMPONLYIF(svret == 0);
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void divrem(IN SV* sva, IN SV* svb)
@@ -5247,7 +5308,7 @@ void lshiftint(IN SV* svn, IN SV* svk = 0)
       }
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void
@@ -5287,7 +5348,7 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       if (s != 0) XSRETURN_IV(s);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ 0, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
     XSRETURN(1);
 
 NV
@@ -5386,7 +5447,7 @@ dedekind_psi(IN SV* svn)
       if (r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void sqrtint(IN SV* svn)
@@ -5416,7 +5477,7 @@ void sqrtint(IN SV* svn)
       if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void prime_omega(IN SV* svn)
@@ -5474,7 +5535,7 @@ void factorial(IN SV* svn)
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void sumtotient(IN SV* svn)
@@ -5492,7 +5553,7 @@ void sumtotient(IN SV* svn)
       }
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void binomial(IN SV* svn, IN SV* svk)
@@ -5518,7 +5579,7 @@ void binomial(IN SV* svn, IN SV* svk)
       }
     }
     DISPATCHPP_GMPONLYIF(nstatus == 1 && kstatus != 0);
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void multifactorial(IN SV* svn, IN SV* svk)
@@ -5531,7 +5592,7 @@ void multifactorial(IN SV* svn, IN SV* svk)
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void falling_factorial(IN SV* svn, IN SV* svk)
@@ -5552,7 +5613,7 @@ void falling_factorial(IN SV* svn, IN SV* svk)
       if (ret != IV_MAX) XSRETURN_IV(ret);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void mertens(IN SV* svn)
@@ -5588,7 +5649,7 @@ void mertens(IN SV* svn)
       if (status != 0) RETURN_NPARITY(r);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svn, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 int _is_congruent_number_filter(IN UV n)
@@ -5738,12 +5799,11 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
       {
         for (i = 0; i < alen; i++) {
           for (j = 0; j < blen; j++) {
-            dSP;
+            SV* cbret;
             FASTSETSVINT(asv, atype == IARR_TYPE_POS, ra[i]);
             FASTSETSVINT(bsv, btype == IARR_TYPE_POS, rb[j]);
-            PUSHMARK(SP);
-            call_sv((SV*)subcv, G_SCALAR);
-            status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
+            cbret = xs_call_cv_noinput_1_sv(aTHX_ subcv);
+            status = _validate_and_set(&ret, aTHX_ cbret, IFLAG_ANY);
             if (status != 0)  iset_add(&s, ret, status);
             if (status == 0 || iset_is_invalid(s)) break;
           }
@@ -6497,7 +6557,7 @@ void permtonum(IN SV* svp)
         XSRETURN_UV(num);
     }
     DISPATCHPP();
-    objectify_result(aTHX_ svp, ST(0));
+    ST(0) = xs_objectify_result(aTHX_ svp, ST(0));
     XSRETURN(1);
 
 void randperm(IN UV n, IN UV k = 0)
@@ -6727,7 +6787,7 @@ void todigits(SV* svn, int base=10, int length=-1)
           XSRETURN_UV(n);
         } else if (from_digit_to_str(&str, r, len, base)){
           Safefree(r);
-          XPUSHs( sv_to_bigint(aTHX_ sv_2mortal(newSVpv(str,0))) );
+          PUSH_BIGINT_STR(str, strlen(str));
           Safefree(str);
           XSRETURN(1);
         }
@@ -6735,7 +6795,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       }
     }
     DISPATCHPP();
-    if (ix == 2) objectify_result(aTHX_ 0, ST(0));
+    if (ix == 2) ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
     return;
 
 void is_harshad(SV* svn, int base = 10)
@@ -7797,11 +7857,8 @@ CODE:
 #endif
     {
       for (i = 2; i < items; i++) {
-        dSP;
         GvSV(bgv) = args[i];
-        PUSHMARK(SP);
-        call_sv((SV*)subcv, G_SCALAR);
-        SvSetMagicSV(ret, *PL_stack_sp);
+        SvSetMagicSV(ret, xs_call_cv_noinput_1_sv(aTHX_ subcv));
       }
     }
     ST(0) = ret;
@@ -7855,14 +7912,11 @@ CODE:
     {
       for (i = 1; i < items-1; i++) {
         SV *olda, *oldb;
-        dSP;
         olda = GvSV(plAgv); oldb = GvSV(plBgv);
         GvSV(plAgv) = SvREFCNT_inc_simple_NN(args[i]);
         GvSV(plBgv) = SvREFCNT_inc_simple_NN(args[i+1]);
         SvREFCNT_dec(olda);  SvREFCNT_dec(oldb);
-        PUSHMARK(SP);
-        call_sv((SV*)subcv, G_SCALAR);
-        retsvarr[i-1] = newSVsv(*PL_stack_sp);
+        retsvarr[i-1] = newSVsv(xs_call_cv_noinput_1_sv(aTHX_ subcv));
       }
     }
     for (i = 0; i < items-2; i++)
@@ -7987,11 +8041,8 @@ PPCODE:
 #endif
     {
       for (index = 1; index < items; index++) {
-        dSP;
         GvSV(PL_defgv) = args[index];
-        PUSHMARK(SP);
-        call_sv((SV*)subcv, G_SCALAR);
-        if (SvTRUEx(*PL_stack_sp) ^ invert)
+        if (SvTRUEx(xs_call_cv_noinput_1_sv(aTHX_ subcv)) ^ invert)
           break;
       }
     }
