@@ -8142,6 +8142,17 @@ not be a surprise that our function looks good on this benchmark.
 Different use cases would show things differently.
 
 
+=head2 CUSTOM OPS
+
+Some functions use custom ops, set up at compile time, to reduce Perl call
+overhead for fast functions.  Current functions:
+C<irand>, C<irand64>,
+C<addint>, C<subint>, C<add1int>, C<sub1int>, C<mulint>, C<divint>,
+C<modint>, C<cdivint>, C<powint>,
+C<_validate_integer>, C<_validate_integer_nonneg>,
+C<_validate_integer_positive>, C<_validate_integer_abs>.
+
+
 =head1 AUTHORS
 
 Dana Jacobsen E<lt>dana@acm.orgE<gt>

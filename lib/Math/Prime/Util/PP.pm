@@ -64,30 +64,33 @@ our $_BIGINT;
 # implementation would be to make the perl subs here use a pp_{...} prefix.
 
 
-*validate_integer = \&Math::Prime::Util::_validate_integer;
-*validate_integer_nonneg = \&Math::Prime::Util::_validate_integer_nonneg;
-*validate_integer_positive = \&Math::Prime::Util::_validate_integer_positive;
-*validate_integer_abs = \&Math::Prime::Util::_validate_integer_abs;
-*_bigint_to_int = \&Math::Prime::Util::_bigint_to_int;
 *reftyped = \&Math::Prime::Util::_reftyped;
 #*load_bigint = \&Math::Prime::Util::_load_bigint;
 *tobigint = \&Math::Prime::Util::_to_bigint;
 *maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
 *maybetobigintall = \&Math::Prime::Util::_maybe_bigint_allargs;
+*_bigint_to_int = \&Math::Prime::Util::_bigint_to_int;
 *getconfig = \&Math::Prime::Util::prime_get_config;
 
-*Mtoint = \&Math::Prime::Util::toint;
+BEGIN {  # These should happen at compile time to take advantage of custom ops
+*validate_integer = \&Math::Prime::Util::_validate_integer;
+*validate_integer_nonneg = \&Math::Prime::Util::_validate_integer_nonneg;
+*validate_integer_positive = \&Math::Prime::Util::_validate_integer_positive;
+*validate_integer_abs = \&Math::Prime::Util::_validate_integer_abs;
 *Maddint = \&Math::Prime::Util::addint;
 *Msubint = \&Math::Prime::Util::subint;
-*Madd1int = \&Math::Prime::Util::add1int;
-*Msub1int = \&Math::Prime::Util::sub1int;
 *Mmulint = \&Math::Prime::Util::mulint;
-*Mmuladdint = \&Math::Prime::Util::muladdint;
-*Mmulsubint = \&Math::Prime::Util::mulsubint;
 *Mdivint = \&Math::Prime::Util::divint;
-*Mpowint = \&Math::Prime::Util::powint;
 *Mmodint = \&Math::Prime::Util::modint;
 *Mcdivint = \&Math::Prime::Util::cdivint;
+*Mpowint = \&Math::Prime::Util::powint;
+*Madd1int = \&Math::Prime::Util::add1int;
+*Msub1int = \&Math::Prime::Util::sub1int;
+}
+
+*Mtoint = \&Math::Prime::Util::toint;
+*Mmuladdint = \&Math::Prime::Util::muladdint;
+*Mmulsubint = \&Math::Prime::Util::mulsubint;
 *Mabsint = \&Math::Prime::Util::absint;
 *Msqrtint = \&Math::Prime::Util::sqrtint;
 *Mrootint = \&Math::Prime::Util::rootint;
@@ -176,6 +179,7 @@ our $_BIGINT;
 *Mprime_omega = \&Math::Prime::Util::prime_omega;
 *Mnth_prime_upper = \&Math::Prime::Util::nth_prime_upper;
 
+BEGIN {
 if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53) {
   *Saddint = \&Math::Prime::Util::GMP::addint;
   *Ssubint = \&Math::Prime::Util::GMP::subint;
@@ -188,6 +192,7 @@ if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION
   *Smulint = \&Math::Prime::Util::mulint;
   *Sdivint = \&Math::Prime::Util::divint;
   *Spowint = \&Math::Prime::Util::powint;
+}
 }
 
 sub _is_nonneg_int {

@@ -169,6 +169,12 @@ static double my_difftime (struct timeval * start, struct timeval * end) {
 #define MAX_EXTEND  ((Size_t)((EXTEND_TYPE)-1))
 #define MAX_SSIZET  ((SSize_t)((Size_t)(-1) >> 1))
 
+#if PERL_VERSION_GE(5,14,0) && defined(XopENTRY_set)
+# define MPU_HAS_CUSTOM_OPS 1
+#else
+# define MPU_HAS_CUSTOM_OPS 0
+#endif
+
 /******************************************************************************/
 /******************************************************************************/
 
@@ -639,9 +645,471 @@ static void _mod_with(UV *a, int astatus, UV n) {
 
 /******************************************************************************/
 
+static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int minversion);
+static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask);
+static SV* xs_to_bigint(pTHX_ SV* r);
+static SV* xs_to_canonical(pTHX_ SV* sv);
+static SV* xs_objectify_result(pTHX_ SV* input, SV* output);
+
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
 #define VCALL_GMP  0x2
+
+static int addint_try_native_result(pTHX_ int opix, SV* sva, SV* svb, const char* opname,
+                                    int *astatus_out, int *bstatus_out,
+                                    int *is_uv_out, UV *uv_out, IV *iv_out) {
+  int astatus, bstatus, overflow, postneg, nix, smask;
+  UV a, b, t, ret;
+
+  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+  bstatus = _validate_and_set(&b, aTHX_ svb, (opix == 7) ? IFLAG_NONNEG : IFLAG_ANY);
+  if (astatus_out) *astatus_out = astatus;
+  if (bstatus_out) *bstatus_out = bstatus;
+
+  if (astatus == 0 || bstatus == 0)
+    return 0;
+
+  /* We do native arithmetic using non-negative values plus sign bookkeeping. */
+  nix = opix;  /* mutable op index */
+  ret = overflow = postneg = 0;
+  smask = ((astatus == -1) << 1) + (bstatus == -1);
+  /* smask=0: +a +b  smask=1: +a -b  smask=2: -a +b  smask=3: -a -b */
+
+  if (b == 0 && (opix == 3 || opix == 4 || opix == 5))
+    croak("%s: divide by zero", opname);
+
+  if (smask != 0) {
+    if (smask & 2) a = neg_iv(a);
+    if (smask & 1) b = neg_iv(b);
+
+    if (opix == 0) {
+      switch (smask) {
+        case 1: nix=1; break;
+        case 2: nix=1; t=a; a=b; b=t; break;
+        case 3: postneg=1; break;
+        default: break;
+      }
+    } else if (opix == 1) {
+      switch (smask) {
+        case 1: nix=0; break;
+        case 2: nix=0; postneg=1; break;
+        case 3: t=a; a=b; b=t; break;
+        default: break;
+      }
+    } else if (opix == 2) {
+      switch (smask) {
+        case 1:
+        case 2: postneg = 1; break;
+        default: break;
+      }
+    } else if (opix == 3) {
+      switch (smask) {
+        case 1:
+        case 2: postneg = 1; nix = 5; break;
+        default: break;
+      }
+    } else if (opix == 4) {
+      switch (smask) {
+        case 1: nix = 6; postneg = 1; break;
+        case 2: nix = 6; break;
+        case 3: postneg = 1; break;
+        default: break;
+      }
+    } else if (opix == 5) {
+      switch (smask) {
+        case 1:
+        case 2: postneg = 1; nix = 3; break;
+        default: break;
+      }
+    } else if (opix == 7) {
+      postneg = (b & 1);
+    }
+  }
+
+  switch (nix) {
+    case 0:  ret = a + b;                  overflow = UV_MAX-a < b; break;
+    case 1:  ret = a - b;
+             if (b > a && (IV)ret < 0) {
+               *is_uv_out = 0;
+               *iv_out = (IV)ret;
+               return 1;
+             }
+             overflow = (b > a);
+             break;
+    case 2:  ret = a * b;                  overflow = a > 0 && UV_MAX/a < b; break;
+    case 3:  ret = a / b; break;
+    case 4:  ret = a % b; break;
+    case 5:  ret = a / b + (a % b != 0); break;
+    case 6:  ret = (a%b) ? b-(a%b) : 0; break;
+    case 7:
+    default: ret = ipowsafe(a, b);
+             overflow = (a > 1 && ret == UV_MAX);
+             break;
+  }
+  if (!overflow) {
+    if (!postneg) {
+      *is_uv_out = 1;
+      *uv_out = ret;
+      return 1;
+    }
+    if (ret <= (UV)IV_MAX) {
+      *is_uv_out = 0;
+      *iv_out = neg_iv(ret);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static SV* addint_try_slow_result(pTHX_ int opix, SV* sva, SV* svb, int astatus, int bstatus, const char* opname) {
+  if (opix <= 4) {
+    static const int fast_amg[] = {add_amg, subtr_amg, mult_amg, div_amg, modulo_amg};
+    if (opix != 3 || (astatus == 1 && bstatus == 1)) {
+      if (SV_USE_FAST_BIGINT_AMAGIC(sva) || SV_USE_FAST_BIGINT_AMAGIC(svb)) {
+        SV *tsv = amagic_call(sva, svb, fast_amg[opix], 0);
+        if (tsv)
+          return sv_isobject(tsv) ? xs_to_canonical(aTHX_ tsv) : tsv;
+      }
+    }
+  }
+
+  if (opix <= 5) {
+    STRLEN lena, lenb, rlen;
+    const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb);
+    SV* tmp = sv_2mortal(newSV(lena + lenb + 2)); /* safe for all six ops */
+    if ((opix == 3 || opix == 4 || opix == 5) && sb[0] == '0' && strspn(sb, "0") == lenb)
+      croak("%s: divide by zero", opname);
+    switch (opix) {
+      case 0:  rlen = strint_add(SvPVX(tmp), sa, lena, sb, lenb);     break;
+      case 1:  rlen = strint_sub(SvPVX(tmp), sa, lena, sb, lenb);     break;
+      case 2:  rlen = strint_mul(SvPVX(tmp), sa, lena, sb, lenb);     break;
+      case 3:  rlen = strint_divint(SvPVX(tmp), sa, lena, sb, lenb);  break;
+      case 4:  rlen = strint_modint(SvPVX(tmp), sa, lena, sb, lenb);  break;
+      default: rlen = strint_cdivint(SvPVX(tmp), sa, lena, sb, lenb); break;
+    }
+    if (rlen > 0) {
+      SvCUR_set(tmp, rlen);
+      SvPOK_on(tmp);
+      *SvEND(tmp) = '\0';
+      return xs_to_canonical(aTHX_ tmp);
+    }
+  }
+
+  if (opix == 7 && bstatus == 1) {
+    UV powb;
+    if (_validate_and_set(&powb, aTHX_ svb, IFLAG_NONNEG) == 1) {
+      STRLEN lena;
+      const char *sa = SvPV_nomg(sva, lena);
+      if (lena > 0 && powb <= (UV)(UVCONST(10000000) / lena)) {
+        STRLEN limit = (STRLEN)(powb * lena) + 2;
+        SV* tmp = sv_2mortal(newSV(limit + 1));
+        STRLEN rlen = strint_pow(SvPVX(tmp), sa, lena, powb, limit);
+        if (rlen > 0) {
+          SvCUR_set(tmp, rlen);
+          SvPOK_on(tmp);
+          *SvEND(tmp) = '\0';
+          return xs_to_canonical(aTHX_ tmp);
+        }
+      }
+    }
+  }
+
+  return NULL;
+}
+
+static int add1_try_native_result(pTHX_ int opix, SV* svn, int *status_out,
+                                  int *is_uv_out, UV *uv_out, IV *iv_out) {
+  int status;
+  UV n;
+
+  status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+  if (status_out) *status_out = status;
+
+  if (status == 1) {
+    if (opix == 1 && n == 0) {
+      *is_uv_out = 0;
+      *iv_out = -1;
+      return 1;
+    }
+    if (opix == 1 || (opix == 0 && n < UV_MAX)) {
+      *is_uv_out = 1;
+      *uv_out = (opix == 0) ? n+1 : n-1;
+      return 1;
+    }
+  } else if (status == -1) {
+    if (opix == 0 || (opix == 1 && (IV)n > IV_MIN)) {
+      *is_uv_out = 0;
+      *iv_out = (opix == 0) ? (IV)n+1 : (IV)n-1;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static SV* add1_try_slow_result(pTHX_ int opix, SV* svn) {
+  if (SV_USE_FAST_BIGINT_AMAGIC(svn)) {
+    dMY_CXT;
+    SV *svone = MY_CXT.const_int[2];
+    SV *tsv = amagic_call(svn, svone, opix == 0 ? add_amg : subtr_amg, 0);
+    if (tsv)
+      return sv_isobject(tsv) ? xs_to_canonical(aTHX_ tsv) : tsv;
+  }
+  {
+    STRLEN len;
+    const char *s = SvPV_nomg(svn, len);
+    SV *tmp = sv_2mortal(newSV(1 + len));
+    len = strint_add_s(SvPVX(tmp), s, len, "1", 1, opix);
+    if (len > 0) {
+      SvCUR_set(tmp, len);
+      SvPOK_on(tmp);
+      *SvEND(tmp) = '\0';
+      return xs_to_canonical(aTHX_ tmp);
+    }
+  }
+  return NULL;
+}
+
+#if MPU_HAS_CUSTOM_OPS
+
+typedef OP* (*xop_ppfunc_t)(pTHX);
+typedef struct {
+  const char* cv_name;
+  const char* xop_name;
+  const char* xop_desc;
+  xop_ppfunc_t ppfunc;
+  U8 nargs;
+  XOP xop;
+} xop_registration_t;
+static xop_registration_t* xop_find_registration(GV *namegv);
+
+static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ckobj) {
+  xop_registration_t *xopreg = xop_find_registration(namegv);
+  OP *pushop, *cur, *arg_first, *arg_last, *cvop, *newop;
+  U8 i;
+
+  PERL_UNUSED_ARG(ckobj);
+  if (!xopreg) return entersubop;
+
+  pushop = cUNOPx(entersubop)->op_first;
+  if (!pushop) return entersubop;
+  if (!OpHAS_SIBLING(pushop))
+    pushop = cUNOPx(pushop)->op_first;
+  if (!pushop) return entersubop;
+  if (pushop->op_type == OP_NULL && cUNOPx(pushop)->op_first != NULL)
+    pushop = cUNOPx(pushop)->op_first;
+  if (pushop->op_type != OP_PUSHMARK) return entersubop;
+
+  arg_first = arg_last = NULL;
+  cur = OpSIBLING(pushop);
+  for (i = 0; i < xopreg->nargs; i++) {
+    if (!cur) return entersubop;
+    if (i == 0) arg_first = cur;
+    arg_last = cur;
+    cur = OpSIBLING(cur);
+  }
+  cvop = cur;
+  if (!cvop) return entersubop;
+  if (OpSIBLING(cvop) != NULL) return entersubop;
+  if (cvop->op_type != OP_GV && cvop->op_type != OP_RV2CV) {
+    if (cvop->op_type == OP_NULL && cUNOPx(cvop)->op_first != NULL) {
+      OP *cvkid = cUNOPx(cvop)->op_first;
+      if (cvkid->op_type != OP_GV && cvkid->op_type != OP_RV2CV) return entersubop;
+    } else {
+      return entersubop;
+    }
+  }
+
+  OpMORESIB_set(pushop, cvop);
+  if (xopreg->nargs > 0)
+    OpLASTSIB_set(arg_last, NULL);
+
+  if (xopreg->nargs == 0)
+    newop = newOP(OP_NULL, 0);
+  else if (xopreg->nargs == 1)
+    newop = newUNOP(OP_NULL, 0, arg_first);
+  else if (xopreg->nargs == 2)
+    newop = newBINOP(OP_NULL, 0, arg_first, arg_last);
+  else
+    newop = newLISTOP(OP_NULL, 0, arg_first, arg_last);
+  newop->op_type = OP_CUSTOM;
+  newop->op_ppaddr = xopreg->ppfunc;
+
+  op_free(entersubop);
+  return newop;
+}
+
+static OP* xop_dispatch_binary_objectify(pTHX_ SV* sva, const char* name, int minversion) {
+  dSP;
+  PUTBACK;
+  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 2, minversion);
+  SPAGAIN;
+  SETs(xs_objectify_result(aTHX_ sva, TOPs));
+  RETURN;
+}
+
+static OP* xop_dispatch_unary(pTHX_ const char* name, int minversion) {
+  dSP;
+  PUTBACK;
+  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 1, minversion);
+  SPAGAIN;
+  RETURN;
+}
+
+static OP* pp_irand_custom(pTHX) {
+  dSP;
+  dMY_CXT;
+  PUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
+  RETURN;
+}
+
+static OP* pp_irand64_custom(pTHX) {
+  dSP;
+  dMY_CXT;
+#if BITS_PER_WORD == 32
+  PUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
+#else
+  PUSHs(sv_2mortal(newSVuv(irand64(MY_CXT.randcxt))));
+#endif
+  RETURN;
+}
+
+static OP* pp_validate_integer_custom(pTHX) {
+  dSP;
+  xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_ANY);
+  SETs(&PL_sv_yes);
+  RETURN;
+}
+static OP* pp_validate_integer_nonneg_custom(pTHX) {
+  dSP;
+  xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_NONNEG);
+  SETs(&PL_sv_yes);
+  RETURN;
+}
+static OP* pp_validate_integer_positive_custom(pTHX) {
+  dSP;
+  xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_POS);
+  SETs(&PL_sv_yes);
+  RETURN;
+}
+static OP* pp_validate_integer_abs_custom(pTHX) {
+  dSP;
+  xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_ABS);
+  SETs(&PL_sv_yes);
+  RETURN;
+}
+
+static OP* pp_addint_custom_common(pTHX_ int opix, const char *opname, int minversion) {
+  dSP;
+  SV *sva = SP[-1], *svb = SP[0];
+  SV *slowret;
+  int astatus, bstatus, is_uv;
+  UV uvret;
+  IV ivret;
+
+  if (addint_try_native_result(aTHX_ opix, sva, svb, opname,
+                               &astatus, &bstatus, &is_uv, &uvret, &ivret)) {
+    SP -= 1;
+    SETs(sv_2mortal(is_uv ? newSVuv(uvret) : newSViv(ivret)));
+    RETURN;
+  }
+
+  slowret = addint_try_slow_result(aTHX_ opix, sva, svb, astatus, bstatus, opname);
+  if (slowret != NULL) {
+    SP -= 1;
+    SETs(slowret);
+    RETURN;
+  }
+
+  return xop_dispatch_binary_objectify(aTHX_ sva, opname, minversion);
+}
+
+static OP* pp_addint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 0, "addint", 52); }
+static OP* pp_subint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 1, "subint", 52); }
+static OP* pp_mulint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 2, "mulint", 52); }
+static OP* pp_divint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 3, "divint", 52); }
+static OP* pp_modint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 4, "modint", 52); }
+static OP* pp_cdivint_custom(pTHX) { return pp_addint_custom_common(aTHX_ 5, "cdivint", 53); }
+static OP* pp_powint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 7, "powint", 52); }
+
+static OP* pp_add1int_custom_common(pTHX_ int opix, const char *opname) {
+  dSP;
+  SV *svn = TOPs;
+  SV *slowret;
+  int status, is_uv;
+  UV uvret;
+  IV ivret;
+
+  if (add1_try_native_result(aTHX_ opix, svn, &status, &is_uv, &uvret, &ivret)) {
+    SETs(sv_2mortal(is_uv ? newSVuv(uvret) : newSViv(ivret)));
+    RETURN;
+  }
+
+  slowret = add1_try_slow_result(aTHX_ opix, svn);
+  if (slowret != NULL) {
+    SETs(slowret);
+    RETURN;
+  }
+
+  return xop_dispatch_unary(aTHX_ opname, 53);
+}
+
+static OP* pp_add1int_custom(pTHX) { return pp_add1int_custom_common(aTHX_ 0, "add1int"); }
+static OP* pp_sub1int_custom(pTHX) { return pp_add1int_custom_common(aTHX_ 1, "sub1int"); }
+
+static xop_registration_t xop_registrations[] = {
+  { "Math::Prime::Util::irand", "irand", "irand custom op", pp_irand_custom, 0, {0} },
+  { "Math::Prime::Util::irand64", "irand64", "irand64 custom op", pp_irand64_custom, 0, {0} },
+  { "Math::Prime::Util::_validate_integer", "_validate_integer", "_validate_integer custom op", pp_validate_integer_custom, 1, {0} },
+  { "Math::Prime::Util::_validate_integer_nonneg", "_validate_integer_nonneg", "_validate_integer_nonneg custom op", pp_validate_integer_nonneg_custom, 1, {0} },
+  { "Math::Prime::Util::_validate_integer_positive", "_validate_integer_positive", "_validate_integer_positive custom op", pp_validate_integer_positive_custom, 1, {0} },
+  { "Math::Prime::Util::_validate_integer_abs", "_validate_integer_abs", "_validate_integer_abs custom op", pp_validate_integer_abs_custom, 1, {0} },
+  { "Math::Prime::Util::addint", "addint", "addint custom op", pp_addint_custom, 2, {0} },
+  { "Math::Prime::Util::subint", "subint", "subint custom op", pp_subint_custom, 2, {0} },
+  { "Math::Prime::Util::add1int", "add1int", "add1int custom op", pp_add1int_custom, 1, {0} },
+  { "Math::Prime::Util::sub1int", "sub1int", "sub1int custom op", pp_sub1int_custom, 1, {0} },
+  { "Math::Prime::Util::mulint", "mulint", "mulint custom op", pp_mulint_custom, 2, {0} },
+  { "Math::Prime::Util::divint", "divint", "divint custom op", pp_divint_custom, 2, {0} },
+  { "Math::Prime::Util::modint", "modint", "modint custom op", pp_modint_custom, 2, {0} },
+  { "Math::Prime::Util::cdivint", "cdivint", "cdivint custom op", pp_cdivint_custom, 2, {0} },
+  { "Math::Prime::Util::powint", "powint", "powint custom op", pp_powint_custom, 2, {0} },
+};
+
+static xop_registration_t* xop_find_registration(GV *namegv) {
+  const char *name;
+  U32 i;
+  if (!namegv || !isGV(namegv)) return NULL;
+  name = GvNAME(namegv);
+  if (!name) return NULL;
+  for (i = 0; i < (U32)(sizeof(xop_registrations)/sizeof(xop_registrations[0])); i++) {
+    if (strEQ(name, xop_registrations[i].xop_name))
+      return &xop_registrations[i];
+  }
+  return NULL;
+}
+
+#endif
+
+static void boot_register_custom_ops(pTHX) {
+#if MPU_HAS_CUSTOM_OPS
+  int i;
+  CV *custom_cv;
+  SV *custom_ckobj;
+  for (i = 0; i < (int)(sizeof(xop_registrations)/sizeof(xop_registrations[0])); i++) {
+    xop_registration_t *xopreg = &xop_registrations[i];
+    XopENTRY_set(&xopreg->xop, xop_name, xopreg->xop_name);
+    XopENTRY_set(&xopreg->xop, xop_desc, xopreg->xop_desc);
+    Perl_custom_op_register(aTHX_ xopreg->ppfunc, &xopreg->xop);
+    custom_cv = get_cv(xopreg->cv_name, GV_ADD);
+    if (custom_cv != NULL) {
+      custom_ckobj = newSViv(PTR2IV(xopreg));
+      cv_set_call_checker(custom_cv, xop_call_checker_exact_arity, custom_ckobj);
+    }
+  }
+#else
+  PERL_UNUSED_CONTEXT;
+#endif
+}
+
 /* Call a Perl sub to handle work for us. */
 static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nargs, int minversion)
 {
@@ -1690,6 +2158,34 @@ static int _comb_iterate(UV* cm, UV k, UV n, int ix) {
   return 0;
 }
 
+static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask)
+{
+  int status;
+  UV n;
+  status = _validate_and_set(&n, aTHX_ svn, mask);
+  if (status != 0) {
+    SETSVINT(svn, status == 1, n, (IV)n);
+#if PERL_VERSION_LT(5,8,0) && BITS_PER_WORD == 64
+    if (status == 1 && n > 562949953421312UL)
+      sv_setpvf(svn, "%"UVuf, n);
+    if (status == -1 && (IV)n < -562949953421312)
+      sv_setpvf(svn, "%"IVdf, n);
+#endif
+  } else {  /* Status 0 = bigint */
+    if (mask & IFLAG_ABS) {
+      /* TODO: if given a positive bigint, no need for this */
+      sv_setsv(svn, xs_to_bigint_abs(aTHX_ svn));
+    } else if (mask & IFLAG_NONNEG) {
+      if (!_sv_is_bigint(aTHX_ svn))
+        sv_setsv(svn, xs_to_bigint_nonneg(aTHX_ svn));
+    } else {
+      if (!_sv_is_bigint(aTHX_ svn))
+        sv_setsv(svn, xs_to_bigint(aTHX_ svn));
+    }
+  }
+  return TRUE;
+}
+
 /******************************************************************************/
 /******************************************************************************/
 
@@ -1714,6 +2210,8 @@ BOOT:
 #else
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(BITS_PER_WORD));
 #endif
+
+    boot_register_custom_ops(aTHX);
 
     {
       MY_CXT_INIT;
@@ -1915,10 +2413,7 @@ bool _validate_integer(SV* svn)
     _validate_integer_abs = 3
   PREINIT:
     uint32_t mask;
-    int status;
-    UV n;
   CODE:
-    /* Flag:  0 neg ok,  1 neg err,  2 zero or neg err,  3 abs */
     switch (ix) {
       case 0: mask = IFLAG_ANY; break;
       case 1: mask = IFLAG_NONNEG; break;
@@ -1926,28 +2421,7 @@ bool _validate_integer(SV* svn)
       case 3: mask = IFLAG_ABS; break;
       default: croak("_validate_integer unknown flag value");
     }
-    status = _validate_and_set(&n, aTHX_ svn, mask);
-    if (status != 0) {
-      SETSVINT(svn, status == 1, n, (IV)n);
-#if PERL_VERSION_LT(5,8,0) && BITS_PER_WORD == 64
-      if (status == 1 && n > 562949953421312UL)
-        sv_setpvf(svn, "%"UVuf, n);
-      if (status == -1 && (IV)n < -562949953421312)
-        sv_setpvf(svn, "%"IVdf, n);
-#endif
-    } else {  /* Status 0 = bigint */
-      if (mask & IFLAG_ABS) {
-        /* TODO: if given a positive bigint, no need for this */
-        sv_setsv(svn, xs_to_bigint_abs(aTHX_ svn));
-      } else if (mask & IFLAG_NONNEG) {
-        if (!_sv_is_bigint(aTHX_ svn))
-          sv_setsv(svn, xs_to_bigint_nonneg(aTHX_ svn));
-      } else {
-        if (!_sv_is_bigint(aTHX_ svn))
-          sv_setsv(svn, xs_to_bigint(aTHX_ svn));
-      }
-    }
-    RETVAL = TRUE;
+    RETVAL = xs_validate_integer_inplace(aTHX_ svn, mask);
   OUTPUT:
     RETVAL
 
@@ -4864,139 +5338,20 @@ void addint(IN SV* sva, IN SV* svb)
     cdivint = 5
     powint = 7
   PREINIT:
-    int astatus, bstatus, overflow, postneg, nix, smask;
-    UV a, b, t, ret;
+    SV* slowret;
+    int astatus, bstatus, is_uv;
+    UV uvret;
+    IV ivret;
   PPCODE:
-    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-    bstatus = _validate_and_set(&b, aTHX_ svb, (ix == 7) ? IFLAG_NONNEG : IFLAG_ANY);
-
-    if (astatus != 0 && bstatus != 0) {
-      /* We will try to do everything with non-negative integers, with overflow
-       * detection.  This means some pre-processing and post-processing for
-       * negative inputs. */
-      nix = ix;  /* So we can modify */
-      ret = overflow = postneg = 0;
-      smask = ((astatus == -1) << 1) + (bstatus == -1);
-      /* smask=0: +a +b  smask=1: +a -b  smask=2: -a +b  smask=3: -a -b */
-
-      if (b == 0 && (ix==3 || ix==4 || ix==5))
-        croak("%s: divide by zero", SUBNAME);
-
-      if (smask != 0) { /* Manipulate so all arguments are positive */
-        if (smask & 2) a = neg_iv(a);
-        if (smask & 1) b = neg_iv(b);
-
-        if (ix == 0) {
-          switch (smask) {
-            case 1: nix=1; break;                /* a - |b| */
-            case 2: nix=1; t=a; a=b; b=t; break; /* b - |a| */
-            case 3: postneg=1; break;            /* -(|a| + |b|) */
-            default: break;
-          }
-        } else if (ix == 1) {
-          switch (smask) {
-            case 1: nix=0; break;                /* a + |b| */
-            case 2: nix=0; postneg=1; break;     /* -(|a| + b) */
-            case 3: t=a; a=b; b=t; break;        /* |b| - |a| */
-            default: break;
-          }
-        } else if (ix == 2) {
-          switch (smask) {
-            case 1:
-            case 2: postneg = 1; break;
-            default: break;
-          }
-        } else if (ix == 3) {
-          switch (smask) {
-            case 1:
-            case 2: postneg = 1; nix = 5; break;
-            default: break;
-          }
-        } else if (ix == 4) {
-          switch (smask) {
-            case 1: nix = 6; postneg = 1; break;
-            case 2: nix = 6; break;
-            case 3: postneg = 1; break;
-            default: break;
-          }
-        } else if (ix == 5) {
-          switch (smask) {
-            case 1:
-            case 2: postneg = 1; nix = 3; break;
-            default: break;
-          }
-        } else if (ix == 6) {
-          /* ix = 6 is cmodint */
-        } else if (ix == 7) {
-          /* bstatus is never -1 for powint */
-          postneg = (b & 1);
-        }
-      }
-      switch (nix) {
-        case 0:  ret = a + b;                  /* addint */
-                 overflow = UV_MAX-a < b;
-                 break;
-        case 1:  ret = a - b;                  /* subint */
-                 if (b > a && (IV)ret < 0) XSRETURN_IV((IV)ret);
-                 overflow = (b > a);
-                 break;
-        case 2:  ret = a * b;                  /* mulint */
-                 overflow = a > 0 && UV_MAX/a < b;
-                 break;
-        case 3:  ret = a / b; break;           /* divint */
-        case 4:  ret = a % b; break;           /* modint */
-        case 5:  ret = a / b + (a % b != 0);   /* cdivint */
-                 break;
-        case 6:  ret = (a%b) ? b-(a%b) : 0;    /* cmodint */
-                 break;
-        case 7:
-        default: ret = ipowsafe(a, b);
-                 overflow = (a > 1 && ret == UV_MAX);
-                 break;
-      }
-      if (!overflow) {
-        if (!postneg)
-          XSRETURN_UV(ret);
-        if (ret <= (UV)IV_MAX)
-          XSRETURN_IV(neg_iv(ret));
-      }
-      /* If we have uint128_t, then for add,sub,mul, we could do:
-       *    muladd128 => RETURN_128
-       * but it turns out our string add,sub,mul are as fast or faster.
-       */
+    if (addint_try_native_result(aTHX_ ix, sva, svb, SUBNAME,
+                                 &astatus, &bstatus, &is_uv, &uvret, &ivret)) {
+      if (is_uv) XSRETURN_UV(uvret);
+      XSRETURN_IV(ivret);
     }
-    /* Fast Path 1: amagic with Math::GMPz / Math::GMP. */
-    if (ix <= 4) {
-      static const int fast_amg[] = {add_amg, subtr_amg, mult_amg, div_amg, modulo_amg};
-      /* div_amg might be a different mode, so only run on all-pos case */
-      if (ix != 3 || (ix == 3 && astatus == 1 && bstatus == 1))
-        TRY_FAST_MAGIC_BINARY(sva, svb, fast_amg[ix]);
-    }
-    /* Fast Path 2: decimal string arithmetic */
-    if (ix <= 5) {
-      STRLEN lena, lenb, rlen;
-      const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb);
-      SV* tmp = sv_2mortal(newSV(lena + lenb + 2)); /* safe for all six ops */
-      switch (ix) {
-        case 0:  rlen = strint_add(SvPVX(tmp), sa, lena, sb, lenb);     break;
-        case 1:  rlen = strint_sub(SvPVX(tmp), sa, lena, sb, lenb);     break;
-        case 2:  rlen = strint_mul(SvPVX(tmp), sa, lena, sb, lenb);     break;
-        case 3:  rlen = strint_divint(SvPVX(tmp), sa, lena, sb, lenb);  break;
-        case 4:  rlen = strint_modint(SvPVX(tmp), sa, lena, sb, lenb);  break;
-        default: rlen = strint_cdivint(SvPVX(tmp), sa, lena, sb, lenb); break;
-      }
-      if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
-    }
-    /* Fast Path 3: strint_pow for powint when exponent fits in UV */
-    if (ix == 7 && bstatus == 1) {
-      STRLEN lena;
-      const char *sa = SvPV_nomg(sva, lena);
-      if (lena > 0 && b <= (UV)(UVCONST(10000000) / lena)) {
-        STRLEN limit = (STRLEN)(b * lena) + 2;
-        SV* tmp = sv_2mortal(newSV(limit + 1));
-        STRLEN rlen = strint_pow(SvPVX(tmp), sa, lena, b, limit);
-        if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
-      }
+    slowret = addint_try_slow_result(aTHX_ ix, sva, svb, astatus, bstatus, SUBNAME);
+    if (slowret != NULL) {
+      ST(0) = slowret;
+      XSRETURN(1);
     }
     /* Others get dispatched here */
     DISPATCHPP();
@@ -5065,30 +5420,23 @@ void add1int(IN SV* svn)
   ALIAS:
     sub1int = 1
   PREINIT:
-    int status;
-    UV n;
+    SV* slowret;
+    int status, is_uv;
+    UV uvret;
+    IV ivret;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == 1) {
-      if (ix == 1 && n == 0)  XSRETURN_IV(-1);
-      if (ix == 1 || (ix == 0 && n < UV_MAX))
-        XSRETURN_UV( (ix==0) ? n+1 : n-1 );
-    } else if (status == -1) {
-      if (ix == 0 || (ix == 1 && (IV)n > IV_MIN))
-        XSRETURN_IV( (ix==0) ? (IV)n+1 : (IV)n-1 );
+    if (add1_try_native_result(aTHX_ ix, svn, &status, &is_uv, &uvret, &ivret)) {
+      if (is_uv) XSRETURN_UV(uvret);
+      XSRETURN_IV(ivret);
     }
-    { /* Do amagic if and only if the input is Math::GMPz or Math::GMP. */
-      dMY_CXT;
-      SV* svone = MY_CXT.const_int[2];
-      TRY_FAST_MAGIC_BINARY(svn, svone, ix==0 ? add_amg : subtr_amg);
+    slowret = add1_try_slow_result(aTHX_ ix, svn);
+    if (slowret != NULL) {
+      ST(0) = slowret;
+      XSRETURN(1);
     }
-    { /* Do the operation on the string, then turn into canonical form. */
-      STRLEN len;
-      const char* s = SvPV_nomg(svn, len);
-      SV* tmp = sv_2mortal(newSV(1 + len));
-      len = strint_add_s(SvPVX(tmp), s, len, "1", 1, ix);
-      RETURN_STRING_BIGINT(tmp,len);
-    }
+    DISPATCHPP();
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
+    XSRETURN(1);
 
 void absint(IN SV* svn)
   ALIAS:
