@@ -33,7 +33,7 @@ bool convergents(UV** P, UV** Q, UV* cfrac, size_t len)
   UV A0, A1, B0, B1, An, Bn, *ps, *qs;
 
   if (len < 1 || len > 2 * BITS_PER_WORD || cfrac == 0)
-    return false;
+    return 0;
   New(0, ps, len, UV);
   New(0, qs, len, UV);
 
@@ -53,11 +53,11 @@ bool convergents(UV** P, UV** Q, UV* cfrac, size_t len)
   if (i < len) {
     Safefree(ps);
     Safefree(qs);
-    return false;
+    return 0;
   }
   *P = ps;
   *Q = qs;
-  return true;
+  return 1;
 }
 
 bool next_calkin_wilf(UV* num, UV* den)
