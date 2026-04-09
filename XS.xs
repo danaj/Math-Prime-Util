@@ -882,6 +882,25 @@ typedef struct {
 } xop_registration_t;
 static xop_registration_t* xop_find_registration(GV *namegv);
 
+static int xop_arg_is_dollar_underscore(pTHX_ OP *op) {
+#if PERL_VERSION_GE(5,18,0) && PERL_VERSION_LT(5,19,0)
+  if (!op) return 0;
+  if (op->op_type == OP_RV2SV) {
+    OP *gvop = cUNOPx(op)->op_first;
+    if (gvop && gvop->op_type == OP_GV) {
+      GV *gv = cGVOPx_gv(gvop);
+      if (gv && GvNAMELEN(gv) == 1 && GvNAME(gv)[0] == '_')
+        return 1;
+    }
+  }
+  return 0;
+#else
+  PERL_UNUSED_CONTEXT;
+  PERL_UNUSED_ARG(op);
+  return 0;
+#endif
+}
+
 static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ckobj) {
   xop_registration_t *xopreg = xop_find_registration(namegv);
   OP *pushop, *cur, *arg_first, *arg_last, *cvop, *newop;
@@ -903,6 +922,7 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
   cur = OpSIBLING(pushop);
   for (i = 0; i < xopreg->nargs; i++) {
     if (!cur) return entersubop;
+    if (xop_arg_is_dollar_underscore(aTHX_ cur)) return entersubop;
     if (i == 0) arg_first = cur;
     arg_last = cur;
     cur = OpSIBLING(cur);

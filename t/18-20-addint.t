@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/addint subint add1int sub1int/;
+use Math::Prime::Util qw/addint subint add1int sub1int mulint vecall/;
 
 my @vals = (
   [qw/-123456789 -987654321 -1111111110/],
@@ -42,6 +42,7 @@ plan tests =>
             + 1  # addint/subint on test array
             + 2  # add1int and sub1int
             + 1  # add/sub 0
+            + 1  # vecall nested addint/mulint regression
             ;
 
 ###### addint
@@ -98,3 +99,12 @@ subtest 'add and subtract 0 on large values', sub {
     is_deeply([map{"".subint(0,$_)} @big],
               [map{"-$_"} @big],                     "subint(0,n) == -n for large n");
 };
+
+{
+  # Perl XS custom ops were introduced in 5.14.  In 5.18.x (only) there is a
+  # regression when used with a $_ argument.  We protect against this in the
+  # code.  Check.
+  my $n = "7899999999999959999999996";
+  my $pass = vecall { mulint(2,addint($n,$_)) } 0..5;
+  is($pass, 1, "vecall nested mulint(addint(\$n,\$_))");
+}
