@@ -768,14 +768,34 @@ bool rootmod(UV *s, UV a, UV k, UV n) {
 /* We could alternately just let the allocation fail */
 #define MAX_ROOTS_RETURNED 600000000
 
+static bool _roots_count_add_ok(UV a, UV b, UV *sum) {
+  if (a > MAX_ROOTS_RETURNED || b > MAX_ROOTS_RETURNED) return 0;
+  if (a > MAX_ROOTS_RETURNED - b) return 0;
+  if (sum) *sum = a + b;
+  return 1;
+}
+static bool _roots_count_mul_ok(UV a, UV b, UV *prod) {
+  if (a == 0 || b == 0) {
+    if (prod) *prod = 0;
+    return 1;
+  }
+  if (a > MAX_ROOTS_RETURNED || b > MAX_ROOTS_RETURNED) return 0;
+  if (a > MAX_ROOTS_RETURNED / b) return 0;
+  if (prod) *prod = a * b;
+  return 1;
+}
+
 /* Combine roots using Cartesian product CRT */
 static UV* _rootmod_cprod(UV* nroots,
                           UV nr1, UV *roots1, UV p1,
                           UV nr2, UV *roots2, UV p2) {
   UV i, j,  nr, *roots, inv;
 
-  nr = nr1 * nr2;
-  if (nr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+  if (!_roots_count_mul_ok(nr1, nr2, &nr)) {
+    Safefree(roots1);
+    Safefree(roots2);
+    croak("Maximum returned roots exceeded");
+  }
   New(0, roots, nr, UV);
 
   inv = modinverse(p1, p2);
@@ -843,8 +863,10 @@ static UV* _allsqrtmodpk(UV *nroots, UV a, UV p, UV k) {
     pj = pk / p;
     roots2 = _allsqrtmodpk(&nr2, a2/p, p, k-2);
     if (roots2 == 0) return 0;
-    *nroots = nr2 * p;
-    if (*nroots > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
+    if (!_roots_count_mul_ok(nr2, p, nroots)) {
+      Safefree(roots2);
+      croak("Maximum returned roots exceeded");
+    }
     New(0, roots, *nroots, UV);
     for (i = 0; i < nr2; i++)
       for (j = 0; j < p; j++)
@@ -908,6 +930,7 @@ static UV* _allsqrtmodfact(UV *nroots, UV a, factored_t nf) {
 UV* allsqrtmod(UV* nroots, UV a, UV n) {
   UV *roots, numr = 0;
 
+  *nroots = 0;
   if (n == 0) return 0;
   if (a >= n) a %= n;
 
@@ -960,11 +983,15 @@ static UV* _allrootmod_prime(UV* nroots, UV a, UV k, UV p) {
   r = _ts_prime(a, k, p, &z);
   if (powmod(r,k,p) != a || z == 0) croak("allrootmod: failed to find root");
 
+  if (k > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
   New(0, roots, k, UV);
   roots[numr++] = r;
   for (r2 = mulmod(r, z, p); r2 != r && numr < k; r2 = mulmod(r2, z, p) )
     roots[numr++] = r2;
-  if (r2 != r) croak("allrootmod: excess roots found");
+  if (r2 != r) {
+    Safefree(roots);
+    croak("allrootmod: excess roots found");
+  }
 
   *nroots = numr;
   return roots;
@@ -985,7 +1012,7 @@ static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
   if (e == 1) return _allrootmod_prime(nroots, a, k, p);
 
   n = ipow(p,e);
-  pk = ipow(p, k);
+  pk = ipowsafe(p, k);  /* pk = UV_MAX if overflow */
   /* Note: a is not modded */
 
   if ((a % n) == 0) {
@@ -993,17 +1020,21 @@ static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
     t = ((e-1) / k) + 1;
     s = ipow(p,t);
     numr  = ipow(p,e-t);
+    if (numr > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
     New(0, roots, numr, UV);
     for (i = 0; i < numr; i++)
       roots[i] = mulmod(i, s, n);
 
-  } else if ((a % pk) == 0) {
+  } else if (pk != UV_MAX && (a % pk) == 0) {
 
     UV apk = a / pk;
     UV pe1 = ipow(p, k-1);
     UV pek = ipow(p, e-k+1);
     roots2 = _allrootmod_prime_power(&nr2, apk, k, p, e-k);
-    numr = pe1 * nr2;
+    if (!_roots_count_mul_ok(pe1, nr2, &numr)) {
+      Safefree(roots2);
+      croak("Maximum returned roots exceeded");
+    }
     New(0, roots, numr, UV);
     for (i = 0; i < nr2; i++)
       for (j = 0; j < pe1; j++)
@@ -1041,7 +1072,10 @@ static UV* _allrootmod_prime_power(UV* nroots, UV a, UV k, UV p, UV e) {
 
       /* Step 2, Expand out by k */
       if (nr2 > 0) {
-        numr = nr2 * k;
+        if (!_roots_count_mul_ok(nr2, k, &numr)) {
+          Safefree(roots2);
+          croak("Maximum returned roots exceeded");
+        }
         New(0, roots, numr, UV);
         for (j = 0; j < nr2; j++) {
           r = roots2[j];
@@ -1132,13 +1166,32 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
     for (i = 1; numr > 0 && i < kfactors; i++) {   /* for each prime k */
       UV j, t, allocr = numr, primek = kfac[i];
       UV *roots2 = 0, nr2 = 0,  *roots3 = 0, nr3 = 0;
+      if (allocr > MAX_ROOTS_RETURNED) {
+        Safefree(roots);
+        croak("Maximum returned roots exceeded");
+      }
       New(0, roots3, allocr, UV);
       for (j = 0; j < numr; j++) {         /* get a list from each root */
         roots2 = _allrootmod_kprime(&nr2, roots[j], primek, nf);
         if (nr2 == 0) continue;
         /* Append to roots3 */
-        if (nr3 + nr2 > MAX_ROOTS_RETURNED) croak("Maximum returned roots exceeded");
-        if (nr3 + nr2 >= allocr)  Renew(roots3, allocr += nr2, UV);
+        if (!_roots_count_add_ok(nr3, nr2, 0)) {
+          Safefree(roots2);
+          Safefree(roots3);
+          Safefree(roots);
+          croak("Maximum returned roots exceeded");
+        }
+        if (nr3 + nr2 >= allocr) {
+          UV newallocr;
+          if (!_roots_count_add_ok(allocr, nr2, &newallocr)) {
+            Safefree(roots2);
+            Safefree(roots3);
+            Safefree(roots);
+            croak("Maximum returned roots exceeded");
+          }
+          allocr = newallocr;
+          Renew(roots3, allocr, UV);
+        }
         for (t = 0; t < nr2; t++)
           roots3[nr3++] = roots2[t];
         Safefree(roots2);
