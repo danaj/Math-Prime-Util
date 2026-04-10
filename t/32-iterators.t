@@ -21,6 +21,8 @@ use Math::Prime::Util qw/primes prev_prime next_prime
 use Math::BigInt try => "GMP,GMPz,Pari";
 use Math::BigFloat;
 
+our $iter_scope_probe;
+
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
 
@@ -34,6 +36,7 @@ plan tests => 8        # forprimes errors
             + 2        # forprimes/iterator nesting
             + 1        # forprimes nested function
             + 3        # forprimes BigInt/BigFloat
+            + 3        # forprimes callback scope behavior
                        #
             + 3        # oo iterator errors
             + 7        # oo iterator simple
@@ -92,6 +95,32 @@ ok(!eval { forprimes { 1 } 5.6; },   "forprimes abc");
 }
 { my @t; forprimes { push @t, $_ } 3842610774,3842611326;
   is_deeply( [@t], [3842611109,3842611139,3842611163,3842611181,3842611211,3842611229,3842611249,3842611259,3842611261,3842611291,3842611301], "forprimes 3842610774,3842611326" );
+}
+{
+  my @before;
+  local $iter_scope_probe = "seed";
+  forprimes {
+    push @before, $iter_scope_probe;
+    local $iter_scope_probe = $_;
+  } 2,11;
+  is_deeply(\@before, [("seed") x 5], "forprimes local scalar restored per callback");
+}
+{
+  my @refs;
+  forprimes {
+    my $x = $_;
+    push @refs, \$x;
+  } 2,11;
+  is_deeply([map { $$_ } @refs], [2,3,5,7,11], "forprimes lexical refs preserve iteration values");
+}
+{
+  my @refs;
+  forprimes {
+    my $x = $_;
+    push @refs, \$x;
+  } 2,7;
+  ${$refs[0]} = 42;
+  is_deeply([map { $$_ } @refs], [42,3,5,7], "forprimes lexical refs are distinct scalars");
 }
 { my @t; forcomposites { push @t, $_ } 2147483647,2147483659;
   is_deeply( [@t], [qw/2147483648 2147483649 2147483650 2147483651 2147483652 2147483653 2147483654 2147483655 2147483656 2147483657 2147483658/], "forcomposites 2147483647,2147483659" );

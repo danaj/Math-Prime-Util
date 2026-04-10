@@ -20,69 +20,81 @@
  * Adds SC_ versions of dMULTICALL, PUSH_MULTICALL, and MULTICALL.
  */
 
-#ifndef dMULTICALL
-#  error "multicall_scoped.h requires Perl multicall macros"
-#endif
+#ifdef dMULTICALL
 
 #define SC_dMULTICALL              \
   dMULTICALL;                      \
-  bool multicall_needs_scope = 0;
+  bool multicall_needs_scope_ = 0;
 
 #define SC_PUSH_MULTICALL(cv)      \
   STMT_START {                     \
     PUSH_MULTICALL(cv);            \
-    multicall_needs_scope = _multicall_cv_needs_scope(aTHX_ (cv)); \
+    multicall_needs_scope_ = sc_multicall_cv_needs_scope(aTHX_ (cv)); \
   } STMT_END
 
 #define SC_MULTICALL               \
   STMT_START {                     \
-    if (multicall_needs_scope)     \
+    if (multicall_needs_scope_)    \
       ENTER;                       \
     MULTICALL;                     \
-    if (multicall_needs_scope)     \
+    if (multicall_needs_scope_)    \
       LEAVE;                       \
   } STMT_END
   
 #define SC_POP_MULTICALL  POP_MULTICALL
 
 
+/* Roll our own tiny PERL_VERSION_GE */
+#ifndef PERL_SUBVERSION
+#  ifdef SUBVERSION
+#    define PERL_SUBVERSION SUBVERSION
+#  else
+#    define PERL_SUBVERSION 0
+#  endif
+#endif
+#define SC_PERL_AT_LEAST(v, s) \
+  ((PERL_VERSION > (v)) || (PERL_VERSION == (v) && PERL_SUBVERSION >= (s)))
+
 
 /* Returns 0 if we see no reason to wrap this sub inside it's own scope.
    Returns 1 if we need to because of locals created.
    Returns 1 if it's too complicated (long, infinite loop, deep branches) */
-static bool _multicall_cv_needs_scope(pTHX_ const CV *cv) {
+
+#define SC_MAX_BRANCHES 8
+#define SC_MAX_NOPS     500
+static bool sc_multicall_cv_needs_scope(pTHX_ const CV *cv) {
   OP *o = CvSTART(cv);
   size_t nops = 0;
-  OP *branches[8];
+  OP *branches[SC_MAX_BRANCHES];
   int nbranch = 0;
-  for (; nops < 500; o = o->op_next) {
+  for (;; o = o->op_next) {
     if (!o) {
       if (nbranch > 0) { o = branches[--nbranch]; continue; }
       break;
     }
     /* printf("   %s\n",PL_op_name[o->op_type]); */
-    nops++;
+    if (++nops > SC_MAX_NOPS) return 1; /* Too big */
     switch (o->op_type) {
       case OP_PADSV:  case OP_PADAV:  case OP_PADHV:
       case OP_ANONCODE:
-#if PERL_VERSION_GE(5,17,6)
+#if SC_PERL_AT_LEAST(17,6)
       case OP_PADRANGE:
 #endif
-#if PERL_VERSION_GE(5,27,6)
+#if SC_PERL_AT_LEAST(27,6)
       case OP_MULTICONCAT:  /* This could hide a PADSV -- we don't know */
 #endif
-#if PERL_VERSION_GE(5,37,3)
+#if SC_PERL_AT_LEAST(37,3)
       case OP_PADSV_STORE:
 #endif
         return 1;
 
       case OP_AND:  case OP_OR:  case OP_COND_EXPR:
       case OP_ANDASSIGN:  case OP_ORASSIGN:
-#if PERL_VERSION_GE(5,9,0)
+#if SC_PERL_AT_LEAST(9,0)
       case OP_DOR:
       case OP_DORASSIGN:
 #endif
-        if (nbranch >= 8) return 1; /* Too deep */
+        if (nbranch >= SC_MAX_BRANCHES) return 1; /* Too deep */
         branches[nbranch++] = cLOGOPx(o)->op_other;
         break;
       case OP_LEAVESUB:
@@ -90,8 +102,9 @@ static bool _multicall_cv_needs_scope(pTHX_ const CV *cv) {
         break;
     }
   }
-  if (nops >= 500) return 1;
   return 0;
 }
+
+#endif
 
 #endif

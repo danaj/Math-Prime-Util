@@ -6110,7 +6110,7 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
           if (j < blen) break;
         }
         FIX_MULTICALL_REFCOUNT;
-        POP_MULTICALL;
+        SC_POP_MULTICALL;
       }
       else
 #endif
@@ -7313,7 +7313,7 @@ forprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
        }
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -7438,7 +7438,7 @@ foroddcomposites (SV* block, IN SV* svbeg, IN SV* svend = 0)
             }
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -7523,7 +7523,7 @@ forsemiprimes (SV* block, IN SV* svbeg, IN SV* svend = 0)
         }
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -7608,7 +7608,7 @@ foralmostprimes (SV* block, IN UV k, IN SV* svbeg, IN SV* svend = 0)
         CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -7659,7 +7659,7 @@ fordivisors (SV* block, IN SV* svn)
         CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -7861,7 +7861,7 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
         CHECK_FORCOUNT;
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     } else
 #endif
     {
@@ -7943,7 +7943,7 @@ void forsetproduct (SV* block, ...)
         }
       } while (i >= 0);
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -8034,7 +8034,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
         }
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -8109,7 +8109,7 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
           }
         }
         FIX_MULTICALL_REFCOUNT;
-        POP_MULTICALL;
+        SC_POP_MULTICALL;
       }
       else
 #endif
@@ -8159,7 +8159,7 @@ CODE:
         SvSetMagicSV(ret, *PL_stack_sp);
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -8212,7 +8212,7 @@ CODE:
         retsvarr[i-1] = newSVsv(*PL_stack_sp);
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
@@ -8279,7 +8279,7 @@ PPCODE:
             PL_stack_sp = before_sp;
         }
         FIX_MULTICALL_REFCOUNT;
-        POP_MULTICALL;
+        SC_POP_MULTICALL;
     }
     else
 #endif
@@ -8340,7 +8340,7 @@ PPCODE:
           break;
       }
       FIX_MULTICALL_REFCOUNT;
-      POP_MULTICALL;
+      SC_POP_MULTICALL;
     }
     else
 #endif
