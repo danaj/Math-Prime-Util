@@ -25,6 +25,7 @@ ptypes.h
 mathl.h
 montmath.h
 multicall.h
+multicall_scoped.h
 mulmod.h
 ppport.h
 aks.h

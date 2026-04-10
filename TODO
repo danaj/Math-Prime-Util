@@ -8,7 +8,7 @@
   * prove -b -I../Math-Prime-Util-GMP/blib/lib -I../Math-Prime-Util-GMP/blib/arch
 
 - For new functions:
-  XS, .h, .c, PP, PPFE, export, t 02+92, lib/ntheory.pm, Changes, doc, test(2)
+  XS,.h,.c, PP, PPFE, export,t 02+92, lib/ntheory.pm,Changes,TL, doc, test(2)
 
 
 - Move .c / .h files into separate directory.
@@ -31,13 +31,6 @@
   sieve.
 
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
-
-- Factoring in PP code is really wasteful -- we're calling _isprime7 before
-  we've done enough trial division, and later we're calling it on known
-  composites.  Note how the XS code splits the factor code into the public
-  API (small factors, isprime, then call main code) and main code (just the
-  algorithm).  The PP code isn't doing that, which means we're doing lots of
-  extra primality checks, which aren't cheap in PP.
 
 - Consider using Test::Number::Delta for many tests
 
@@ -115,15 +108,6 @@
 
 - compare wheel_t with primes separated and possibly cached.
 
-- urandomm with bigints could be faster.
-  2024 May on Macbook.  Some improvements to validation.
-   3.4s  my $f=factorial(144); urandomm($f) for 1..5e5;
-   7.6s  my $f=factorial(144); urandomm("$f") for 1..5e5;
-   6.8s  my $f="".factorial(144); urandomm($f) for 1..5e5;
-   2.2s  use Math::GMP qw/:constant/; my $f=factorial(144); urandomm($f) for 1..5e5;
-   0.7s  my $f=Math::Prime::Util::GMP::factorial(144); Math::Prime::Util::GMP::urandomm($f) for 1..5e5;
-  2026 we're slow again, 8.2s for the first.  triage this.
-
 - Destroy csprng context on thread destruction.
 
 - submit bug report for Perl error in 30b8ab3
@@ -147,17 +131,10 @@
 
 - Look at using Ramanujan series for PP Li.
 
-- update prime count lower/upper from https://arxiv.org/pdf/1703.08032.pdf
-  also from Dusart (2018).
+- There may be more we can get from Dusart's 2016 paper:
   https://piyanit.nl/wp-content/uploads/2020/10/art_10.1007_s11139-016-9839-4.pdf
-
-- update prime counts from Axler 2022:  https://arxiv.org/pdf/2203.05917.pdf
-  This not only improves the 2014 results, but has promising looking results
-  at all sizes.
-
-- nth_prime and bounds, updates from Dusart (2018) and Axler (2022)
-
-- urandomr
+- clean up the prime count bounds for small inputs.
+- Dusart 2018 also:  ~/Downloads/2018_Estimatesofthekthprime_10.1007_s11139-017-9984-4.pdf
 
 - circular primes ... just use repdigits after 1M?  https://oeis.org/A068652
 
@@ -186,20 +163,11 @@
 
 - add to A033843 (twin prime count < 2^n).  Oliviera e Silva has good data.
 
-- consider adding multifactorial.  See MPU::GMP.
-
 - multicall in forpart/forcomp.
 
 - check memory use for non-multicall.  We need enter/leave which were removed.
 
-- Add aliquot sum
-
 - testing:  lehman_factor, print_primes, aks
-
-
-- new function:  toint or asint or intify.  Takes generic input, returns integer
-- similar, but how to decide on floor, ceil, trunc?  name floorint is weird
-  Math::GMP calls it intify.
 
 - factor, factor_exp should accept negative inputs
 
@@ -493,8 +461,6 @@ OEIS lucky numbers:
 - Look at things that loop over floor(n/i).
   https://math.stackexchange.com/a/1740370/117584
 
-- toint
-
 == almost_prime_count bounds verify
    DONE 2^20 - 2^32 complete
    DONE 2^32 - 2^37 complete 2.5+5+11+23+46 hours
@@ -516,7 +482,6 @@ OEIS lucky numbers:
 - we should have an extra debug mode for asserts.
 
 - contfrac with negative inputs in XS
-- cfrac_add, cfrac_sub, cfrac_mul, cfrac_div
 
 - C99 designated initializers
 
@@ -555,34 +520,13 @@ OEIS lucky numbers:
 
 - totient sum, look at paper from Sukhoy and Stoytchev (s41598-021-99545-w.pdf)
   Better:  https://arxiv.org/pdf/2506.07386
-
-= tot sum
-     0.049   1e10  8.8x
-     0.155   1e11  9.3x
-     0.636   1e12  8.9x
-     3.140   1e13  7.5x
-    21.084   1e14  5.0x
-   201.467   1e15  2.4x
-  2061.928   1e16  1.1x
-
-  https://github.com/lucasaugustus/mertens
-  https://github.com/lucasaugustus/labmath3/
-  https://github.com/lucasaugustus/oeis/
-  A064018
-     0.433   1e10
-     1.448   1e11
-     5.645   1e12
-    23.472   1e13
-   105.522   1e14
-   483.986   1e15
-  2293.631   1e16
-
-  pypy3.10 src/lucasa-oeis/A064018.py
+  The lucasaugustus method is slower than ours until 10^16 where the memory
+  difference heavily favors the new method.
+  See https://github.com/lucasaugustus/oeis/A064018.py
 
 - moebius_iterator
   generate a batch, dole it out, make the next, etc.
   primes to sqrt(n)
-
   Also test it using a sliding window so we generate monolithic
   see how that performs vs. range_moebius or windowed range_moebius
 
@@ -599,6 +543,9 @@ OEIS lucky numbers:
 
 - use amagic_call for simple addint etc.  See List::Util::XS
   save/XS.xs-amagic1
+  consider using before DISPATCH_PP, so things like Math::GMPz will be fast.
+  big issue is the bigint->int transition point
+  even unary ops could become a native result
 
 - consider my_svuv redefined, like in validate_int.  Call sv_2uv if needed.
   See https://github.com/Perl/perl5/issues/22653
@@ -626,9 +573,6 @@ OEIS lucky numbers:
 
 - calculate primecount 24^14 and use it in t/81-bignum.t.
 
-- vecwindow incr,len {... @_ ...} @list
-  This is slideatatime
-  incr==len is natatime
 - vecpairwise {... $a,$b ...} \@A,\@B
   List::MoreUtils::pairwise
 
@@ -673,19 +617,32 @@ OEIS lucky numbers:
 
 - keyval.h sizes should be size_t, not long/UV.
 
-- more new functions:
-  - is_abundant(n)
-  - is_deficient(n)
-  - reverse_digits(n, base=10)
-  - is_harshad(n,base=10)  n % sumdigits(n) == 0
-  - catalan_number(n)  [binomial(2n,n)/(n+1)]
-  - bell number(n)
-  - convergents(cfrac)
-  - partitions_q(n)  A000009, Mathematica: PartitionsQ
-  - dedekind_psi(n)  A001615  n*prod(1+1/p)
-  - multifactorial(n,k)
-- even more:
-  - squares_r(k,n)  A004018, A005875, Mathematica: SquaresR
-  - bestappr(x,B) best rational with denominator <= B
+- Some more functions to add to the GMP backend:
+  fubini, partitionsq, dedekind_psi, vecprefixsum?, is_safe_prime, aliquot_sum
 
-- fibonacci(-k), lucas_number(-k)  like Pari.  Docs and test also
+- XS.xs call/return helpers need work to handle stack correctly.  The caller
+  shouldn't have to worry about how many input args there were.  There's also
+  cruft from the system evolving over years.
+  = RETURN_BIGINT_STR(str, len) — collapses stack, calls _to_bigint, returns.
+    Replaces the RETURN_128 bigint branch and CALLROOTSUB_ONE_SCALAR pattern
+  = OBJECTIFY_RESULT(input_sv) — revamped objectify_result.
+    Normalizes PL_stack_sp before calling out to Perl
+
+- factor.c znlog needs improvements from the recent PP rewrite.
+
+- PP znlog needs pollard rho
+  tmmpu 'prime_set_config(bigint=>Math::GMPz,verbose=>2); say znlog(13, 17, "10000000000000000000000000117")'
+
+- In PP, we register callbacks to free cached data.  We need something like
+  that for the C code.
+
+- factor128 could be used on some 32-bit machines.
+  We might need to adjust the assumptions around RETURN_128 etc.
+
+- trialf128.  Maybe live in factor128.
+
+- where we are using sv_to_bigint, would xs_to_canonical be better?
+
+- string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
+
+- nth_lucky bounds:  https://arxiv.org/pdf/2604.07142
