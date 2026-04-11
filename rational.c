@@ -205,7 +205,7 @@ UV nth_stern_diatomic(UV n)
 UV farey_length(uint32_t n)
 {
   UV t = sumtotient(n);
-  return (t == 0)  ?  0  :  1 + sumtotient(n);
+  return (t == 0)  ?  0  :  1 + t;
 }
 
 bool next_farey(uint32_t n, uint32_t* p, uint32_t* q)
@@ -277,11 +277,12 @@ UV farey_rank(uint32_t n, uint32_t p, uint32_t q)
   UV sum;
 
   if (n == 0 || q == 0 || p == 0) return 0;
+  if (n == 0xFFFFFFFFU) croak("farey_rank: n too large");
 
   g = gcd_ui(p,q);
   if (g != 1) { p /= g;  q /= g; }
 
-  New(0, count, n+1, uint32_t);
+  New(0, count, (size_t)n+1, uint32_t);
 
   for (i = 2; i <= n; i++)
     count[i] = ((UV)i * p - 1) / q;

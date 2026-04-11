@@ -124,12 +124,13 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, const uint32_t* cl, UV* numret)
   uint32_t c, smallnc;
   char crem_0[43*47], crem_1[53*59], crem_2[61*67], **VPrem;
 
+  if (nc < 2)
+    return sieve_cluster_simple(low, high, nc, cl, numret);
   if ((UV_MAX - cl[nc-1]) < high)  return 0;  /* Overflow */
 
   if (    ((high-low) < 10000)
        || (nc == 3 && ((high>>31) >> 16) == 0) /* sieving large vals is slow */
-       || (nc == 2 && ((high>>31) >> 27) == 0)
-       || (nc < 2) )
+       || (nc == 2 && ((high>>31) >> 27) == 0) )
     return sieve_cluster_simple(low, high, nc, cl, numret);
 
   if (!(low&1))    low++;
@@ -217,26 +218,32 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, const uint32_t* cl, UV* numret)
     memset(crem_1, 1, pp_1);
     memset(crem_2, 1, pp_2);
     /* Mark remainders that indicate a composite for this residue. */
-    for (i = 0; i < p1; i++) { crem_0[i*p1]=0; crem_0[i*p2]=0; }
-    for (     ; i < p2; i++) { crem_0[i*p1]=0;                }
-    for (i = 0; i < p3; i++) { crem_1[i*p3]=0; crem_1[i*p4]=0; }
-    for (     ; i < p4; i++) { crem_1[i*p3]=0;                }
-    for (i = 0; i < p5; i++) { crem_2[i*p5]=0; crem_2[i*p6]=0; }
-    for (     ; i < p6; i++) { crem_2[i*p5]=0;                }
+    for (i = 0; i < pp_0; i += p1) crem_0[i] = 0;
+    for (i = 0; i < pp_0; i += p2) crem_0[i] = 0;
+    for (i = 0; i < pp_1; i += p3) crem_1[i] = 0;
+    for (i = 0; i < pp_1; i += p4) crem_1[i] = 0;
+    for (i = 0; i < pp_2; i += p5) crem_2[i] = 0;
+    for (i = 0; i < pp_2; i += p6) crem_2[i] = 0;
     for (c = 1; c < nc; c++) {
       uint32_t c1=cl[c], c2=cl[c], c3=cl[c], c4=cl[c], c5=cl[c], c6=cl[c];
       if (c1 >= p1) c1 %= p1;
       if (c2 >= p2) c2 %= p2;
-      for (i = 1; i <= p1; i++) { crem_0[i*p1-c1]=0; crem_0[i*p2-c2]=0; }
-      for (     ; i <= p2; i++) { crem_0[i*p1-c1]=0;                   }
+      c1 = (c1 == 0) ? 0 : p1-c1;
+      c2 = (c2 == 0) ? 0 : p2-c2;
+      for (i = c1; i < pp_0; i += p1) crem_0[i] = 0;
+      for (i = c2; i < pp_0; i += p2) crem_0[i] = 0;
       if (c3 >= p3) c3 %= p3;
       if (c4 >= p4) c4 %= p4;
-      for (i = 1; i <= p3; i++) { crem_1[i*p3-c3]=0; crem_1[i*p4-c4]=0; }
-      for (     ; i <= p4; i++) { crem_1[i*p3-c3]=0;                   }
+      c3 = (c3 == 0) ? 0 : p3-c3;
+      c4 = (c4 == 0) ? 0 : p4-c4;
+      for (i = c3; i < pp_1; i += p3) crem_1[i] = 0;
+      for (i = c4; i < pp_1; i += p4) crem_1[i] = 0;
       if (c5 >= p5) c5 %= p5;
       if (c6 >= p6) c6 %= p6;
-      for (i = 1; i <= p5; i++) { crem_2[i*p5-c5]=0; crem_2[i*p6-c6]=0; }
-      for (     ; i <= p6; i++) { crem_2[i*p5-c5]=0;                   }
+      c5 = (c5 == 0) ? 0 : p5-c5;
+      c6 = (c6 == 0) ? 0 : p6-c6;
+      for (i = c5; i < pp_2; i += p5) crem_2[i] = 0;
+      for (i = c6; i < pp_2; i += p6) crem_2[i] = 0;
     }
     New(0, resmod_0, nres, uint32_t);
     New(0, resmod_1, nres, uint32_t);
@@ -262,7 +269,10 @@ UV* sieve_cluster(UV low, UV high, uint32_t nc, const uint32_t* cl, UV* numret)
     prem[0] = 0;
     while (smallnc < nc && cl[smallnc] < p)   smallnc++;
     for (c = 1; c < smallnc; c++) prem[p-cl[c]] = 0;
-    for (     ; c <      nc; c++) prem[p-(cl[c]%p)] = 0;
+    for (     ; c <      nc; c++) {
+      uint32_t rem = cl[c] % p;
+      prem[(rem == 0) ? 0 : p-rem] = 0;
+    }
   }
 
   New(0, cres, nres, UV);
