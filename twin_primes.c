@@ -208,22 +208,29 @@ UV nth_twin_prime_approx(UV n)
   long double fn = (long double) n;
   long double flogn = logl(n);
   long double fnlog2n = fn * flogn * flogn;
+  long double dlo, dhi;
   UV lo, hi;
 
   if (n < 6)
     return nth_twin_prime(n);
+  if (n >= MPU_MAX_TWIN_PRIME_IDX)
+    return MPU_MAX_TWIN_PRIME;
 
   /* Binary search on the TPC estimate.
    * Good results require that the TPC estimate is both fast and accurate.
    * These bounds are good for the actual nth_twin_prime values.
    */
-  lo = (UV) (0.9 * fnlog2n);
-  hi = (UV) ( (n >= 1e16) ? (1.04 * fnlog2n) :
-              (n >= 1e13) ? (1.10 * fnlog2n) :
-              (n >= 1e7 ) ? (1.31 * fnlog2n) :
-              (n >= 1200) ? (1.70 * fnlog2n) :
-              (2.3 * fnlog2n + 5) );
-  if (hi <= lo) hi = UV_MAX;
+  dlo = 0.9 * fnlog2n;
+  dhi = n >= 1e16 ? 1.04 * fnlog2n
+      : n >= 1e13 ? 1.10 * fnlog2n
+      : n >= 1e7  ? 1.31 * fnlog2n
+      : n >= 1200 ? 1.70 * fnlog2n
+                  : 2.30 * fnlog2n + 5;
+  lo = dlo >= (long double) MPU_MAX_TWIN_PRIME ? MPU_MAX_TWIN_PRIME : (UV)dlo;
+  hi = dhi >= (long double) MPU_MAX_TWIN_PRIME ? MPU_MAX_TWIN_PRIME : (UV)dhi;
+  if (lo >= hi || lo >= MPU_MAX_TWIN_PRIME || twin_prime_count_approx(hi) < n)
+    return MPU_MAX_TWIN_PRIME;
+
   return inverse_interpolate(lo, hi, n, &twin_prime_count_approx, 0);
 }
 
@@ -278,6 +285,7 @@ UV range_twin_prime_sieve(UV** list, UV beg, UV end)
 {
   UV nalloc, *L, ntwin;
   if (end > MPU_MAX_TWIN_PRIME) end = MPU_MAX_TWIN_PRIME;
+  if (end < beg) { *list = 0; return 0; }
   /* overshoot bounds, could also compare to 3*((end+29)/30 - beg/30) */
   nalloc = prime_count_upper(end) - prime_count_lower(beg);
   New(0, L, nalloc + 1 + 3, UV);
