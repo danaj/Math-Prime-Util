@@ -745,6 +745,7 @@ static void _tidy_list(UV **list, UV *Lsize, UV *count, bool minimal) {
   }
 }
 
+#if 0
 UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
   UV *L, minkap1, lastprime, count = 0;
 
@@ -757,7 +758,7 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
   if (k == 2) return range_semiprime_sieve(list, lo, hi);
   /* if (k <= 5) return range_almost_prime_sieve(list, k, lo, hi); */
 
-  minkap1 = 1 << (k-1);
+  minkap1 = UVCONST(1) << (k-1);
   lastprime = hi / minkap1;  /* lastprime = prev_prime(lastprime+1); */
 
   {
@@ -770,7 +771,9 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
 
     START_DO_FOR_EACH_PRIME(2, lastprime) {
       for (i = 0; i < nkap1; i++) {
-        UV prod = p * lkap1[i];
+        UV prod, lkapi = lkap1[i];
+        if (UV_MAX/lkapi < p) break;
+        prod = p * lkapi;
         if (prod < lo) continue;
         if (prod > hi) break;
         if (count >= Lsize)
@@ -784,10 +787,11 @@ UV range_construct_almost_prime(UV** list, uint32_t k, UV lo, UV hi) {
   *list = L;
   return count;
 }
+#endif
 
 UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
 {
-  UV *S, Ssize, i, j, count;
+  UV *S, Ssize, i, j, caplo, caphi, countest, count;
   const UV thresh_pred = 40;
 
   if (k == 0 || k >= BITS_PER_WORD) { *list = 0; return 0; }
@@ -828,7 +832,10 @@ UV range_almost_prime_sieve(UV** list, uint32_t k, UV slo, UV shi)
     }
   }
 
-  Ssize = (almost_prime_count_approx(k,shi) - almost_prime_count_approx(k,slo) + 1) * 1.2 + 100;
+  caphi = almost_prime_count_approx(k,shi);
+  caplo = almost_prime_count_approx(k,slo);       /* Instead of slo-1, */
+  countest = caphi >= caplo ? caphi-caplo+1 : 0;  /* add +1 here */
+  Ssize = countest * 1.2 + 100;
   if (Ssize > 10000000UL) Ssize = 10000000UL;
   New(0, S, Ssize, UV);
 
@@ -947,7 +954,7 @@ static void _genkap(UV lo, UV hi, uint32_t k, UV m, UV begp, UV **List, UV *Lpos
 }
 
 UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
-  UV *L, Lpos = 0, Lsize, countest;
+  UV *L, Lpos = 0, Lsize, countest, caplo, caphi;
 
   if (k >= BITS_PER_WORD) { *list = 0; return 0; }
   if ((lo >> k) == 0) lo = UVCONST(1) << k;
@@ -968,7 +975,11 @@ UV generate_almost_primes(UV** list, uint32_t k, UV lo, UV hi) {
   /* Optional:  we could try reduce_k_for_n() here. */
 
   prime_precalc(10000000U);
-  countest = almost_prime_count_approx(k,hi) - almost_prime_count_approx(k,lo-1);
+
+  /* approx count might not be monotone */
+  caphi = almost_prime_count_approx(k,hi);
+  caplo = almost_prime_count_approx(k,lo-1);
+  countest = caphi > caplo ? caphi - caplo : 0;
   Lsize = (countest > 10000000U) ? 10000000U : countest+1000;
 
   New(0, L, Lsize, UV);
@@ -997,7 +1008,7 @@ bool is_chen_prime(UV n) {
 }
 
 UV next_chen_prime(UV n) {
-  for ( n = next_prime(n);  n != 0 && n < MAX_CHEN_PRIME;  n = next_prime(n+2) )
+  for (n = next_prime(n);  n != 0 && n <= MAX_CHEN_PRIME;  n = next_prime(n+2))
     if (is_prime(n+2) || is_semiprime(n+2))
       return n;
   return 0;
