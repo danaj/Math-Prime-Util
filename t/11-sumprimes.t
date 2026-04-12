@@ -48,7 +48,7 @@ my @large = (
                 ($extra && (($usexs && $use64) || $_->[0] <= 100000000))
               } @large;
 
-plan tests => 1 + scalar(keys %sums) + scalar(@large);
+plan tests => 1 + scalar(keys %sums) + scalar(@large) + ($usexs && $use64 ? 2 : 0);
 
 {
   my @sum;
@@ -67,4 +67,12 @@ while (my($range, $expect) = each (%sums)) {
 foreach my $pair (@large) {
   my($n,$sum) = @$pair;
   is( "".sum_primes(0,$n), $sum, "sum_primes($n) = $sum" );
+}
+
+if ($usexs && $use64) {
+  my $maxprime = Math::Prime::Util::prime_get_config->{'maxprime'};
+  is( "".sum_primes($maxprime, "18446744073709551600"), "$maxprime",
+      "sum_primes clamps high to maxprime" );
+  is( sum_primes($maxprime+1, "18446744073709551615"), 0,
+      "sum_primes above maxprime is 0" );
 }

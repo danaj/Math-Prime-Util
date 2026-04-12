@@ -156,10 +156,21 @@ bool sum_primes(UV low, UV high, UV *return_sum) {
   UV sum = 0;
   bool overflow = 0;
 
+  if (high > MPU_MAX_PRIME)
+    high = MPU_MAX_PRIME;
+  if (high < 2 || low > high) {
+    if (return_sum != 0)
+      *return_sum = 0;
+    return 1;
+  }
+
   if (low <= 2 && high >= 100000) {
-    *return_sum = sum_primes64(high);
-    if (*return_sum != 0)
+    UV s64 = sum_primes64(high);
+    if (s64 != 0) {
+      if (return_sum != 0)
+        *return_sum = s64;
       return 1;
+    }
   }
   /* TODO: performance: more cases where using sum_primes64 is faster. */
 
@@ -200,13 +211,13 @@ bool sum_primes(UV low, UV high, UV *return_sum) {
 
       /* Clear primes before and after our range */
       p = pbase;
-      for (i = 0; i < 8 && p+wheel30[i] < low; i++)
+      for (i = 0; i < 8 && p < low && wheel30[i] < low-p; i++)
         if ( (*sp & (1<<i)) == 0 )
           *sp |= (1 << i);
 
       p = 30*(seg_high/30);
       for (i = 0; i < 8;  i++)
-        if ( (*spend & (1<<i)) == 0 && p+wheel30[i] > high )
+        if ( (*spend & (1<<i)) == 0 && (p > high || wheel30[i] > high-p) )
           *spend |= (1 << i);
 
       while (sp <= spend) {
