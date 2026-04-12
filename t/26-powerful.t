@@ -9,7 +9,8 @@ use Math::Prime::Util qw/is_powerful powerful_count nth_powerful sumpowerful
 
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $uvbits= Math::Prime::Util::_uvbits;
+my $use64 = $uvbits > 32;
 
 plan tests => 1    # is_powerful
             + 1    # powerful_count
@@ -29,6 +30,15 @@ subtest 'is_powerful', sub {
   ok( vecnone(sub { is_powerful(0,$_) }, 0..10), "is_powerful(0,n) = 0");
   ok( vecall(sub { is_powerful($_,0) }, 1..32), "is_powerful(n,0) = 1 for positive n");
   ok( vecall(sub { is_powerful($_,1) }, 1..32), "is_powerful(n,1) = 1 for positive n");
+  is( is_powerful(2, $uvbits), 0, "is_powerful(2,UVBITS) = 0");
+  is( is_powerful(4, $uvbits+1), 0, "is_powerful(4,UVBITS+1) = 0");
+  if ($use64) {
+    is( is_powerful("2199023255552", 41), 1, "is_powerful(2^41,41) = 1");
+    is( is_powerful("2199023255552", 42), 0, "is_powerful(2^41,42) = 0");
+  } else {
+    is( is_powerful(2097152, 21), 1, "is_powerful(2^21,21) = 1");
+    is( is_powerful(2097152, 22), 0, "is_powerful(2^21,22) = 0");
+  }
 
   for my $k (3 .. 12) {
     my @nums = (227411960,105218838,79368063,58308379,210322300,44982156,67831696,165946352,243118692,128757041,150085583);
@@ -162,6 +172,8 @@ subtest 'powerful_numbers', sub {
   is_deeply( [map{"$_"}@{powerful_numbers(1000000000000, 1010000000000,5)}],
              [qw/1000000000000 1004193907488 1007769600000 1008394404608/],
              "powerful_numbers(1e12,1e12+1e10,5)");
+  is_deeply( [map{"$_"} @{powerful_numbers(~0, ~0, 1)}], [~0],
+             "powerful_numbers(UV_MAX,UV_MAX,1)");
 };
 
 

@@ -2163,9 +2163,16 @@ sub powerful_numbers {
   }
   validate_integer_nonneg($hi);
   return [] if $hi < $lo;
-  return [$lo .. $hi] if $k <= 1;
+  return [$lo .. $hi] if $k <= 1 && Mcmpint($hi, SINTMAX) <= 0;
 
   my $pn = [];
+  if ($k <= 1) {
+    while (Mcmpint($lo,$hi) <= 0) {
+      push @$pn, $lo;
+      $lo = Madd1int($lo);
+    }
+    return $pn;
+  }
   _pcg($lo, $hi, $k, 1, 2*$k-1, $pn);
   Mvecsorti($pn);
 }
@@ -2197,7 +2204,7 @@ sub is_powerfree {
 
 sub powerfree_count {
   my($n, $k) = @_;
-  validate_integer_abs($n);
+  validate_integer($n);   $n = 0 if $n < 0;
   if (defined $k) { validate_integer_nonneg($k); }
   else            { $k = 2; }
 

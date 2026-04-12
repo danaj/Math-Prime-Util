@@ -23,7 +23,7 @@ bool is_powerful(UV n, UV k) {
   if (k <= 1) return 1;
 
   if (!(n&1)) { /* Check and remove all multiples of 2 */
-    if (n & ((UVCONST(1) << k)-1)) return 0;
+    if (k >= BITS_PER_WORD || n & ((UVCONST(1) << k)-1)) return 0;
     n >>= ctz(n);
     if (n == 1) return 1;
   }
@@ -315,8 +315,10 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
   } else if (k <= 1) {
     npn = hi-lo+1;
     New(0, pn, npn, UV);
-    for (i = lo; i <= hi; i++)
+    for (i = lo; ; i++) {
       pn[i-lo] = i;
+      if (i == hi) break;
+    }
   } else if ((lo+single_thresh) > hi || lo > (UV_MAX-single_thresh)) {
     New(0, pn, hi-lo+1, UV);
     for (i = lo, npn = 0; i <= hi && i != 0; i++)
