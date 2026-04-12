@@ -5,6 +5,7 @@
 #define FUNC_log2floor 1
 #define FUNC_is_prime_in_sieve 1
 #include "ptypes.h"
+#include "constants.h"
 #include "sieve.h"
 #include "util.h"
 #include "prime_counts.h"
@@ -189,6 +190,7 @@ UV* n_range_ramanujan_primes(UV nlo, UV nhi) {
 
   if (nlo == 0) nlo = 1;
   if (nhi == 0) nhi = 1;
+  if (nlo > nhi) return 0;
 
   /* If we're starting from 1, just do single monolithic sieve */
   if (nlo == 1)  return n_ramanujan_primes(nhi);
@@ -325,7 +327,9 @@ bool is_ramanujan_prime(UV n) {
 
   /* Pre-test: Check if Pi(n/2) increases before Pi(n) does. */
   if (is_prime(n/2+1)) return 0;
-  d = (next_prime(n) - n)/2;
+  /* Calculate d even if n >= max UV prime, using gaps to next_prime(UV_MAX). */
+  if (n < MPU_MAX_PRIME) d = (next_prime(n) - n)/2;
+  else                   d = (UV_MAX-n+(BITS_PER_WORD == 64 ? 14 : 16))/2;
   for (i = 2; i <= d; i++)
     if (is_prime(n/2+i)) return 0;
 
