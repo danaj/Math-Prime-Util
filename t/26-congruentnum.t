@@ -92,6 +92,7 @@ plan tests => 0
             + 3
             + scalar(@ncfilters)
             + scalar(@ncfilters2)
+            + 1
             ;
 
 # This covers all simple special cases in the code
@@ -140,3 +141,8 @@ SKIP: {
   # 432502235                 6 factors
   # no 8/10/12 factor results below 5e11
   # 311199575628433           8 factors  (probably not the smallest)
+
+SKIP: {
+  skip "test the filter permutation in XS", 1 unless $usexs;
+  is(Math::Prime::Util::_is_congruent_number_filter(58654083),0,"58654083 is rejected by the filter");
+}

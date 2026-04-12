@@ -146,21 +146,23 @@ static bool _can_order_kronecker4(UV p, UV q, UV r, UV s) {
          (KQP==-1 && KRP==-1 && KSP==-1 && _can_order_kronecker3(q,r,s));
 }
 
+/* Can we order s.t. (p|q) == (p|r) == (q|r) == -1 */
 static bool _can_orderk_r(uint32_t nfac, UV fac[]) {
   uint32_t i,j;
+  bool orderk = 0;
   if (nfac <= 1) return TRUE;
   if (nfac == 2) return _can_order_kronecker2(fac[0],fac[1]);
-  for (i = 0; i < nfac; i++) {
+  for (i = 0; i < nfac && !orderk; i++) {
     SWAP2(fac[i], fac[nfac-1]);  /* Test with this factor at the end */
     for (j = 0; j < nfac-1; j++)
       if (kronecker_uu(fac[j],fac[nfac-1]) != -1)
         break;
     if (j == nfac-1 && _can_orderk_r(nfac-1, fac))
-      break;
-   }
-   return i < nfac;
+      orderk = 1;
+    SWAP2(fac[i], fac[nfac-1]); /* Restore */
+  }
+  return orderk;
 }
-/* Can we order s.t. (p|q) == (p|r) == (q|r) == -1 */
 static bool _can_orderk(uint32_t nfac, const UV fac[]) {
   UV F[MPU_MAX_DFACTORS];
   if (nfac > MPU_MAX_DFACTORS) return FALSE;
