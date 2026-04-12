@@ -40,7 +40,7 @@ signed char* range_moebius(UV lo, UV hi)
   unsigned char logp;
   UV nextlog, nextlogi;
 
-  if (hi < lo) croak("range_mobius error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
+  if (hi < lo) croak("range_moebius error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
 
   Newz(0, mu, count, signed char);
   if (sqrtn*sqrtn != hi && sqrtn < (UVCONST(1)<<(BITS_PER_WORD/2))-1) sqrtn++;
@@ -262,14 +262,15 @@ static signed char* liouville_array(UV hi)
   if (hi >= 16) memset(l+16, -1, hi-16+1);
 
   for (a = 16; a <= hi; a = b+1) {
-    /* TODO: 2*a >= UV_MAX */
-    b = (2*a-1 <= hi)  ?  2*a-1  :  hi;
+    UV twoa1 = a > (UV_MAX >> 1)  ?  UV_MAX  :  2*a-1;
+    b = twoa1 < hi  ?  twoa1  :  hi;
     START_DO_FOR_EACH_PRIME(2, isqrt(b)) {
       for (k = 2*p; k <= b; k += p) {
         if (k >= a)
           l[k] = -1 * l[k/p];
       }
     } END_DO_FOR_EACH_PRIME
+    if (b == hi) break;
   }
 
   return l;
@@ -323,7 +324,7 @@ signed char* range_liouville(UV lo, UV hi)
   signed char *l;
   unsigned char *nf;
 
-  if (hi < lo) croak("range_liouvillle error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
+  if (hi < lo) croak("range_liouville error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
   nf = range_nfactor_sieve(lo, hi, 1);
   New(0, l, hi-lo+1, signed char);
   for (i = 0; i < hi-lo+1; i++)
