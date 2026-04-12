@@ -9,7 +9,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
-plan tests => 4;
+plan tests => 9;
 
 {
   my @result = map { my $m=$_; map { factorialmod($_,$m) } 0..$m-1; } 1 .. 40;
@@ -26,4 +26,48 @@ SKIP: {
 SKIP: {
   skip "large value without EXTENDED_TESTING on 64-bit",1 unless $extra && $use64;
   is( "".factorialmod(5000001,"8000036000054000027"), "4179720539133404343", "factorialmod with large n and large composite non-square-free m" );
+}
+
+{
+  my $m = 1000003;
+  my @n = ($m-60 .. $m-1);
+  my @got = map { factorialmod($_, $m) } @n;
+  my @exp;
+  $exp[0] = $got[0];
+  for my $i (1 .. $#n) {
+    $exp[$i] = ($exp[$i-1] * $n[$i]) % $m;
+  }
+  is_deeply(\@got, \@exp, "factorialmod recurrence near prime modulus (backward path)");
+}
+
+{
+  my $m = 10000020;
+  my @n = (1000 .. 1120);
+  my @got = map { factorialmod($_, $m) } @n;
+  my @exp;
+  $exp[0] = $got[0];
+  for my $i (1 .. $#n) {
+    $exp[$i] = ($exp[$i-1] * $n[$i]) % $m;
+  }
+  is_deeply(\@got, \@exp, "factorialmod recurrence in segmented non-mont path");
+}
+
+{
+  my $m = 10000019;
+  my @n = (1000 .. 1120);
+  my @got = map { factorialmod($_, $m) } @n;
+  my @exp;
+  $exp[0] = $got[0];
+  for my $i (1 .. $#n) {
+    $exp[$i] = ($exp[$i-1] * $n[$i]) % $m;
+  }
+  is_deeply(\@got, \@exp, "factorialmod recurrence in segmented mont path");
+}
+
+{
+  my $m = 10403;  # 101 * 103
+  is(factorialmod(102, $m), factorial(102) % $m,
+     "factorialmod below composite-zero cutoff remains non-trivial");
+  is(factorialmod(103, $m), 0,
+     "factorialmod at composite-zero cutoff returns zero");
 }

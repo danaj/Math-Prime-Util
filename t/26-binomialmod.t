@@ -47,8 +47,25 @@ if ($usexs && $extra) {
                [100000000,7654321,101223721, 5463123];
 }
 
+my @pp_cases = (
+  [256,   1,   256,     0],
+  [255, 127,   256,    35],
+  [300, 111,   512,   256],
+  [180,  77,   243,    81],
+  [125,  37,   125,     0],
+  [500, 250,  6561,  3597],
+  [400, 199,  1331,   451],
+  [450, 223,  2401,  1029],
+  [600, 123,  1000,     0],
+  [700, 321,  7776,  1680],
+  [520, 137, 10368,  3456],
+  [777, 111, 15625, 11975],
+);
+
 plan tests => 1
             + scalar(@tests)
+            + scalar(@pp_cases)
+            + 1
             ;
 
 for my $data (@tests) {
@@ -68,4 +85,28 @@ for my $data (@tests) {
   }
   # s=0;for(p=1,27,for(n=1,40,for(k=1,n,s+=lift(binomod(n,k,p))))); s
   is( $sum, 99531, "Small binomialmod works" );
+}
+
+{
+  for my $data (@pp_cases) {
+    my($n,$k,$m,$exp) = @$data;
+    is( binomialmod($n,$k,$m), $exp, "prime-power/composite path binomialmod($n,$k,$m)" );
+  }
+}
+
+{
+  my @moduli = (8, 9, 16, 27, 125, 343, 1024);
+  my @got;
+  my @exp;
+  for my $m (@moduli) {
+    for my $n (0 .. 40) {
+      my $sum = 0;
+      $sum = ($sum + binomialmod($n, $_, $m)) % $m for 0 .. $n;
+      push @got, $sum;
+      my $pow2 = 1;
+      $pow2 = ($pow2 * 2) % $m for 1 .. $n;
+      push @exp, $pow2;
+    }
+  }
+  is_deeply(\@got, \@exp, "Pascal row sum identity across prime-power moduli");
 }
