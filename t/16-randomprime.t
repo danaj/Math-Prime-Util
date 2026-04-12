@@ -76,6 +76,12 @@ subtest 'random_prime(lo,hi)', sub {
   is_deeply([map { random_prime($_->[0],$_->[1]) } ([0,0],[0,1],[2,1],[3,2],[1294268492,1294268778],[3842610774,3842611108])],
             [undef,undef,undef,undef,undef,undef],
             "random_prime(lo,hi) returns undef when no primes in range");
+  SKIP: {
+    skip "Broken 64-bit Perl high-end range behavior", 2 if $use64 && $broken64;
+    my $maxprime = Math::Prime::Util::prime_get_config()->{'maxprime'};
+    is(random_prime($maxprime+1, ~0), undef, "random_prime(maxprime+1,UV_MAX) is undef");
+    is(random_prime(~0, ~0), undef, "random_prime(UV_MAX,UV_MAX) is undef");
+  }
 
   my @edges = ( [0,2,2,2], [2,2,2,2], [2,3,2,3], [3,5,3,5],
                 [10,20,11,19], [8,12,11,11], [10,12,11,11],

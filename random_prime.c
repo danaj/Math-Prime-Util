@@ -61,10 +61,11 @@ UV random_prime(void* ctx, UV lo, UV hi)
 {
   UV n, oddrange;
   if (lo > hi) return 0;
+  if (lo > MPU_MAX_PRIME || hi < 2) return 0;
   /* Pull edges in to nearest primes */
   lo = (lo <= 2) ? 2 : next_prime(lo-1);
   hi = (hi >= MPU_MAX_PRIME) ? MPU_MAX_PRIME : prev_prime(hi+1);
-  if (lo > hi) return 0;
+  if (lo == 0 || lo > hi) return 0;  /* lo=0 if next_prime overflows */
   /* There must be at least one prime in the range */
   if (!(lo&1)) lo--;             /* treat 2 as 1 */
   oddrange = ((hi-lo)>>1) + 1;   /* look for odds */
@@ -83,7 +84,7 @@ bool is_mr_random(void* ctx, UV n, UV k) {
 
   /* TODO: do 16 at a time */
   while (k--) {
-    UV base = 2 + urandomm64(ctx, n-2);
+    UV base = 2 + urandomm64(ctx, n-3);
     if (!is_strong_pseudoprime(n, base))
       return 0;
   }
