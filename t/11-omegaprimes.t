@@ -19,7 +19,7 @@ my @small_kops = (
 my @counts_at_1e6 = (1,78734,288726,379720,208034,42492,2285,8,0,0,0,0,0,0,0,0,0,0,0,0,0);
 my @counts_at_1e4 = (1,1280,4097,3695,894,33,0,0,0,0,0);
 
-plan tests =>   5   # omega_primes sieve
+plan tests =>   6   # omega_primes sieve
               + 6   # count
               + 8   # nth_omega_prime
                 ;
@@ -30,6 +30,7 @@ for my $k (1..5) {
   my $kop = $small_kops[$k];
   is_deeply(omega_primes($k,$kop->[-1]), $kop, "small $k-omega-primes");
 }
+is_deeply(omega_primes(0,1,200000002), [1], "omega_primes(0,1,200000002)");
 
 ###### omega_prime_count
 

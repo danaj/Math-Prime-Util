@@ -21,6 +21,8 @@
 #include "omega_primes.h"
 
 bool is_omega_prime(uint32_t k, UV n) {
+  if (n <= 1) return (n == 1 && k == 0);
+
   if (k > 0 && !(n& 1)) { k--; do { n >>= 1; } while (!(n& 1)); }
   if (k > 0 && !(n% 3)) { k--; do { n /=  3; } while (!(n% 3)); }
   if (k > 0 && !(n% 5)) { k--; do { n /=  5; } while (!(n% 5)); }
@@ -87,11 +89,24 @@ static UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
 
 
 UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
-  UV i, min, lmax = 0, n = 0;
-  UV* l = 0;
-  unsigned char *nf;
+  UV min, *l;
 
   if (hi < lo) croak("range_omega_prime_sieve error hi %"UVuf" < lo %"UVuf"\n",hi,lo);
+
+  if (ret == 0)
+    return omega_prime_count(k,hi) - (lo <= 1 ? 0 : omega_prime_count(k,lo-1));
+
+  *ret = 0;
+
+  if (k == 0) {
+    if (lo <= 1 && hi >= 1) {
+      New(0, l, 1, UV);
+      l[0] = 1;
+      *ret = l;
+      return 1;
+    }
+    return 0;
+  }
 
   min = pn_primorial(k);
   if (min == 0 || min > hi) return 0;
@@ -103,22 +118,21 @@ UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
   if ( ((hi-lo) > 100000000UL) || (k >= 10 && (hi-lo) > 5000000UL) )
     return rec_omega_primes(ret, k, lo, hi);
 
-  nf = range_nfactor_sieve(lo, hi, 0);
-  if (ret != 0) {
-    lmax = 1000;
-    New(0, l, lmax, UV);
-  }
-  for (i = 0; i < hi-lo+1; i++) {
-    if (nf[i] != k) continue;
-    if (l != 0) {
+  {
+    UV i, n, lmax;
+    unsigned char *nf = range_nfactor_sieve(lo, hi, 0);
+
+    New(0, l, lmax = 1000, UV);
+    for (i = 0, n = 0; i < hi-lo+1; i++) {
+      if (nf[i] != k) continue;
       if (n >= lmax)  { lmax = 1 + lmax * 1.2;  Renew(l, lmax, UV); }
       l[n] = lo+i;
+      n++;
     }
-    n++;
+    Safefree(nf);
+    *ret = l;
+    return n;
   }
-  Safefree(nf);
-  if (ret != 0)  *ret = l;
-  return n;
 }
 
 /* TODO: Should make a single construct routine that calls sieve or recurse */

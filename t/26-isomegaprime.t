@@ -6,7 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/is_omega_prime/;
 #my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 
-plan tests => 1+6+4;
+plan tests => 1+6+5;
 
 my @fn7 = (10000019, 10000000, 10000005, 10000002, 10000012, 10000080, 10002930, 11741730, 223092870);
 my @listo = (
@@ -31,6 +31,7 @@ my @listo = (
   # mpu 'say vecprod(map { random_prime(1000) } 1..18)'
   # mpu '@x=vecuniq map{random_prime(1000,5000)}1..10 until @x==10; say "@x"; say vecprod(@x)'
 
+  is(is_omega_prime(1,0), 0, "is_omega_prime(1,0)");
   is(is_omega_prime(10,"24705358214159761813058494125740243"), 1, "is_omega_prime(10,24705358214159761813058494125740243)");
   is(is_omega_prime(14,"264161530428233522652629658999365"), 1, "is_omega_prime(14,264161530428233522652629658999365)");
   # 18 factors, but one is repeated
