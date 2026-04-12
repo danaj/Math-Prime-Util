@@ -44,9 +44,9 @@ iset_t iset_create(size_t init_size) {
 
   set.size = 0;  set.contains_zero = 0;  set.type = 0;
 
-  while (bits < maxsizebits-1 && ((1UL << bits) * FILL_RATIO + 1) < init_size)
+  while (bits < maxsizebits-1 && (((size_t)1 << bits) * FILL_RATIO + 1) < init_size)
     bits++;
-  set.maxsize = 1UL << bits;
+  set.maxsize = (size_t)1 << bits;
   set.mask = set.maxsize - 1;
   Newz(0, set.arr, set.maxsize, UV);
   return set;
@@ -94,6 +94,8 @@ bool iset_add(iset_t *set, UV val, int sign) {
     set->type = ISET_TYPE_INVALID;
   else if (val > (UV)IV_MAX)
     set->type |= ((sign > 0) ? ISET_TYPE_UV : ISET_TYPE_IV);
+  if (set->type == ISET_TYPE_INVALID)
+    return 0;
   if (val == 0) {
     if (set->contains_zero)
       return 0;
@@ -113,7 +115,9 @@ bool iset_add(iset_t *set, UV val, int sign) {
 iset_t iset_create_from_array(UV* d, size_t dlen, int dsign) {
   iset_t s = iset_create(dlen);
 
-  if (dsign != 0) {
+  if (dsign == 0) {
+    s.type = ISET_TYPE_INVALID;
+  } else {
     unsigned char typemask = ((dsign > 0) ? ISET_TYPE_UV : ISET_TYPE_IV);
     size_t i;
     for (i = 0; i < dlen; i++) {
@@ -137,6 +141,8 @@ iset_t iset_create_from_array(UV* d, size_t dlen, int dsign) {
 
 void iset_allvals(const iset_t set, UV* array) {
   size_t j, i = 0;
+  if (set.type == ISET_TYPE_INVALID)
+    croak("iset_allvals type invalid");
   if (set.contains_zero)
     array[i++] = 0;
   for (j = 0; j < set.maxsize; j++)
