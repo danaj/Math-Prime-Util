@@ -331,9 +331,9 @@ int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
   csize = 0.6 * cbrtn * cbrtn;
   hsize = 8 * cbrtn;         /* 12.5% filled with csize = 1 * n^(2/3) */
 
-  if (csize > 400000000U) {  /* Limit to 3GB */
+  if (csize > 400000000U) {  /* Limit to 3GB + hsize */
     csize = 400000000;
-    hsize = isqrt(n);
+    hsize = 12 * cbrtn;
   }
 
   sumcache = range_totient(0, csize-1);
