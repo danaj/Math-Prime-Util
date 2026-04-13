@@ -27,7 +27,7 @@ extern NV drand64(void *ctx);
 
 extern uint32_t urandomm32(void* ctx, uint32_t n);   /* integer less than n */
 extern UV       urandomm64(void* ctx, UV n);
-extern UV       urandomb(void* ctx, int nbits);      /* integer with n bits */
+extern UV       urandomb(void* ctx, uint32_t nbits); /* integer with n bits */
 
 /*****************************************************************************/
 

@@ -40,6 +40,13 @@
 #define CIRAND64(ctx)               chacha_irand64((chacha_context_t*)ctx)
 #define CSELFTEST()                 chacha_selftest()
 
+/* Use volatile stores so the compiler cannot optimize away the wipe. */
+static void secure_bzero(void *v, size_t n)
+{
+  volatile unsigned char *p = (volatile unsigned char *)v;
+  while (n-- > 0) *p++ = 0;
+}
+
 /* Helper macros, similar to ChaCha, so we're consistent. */
 #if !defined(__x86_64__)
 #undef U8TO32_LE
@@ -66,6 +73,7 @@
 
 /* We put a simple 32-bit non-CS PRNG here to help fill small seeds. */
 #if 0
+#define PRNG_STATE_WORDS 4
 /* XOSHIRO128**  32-bit output, 32-bit types, 128-bit state */
 static INLINE uint32_t rotl(const uint32_t x, int k) {
   return (x << k) | (x >> (32 - k));
@@ -89,6 +97,7 @@ void* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
   return (void*) state;
 }
 #else
+#define PRNG_STATE_WORDS 2
 /* PCG RXS M XS 32.  32-bit output, 32-bit state and types. */
 uint32_t prng_next(void* ctx) {
   uint32_t *rng = (uint32_t*) ctx;
@@ -140,6 +149,7 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
     rng = prng_new(a,b,c,d);
     for (i = 4*((bytes+3)/4); i < SEED_BYTES; i += 4)
       U32TO8_LE(seed + i, prng_next(rng));
+    secure_bzero(rng, PRNG_STATE_WORDS * sizeof(uint32_t));
     Safefree(rng);
 #if 0
     printf("got %u bytes in expanded to %u\n", bytes, SEED_BYTES);
@@ -153,6 +163,7 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
     CSELFTEST();
   }
   CSEED(ctx, SEED_BYTES, seed, (bytes >= 16));
+  secure_bzero(seed, sizeof(seed));
 }
 
 extern void csprng_srand(void* ctx, UV insecure_seed)
@@ -239,6 +250,7 @@ bool is_csprng_well_seeded(void *ctx)
  * the constants at runtime to ensure a dodgy compiler won't munge them.
  *
  * As of C99 or MSVC 15.6, we could better write these as e.g. 0x1.0p-64.
+ * E.g.  (CIRAND64(ctx) >> 11) * 0x1.0p-53
  */
 #define TO_NV_32    2.3283064365386962890625000000000000000E-10L
 #define TO_NV_64    5.4210108624275221700372640043497085571E-20L
@@ -254,13 +266,15 @@ bool is_csprng_well_seeded(void *ctx)
 NV drand64(void* ctx)
 {
   NV r;
+  do {
 #if NVMANTBITS <= 32
-  r = DRAND_32_32;
+    r = DRAND_32_32;
 #elif NVMANTBITS <= 64
-  r = (BITS_PER_WORD <= 32)  ?  DRAND_64_32  :  DRAND_64_64;
+    r = (BITS_PER_WORD <= 32)  ?  DRAND_64_32  :  DRAND_64_64;
 #else
-  r = (BITS_PER_WORD <= 32)  ?  DRAND_128_32 :  DRAND_128_64;
+    r = (BITS_PER_WORD <= 32)  ?  DRAND_128_32 :  DRAND_128_64;
 #endif
+  } while (r >= 1.0);
   return r;
 }
 
@@ -376,7 +390,7 @@ UV urandomm64(void* ctx, UV n)
 #endif
 
 
-UV urandomb(void* ctx, int nbits)
+UV urandomb(void* ctx, uint32_t nbits)
 {
   if (nbits == 0) {
     return 0;

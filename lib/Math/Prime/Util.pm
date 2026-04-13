@@ -6327,7 +6327,8 @@ non-negative inputs the function runs entirely in C.
 Takes a binary string C<data> as input and seeds the internal CSPRNG.
 This is not normally needed as system entropy is used as a seed on
 startup.  For best security this should be 16-128 bytes of good
-entropy.  No more than 1024 bytes will be used.
+entropy.  No more than 1024 bytes will be used (and usually less,
+for example the current ChaCha CSPRNG uses only the first 40 bytes).
 
 With no argument, reseeds using system entropy, which is preferred.
 

@@ -34,6 +34,13 @@
 #define RUN_INTERNAL_TESTS 1
 #define RESEED_ON_REFILL 0
 
+/* Use volatile stores so the compiler cannot optimize away the wipe. */
+static void secure_bzero(void *v, size_t n)
+{
+  volatile unsigned char *p = (volatile unsigned char *)v;
+  while (n-- > 0) *p++ = 0;
+}
+
 /*****************************************************************************/
 /* Chacha routines: init, quarter round, core, keystream                     */
 /*****************************************************************************/
@@ -151,6 +158,7 @@ static uint32_t chacha_keystream(unsigned char* buf, uint32_t n, chacha_context_
     chacha_core(sbuf, ctx->state);
     increment_chacha_counter(ctx);
     memcpy(buf, sbuf, r);
+    secure_bzero(sbuf, sizeof(sbuf));
   }
   return n;
 }
