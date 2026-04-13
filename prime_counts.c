@@ -322,7 +322,7 @@ UV prime_count_range(UV lo, UV hi)
 
   { /* Rough empirical threshold for when segment faster than LMO */
     UV range_threshold = hi / (isqrt(hi)/200);
-    if ( (hi-lo+1) < range_threshold )
+    if ((hi-lo) < range_threshold)  /* avoid the +1 so we don't overflow */
       return segment_prime_count(lo, hi);
   }
   return LMO_prime_count(hi) - ((lo < 2) ? 0 : LMO_prime_count(lo-1));
@@ -662,8 +662,10 @@ UV nth_prime(UV n)
 
   while (count < target) {
     /* Limit the segment size if we know the answer comes earlier */
-    if ( (30*(segbase+segment_size)+29) > upper_limit )
-      segment_size = (upper_limit - segbase*30 + 30) / 30;
+    UV upperd = upper_limit / 30;
+    if (segbase > upperd) break;  /* Something is very wrong.  Assert later. */
+    if (segment_size > (upperd - segbase + 1))
+      segment_size = upperd - segbase + 1;
 
     /* Do the actual sieving in the range */
     sieve_segment(segment, segbase, segbase + segment_size-1);
