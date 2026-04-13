@@ -130,11 +130,13 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   while ((hi-lo) > 8 && ((hi-lo) > threshold || rhi > n)) {
     UV x0 = lo,  x1 = lo + ((hi-lo)>>1);   /* x2 = hi */
     UV rx1 = MPU_CALLBACK(x1);
-    IV fx0 = rlo-n,  fx1 = rx1-n,  fx2=rhi-n+1;
-
-    double pos = ((double)(x1-x0) * (double)fx1)
-               / sqrtl((double)fx1 * (double)fx1 - (double)fx0 * (double)fx2);
-    UV x3 = x1 - (IV)(pos+0.5);
+    double d0 = (double) (n-rlo);     /* > 0 */
+    double d1 = (double) (rx1 >= n ? rx1-n : n-rx1);
+    double d2 = (double) (rhi-n+1);   /* > 0 */
+    double den = d1*d1 + d0*d2;       /* f1^2 - f0*f2 */
+    double sgn = (rx1 >= n) ? 1.0L : -1.0L;
+    double pos = sgn * ((double)(x1 - x0) * d1) / sqrtl(den);
+    UV x3 = x1 - (IV)(pos + (pos >= 0 ? 0.5L : -0.5L));
 
     if(_dbgprint)printf("  2s lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x1, hi, (rx1>n) ? rx1-n : n-rx1);
 
@@ -146,7 +148,7 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
       UV rx3 = MPU_CALLBACK(x3);
       if(_dbgprint)printf("  2S lo %lu  mid %lu  hi %lu  (%lu)\n", lo, x3, hi, (rx3>n) ? rx3-n : n-rx3);
       /* Swap if needed to have:   [lo  x1  x3  hi]  */
-      if (rx1 > rx3) { UV t=x1; x1=x3; x3=t;  t=rx1; fx1=rx3; rx3=t; }
+      if (rx1 > rx3) { UV t=x1; x1=x3; x3=t;  t=rx1; rx1=rx3; rx3=t; }
       if      (rx1 >= n) {                      hi = x1; rhi = rx1; }
       else if (rx3 >= n) { lo = x1; rlo = rx1;  hi = x3; rhi = rx3; }
       else               { lo = x3; rlo = rx3; }
