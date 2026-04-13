@@ -2991,14 +2991,22 @@ is_perrin_pseudoprime(IN SV* svn, IN UV k = 0)
     XSRETURN(1);
 
 void
-is_frobenius_pseudoprime(IN SV* svn, IN IV P = 0, IN IV Q = 0)
+is_frobenius_pseudoprime(IN SV* svn, IN SV* svp = 0, IN SV* svq = 0)
   PREINIT:
-    int status;
+    int nstatus, pstatus, qstatus;
     UV n;
+    IV P, Q, maxparam;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status != 0)
-      RETURN_NPARITY((status == 1) ?  is_frobenius_pseudoprime(n, P, Q)  :  0);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    pstatus = 1; P = 0;   qstatus = 1;  Q = 0;  /* defaults */
+    if (items >= 2) pstatus = _validate_and_set((UV*)&P, aTHX_ svp, IFLAG_IV);
+    if (items >= 3) qstatus = _validate_and_set((UV*)&Q, aTHX_ svq, IFLAG_IV);
+    if (nstatus == -1) RETURN_NPARITY(0);
+    /* If |P| and |Q| are less than this, then D=P*P-4*Q cannot overflow IV */
+    maxparam = (BITS_PER_WORD == 64)  ?  (IV)UVCONST(3037000497)  :  46338L;
+    if (nstatus != 0 && pstatus != 0 && qstatus != 0 &&
+        P <= maxparam && P >= -maxparam && Q <= maxparam && Q >= -maxparam)
+      RETURN_NPARITY(is_frobenius_pseudoprime(n, P, Q));
     DISPATCHPP();
     XSRETURN(1);
 

@@ -291,6 +291,25 @@ subtest 'Frobenius type pseudoprimes', sub {
   @P = qw/13333 44801 486157 1615681 3125281 4219129 9006401 12589081 13404751 15576571 16719781/;
   is_deeply([grep{ !is_frobenius_pseudoprime($_,3,-5)} @P],[],"Small Frobenius(3,-5)");
 
+  ok(!eval { is_frobenius_pseudoprime(91, 3, 2); 1; }, "Square discriminant P,Q rejected");
+
+  for my $case (
+    [101,  46339,  1, 1],
+    [101, -46339,  1, 1],
+    [101,  1,  46339, 1],
+    [101,  1, -46339, 1],
+    [101,  3037000498,  1, 1],
+    [101, -3037000498,  1, 1],
+    [101,  1,  3037000498, 1],
+    [101,  1, -3037000498, 1],
+    [101,  3037000497,  3037000497, 1],
+    [101, -3037000497, -3037000497, 1],
+    [101,  3037000498,  3037000496, 1],
+  ) {
+    my($n, $P, $Q, $exp) = @$case;
+    is(is_frobenius_pseudoprime($n, $P, $Q), $exp, "Large Frobenius parameter ($P,$Q)");
+  }
+
   # These have no known counterexamples
   {
     my $ntests = $usexs ? 100 : 2;

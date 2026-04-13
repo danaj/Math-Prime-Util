@@ -758,6 +758,16 @@ bool is_perrin_pseudoprime(UV n, uint32_t restricted)
   return 0;
 }
 
+static void _frob_params_to_d(IV P, IV Q, IV *D, UV *Du) {
+  const IV maxparam = (BITS_PER_WORD == 64)  ?  UVCONST(3037000497)  :  46338L;
+
+  if (P > maxparam || P < -maxparam || Q > maxparam || Q < -maxparam)
+    croak("is_frobenius_pseudoprime: P,Q out of range");
+
+  *D = P * P - 4 * Q;
+  *Du = *D >= 0  ?  (UV)*D :  (UV)(-*D);
+}
+
 bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
 {
   UV U, V, t, Vcomp;
@@ -774,8 +784,7 @@ bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
     do {
       P += 2;
       if (P == 3) P = 5;  /* P=3,Q=2 -> D=9-8=1 => k=1, so skip */
-      D = P*P-4*Q;
-      Du = D >= 0 ? D : -D;
+      _frob_params_to_d(P, Q, &D, &Du);
       k = kronecker_su(D, n);
       if (P == 10001 && is_perfect_square(n)) return 0;
     } while (k == 1);
@@ -784,19 +793,17 @@ bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
     MPUverbose(1, "%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
     Vcomp = 4;
   } else {
-    D = P*P-4*Q;
-    Du = D >= 0 ? D : -D;
+    _frob_params_to_d(P, Q, &D, &Du);
     if (D != 5 && is_perfect_square(Du))
       croak("Frobenius invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
   }
   Pu = ivmod(P,n);
   Qu = ivmod(Q,n);
 
-  t = gcd_ui(n, Pu*Qu*Du);
-  if (t != 1) {
-    if (t == n) return is_prob_prime(n);
-    return 0;
-  }
+  t = gcd_ui(n, Pu);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
+  t = gcd_ui(n, Qu);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
+  t = gcd_ui(n, Du);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
+
   if (k == 0) {
     k = kronecker_su(D, n);
     if (k == 0) return 0;

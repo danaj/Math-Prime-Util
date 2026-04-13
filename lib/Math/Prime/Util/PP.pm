@@ -9900,7 +9900,13 @@ sub is_catalan_pseudoprime {
 
 sub is_frobenius_pseudoprime {
   my($n, $P, $Q) = @_;
-  ($P,$Q) = (0,0) unless defined $P && defined $Q;
+  _validate_integer($n);
+  if (defined $P && defined $Q) {
+    _validate_integer($P);
+    _validate_integer($Q);
+  } else {
+    ($P,$Q) = (0,0);
+  }
   return 0+($n >= 2) if $n < 4;
 
   $n = tobigint($n);
@@ -9912,20 +9918,28 @@ sub is_frobenius_pseudoprime {
     while ($k != -1) {
       $P += 2;
       $P = 5 if $P == 3;  # Skip 3
-      $D = $P*$P-4*$Q;
-      $Du = ($D >= 0) ? $D : -$D;
+      $D = Mmulsubint($P,$P,Mmulint(4,$Q));
+      $Du = Mabsint($D);
       last if $P >= $n || $Du >= $n;   # TODO: remove?
       $k = Mkronecker($D, $n);
       return 0 if $k == 0;
       return 0 if $P == 10001 && _is_perfect_square($n);
     }
   } else {
-    $D = $P*$P-4*$Q;
-    $Du = ($D >= 0) ? $D : -$D;
+    $D = Mmulsubint($P,$P,Mmulint(4,$Q));
+    $Du = Mabsint($D);
     croak "Frobenius invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
   }
-  return (Mis_prime($n) ? 1 : 0) if $n <= $Du || $n <= abs($Q) || $n <= abs($P);
-  return 0 if Mgcd(abs($P*$Q*$D), $n) > 1;
+
+  if (Mcmpint($n,$Du) <= 0 || Mcmpint($n,Mabsint($Q)) <= 0 || Mcmpint($n,Mabsint($P)) <= 0) {
+    return (Mis_prime($n) ? 1 : 0)
+  }
+
+  for my $CMP (Mabsint($P), Mabsint($Q), $Du) {
+    my $t = Mgcd($n, $CMP);
+    return (is_prob_prime($n) ? 1 : 0) if $t == $n;
+    return 0 if $t > 1;
+  }
 
   if ($k == 0) {
     $k = Mkronecker($D, $n);
