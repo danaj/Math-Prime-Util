@@ -915,19 +915,23 @@ bool is_frobenius_underwood_pseudoprime(UV n)
   if (n < 7) return (n == 2 || n == 3 || n == 5);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
-  for (x = 0; x < 1000000; x++) {
+  for (x = 0; x <= 2000000; x++) {
     if (x==2 || x==4 || x==7 || x==8 || x==10 || x==14 || x==16 || x==18)
       continue;
+    if (x > 999999 || x > (BITS_PER_WORD == 64 ? UVCONST(3037000499) : 46340))
+      croak("FU test failure, unable to find suitable a");
     t = (IV)(x*x) - 4;
     j = jacobi_iu(t, n);
     if (j == -1) break;
     if (j == 0 || (x == 20 && is_perfect_square(n)))
       return 0;
   }
-  if (x >= 1000000) croak("FU test failure, unable to find suitable a");
-  t1 = gcd_ui(n, (x+4)*(2*x+5));
-  if (t1 != 1 && t1 != n)
-    return 0;
+
+  a = x+4;
+  b = 2*x+5;
+  t1 = gcd_ui(n, mulmod(a % n, b % n, n));
+  if (t1 != 1 && t1 != n) return 0;
+
   np1 = n+1;
   { UV v = np1; len = 1;  while (v >>= 1) len++; }
 
