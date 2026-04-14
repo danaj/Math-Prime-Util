@@ -65,7 +65,6 @@ our $_BIGINT;
 
 
 *reftyped = \&Math::Prime::Util::_reftyped;
-#*load_bigint = \&Math::Prime::Util::_load_bigint;
 *tobigint = \&Math::Prime::Util::_to_bigint;
 *maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
 *maybetobigintall = \&Math::Prime::Util::_maybe_bigint_allargs;
@@ -325,25 +324,6 @@ sub _validate_integer_abs {
   _validate_integer($_[0]);
 }
 
-# Given an integer input, return correct native or $_BIGINT form
-sub _to_canonical {
-  return $_[0] unless defined $_[0];
-  my $refn = ref $_[0];
-  if ($refn) {
-    # Object: unwrap to native if it fits, otherwise ensure it's $_BIGINT
-    return int("$_[0]") if $_[0] <= INTMAX && $_[0] >= INTMIN;
-    _load_bigint() unless defined $_BIGINT;
-    return ($refn ne $_BIGINT) ? $_BIGINT->new("$_[0]") : $_[0];
-  } else {
-    # Native scalar: promote to $_BIGINT if out of range
-    if ($_[0] >= INTMAX || $_[0] <= INTMIN) {     # Probably bigint
-      my $n = _to_bigint($_[0]);
-      return $n if $n > INTMAX || $n < INTMIN;    # Definitely bigint
-    }
-    return $_[0];
-  }
-}
-
 sub _try_real_gmp_func {
   my($fref, $ver, $x) = @_;
   return undef unless defined $Math::Prime::Util::GMP::VERSION &&
@@ -411,7 +391,10 @@ sub toint {
   }
   croak "toint: '$ns' is not a valid number" if $n =~ tr/-0-9//c;
   validate_integer($n);
-  $n = tobigint($n) if ref($n) && defined $_BIGINT && ref($n) ne $_BIGINT;
+  if (ref($n)) {
+    Math::Prime::Util::_load_bigint() unless defined $_BIGINT;
+    $n = tobigint($n) if ref($n) ne $_BIGINT;
+  }
   $n;
 }
 

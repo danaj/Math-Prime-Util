@@ -1393,11 +1393,6 @@ static SV* xs_to_bigint_abs(pTHX_ SV* r) {
 static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
   return xs_call_root_1_sv(aTHX_ "_to_bigint_nonneg", r);
 }
-#if 0  /* use xs_to_canonical instead */
-static SV* sv_to_canonical(pTHX_ SV* r) {
-  return xs_call_root_1_sv(aTHX_ "_to_canonical", r);
-}
-#endif
 
 #define NEWSVINT(sign,v) (((sign) > 0) ? newSVuv(v) : newSViv(v))
 #define SETSVINT(sv,setpos,posv,negv) \
@@ -4055,11 +4050,7 @@ void toint(IN SV* svn)
       XSRETURN(1);
     }
     if (stype & SNUMFLAG_BIGINT) {
-      /* TODO: this assumes the input bigint is the correct class */
-      if (!sv_isobject(svn) || !_sv_is_bigint(aTHX_ svn)) {
-        /* Not a bigint object, so convert it to one. */
-        ST(0) = xs_call_root_1_sv(aTHX_ "_to_bigint", svn);
-      }
+      ST(0) = xs_to_canonical(aTHX_ svn);  /* => bigint of proper class */
       XSRETURN(1);
     }
     /* It doesn't look like a number, but let Math::BigFloat decide. */

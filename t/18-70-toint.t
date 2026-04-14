@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/toint powint/;
+use Math::Prime::Util qw/toint powint addint/;
 use Math::BigInt;
 use Math::BigFloat;
 
@@ -23,6 +23,8 @@ plan tests => 1  # native ints
             + 1  # undef and empty strings
             + 1  # invalid
             + 1  # check return types
+            + 1  # canonical bigint class regardless of prior state
+            + 1  # optional alternate bigint class canonicalization
             ;
 
 ###############################################################################
@@ -295,3 +297,39 @@ subtest 'return type: native when fits, bigint when large' => sub {
     ok( is_bigint(toint($v)), "toint($label) is bigint");
   }
 };
+
+###############################################################################
+
+subtest 'canonical bigint class is stable' => sub {
+  my $big = "18446744073709551616";
+  my $r1 = toint($big);
+  ok(is_bigint($r1), "large integer string returns bigint");
+  my $class = ref($r1);
+
+  my $r2 = toint(Math::BigInt->new($big));
+  is(ref($r2), $class, "BigInt input returns canonical bigint class");
+
+  my $dummy = addint(~0, 0);  # force bigint setup for stateful-path regression
+  my $r3 = toint(Math::BigInt->new($big));
+  is(ref($r3), $class, "canonical bigint class unchanged after prior bigint load");
+};
+
+SKIP: {
+  skip "alternate bigint class check requires EXTENDED_TESTING", 1
+    unless defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+
+  my $class;
+  if (eval { require Math::GMPz; 1 }) {
+    $class = 'Math::GMPz';
+  } elsif (eval { require Math::GMP; 1 }) {
+    $class = 'Math::GMP';
+  } else {
+    skip "no alternate bigint class available", 1;
+  }
+
+  my $big = "18446744073709551616";
+  my $canonical = ref(toint($big));
+  my $alt = $class->new($big);
+  my $r = toint($alt);
+  is(ref($r), $canonical, "alternate bigint class input canonicalized to configured class");
+}
