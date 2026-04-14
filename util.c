@@ -655,8 +655,15 @@ UV logint(UV n, UV b)
 
 unsigned char* range_issquarefree(UV lo, UV hi) {
   unsigned char* isf;
-  UV i, p2, range = hi-lo+1, sqrthi = isqrt(hi);
+  UV i, p2, range, sqrthi;
+
   if (hi < lo) return 0;
+  if (hi-lo == UV_MAX || hi-lo+1 > (UV)((Size_t)((SSize_t)-1)))
+    croak("range_issquarefree: range too large");
+
+  range = hi - lo + 1;
+  sqrthi = isqrt(hi);
+
   New(0, isf, range, unsigned char);
   memset(isf, 1, range);
   if (lo == 0) isf[0] = 0;
@@ -664,8 +671,8 @@ unsigned char* range_issquarefree(UV lo, UV hi) {
   { /* Sieve multiples of 2^2,3^2,5^2 */
     UV p = 2;
     while (p < 7 && p <= sqrthi) {
-      for (p2=p*p, i = P_GT_LO(p2, p2, lo); i >= lo && i <= hi; i += p2)
-        isf[i-lo] = 0;
+      for (p2=p*p, i = P_GT_LO_0(p2, p2, lo); i < range; i += p2)
+        isf[i] = 0;
       p += 1 + (p > 2);
     }
   }
@@ -675,8 +682,11 @@ unsigned char* range_issquarefree(UV lo, UV hi) {
     void* ctx = start_segment_primes(7, sqrthi, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
       START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
-        for (p2=p*p, i = P_GT_LO(p2, p2, lo); i >= lo && i <= hi; i += p2)
-          isf[i-lo] = 0;
+        for (p2=p*p, i = P_GT_LO_0(p2, p2, lo); i < range; i += p2) {
+          isf[i] = 0;
+          if (range-i <= p2)
+            break;
+        }
       END_DO_FOR_EACH_SIEVE_PRIME
     }
     end_segment_primes(ctx);
@@ -1987,7 +1997,7 @@ bool from_digit_string(UV* rn, const char* s, int base)
   max = (UV_MAX-base+1)/base;
 
   for (i = 0; i < len; i++) {
-    const char c = s[i];
+    const unsigned char c = s[i];
     int d = !isalnum(c) ? 255 : (c <= '9') ? c-'0' : (c <= 'Z') ? c-'A'+10 : c-'a'+10;
     if (d >= base) croak("Invalid digit for base %d", base);
     if (n > max) return 0;   /* Overflow */
