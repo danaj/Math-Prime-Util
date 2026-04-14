@@ -358,6 +358,7 @@ sub entropy_bytes {
 *vecfreq = \&Math::Prime::Util::PP::vecfreq;
 *vecsingleton = \&Math::Prime::Util::PP::vecsingleton;
 *vecwindow = \&Math::Prime::Util::PP::vecwindow;
+*vecsample = \&Math::Prime::Util::PP::vecsample;
 *vecsort = \&Math::Prime::Util::PP::vecsort;
 *vecsorti = \&Math::Prime::Util::PP::vecsorti;
 *setbinop = \&Math::Prime::Util::PP::setbinop;
@@ -853,11 +854,6 @@ sub vecextract {
   croak "vecextract first argument must be an array reference"
     unless ref($aref) eq 'ARRAY';
   return Math::Prime::Util::PP::vecextract(@_);
-}
-
-sub vecsample ($@) {       ## no critic qw(ProhibitSubroutinePrototypes)
-  _validate_integer_nonneg($_[0]);
-  Math::Prime::Util::PP::vecsample(@_);
 }
 
 1;

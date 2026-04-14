@@ -43,6 +43,8 @@ plan tests =>   2                      # undefined and empty string
               + scalar(@incorrect)     # values that should be rejected
               + scalar(keys(%correct)) # values that should be accepted
               + 2                      # infinity and nan
+              + 2                      # internal validators normalize scalar ints
+              + 1                      # internal validators reject coderefs
               + 1;                     # long invalid string
 
 my $qrnn = qr/ must be a (non-negative|positive) integer/;
@@ -83,6 +85,41 @@ SKIP: {
   skip "Your machine seems to not have NaN", 1 if $nan >= 0 || $nan =~ /^\d*$/;
   eval { next_prime($nan); };
   like($@, $qrnn, "Gives Error:  next_prime( nan ) [nan = '$nan']");
+}
+
+{
+  my @vals = ("42", "+42", "007", "-0");
+  my @got;
+  for my $v (@vals) {
+    my $x = $v;
+    Math::Prime::Util::_validate_integer($x);
+    push @got, [ "$x", ref($x) ? ref($x) : "" ];
+  }
+  is_deeply(\@got,
+            [ ["42",""], ["42",""], ["7",""], ["0",""] ],
+            "_validate_integer normalizes in-range scalar integers");
+}
+
+{
+  my @vals = ("42", "+42", "007");
+  my @got;
+  for my $v (@vals) {
+    my $x = $v;
+    Math::Prime::Util::_validate_integer_nonneg($x);
+    push @got, [ "$x", ref($x) ? ref($x) : "" ];
+  }
+  is_deeply(\@got,
+            [ ["42",""], ["42",""], ["7",""] ],
+            "_validate_integer_nonneg normalizes in-range scalar integers");
+}
+
+{
+  my $ok = 0;
+  $ok++ if !defined eval { Math::Prime::Util::_validate_integer(sub { 123 }); 1 } &&
+            $@ =~ /must be an integer/;
+  $ok++ if !defined eval { Math::Prime::Util::_validate_integer_nonneg(sub { 123 }); 1 } &&
+            $@ =~ /must be a non-negative integer/;
+  is($ok, 2, "_validate_integer* reject coderefs");
 }
 
 

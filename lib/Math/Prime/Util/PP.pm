@@ -265,15 +265,13 @@ sub _validate_integer {
       if $n eq '' || ($n =~ tr/0123456789//c && $n !~ /^([+-]?)\d+\z/);
     substr($_[0],0,1,'') if $1 && (substr($n,0,1) eq '+' || $n eq '-0');
     $_[0] = maybetobigint($n) if $n >= INTMAX || $n <= INTMIN;
+    $_[0] = 0 + $_[0] unless ref($_[0]);
   } elsif ($refn eq 'Math::BigInt') {
     croak "Parameter '$n' must be an integer" unless $n->is_int;
     if ($n->is_negative) { $_[0]=_bigint_to_int($_[0]) if $n >= INTMIN; }
     else                 { $_[0]=_bigint_to_int($_[0]) if $n <= INTMAX; }
   } elsif ($refn =~ /^Math::/ && $refn ne 'Math::BigFloat') {
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
-  } elsif ($refn eq 'CODE') {
-    $_[0] = $_[0]->();
-    return _validate_integer($_[0]);
   } else {
     $_[0] = "$_[0]";
     return _validate_integer($_[0]);
@@ -297,6 +295,7 @@ sub _validate_integer_nonneg {
     substr($_[0],0,1,'') if $1 && substr($n,0,1) eq '+';
     # If probably a bigint, do the upgrade, then verify for edge cases.
     $_[0] = maybetobigint($n) if $n >= INTMAX;
+    $_[0] = 0 + $_[0] unless ref($_[0]);
   } elsif ($refn eq 'Math::BigInt') {
     croak "Parameter '$n' must be a non-negative integer"
       if !$n->is_int || $n->is_negative;
@@ -304,9 +303,6 @@ sub _validate_integer_nonneg {
   } elsif ($refn =~ /^Math::/ && $refn ne 'Math::BigFloat') {
     croak "Parameter '$n' must be a non-negative integer" if $n < 0;
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
-  } elsif ($refn eq 'CODE') {
-    $_[0] = $_[0]->();
-    return _validate_integer_nonneg($_[0]);
   } else {
      $_[0] = "$_[0]";
      return _validate_integer_nonneg($_[0]);
@@ -12330,8 +12326,9 @@ sub shuffle {
   @S;
 }
 
-sub vecsample {
+sub vecsample ($@) {   ## no critic qw(ProhibitSubroutinePrototypes)
   my $k = shift;
+  validate_integer_nonneg($k);
   return () if $k == 0 || @_ == 0;
   my $R = $_[0];
   my $isarr = (@_ > 1 || !ref($R) || ref($R) ne 'ARRAY');
