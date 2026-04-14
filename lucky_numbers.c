@@ -439,7 +439,8 @@ UV lucky_count_range(UV lo, UV hi) {
    */
 
   if ((lo & 1)) lo--;    /* Both lo and hi will be even */
-  if ((hi & 1)) hi++;
+  if (hi == UV_MAX) hi--;
+  if ((hi & 1)) hi = hi < UV_MAX ? hi+1 : hi-1;
   lsize = 1+lucky_count_upper(hi);
 
   if (hi <= UVCONST(2000000000)) {
@@ -532,7 +533,6 @@ UV nth_lucky_upper(UV n) {
 UV nth_lucky_lower(UV n) {
   double est, corr;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
-  est = nth_lucky_approx(n);
   corr = (n <=        122) ? 0.95  :
          (n <=       4096) ? 0.97  :
          (n <=     115000) ? 0.998 :
