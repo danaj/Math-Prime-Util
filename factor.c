@@ -303,7 +303,7 @@ void factorintp(factored_t *nf, UV n)
 void factoredp_validate(const factored_t *nf)
 {
   if (nf->n == 0) {
-    MPUassert(nf->nfactors == 1, "factored_t n=0  =>  nfactors = 0");
+    MPUassert(nf->nfactors == 1, "factored_t n=0  =>  nfactors = 1");
     MPUassert(nf->f[0] == 0 && nf->e[0] == 1, "factored_t n=0  =>  vecprod = n");
   } else if (nf->n == 1) {
     MPUassert(nf->nfactors == 0, "factored_t n=1  =>  nfactors = 0");
@@ -1461,11 +1461,16 @@ static void _vec_factor(UV lo, UV hi, UV *nfactors, UV *farray, UV noffset, bool
 
 factor_range_context_t factor_range_init(UV lo, UV hi, bool square_free) {
   factor_range_context_t ctx;
+  UV span = hi-lo;
+
+  MPUassert(hi >= lo, "factor_range_init: hi < lo");
+
   ctx.lo = lo;
   ctx.hi = hi;
   ctx.n = lo-1;
   ctx.is_square_free = square_free;
-  if (hi-lo+1 > 100) {        /* Sieve in chunks */
+
+  if (span >= 100) {          /* Sieve in chunks */
     if (square_free) ctx._noffset = (hi <= 42949672965UL) ? 10 : 15;
     else             ctx._noffset = BITS_PER_WORD - clz(hi);
     ctx._coffset = _fr_chunk;
@@ -1473,7 +1478,7 @@ factor_range_context_t factor_range_init(UV lo, UV hi, bool square_free) {
     New(0, ctx._farray, _fr_chunk * ctx._noffset, UV);
     { /* Prealloc all the sieving primes now. */
       UV t = isqrt(hi);
-      if (!_fr_full_sieve(t, hi-lo))  t = icbrt(hi);
+      if (!_fr_full_sieve(t, span))  t = icbrt(hi);
       get_prime_cache(t, 0);
     }
   } else {                    /* factor each number */
@@ -1528,20 +1533,23 @@ void factor_range_destroy(factor_range_context_t *ctx) {
 
 unsigned char* range_nfactor_sieve(UV lo, UV hi, bool with_multiplicity) {
   unsigned char* nf;
-  UV *N, i, range = hi-lo+1, sqrtn = isqrt(hi);
+  UV *N, i, range, sqrtn = isqrt(hi);
 
+  if (hi < lo || hi-lo == UV_MAX) croak("Invalid range in range_nfactor_sieve");
+  range = hi - lo + 1;
   Newz(0, nf, range, unsigned char);
   New(0, N, range, UV);
 
   /* We could set to 1 and sieve from 2, or do this initialization */
-  for (i = lo; i <= hi && i >= lo; i++) {
-    N[i-lo] = 1;
-    if (!(i&1) && i >= 2) {
-      UV k = i >> 1;
+  for (i = 0; i < range; i++) {
+    UV v = lo+i;
+    N[i] = 1;
+    if (!(v&1) && v >= 2) {
+      UV k = v >> 1;
       unsigned char nz = 1;
       while (!(k&1)) { nz++; k >>= 1; }
-      nf[i-lo] = (with_multiplicity) ? nz : 1;
-      N[i-lo] = UVCONST(1) << nz;
+      nf[i] = (with_multiplicity) ? nz : 1;
+      N[i] = UVCONST(1) << nz;
     }
   }
 

@@ -7999,13 +7999,6 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
     if (beg < 1) beg = 1;
     if (beg > end) XSRETURN(0);
 
-    for (maxfactors = 0, n = end >> 1;  n;  n >>= 1)
-      maxfactors++;
-    for (i = 0; i < maxfactors; i++) {
-      svals[i] = newSVuv(UV_MAX);
-      SvREADONLY_on(svals[i]);
-    }
-
     START_FORCOUNT;
     SAVESPTR(GvSV(PL_defgv));
     svarg = newSVuv(0);
@@ -8014,6 +8007,17 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       sv_setuv(svarg, 1);
       PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
+    }
+    if (beg > end) {
+      SvREFCNT_dec(svarg);
+      END_FORCOUNT;
+      XSRETURN(0);
+    }
+    for (maxfactors = 0, n = end >> 1;  n;  n >>= 1)
+      maxfactors++;
+    for (i = 0; i < maxfactors; i++) {
+      svals[i] = newSVuv(UV_MAX);
+      SvREADONLY_on(svals[i]);
     }
     fctx = factor_range_init(beg, end, ix);
 #if USE_MULTICALL
