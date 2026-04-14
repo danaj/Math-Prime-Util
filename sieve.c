@@ -339,7 +339,7 @@ bool sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray
   uint32_t segsize = endd - startd + 1;
   UV startp = 30*startd;
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
-  MPUassert(mem != 0 && endd >= startd && endp >= startp,
+  MPUassert(mem != 0 && endd >= startd && endp >= startp && wsize > 0,
             "sieve_segment bad arguments");
 
   /* possibly use primary cache directly */
@@ -425,7 +425,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
 #endif
   ctx->segment = get_prime_segment( &(ctx->segment_size) );
   *segmentmem = ctx->segment;
-  nsegments = (((high-low+29)/30)+ctx->segment_size-1) / ctx->segment_size;
+  nsegments = ((ctx->hid - ctx->lod + 1) + ctx->segment_size - 1) / ctx->segment_size;
 
   MPUverbose(3, "segment sieve: byte range %lu split into %lu segments of size %lu\n", (unsigned long)range, (unsigned long)nsegments, (unsigned long)ctx->segment_size);
 
