@@ -7401,14 +7401,14 @@ sub is_congruent_number {
       my($p, $q) = ($factors[0], $factors[1]);
       my($p8, $q8) = ($p % 8, $q %8);
       return 0 if $p8 == 3 && $q8 == 3;
-      return 0 if $p8 == 1 && $q8 == 3 && kronecker($p,$q) == -1;
-      return 0 if $p8 == 3 && $q8 == 1 && kronecker($q,$p) == -1;
+      return 0 if $p8 == 1 && $q8 == 3 && Mkronecker($p,$q) == -1;
+      return 0 if $p8 == 3 && $q8 == 1 && Mkronecker($q,$p) == -1;
     } elsif (scalar(@factors) == 3 && $factors[0] == 2) {
       my($p, $q) = ($factors[1], $factors[2]);
       my($p8, $q8) = ($p % 8, $q %8);
       return 0 if $p8 == 5 && $q8 == 5;
-      return 0 if $p8 == 1 && $q8 == 5 && kronecker($p,$q) == -1;
-      return 0 if $p8 == 5 && $q8 == 1 && kronecker($q,$p) == -1;
+      return 0 if $p8 == 1 && $q8 == 5 && Mkronecker($p,$q) == -1;
+      return 0 if $p8 == 5 && $q8 == 1 && Mkronecker($q,$p) == -1;
     }
   }
 
@@ -8216,6 +8216,8 @@ sub is_strong_pseudoprime {
 # Extension of the Jacobi symbol, itself an extension of the Legendre symbol.
 sub kronecker {
   my($a, $b) = @_;
+  validate_integer($a);
+  validate_integer($b);
   return (abs($a) == 1) ? 1 : 0  if $b == 0;
   my $k = 1;
   if ($b % 2 == 0) {
@@ -9281,9 +9283,13 @@ sub _lucas_extrastrong_params {
 # returns U_k, V_k, Q_k all mod n
 sub lucas_sequence {
   my($n, $P, $Q, $k) = @_;
-
+  validate_integer_positive($n);
+  validate_integer($P);
+  validate_integer($Q);
+  validate_integer_nonneg($k);
   croak "lucas_sequence: n must be > 0" if $n < 1;
   croak "lucas_sequence: k must be >= 0" if $k < 0;
+
   return (0,0,0) if $n == 1;
 
   if ($Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.30 && !ref($P) && !ref($Q)) {

@@ -339,6 +339,7 @@ sub entropy_bytes {
 *allrootmod = \&Math::Prime::Util::PP::allrootmod;
 *factorialmod = \&Math::Prime::Util::PP::factorialmod;
 *binomialmod = \&Math::Prime::Util::PP::binomialmod;
+*lucas_sequence = \&Math::Prime::Util::PP::lucas_sequence;
 *lucasumod = \&Math::Prime::Util::PP::lucasumod;
 *lucasvmod = \&Math::Prime::Util::PP::lucasvmod;
 *lucasuvmod = \&Math::Prime::Util::PP::lucasuvmod;
@@ -351,6 +352,7 @@ sub entropy_bytes {
 *is_primitive_root = \&Math::Prime::Util::PP::is_primitive_root;
 *qnr = \&Math::Prime::Util::PP::qnr;
 *is_qr = \&Math::Prime::Util::PP::is_qr;
+*kronecker = \&Math::Prime::Util::PP::kronecker;
 
 
 *vecequal = \&Math::Prime::Util::PP::vecequal;
@@ -568,15 +570,6 @@ sub is_mersenne_prime {
   _validate_integer_nonneg($p);
   return Math::Prime::Util::PP::is_mersenne_prime($p);
 }
-sub lucas_sequence {
-  my($n, $P, $Q, $k) = @_;
-  my ($vp, $vq) = ($P, $Q);
-  _validate_integer_positive($n);
-  _validate_integer($vp);
-  _validate_integer($vq);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::lucas_sequence(@_);
-}
 sub lucasu {
   my($P, $Q, $k) = @_;
   my ($vp, $vq) = ($P, $Q);
@@ -599,14 +592,6 @@ sub lucasuv {
   _validate_integer($Q);
   _validate_integer_nonneg($k);
   return Math::Prime::Util::PP::lucasuv($P,$Q,$k);
-}
-
-sub kronecker {
-  my($a, $b) = @_;
-  my ($va, $vb) = ($a, $b);
-  _validate_integer($va);
-  _validate_integer($vb);
-  return Math::Prime::Util::PP::kronecker(@_);
 }
 
 sub factorial {
