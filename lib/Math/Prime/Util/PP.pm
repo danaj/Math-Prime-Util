@@ -12517,7 +12517,7 @@ sub setminus {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
                                      && (ref($rb) || '') eq 'ARRAY';
-  return $ra if scalar(@$rb) == 0;
+  return [@$ra] if scalar(@$rb) == 0;
   my %inb;
   undef @inb{@$rb};
   Mtoset(grep { !exists $inb{$_} } @$ra);
@@ -12526,8 +12526,8 @@ sub setdelta {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless (ref($ra) || '') eq 'ARRAY'
                                      && (ref($rb) || '') eq 'ARRAY';
-  return $ra if scalar(@$rb) == 0;
-  return $rb if scalar(@$ra) == 0;
+  return [@$ra] if scalar(@$rb) == 0;
+  return [@$rb] if scalar(@$ra) == 0;
   my(%ina, %inb);
   undef @ina{@$ra};
   undef @inb{@$rb};

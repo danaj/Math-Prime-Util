@@ -126,6 +126,7 @@ my @set2 = (
 
 
 plan tests => 2        # specific tests
+            + 1        # empty-set non-aliasing
             + 1        # toset
             + 4        # union etc. on sets and lists
             + 1 + 1    # sidon and sumfree
@@ -142,6 +143,21 @@ plan tests => 2        # specific tests
 
 is_deeply(setunion([1,2,3],[-11,-5,10]),[-11,-5,1,2,3,10],"setunion signed properly sorted");
 is_deeply(setdelta([7,1,3,5,1], [3,7,8,3,9]), [1,5,8,9], "setdelta with unsorted and dups works" );
+
+subtest 'empty-set ops return new refs', sub {
+  my $a = [1,2,3];
+  my $b = [];
+  my $c = [4,5];
+  my $r1 = setminus($a, $b);
+  my $r2 = setdelta($a, $b);
+  my $r3 = setdelta($b, $c);
+  is_deeply($r1, [1,2,3], 'setminus value');
+  is_deeply($r2, [1,2,3], 'setdelta right empty value');
+  is_deeply($r3, [4,5],   'setdelta left empty value');
+  isnt($r1, $a, 'setminus does not alias input');
+  isnt($r2, $a, 'setdelta right empty does not alias input');
+  isnt($r3, $c, 'setdelta left empty does not alias input');
+};
 
 subtest 'toset', sub {
   is_deeply( toset(),[],"toset: empty list" );
