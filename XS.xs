@@ -7681,6 +7681,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
   PREINIT:
     UV i, n, amin, amax, nmin, nmax;
     int primeq;
+    bool doloop0, doloopn;
     CV *subcv;
     SV** svals;
     DECL_FORCOUNT;
@@ -7692,12 +7693,6 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       XSRETURN(0);
     }
     if (n > (UV_MAX-2)) croak("%s: argument overflow", SUBNAME);
-
-    New(0, svals, n+1, SV*);
-    for (i = 0; i <= n; i++) {
-      svals[i] = newSVuv(i);
-      SvREADONLY_on(svals[i]);
-    }
 
     amin = 1;  amax = n;  nmin = 1;  nmax = n;  primeq = -1;
     if (svh != 0) {
@@ -7728,19 +7723,29 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
       if (amax > prev)  amax = prev;
     }
 
-    if (n==0 && nmin <= 1) {
-      /* Nothing */
+    doloop0 = (n == 0 && nmin <= 1);
+    doloopn = (n >= nmin && nmin <= nmax && amin <= amax && nmax>0 && amax>0);
+
+    if (!doloop0 && !doloopn) XSRETURN(0);
+
+    START_FORCOUNT;
+    if (doloop0) {  /* Empty, no setup needed */
       PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
     }
-    if (n >= nmin && nmin <= nmax && amin <= amax && nmax > 0 && amax > 0)
-    { /* RuleAsc algorithm from Kelleher and O'Sullivan 2009/2014) */
+    if (doloopn && !*forexit) {
+      /* RuleAsc algorithm from Kelleher and O'Sullivan 2009/2014) */
       UV *a, k, x, y, r;
+
+      New(0, svals, n+1, SV*);
+      for (i = 0; i <= n; i++) {
+        svals[i] = newSVuv(i);
+        SvREADONLY_on(svals[i]);
+      }
       New(0, a, n+1, UV);
-      k = 1;
       a[0] = amin-1;
       a[1] = n-amin+1;
-      START_FORCOUNT;
-      while (k != 0) {
+
+      for (k = 1; k != 0; ) {
         x = a[k-1]+1;
         y = a[k]-1;
         k--;
@@ -7789,11 +7794,11 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
         CHECK_FORCOUNT;
       }
       Safefree(a);
-      END_FORCOUNT;
+      for (i = 0; i <= n; i++)
+        SvREFCNT_dec(svals[i]);
+      Safefree(svals);
     }
-    for (i = 0; i <= n; i++)
-      SvREFCNT_dec(svals[i]);
-    Safefree(svals);
+    END_FORCOUNT;
 
 void
 forcomb (SV* block, IN SV* svn, IN SV* svk = 0)

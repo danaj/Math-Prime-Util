@@ -12061,46 +12061,53 @@ sub _forcompositions {
    $primeq = 2 if $primeq != -1 && $primeq != 0;
   }
 
-  $sub->() if $n == 0 && $minn <= 1;
-  return if $n < $minn || $minn > $maxn || $mina > $maxa || $maxn <= 0 || $maxa <= 0;
+  my $doloop0 = ($n == 0 && $minn <= 1);
+  my $doloopn = ($n >= $minn && $minn <= $maxn && $mina <= $maxa && $maxn > 0 && $maxa > 0);
+
+  return if !$doloop0 && !$doloopn;
 
   my $oldforexit = Math::Prime::Util::_start_for_loop();
-  my ($x, $y, $r, $k);
-  my @a = (0) x ($n);
-  $k = 1;
-  $a[0] = $mina - 1;
-  $a[1] = $n - $mina + 1;
-  while ($k != 0) {
-    $x = $a[$k-1]+1;
-    $y = $a[$k]-1;
-    $k--;
-    $r = $ispart ? $x : 1;
-    while ($r <= $y) {
-      $a[$k] = $x;
-      $x = $r;
-      $y -= $x;
-      $k++;
-    }
-    $a[$k] = $x + $y;
-    # Restrict size
-    while ($k+1 > $maxn) {
-      $a[$k-1] += $a[$k];
+
+  $sub->() if $doloop0;
+
+  if ($doloopn && !Math::Prime::Util::_get_forexit()) {
+    my ($x, $y, $r, $k);
+    my @a = (0) x ($n);
+    $k = 1;
+    $a[0] = $mina - 1;
+    $a[1] = $n - $mina + 1;
+    while ($k != 0) {
+      $x = $a[$k-1]+1;
+      $y = $a[$k]-1;
       $k--;
-    }
-    next if $k+1 < $minn;
-    # Restrict values
-    if ($mina > 1 || $maxa < $n) {
-      last if $a[0] > $maxa;
-      if ($ispart) {
-        next if $a[$k] > $maxa;
-      } else {
-        next if Mvecany(sub{ $_ < $mina || $_ > $maxa }, @a[0..$k]);
+      $r = $ispart ? $x : 1;
+      while ($r <= $y) {
+        $a[$k] = $x;
+        $x = $r;
+        $y -= $x;
+        $k++;
       }
+      $a[$k] = $x + $y;
+      # Restrict size
+      while ($k+1 > $maxn) {
+        $a[$k-1] += $a[$k];
+        $k--;
+      }
+      next if $k+1 < $minn;
+      # Restrict values
+      if ($mina > 1 || $maxa < $n) {
+        last if $a[0] > $maxa;
+        if ($ispart) {
+          next if $a[$k] > $maxa;
+        } else {
+          next if Mvecany(sub{ $_ < $mina || $_ > $maxa }, @a[0..$k]);
+        }
+      }
+      next if $primeq == 0 && Mvecany(sub{ Mis_prime($_) }, @a[0..$k]);
+      next if $primeq == 2 && Mvecany(sub{ !Mis_prime($_) }, @a[0..$k]);
+      last if Math::Prime::Util::_get_forexit();
+      $sub->(@a[0 .. $k]);
     }
-    next if $primeq == 0 && Mvecany(sub{ Mis_prime($_) }, @a[0..$k]);
-    next if $primeq == 2 && Mvecany(sub{ !Mis_prime($_) }, @a[0..$k]);
-    last if Math::Prime::Util::_get_forexit();
-    $sub->(@a[0 .. $k]);
   }
   Math::Prime::Util::_end_for_loop($oldforexit);
 }
