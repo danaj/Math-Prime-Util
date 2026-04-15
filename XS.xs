@@ -7679,7 +7679,7 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     forcomp = 1
   PROTOTYPE: &$;$
   PREINIT:
-    UV i, n, amin, amax, nmin, nmax;
+    UV i, n, amin, amax, nmin, nmax, tmp;
     int primeq;
     bool doloop0, doloopn;
     CV *subcv;
@@ -7698,22 +7698,38 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
     if (svh != 0) {
       HV* rhash;
       SV** svp;
+      int argstatus = 1;
+
       if (!SvROK(svh) || SvTYPE(SvRV(svh)) != SVt_PVHV)
         croak("%s: expected hash reference", SUBNAME);
       rhash = (HV*) SvRV(svh);
-      if ((svp = hv_fetchs(rhash, "n", 0)) != NULL)
-        { nmin = my_svuv(*svp);  nmax = nmin; }
-      if ((svp = hv_fetchs(rhash, "amin", 0)) != NULL) amin = my_svuv(*svp);
-      if ((svp = hv_fetchs(rhash, "amax", 0)) != NULL) amax = my_svuv(*svp);
-      if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL) nmin = my_svuv(*svp);
-      if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL) nmax = my_svuv(*svp);
-      if ((svp = hv_fetchs(rhash, "prime",0)) != NULL) primeq=my_svuv(*svp);
+
+      if ((svp = hv_fetchs(rhash, "n", 0)) != NULL) {
+        argstatus &= (_validate_and_set(&nmin, aTHX_ *svp, IFLAG_NONNEG) == 1);
+        nmax = nmin;
+      }
+      if ((svp = hv_fetchs(rhash, "amin", 0)) != NULL)
+        argstatus &= (_validate_and_set(&amin, aTHX_ *svp, IFLAG_NONNEG) == 1);
+      if ((svp = hv_fetchs(rhash, "amax", 0)) != NULL)
+        argstatus &= (_validate_and_set(&amax, aTHX_ *svp, IFLAG_NONNEG) == 1);
+      if ((svp = hv_fetchs(rhash, "nmin", 0)) != NULL)
+        argstatus &= (_validate_and_set(&nmin, aTHX_ *svp, IFLAG_NONNEG) == 1);
+      if ((svp = hv_fetchs(rhash, "nmax", 0)) != NULL)
+        argstatus &= (_validate_and_set(&nmax, aTHX_ *svp, IFLAG_NONNEG) == 1);
+      if ((svp = hv_fetchs(rhash, "prime",0)) != NULL) {
+        argstatus &= (_validate_and_set(&tmp, aTHX_ *svp, IFLAG_NONNEG) == 1);
+        primeq = (tmp != 0);  /* primeq: -1=any, 0=!prime, 1=prime */
+      }
+
+      if (argstatus == 0) {
+        DISPATCH_VOIDPP();
+        XSRETURN(0);
+      }
 
       if (amin < 1) amin = 1;
       if (amax > n) amax = n;
       if (nmin < 1) nmin = 1;
       if (nmax > n) nmax = n;
-      if (primeq != 0 && primeq != -1) primeq = 1;  /* -1, 0, or 1 */
     }
 
     if (primeq == 1) {
