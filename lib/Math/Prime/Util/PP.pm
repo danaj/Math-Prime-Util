@@ -12426,9 +12426,7 @@ sub sumset {
 sub vecuniq {
   my %seen = ();
   my $k;
-  # Validation means about 1.4x slower.
-  #my @T = @_; return grep { validate_integer($_) && not $seen{$k = $_}++; } @T;
-  # We have decided to skip validation and not support undefined values.
+  croak 'vecuniq: all values must be defined' if grep { !defined $_ } @_;
   return grep { not $seen{$k = $_}++; } @_;
 }
 
