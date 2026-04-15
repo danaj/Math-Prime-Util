@@ -127,6 +127,7 @@ my @set2 = (
 
 plan tests => 2        # specific tests
             + 1        # empty-set non-aliasing
+            + 1        # mutating set ops preserve second arg
             + 1        # toset
             + 4        # union etc. on sets and lists
             + 1 + 1    # sidon and sumfree
@@ -157,6 +158,22 @@ subtest 'empty-set ops return new refs', sub {
   isnt($r1, $a, 'setminus does not alias input');
   isnt($r2, $a, 'setdelta right empty does not alias input');
   isnt($r3, $c, 'setdelta left empty does not alias input');
+};
+
+subtest 'mutating set ops preserve second arg', sub {
+  my $b = [5,15,35];
+  my $a1 = [10,20,30];
+  my $a2 = [10,20,30];
+  setinsert($a1, $b);
+  is_deeply($b, [5,15,35], 'setinsert keeps second arg intact');
+  setremove($a2, $b);
+  is_deeply($b, [5,15,35], 'setremove keeps second arg intact');
+
+  my $c = [grep { $_ % 3 == 0 } 0..360];
+  my @origc = @$c;
+  my $a3 = [grep { $_ % 2 == 0 } 0..400];
+  setinvert($a3, $c);
+  is_deeply($c, \@origc, 'setinvert keeps second arg intact');
 };
 
 subtest 'toset', sub {

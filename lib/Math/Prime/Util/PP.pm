@@ -12657,7 +12657,7 @@ sub setinsert {
   my($set, @in) = @_;
   my $iset;
   if (@in == 1 && ref($in[0]) eq 'ARRAY') {
-    $iset = $in[0];
+    $iset = [ @{$in[0]} ];
   } else {
     $iset = Mtoset(@in);
   }
@@ -12744,7 +12744,7 @@ sub setremove {
   my $set = shift;
   my $iset;
   if (@_ == 1 && ref($_[0]) eq 'ARRAY') {
-    $iset = $_[0];
+    $iset = [ @{$_[0]} ];
   } else {
     $iset = Mtoset(@_);
   }
@@ -12800,7 +12800,7 @@ sub setinvert {
   return 0 if @in == 0;
   my $iset;
   if (@in == 1 && ref($in[0]) eq 'ARRAY') {
-    $iset = $in[0];
+    $iset = [ @{$in[0]} ];
   } else {
     $iset = Mtoset(@in);
   }
