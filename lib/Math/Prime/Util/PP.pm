@@ -12395,7 +12395,7 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
       # Set both here in case they modified $a in their function.
       $a = $ia;
       $b = $ib;
-      push @set, $sub->();
+      push @set, scalar $sub->();
     }
   }
   Mtoset(@set);
