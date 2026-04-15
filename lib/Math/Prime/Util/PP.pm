@@ -9898,8 +9898,9 @@ sub is_catalan_pseudoprime {
 
 sub is_frobenius_pseudoprime {
   my($n, $P, $Q) = @_;
+  croak "is_frobenius_pseudoprime: expected 1 or 3 arguments" if @_ == 2;
   _validate_integer($n);
-  if (defined $P && defined $Q) {
+  if (@_ >= 3) {
     _validate_integer($P);
     _validate_integer($Q);
   } else {

@@ -2280,7 +2280,7 @@ other compositeness tests.
 
 =head2 is_frobenius_pseudoprime
 
-Given an integer C<n> and two optional integer parameters C<a> and C<b>,
+Given an integer C<n> and optionally a pair of integer parameters C<a> and C<b>,
 returns 1 if C<n> is positive and a Frobenius probable prime with respect
 to the polynomial C<x^2 - ax + b>, and returns 0 otherwise.
 Without the parameters, C<b = 2> and

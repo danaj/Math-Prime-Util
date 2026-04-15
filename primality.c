@@ -57,7 +57,7 @@ bool is_pseudoprime(UV const n, UV a)
 {
   if (n < 3) return (n == 2);
   if (!(n&1) && !(a&1)) return 0;
-  if (a < 2) croak("Base %"UVuf" is invalid", a);
+  if (a < 2) croak("is_pseudoprime: invalid base: %"UVuf, a);
   if (a >= n) {
     a %= n;
     if (a <= 1)    return (a == 1);
@@ -79,7 +79,7 @@ bool is_euler_pseudoprime(UV const n, UV a)
 {
   if (n < 3) return (n == 2);
   if (!(n&1)) return 0;
-  if (a < 2) croak("Base %"UVuf" is invalid", a);
+  if (a < 2) croak("is_euler_pseudoprime: invalid base: %"UVuf, a);
   if (a > 2) {
     if (a >= n) {
       a %= n;
@@ -145,7 +145,7 @@ bool is_strong_pseudoprime(UV const n, UV a)
   int r, s = 0;
   if (n < 3) return (n == 2);
   if (!(n&1)) return 0;
-  if (a < 2) croak("Base %"UVuf" is invalid", a);
+  if (a < 2) croak("is_strong_pseudoprime: invalid base: %"UVuf, a);
   if (a >= n)  a %= n;
   if (a <= 1 || a == n-1) return 1;
 
@@ -513,7 +513,7 @@ bool is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
   if (n < 13) return (n == 2 || n == 3 || n == 5 || n == 7 || n == 11);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (increment < 1 || increment > 256)
-    croak("Invalid lucas parameter increment: %"UVuf"\n", increment);
+    croak("is_almost_extra_strong_lucas_pseudoprime: invalid increment: %"UVuf, increment);
 
   /* Ensure small primes work with large increments. */
   if ( (increment >= 16 && n <= 331) || (increment > 148 && n <= 631) )
@@ -795,7 +795,7 @@ bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
   } else {
     _frob_params_to_d(P, Q, &D, &Du);
     if (D != 5 && is_perfect_square(Du))
-      croak("Frobenius invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
+      croak("is_frobenius_pseudoprime: invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
   }
   Pu = ivmod(P,n);
   Qu = ivmod(Q,n);

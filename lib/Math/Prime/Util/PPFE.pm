@@ -160,6 +160,7 @@ sub entropy_bytes {
 *is_strong_pseudoprime = \&Math::Prime::Util::PP::is_strong_pseudoprime;
 *is_euler_plumb_pseudoprime = \&Math::Prime::Util::PP::is_euler_plumb_pseudoprime;
 *is_perrin_pseudoprime = \&Math::Prime::Util::PP::is_perrin_pseudoprime;
+*is_frobenius_pseudoprime = \&Math::Prime::Util::PP::is_frobenius_pseudoprime;
 
 *is_cyclic = \&Math::Prime::Util::PP::is_cyclic;
 *is_carmichael = \&Math::Prime::Util::PP::is_carmichael;
@@ -524,7 +525,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   return 0 if $n < 0;
   if (defined $increment) { _validate_integer_nonneg($increment); }
   else                    { $increment = 1; }
-  croak "aes lucas pseudoprime parameter must be 1-256"
+  croak "is_almost_extra_strong_lucas_pseudoprime: invalid increment: $increment"
     if $increment < 1 || $increment > 256;
   return Math::Prime::Util::PP::is_almost_extra_strong_lucas_pseudoprime($n, $increment);
 }
@@ -533,13 +534,6 @@ sub is_catalan_pseudoprime {
   _validate_integer($n);
   return 0 if $n < 0;
   return Math::Prime::Util::PP::is_catalan_pseudoprime($n);
-}
-sub is_frobenius_pseudoprime {
-  my($n, $P, $Q) = @_;
-  _validate_integer($n);
-  return 0 if $n < 0;
-  # TODO: validate P & Q
-  return Math::Prime::Util::PP::is_frobenius_pseudoprime($n, $P, $Q);
 }
 sub is_frobenius_underwood_pseudoprime {
   my($n) = @_;

@@ -39,8 +39,18 @@ plan tests => 1    # invalid inputs
             + 1;   # Frobenius pseudoprimes
 
 subtest 'invalid inputs should croak', sub {
-  ok(!eval { is_strong_pseudoprime(2047,0); }, "MR base 0 fails");
-  ok(!eval { is_strong_pseudoprime(2047,1); }, "MR base 1 fails");
+  ok(!eval { is_pseudoprime(2047,0); 1 } && $@ =~ /is_pseudoprime: invalid base: 0/,
+     "Fermat base 0 croak");
+  ok(!eval { is_euler_pseudoprime(703,1); 1 } && $@ =~ /is_euler_pseudoprime: invalid base: 1/,
+     "Euler base 1 croak");
+  ok(!eval { is_strong_pseudoprime(2047,0); 1 } && $@ =~ /is_strong_pseudoprime: invalid base: 0/,
+     "MR base 0 croak");
+  ok(!eval { is_strong_pseudoprime(2047,1); 1 } && $@ =~ /is_strong_pseudoprime: invalid base: 1/,
+     "MR base 1 croak");
+  ok(!eval { is_almost_extra_strong_lucas_pseudoprime(5777,0); 1 } && $@ =~ /is_almost_extra_strong_lucas_pseudoprime: invalid increment: 0/,
+     "AES Lucas increment 0 croak");
+  ok(!eval { is_frobenius_pseudoprime(91,3,2); 1 } && $@ =~ /is_frobenius_pseudoprime: invalid P,Q: \(3,2\)/,
+     "Frobenius invalid P,Q croak");
 };
 
 subtest 'basic functionality', sub {
@@ -290,6 +300,9 @@ subtest 'Frobenius type pseudoprimes', sub {
 
   @P = qw/13333 44801 486157 1615681 3125281 4219129 9006401 12589081 13404751 15576571 16719781/;
   is_deeply([grep{ !is_frobenius_pseudoprime($_,3,-5)} @P],[],"Small Frobenius(3,-5)");
+  ok(!eval { is_frobenius_pseudoprime(91, 3); 1; } && $@ =~ /is_frobenius_pseudoprime: expected 1 or 3 arguments/,
+     "Two-argument Frobenius call rejected");
+  ok(!eval { is_frobenius_pseudoprime(91, undef, 2); 1; }, "Undefined P rejected");
 
   ok(!eval { is_frobenius_pseudoprime(91, 3, 2); 1; }, "Square discriminant P,Q rejected");
 
