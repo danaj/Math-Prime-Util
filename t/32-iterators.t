@@ -44,6 +44,7 @@ plan tests => 8        # forprimes errors
             + 12       # lastfor
             + 1        # empty-callback lastfor
             + 4        # forpart/forcomp option validation
+            + 1        # forfactored/forsquarefree initial-callback lastfor
             + 13       # forfactored and forsquarefree
             + 1        # forsemiprimes
             + 1+10     # foralmostprimes
@@ -454,6 +455,19 @@ sub a053462 {
   $s = 0; forsquarefree    { $s += $_ } 7193953,7195732; is($s, 7813597636, "forsquarefree {} 7193953,7195732");
   $s = 0; forsquarefreeint { $s += $_ } 7193953,7195732; is($s, 7813597636, "forsquarefreeint {} 7193953,7195732");
 }
+subtest 'initial-callback lastfor' => sub {
+  my $t = 0;
+  forfactored { $t++; lastfor; } 0,3;
+  is($t, 1, 'forfactored');
+
+  $t = 0;
+  forsquarefree { $t++; lastfor; } 0,3;
+  is($t, 1, 'forsquarefree');
+
+  $t = 0;
+  forsquarefreeint { $t++; lastfor; } 0,3;
+  is($t, 1, 'forsquarefreeint');
+};
 
 ################### forsemiprimes
 

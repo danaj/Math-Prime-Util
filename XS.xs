@@ -8020,7 +8020,7 @@ forfactored (SV* block, IN SV* svbeg, IN SV* svend = 0)
       PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
     }
-    if (beg > end) {
+    if (*forexit || beg > end) {
       SvREFCNT_dec(svarg);
       END_FORCOUNT;
       XSRETURN(0);
@@ -8114,6 +8114,11 @@ void forsquarefreeint(SV* block, IN SV* svbeg, IN SV* svend = 0)
       sv_setuv(svarg, 1);
       PUSHMARK(SP); PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
       beg = 2;
+    }
+    if (*forexit) {
+      SvREFCNT_dec(svarg);
+      END_FORCOUNT;
+      XSRETURN(0);
     }
     while (beg <= end) {
       UV seglo = beg, seghi = end;
