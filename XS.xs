@@ -7938,7 +7938,7 @@ void forsetproduct (SV* block, ...)
       New(0, arsvs[i], len_inav, SV*);
       for (j = 0; j < (SSize_t)len_inav; j++) {
         SV* v = FETCH_ARREF(inav,j);
-        arsvs[i][j] = v ? v : &PL_sv_undef;
+        arsvs[i][j] = v ? SvREFCNT_inc_simple_NN(v) : &PL_sv_undef;
       }
     }
     START_FORCOUNT;
@@ -7978,8 +7978,12 @@ void forsetproduct (SV* block, ...)
       }
     } while (i >= 0);
 
-    for (i = 0; i < narrays; i++)
+    for (i = 0; i < narrays; i++) {
+      for (j = 0; j < arlen[i]; j++)
+        if (arsvs[i][j] != &PL_sv_undef)
+          SvREFCNT_dec(arsvs[i][j]);
       Safefree(arsvs[i]);
+    }
     Safefree(arsvs);
     Safefree(arlen);
     Safefree(arcnt);
