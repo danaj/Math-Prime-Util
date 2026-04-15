@@ -34,7 +34,7 @@ plan tests => 0
             + 2                      # submod / addmod
             + 2                      # mulmod
             + 2 + 1                  # divmod
-            + 2                      # powmod
+            + 4                      # powmod
             + 6                      # large negative args
             + 1                      # muladdmod
             + 1                      # mulsubmod
@@ -199,6 +199,8 @@ for (0 .. $num) {
 }
 @exp = map { $_->is_nan() ? undef : $_ } @exp;
 is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random inputs" );
+is( powmod(0,-1,7), undef, "powmod(0,-1,7) = undef" );
+is( powmod(0,-3,-7), undef, "powmod(0,-3,-7) = undef" );
 
 ###### large negative args (github issue 43)
 {

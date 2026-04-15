@@ -6916,7 +6916,7 @@ sub powmod {
     if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
     return (undef,0)[$n] if $n <= 1;
   }
-  return ($b > 0) ? 0 : 1  if $a == 0;
+  return $b < 0 ? undef : $b > 0 ? 0 : 1 if $a == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
     my $r = Math::Prime::Util::GMP::powmod($a,$b,$n);
