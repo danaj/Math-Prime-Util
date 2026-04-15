@@ -7630,6 +7630,7 @@ sub _FastIntegerInput {
 sub fromdigits {
   my($r, $base) = @_;
   $base = 10 unless defined $base;
+  croak "fromdigits: invalid base: $base" if $base < 2;
   my $refr = ref($r);
 
   if ($refr && $refr !~ /^Math::/) {
