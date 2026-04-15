@@ -342,6 +342,8 @@ subtest 'setcontains', sub {
 };
 
 subtest 'setcontainsany', sub {
+  is( setcontainsany([]), 0, "empty set with no terms");
+  is( setcontainsany([1]), 0, "regular set with no terms");
   is( setcontainsany([],[]), 0, "empty set has no elements of empty set");
   is( setcontainsany([1],[]), 0, "regular set has no elements of empty set");
   is( setcontainsany([],[1]), 0, "empty set has no elements of other set");

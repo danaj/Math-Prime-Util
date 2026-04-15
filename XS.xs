@@ -6328,7 +6328,8 @@ void setcontains(IN SV* sva, ...)
     CHECK_ARRAYREF(sva);   /* First argument is a set as array ref */
     ava = (AV*) SvRV(sva);
     alen = av_count(ava);
-    if (items < 2)  RETURN_NPARITY(1);
+    if (items < 2)
+      RETURN_NPARITY(ix == 0 ? 1 : 0);
     if (SvMAGICAL(ava) || !AvREAL(ava)) { /* Punt these to Perl */
       DISPATCHPP();
       XSRETURN(1);
