@@ -42,7 +42,7 @@ plan tests => 8        # forprimes errors
             + 7        # oo iterator simple
             + 28       # oo iterator methods
             + 12       # lastfor
-            + 2        # forpart/forcomp zero-case lastfor
+            + 1        # empty-callback lastfor
             + 4        # forpart/forcomp option validation
             + 13       # forfactored and forsquarefree
             + 1        # forsemiprimes
@@ -398,16 +398,31 @@ ok(!eval { prime_iterator_object(4.5); }, "iterator 4.5");
   forcomposites { $t=$_; lastfor if $_ > 2000; } 20000;
   is($t, 2001, "lastfor in forcomposites stops appropriately");
 }
-{
+subtest 'empty-callback lastfor' => sub {
   my $t = 0;
   forpart { $t++; lastfor; } 0;
-  is($t, 1, "lastfor works in zero-case forpart");
-}
-{
-  my $t = 0;
+  is($t, 1, 'forpart');
+
+  $t = 0;
   forcomp { $t++; lastfor; } 0;
-  is($t, 1, "lastfor works in zero-case forcomp");
-}
+  is($t, 1, 'forcomp');
+
+  $t = 0;
+  forcomb { $t++; lastfor; } 0;
+  is($t, 1, 'forcomb 0');
+
+  $t = 0;
+  forcomb { $t++; lastfor; } 3,0;
+  is($t, 1, 'forcomb 3,0');
+
+  $t = 0;
+  forperm { $t++; lastfor; } 0;
+  is($t, 1, 'forperm');
+
+  $t = 0;
+  forderange { $t++; lastfor; } 0;
+  is($t, 1, 'forderange');
+};
 ok(!eval { forpart { 1 } 7, { amin => -1 }; 1 }, 'forpart {amin=>-1} croaks');
 ok(!eval { forpart { 1 } 7, { n => '3.5' }; 1 }, 'forpart {n=>"3.5"} croaks');
 ok(!eval { forpart { 1 } 7, { prime => 'abc' }; 1 }, 'forpart {prime=>"abc"} croaks');
