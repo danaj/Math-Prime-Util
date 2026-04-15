@@ -11,8 +11,10 @@ push @A000043, (521, 607, 1279, 2203, 2281) if $extra;
 #push @A000043, (3217, 4253, 4423, 9689, 9941) if $extra;
 #push @A000043, (11213, 19937, 21701, 23209, 44497, 86243) if $extra;
 
-plan tests => 1;
+plan tests => 2;
 
 is_deeply( [grep { is_mersenne_prime($_) } 0 .. $A000043[-1]],
            \@A000043,
            "Find Mersenne primes from 0 to $A000043[-1]" );
+
+is( is_mersenne_prime(-5), 0, "negative exponent is not a Mersenne prime" );

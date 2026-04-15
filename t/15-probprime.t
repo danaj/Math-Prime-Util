@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/is_prob_prime/;
+use Math::Prime::Util qw/is_prob_prime is_bpsw_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $broken64 = (18446744073709550592 == ~0);
@@ -75,6 +75,7 @@ push @primes, (qw/
 plan tests =>   6   # range
               + 1   # powers of 2
               + 1   # small numbers
+              + 1   # BPSW return values
               + scalar @composites
               + scalar @primes
               + 0;
@@ -98,6 +99,8 @@ ok(!is_prob_prime(-2), '-2 is not prime');
   my @exprime = map { $small_primes{$_} ? 2 : 0 } (0..3572);
   is_deeply( \@isprime, \@exprime, "is_prob_prime 0..3572" );
 }
+
+is_deeply( [map { is_bpsw_prime($_) } 2, 3, 5, 31, 2047], [2, 2, 2, 2, 0], "is_bpsw_prime return values" );
 
 foreach my $n (@composites) {
   is( is_prob_prime($n), 0, "$n is composite" );

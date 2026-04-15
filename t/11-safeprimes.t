@@ -18,7 +18,7 @@ my @not_safe = (0,1,2,3,4,6,8,9,10,12,13,17,19,25,29,31,37,41,43,53,61,67,
                 71,73,79,89,97,101,103,109,113,127,131,137,139,149,151,157,
                 163,173,181,191,193,197,199,1031);
 
-plan tests => 4;
+plan tests => 5;
 
 {
   my @got = map { is_safe_prime($_) ? $_ : 0 } @safe_primes;
@@ -28,6 +28,7 @@ plan tests => 4;
   my @got = map { !is_safe_prime($_) ? $_ : 0 } @not_safe;
   is_deeply(\@got, \@not_safe, "is_safe_prime(n) for non-safe primes");
 }
+is( is_safe_prime(-59), 0, "negative integer is not a safe prime" );
 subtest 'is_safe_prime consistency' => sub {
   # If p is a safe prime then p is prime and (p-1)/2 is prime
   my @got1 = map { is_prime($_) ? $_ : 0 } @safe_primes;

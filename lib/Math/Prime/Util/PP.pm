@@ -2912,7 +2912,7 @@ sub is_chen_prime {
   validate_integer($n);
   return 0 if $n < 2;
   my $n2 = Maddint($n,2);
-  return (Mis_prime($n) && (Mis_prime($n2) || Mis_semiprime($n2)));
+  return 0+!!(Mis_prime($n) && (Mis_prime($n2) || Mis_semiprime($n2)));
 }
 sub next_chen_prime {
   my($n) = @_;
@@ -2938,7 +2938,8 @@ sub is_omega_prime {
 
 sub is_safe_prime {
   my($n) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
+  return 0 if $n < 0;
   if ($n < 23) { return ($n == 5 || $n == 7 || $n == 11) ? 1 : 0; }
   my $n210 = Mmodint($n,210);
   return 0 if $n210 % 6 != 5;

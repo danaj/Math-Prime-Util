@@ -561,7 +561,8 @@ sub is_ramanujan_prime {
 }
 sub is_mersenne_prime {
   my($p) = @_;
-  _validate_integer_nonneg($p);
+  _validate_integer($p);
+  return 0 if $p < 0;
   return Math::Prime::Util::PP::is_mersenne_prime($p);
 }
 sub lucasu {

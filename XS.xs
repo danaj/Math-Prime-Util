@@ -2932,7 +2932,7 @@ void is_prime(IN SV* svn)
         case 0:  ret = 2*is_prime(n); break;
         case 1:  ret = 2*is_prob_prime(n); break;
         case 2:  ret = 2*is_prime(n); break;
-        case 3:  ret = BPSW(n); break;
+        case 3:  ret = 2*BPSW(n); break;
         case 4:  ret = is_aks_prime(n); break;
         case 5:  ret = is_lucas_pseudoprime(n, 0); break;
         case 6:  ret = is_lucas_pseudoprime(n, 1); break;
