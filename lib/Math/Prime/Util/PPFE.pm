@@ -797,7 +797,7 @@ sub vecslide (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   no strict 'refs'; ## no critic(strict)
   local(*{$caller.'::a'}) = \my $a;
   local(*{$caller.'::b'}) = \my $b;
-  return map { $a = $v[$_-1];  $b = $v[$_];  $sub->(); } 1..$#v;
+  map { $a = $v[$_-1];  $b = $v[$_];  scalar $sub->(); } 1..$#v;
 }
 
 sub vecany (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
