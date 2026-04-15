@@ -119,6 +119,8 @@ subtest 'numtoperm / permtonum', sub {
   is_deeply([numtoperm(1,0)],[0],"numtoperm(1,0)");
   is_deeply([numtoperm(1,1)],[0],"numtoperm(1,1)");
   is_deeply([numtoperm(5,15)],[0,3,2,4,1],"numtoperm(5,15)");
+  is_deeply([numtoperm(5,-1)],[4,3,2,1,0],"numtoperm(5,-1)");
+  is_deeply([numtoperm(5,"100000000000000000000")],[1,3,4,0,2],'numtoperm(5,"10^20")');
   is_deeply([numtoperm(24,987654321)],[0,1,2,3,4,5,6,7,8,9,10,13,11,21,14,20,17,15,12,22,18,19,23,16],"numtoperm(24,987654321)");
 
   is(permtonum([]),0,"permtonum([])");

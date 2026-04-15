@@ -6836,12 +6836,20 @@ void vecsorti(IN SV* sva)
 
 void numtoperm(IN UV n, IN SV* svk)
   PREINIT:
-    UV k;
+    UV k, fn;
+    int kstatus;
+    int nret;
     int i, S[32];
   PPCODE:
     if (n == 0)
       XSRETURN_EMPTY;
-    if (n < 32 && _validate_and_set(&k, aTHX_ svk, IFLAG_ABS) == 1) {
+    if (n < 32 && (kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY)) != 0){
+      fn = factorial(n);
+      if (fn == 0) {
+        nret = _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, SUBNAME, items,47);
+        XSRETURN(nret);
+      }
+      _mod_with(&k, kstatus, fn);
       if (num_to_perm(k, n, S)) {
         dMY_CXT;
         EXTEND(SP, (EXTEND_TYPE)n);
@@ -6850,8 +6858,8 @@ void numtoperm(IN UV n, IN SV* svk)
         XSRETURN(n);
       }
     }
-    DISPATCHPP();
-    XSRETURN(1);
+    nret = _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, SUBNAME, items, 47);
+    XSRETURN(nret);
 
 void permtonum(IN SV* svp)
   PREINIT:
