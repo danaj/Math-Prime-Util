@@ -838,6 +838,11 @@ sub vecextract {
   my($aref, $mask) = @_;
   croak "vecextract first argument must be an array reference"
     unless ref($aref) eq 'ARRAY';
+  if (ref($mask) eq 'ARRAY') {
+    _validate_integer($_) for @$mask;
+  } else {
+    _validate_integer_nonneg($mask);
+  }
   return Math::Prime::Util::PP::vecextract(@_);
 }
 

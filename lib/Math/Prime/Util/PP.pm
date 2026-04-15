@@ -5915,11 +5915,24 @@ sub vecequal {
     my $bv = $bref->[$i++];
     next if !defined $av && !defined $bv;
     return 0 if !defined $av || !defined $bv;
-    if (ref($av) && ref($bv) &&
-        (ref($av) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i ||
-         ref($bv) =~ /^(ARRAY|HASH|CODE|FORMAT|IO|REGEXP)$/i) ) {
-      next if (ref($av) eq ref($bv)) && vecequal($av, $bv);
-      return 0;
+    if (ref($av) || ref($bv)) {
+      my $av_is_array = ref($av) eq 'ARRAY';
+      my $bv_is_array = ref($bv) eq 'ARRAY';
+      if ($av_is_array || $bv_is_array) {
+        # arrayref + arrayref: recurse
+        if ($av_is_array && $bv_is_array) {
+          next if vecequal($av, $bv);
+          return 0;
+        }
+        # arrayref + scalar: return 0
+        return 0 if !ref($av) || !ref($bv);
+        # arrayref + other: croak
+        croak "vecequal element not scalar or array reference";
+      }
+      # Known Perl reference types that we can't compare.
+      croak "vecequal element not scalar or array reference"
+        if ref($av) =~ /^(HASH|CODE|FORMAT|IO|REGEXP|SCALAR|REF|GLOB|LVALUE)$/i
+        || ref($bv) =~ /^(HASH|CODE|FORMAT|IO|REGEXP|SCALAR|REF|GLOB|LVALUE)$/i;
     }
     # About 7x faster if we skip the validates.
     # validate_integer($av);

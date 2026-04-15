@@ -228,6 +228,8 @@ subtest 'vecreduce', sub {
 subtest 'vecextract', sub {
   is_deeply([vecextract(['a'..'z'],12345758)], [qw/b c d e h i n o s t u v x/], "vecextract bits");
   is(join("", vecextract(['a'..'z'],[22,14,17,10,18])), "works", "vecextract list");
+  eval { vecextract([10,20,30], -1) };
+  like($@, qr/non-negative integer/, "vecextract rejects negative bitmask");
 };
 
 ###### vecequal
@@ -245,6 +247,10 @@ subtest 'vecequal', sub {
   is(vecequal([1,2,3],[3,2,1]), 0, "vecequal([1,2,3],[3,2,1]) = 0");
   is(vecequal([-1,2,3],[-1,2,3]), 1, "vecequal([-1,2,3],[-1,2,3]) = 1");
   is(vecequal([undef,[1,2],"a"],[undef,[1,2],"a"]), 1, "vecequal([undef,[1,2],\"a\"],[undef,[1,2],\"a\"] = 1");
+  eval { vecequal([[1,2]],[{a=>1}]) };
+  like($@, qr/scalar or array reference/, "vecequal rejects hashrefs");
+  eval { my $x = 1; vecequal([\$x],[\$x]) };
+  like($@, qr/scalar or array reference/, "vecequal rejects scalar refs");
 
   is(vecequal(\@vecsums, \@vecsums), 1, "vecequal = 1 for vecsums");
   is(vecequal(\@vecsums, \@vecprods), 0, "vecequal = 0 for vecsums");
