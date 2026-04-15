@@ -8400,8 +8400,7 @@ PPCODE:
     if (index != items)           /* We exited the loop early */
       ret_true = !ret_true;
 
-    if (ret_true)  XSRETURN_YES;
-    else           XSRETURN_NO;
+    RETURN_NPARITY(ret_true ? 1 : 0);
 }
 
 void vecuniq(...)

@@ -818,7 +818,7 @@ sub vecnone (&@) {      ## no critic qw(ProhibitSubroutinePrototypes)
 sub vecnotall (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;
   $sub->() or return 1 foreach @_;
-  undef;
+  0;
 }
 
 sub vecfirst (&@) {     ## no critic qw(ProhibitSubroutinePrototypes)
