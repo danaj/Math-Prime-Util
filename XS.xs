@@ -6994,8 +6994,8 @@ void is_happy(SV* svn, UV base = 10, UV k = 2)
     UV n, sum;
     int h, status;
   PPCODE:
-    if (base < 2 || base > 36) croak("is_happy: invalid base %"UVuf, base);
-    if (k > 10) croak("is_happy: invalid exponent %"UVuf, k);
+    if (base < 2 || base > 36) croak("%s: invalid base: %"UVuf, SUBNAME, base);
+    if (k > 10) croak("%s: invalid exponent %"UVuf, SUBNAME, k);
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (status == 0 && base == 10) { /* String op to reduce into range. */
       STRLEN i, len;
@@ -7019,7 +7019,7 @@ sumdigits(SV* svn, UV base = 10)
     STRLEN i, len;
     const char* s;
   PPCODE:
-    if (base < 2 || base > 36) croak("sumdigits: invalid base %"UVuf, base);
+    if (base < 2 || base > 36) croak("%s: invalid base: %"UVuf, SUBNAME, base);
     sum = 0;
     /* faster for integer input in base 10 */
     if (base == 10 && SVNUMTEST(svn) && (SvIsUV(svn) || SvIVX(svn) >= 0)) {

@@ -5734,7 +5734,7 @@ sub chinese2 {
   # Validate, copy, and do abs on the inputs.
   my @items;
   foreach my $aref (@_) {
-    die "chinese arguments are two-element array references"
+    croak "chinese arguments are two-element array references"
       unless ref($aref) eq 'ARRAY' && scalar @$aref == 2;
     my($a,$n) = @$aref;
     validate_integer($a);
@@ -5975,7 +5975,7 @@ sub sumdigits {
     $n =~ tr/0123456789//cd;
     $sum += $_ for (split(//,$n));
   } else {
-    croak "sumdigits: invalid base $base" if $base < 2;
+    croak "sumdigits: invalid base: $base" if $base < 2;
     my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
     for my $c (split(//,lc($n))) {
       my $p = index($cmap,$c);
@@ -5990,7 +5990,7 @@ sub digital_root {
   validate_integer_nonneg($n);
   if (defined $base) {
     validate_integer_nonneg($base);
-    croak "digital_root: Invalid base: $base" if $base < 2;
+    croak "digital_root: invalid base: $base" if $base < 2;
   } else {
      $base = 10;
   }
@@ -6002,7 +6002,7 @@ sub mult_digital_root {
   validate_integer_nonneg($n);
   if (defined $base) {
     validate_integer_nonneg($base);
-    croak "digital_root: Invalid base: $base" if $base < 2;
+    croak "mult_digital_root: invalid base: $base" if $base < 2;
   } else {
      $base = 10;
   }
@@ -6029,7 +6029,7 @@ sub is_happy {
 
   if (defined $base) {
     validate_integer_nonneg($base);
-    croak "is_happy: invalid base $base" if $base < 2 || $base > 36;
+    croak "is_happy: invalid base: $base" if $base < 2 || $base > 36;
   } else {
     $base = 10;
   }
@@ -7531,7 +7531,7 @@ sub todigits {
   validate_integer_abs($n);
   $base = 10 unless defined $base;
   $len = -1 unless defined $len;
-  die "Invalid base: $base" if $base < 2;
+  croak "todigits: invalid base: $base" if $base < 2;
   return if $n == 0;
   _splitdigits($n, $base, $len);
 }
@@ -7557,7 +7557,7 @@ sub todigitstring {
   validate_integer($n);
   $base = 10 unless defined $base;
   return _tobinarystring($n) if $base == 2 && !defined $len;
-  croak "Invalid base for string: $base" if $base < 2 || $base > 36;
+  croak "todigitstring: invalid base: $base" if $base < 2 || $base > 36;
   $len = -1 unless defined $len;
   $n =~ s/^-//;
 
@@ -7595,7 +7595,6 @@ sub todigitstring {
     if ($base <= 10) {
       $s = join("", @d);
     } else {
-      die "Invalid base for string: $base" if $base > 36;
       $s = join("", map { $_digitmap[$_] } @d);
     }
   }
@@ -7645,7 +7644,7 @@ sub fromdigits {
   return 0 if $r eq "";
   { # Validate string
     my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
-    croak "Invalid digit for base $base" if $r =~ /[^$cmap]/i;
+    croak "fromdigits: invalid digit for base $base" if $r =~ /[^$cmap]/i;
   }
   if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/) {
     $n = $_BIGINT->new($r, $base);
@@ -7668,7 +7667,7 @@ sub is_harshad {
   validate_integer($n);
   if (defined $base) {
     validate_integer_nonneg($base);
-    croak "is_harshad: Invalid base: $base" if $base < 2;
+    croak "is_harshad: invalid base: $base" if $base < 2;
   } else {
      $base = 10;
   }
@@ -7682,7 +7681,7 @@ sub is_palindrome {
   validate_integer_nonneg($n);
   if (defined $base) {
     validate_integer_nonneg($base);
-    croak "is_palindrome: Invalid base: $base" if $base < 2;
+    croak "is_palindrome: invalid base: $base" if $base < 2;
   } else {
      $base = 10;
   }
@@ -8037,7 +8036,7 @@ sub is_pseudoprime {
   return 0+($n >= 2) if $n < 3;
 
   foreach my $a (@bases) {
-    croak "Base $a is invalid" if $a < 2;
+    croak "is_pseudoprime: invalid base: $a" if $a < 2;
     $a = $a % $n if $a >= $n;
     return 0 unless $a == 1 || Mpowmod($a, $n-1, $n) == 1;
   }
@@ -8053,7 +8052,7 @@ sub is_euler_pseudoprime {
   return 0 if ($n % 2) == 0;
 
   foreach my $a (@bases) {
-    croak "Base $a is invalid" if $a < 2;
+    croak "is_euler_pseudoprime: invalid base: $a" if $a < 2;
     $a = $a % $n if $a >= $n;
     my $j = Mkronecker($a, $n);
     return 0 if $j == 0;   # gcd(a,n) != 1
@@ -8142,7 +8141,7 @@ sub is_strong_pseudoprime {
 
   my @newbases;
   for my $a (@bases) {
-    croak "Base $a is invalid" if $a < 2;
+    croak "is_strong_pseudoprime: invalid base: $a" if $a < 2;
     $a %= $n if $a >= $n;
     next if $a <= 1 || $a == $n-1;
     if ($a == 2) {
@@ -9617,7 +9616,7 @@ sub is_lucas_pseudoprime {
 
   my ($P, $Q, $D) = _lucas_selfridge_params($n);
   return 0 if $D == 0;  # We found a divisor in the sequence
-  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+  croak "is_lucas_pseudoprime: invalid P,Q,D: ($P,$Q,$D)" if $D != $P*$P - 4*$Q;
 
   my($U, $V) = lucasuvmod($P, $Q, $n+1, $n);
   return ($U == 0) ? 1 : 0;
@@ -9631,7 +9630,7 @@ sub is_strong_lucas_pseudoprime {
 
   my ($P, $Q, $D) = _lucas_selfridge_params($n);
   return 0 if $D == 0;  # We found a divisor in the sequence
-  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+  croak "is_strong_lucas_pseudoprime: invalid P,Q,D: ($P,$Q,$D)" if $D != $P*$P - 4*$Q;
 
   my $m = $n+1;
   my($s, $k) = (0, $m);
@@ -9661,7 +9660,7 @@ sub is_extra_strong_lucas_pseudoprime {
 
   my ($P, $Q, $D) = _lucas_extrastrong_params($n);
   return 0 if $D == 0;  # We found a divisor in the sequence
-  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+  croak "is_extra_strong_lucas_pseudoprime: invalid P,Q,D: ($P,$Q,$D)" if $D != $P*$P - 4*$Q;
 
   # This would be a great place to use a factor remove function
   my($s, $k) = (0, Madd1int($n));
@@ -9683,7 +9682,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
   my($n, $incr) = @_;
   if (defined $incr) {
     validate_integer($incr);
-    croak "Invalid lucas parameter increment: $incr" if $incr<1 || $incr>256;
+    croak "is_almost_extra_strong_lucas_pseudoprime: invalid increment: $incr" if $incr<1 || $incr>256;
   } else {
     $incr = 1;
   }
@@ -9693,7 +9692,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
 
   my ($P, $Q, $D) = _lucas_extrastrong_params($n, $incr);
   return 0 if $D == 0;  # We found a divisor in the sequence
-  die "Lucas parameter error: $D, $P, $Q\n" if ($D != $P*$P - 4*$Q);
+  croak "is_almost_extra_strong_lucas_pseudoprime: invalid P,Q,D: ($P,$Q,$D)" if $D != $P*$P - 4*$Q;
 
   my($s, $k) = (0, Madd1int($n));
   while (Mis_even($k) && $k != 0) {
@@ -9927,7 +9926,7 @@ sub is_frobenius_pseudoprime {
   } else {
     $D = Mmulsubint($P,$P,Mmulint(4,$Q));
     $Du = Mabsint($D);
-    croak "Frobenius invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
+    croak "is_frobenius_pseudoprime: invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
   }
 
   if (Mcmpint($n,$Du) <= 0 || Mcmpint($n,Mabsint($Q)) <= 0 || Mcmpint($n,Mabsint($P)) <= 0) {
@@ -11433,7 +11432,7 @@ sub LogarithmicIntegral {
   return 0              if $x == 0;
   return - MPU_INFINITY if $x == 1;
   return MPU_INFINITY   if $x == MPU_INFINITY;
-  croak "Invalid input to LogarithmicIntegral:  x must be > 0" if $x <= 0;
+  croak "LogarithmicIntegral: x must be > 0" if $x <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"li"}) {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::li, 0.49, $x);
@@ -11669,7 +11668,7 @@ sub RiemannZeta {
 sub RiemannR {
   my($x) = @_;
 
-  croak "Invalid input to RiemannR:  x must be > 0" if $x <= 0;
+  croak "RiemannR: x must be > 0" if $x <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"riemannr"}) {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::riemannr, 0.41, $x);
@@ -11747,7 +11746,7 @@ if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
 
 sub LambertW {
   my($x) = @_;
-  croak "Invalid input to LambertW:  x must be >= -1/e" if $x < -0.36787944118;
+  croak "LambertW: x must be >= -1/e" if $x < -0.36787944118;
 
   if ($Math::Prime::Util::_GMPfunc{"lambertw"}) {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::lambertw, 0.42, $x);
@@ -12280,7 +12279,7 @@ sub permtonum {
   {
     my %S;
     for my $v (@$A) {
-      croak "permtonum invalid permutation array"
+      croak "permtonum: invalid permutation array"
         if !defined $v || $v < 0 || $v >= $n || $S{$v}++;
     }
   }

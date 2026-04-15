@@ -166,6 +166,8 @@ subtest 'mult_digital_root' => sub {
   is( mult_digital_root(14, 6),   4, "mdr(14, 6)=4" );   # "22"_6 -> 4
   is( mult_digital_root(255, 16), 14, "mdr(255,16)=14" ); # FF->225->E1->14
   is( mult_digital_root("1" x 50), 1, "mdr('1'x50)=1" );
+  ok(!eval { mult_digital_root(17, 1); 1 } && $@ =~ /mult_digital_root: .*invalid base: 1/i,
+     "mult_digital_root invalid base croak");
 };
 
 subtest 'Wolfram examples', sub {
