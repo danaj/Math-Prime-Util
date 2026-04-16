@@ -3008,7 +3008,7 @@ is_frobenius_pseudoprime(IN SV* svn, IN SV* svp = 0, IN SV* svq = 0)
     if (nstatus != 0 && pstatus != 0 && qstatus != 0 &&
         P <= maxparam && P >= -maxparam && Q <= maxparam && Q >= -maxparam)
       RETURN_NPARITY(is_frobenius_pseudoprime(n, P, Q));
-    DISPATCHPP();
+    DISPATCHPP_GMPONLYIF(pstatus != 0 && qstatus != 0);
     XSRETURN(1);
 
 void
