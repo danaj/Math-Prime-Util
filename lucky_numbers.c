@@ -517,7 +517,7 @@ UV nth_lucky_approx(UV n) {
     /* Hawkins and Briggs (1958), attributed to S. Chowla. */
     est = fn * (logn + (0.5+corr)*loglogn2) + 0.5;
   }
-  if (est >= MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
+  if (est >= (double)MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
   return (UV)est;
 }
 UV nth_lucky_upper(UV n) {
@@ -527,7 +527,7 @@ UV nth_lucky_upper(UV n) {
          (n <=  8200) ? 1.005   :
                         1.001;   /* verified to n=3e9 / v=1e11 */
   est = corr * nth_lucky_approx(n) + 0.5;
-  if (est >= MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
+  if (est >= (double)MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
   return (UV)est;
 }
 UV nth_lucky_lower(UV n) {

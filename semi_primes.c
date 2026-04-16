@@ -400,7 +400,7 @@ UV nth_semiprime_approx(UV n) {
     err_factor = err_hi;
   }
   est = err_factor * n * logn / log2n;
-  if (est >= MPU_MAX_SEMI_PRIME) return MPU_MAX_SEMI_PRIME;
+  if (est >= (double)MPU_MAX_SEMI_PRIME) return MPU_MAX_SEMI_PRIME;
 
   /* Use inverse interpolation to improve the result. */
   lo = 0.979 * est - 5;

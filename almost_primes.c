@@ -638,8 +638,8 @@ static void _almost_prime_count_bounds(UV *lower, UV *upper, uint32_t k, UV n) {
   boundl *= multl;
   boundu *= multu;
 
-  *lower = (boundl >= UV_MAX || (max > 0 && boundl > max)) ? max : (UV)boundl;
-  *upper = (boundu >= UV_MAX || (max > 0 && boundu > max)) ? max : (UV)(boundu+1.0);
+  *lower = (boundl >= (double)UV_MAX || (max > 0 && boundl > max)) ? max : (UV)boundl;
+  *upper = (boundu >= (double)UV_MAX || (max > 0 && boundu > max)) ? max : (UV)(boundu+1.0);
 }
 
 UV almost_prime_count_upper(uint32_t k, UV n) {

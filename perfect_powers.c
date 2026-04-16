@@ -130,7 +130,7 @@ UV nth_perfect_power_lower(UV n) {
   pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
   pp += -2*pow(n,13./11.) - 2*pow(n,15./13.);
   pp += 5.5;
-  if (pp >= UV_MAX) return UV_MAX;
+  if (pp >= (double)UV_MAX) return UV_MAX;
   return (UV)pp;
 }
 UV nth_perfect_power_upper(UV n) {
@@ -142,7 +142,7 @@ UV nth_perfect_power_upper(UV n) {
   pp += -2*pow(n, 5./ 3.) - 2*pow(n, 7./ 5.) - 2*pow(n, 9./ 7.) + 2*pow(n,12./10.);
   pp += /* skip 11 and 13 */ 2*pow(n,16./14.);
   pp -= 3.5;
-  if (pp >= UV_MAX) return UV_MAX;
+  if (pp >= (double)UV_MAX) return UV_MAX;
   return (UV)pp;
 }
 UV nth_perfect_power_approx(UV n) {
@@ -165,7 +165,7 @@ UV nth_perfect_power_approx(UV n) {
   pp += -2*pow(n,13./11.) - 2*pow(n,15./13.) + 2*pow(n,16./14.) + 2*pow(n,17./15.);
   pp -= 0.48 * pow(n,19.0/17.0);
   pp -= 1.5;
-  if (pp >= UV_MAX) return UV_MAX;
+  if (pp >= (double)UV_MAX) return UV_MAX;
   return (UV)pp;
 }
 

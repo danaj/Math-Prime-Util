@@ -177,7 +177,7 @@ UV nth_powerful(UV n, UV k) {
     dlo = nc + 0.3 * npow;
     dhi = nc + 0.5 * npow;
     lo = (UV) dlo;
-    hi = (n < 170) ? 8575 : (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
+    hi = (n < 170) ? 8575 : (dhi >= (double)UV_MAX) ? UV_MAX : 1 + (UV) dhi;
   } else if (k == 3) {
     /* Splitting the range is hacky but overall this isn't bad */
     if (n < 84000) {
@@ -192,7 +192,7 @@ UV nth_powerful(UV n, UV k) {
     lo = (UV) dlo;
     if (n < 900) dhi *= 1.3;
     if (n < 160) dhi = 1.3 * dhi + 600;
-    hi = (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
+    hi = (dhi >= (double)UV_MAX) ? UV_MAX : 1 + (UV) dhi;
   } else if (k <= 10) {
     /* Slopppy but better than linear.  4 <= k <= 10. */
     if (n < 200) {
@@ -207,7 +207,7 @@ UV nth_powerful(UV n, UV k) {
       dhi = 4.3 * (nc + nest);
     }
     lo = (UV) dlo;
-    hi = (dhi >= UV_MAX) ? UV_MAX : 1 + (UV) dhi;
+    hi = (dhi >= (double)UV_MAX) ? UV_MAX : 1 + (UV) dhi;
   } else {
     lo = (UVCONST(1) << (k+1))+1;
     hi = UV_MAX;
