@@ -5102,7 +5102,7 @@ sub print_primes {
   validate_integer_nonneg($high);
 
   $fd = fileno(STDOUT) unless defined $fd;
-  open(my $fh, ">>&=", $fd);  # TODO .... or die
+  open(my $fh, ">>&=", $fd) or croak "print_primes: open fd $fd failed: $!";
 
   if ($high >= $low) {
     my $p1 = $low;
@@ -5117,7 +5117,7 @@ sub print_primes {
       $p1 = $p2+1;
     }
   }
-  close($fh);
+  close($fh) or croak "print_primes: close fd $fd failed: $!";
 }
 
 
@@ -5467,45 +5467,13 @@ sub divint {
   }
   (fdivrem($a,$b))[0];
 }
-sub _posmodint {   # Simple no-error all positive case
-  #croak "Invalid call to _posmodint(@_)" unless $_[1] > 0 && $_[0] >= 0;
-  my($a,$b) = @_;
-  validate_integer($a);
-  validate_integer($b);
-  my $r;
-  if (ref($b) || ref($a)) {
-    $r = $a % $b;
-    $r = _bigint_to_int($r) if $r <= INTMAX;
-  } elsif ($b < INTMAX && $a < INTMAX) {
-    $r = $a % $b;
-  } else {
-    $r = tobigint($a) % tobigint($b);
-    $r = _bigint_to_int($r) if $r <= INTMAX;
-  }
-  $r;
-}
+
 sub modint {
-  # Fast processing for simple cases
-  if ($_[1] > 0 && $_[0] >= 0) {
-    return _posmodint(@_);
-  } elsif ($_[1] < 0 && $_[0] >= 0) {
-    if ($_[0] < INTMAX && -$_[1] < INTMAX) {
-      my $r = _posmodint($_[0],-$_[1]);
-      return $r == 0 ? 0 : $_[1]+$r;
-    }
-  } elsif ($_[1] > 0 && $_[0] <= 0) {
-    if (-$_[0] < INTMAX && $_[1] < INTMAX) {
-      my $r = _posmodint(-$_[0],$_[1]);
-      return $r == 0 ? 0 : $_[1]-$r;
-    }
-  } elsif ($_[1] < 0 && $_[0] <= 0) {
-    if (-$_[0] < INTMAX && -$_[1] < INTMAX) {
-      my $r = _posmodint(-$_[0],-$_[1]);
-      return $r == 0 ? 0 : -$r;
-    }
-  }
-  (fdivrem(@_))[1];
+  my($a,$b) = @_;
+  my $q = Mdivint($a,$b);
+  Msubint($a, Mmulint($b, $q));
 }
+
 sub cdivint {
   if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
     my($a,$b) = @_;
