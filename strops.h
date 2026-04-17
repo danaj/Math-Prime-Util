@@ -22,9 +22,19 @@ extern STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b,
 #define strint_add(out, a, alen, b, blen) strint_add_s(out, a, alen, b, blen, 0)
 #define strint_sub(out, a, alen, b, blen) strint_add_s(out, a, alen, b, blen, 1)
 
+/* Sum n signed decimal integer strings.
+ * Returns a malloc-allocated NULL-terminated result string.
+ * Sets *rlen to the result length. */
+extern char* strint_vecsum(const char* const* a, const STRLEN* alen, size_t n, STRLEN* rlen);
+
+/* Product of n signed decimal integer strings.
+ * Returns a malloc-allocated NULL-terminated result string.
+ * Sets *rlen to the result length. */
+extern char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN* rlen);
+
 /* Multiply two signed decimal integer strings.
  * Result is written to out; caller must ensure out has at least
- * alen+blen bytes.  Returns the length of the result (no NUL written). */
+ * alen+blen bytes.  Returns the length of the result (no NULL written). */
 extern STRLEN strint_mul(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 /* Return a*b+c or a*b-c to out.

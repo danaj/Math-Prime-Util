@@ -5,6 +5,7 @@
 #endif
 
 #include <stdio.h>      /* For fileno and stdout */
+#include <stdlib.h>     /* For free */
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -306,6 +307,8 @@ static const gmp_info_t gmp_info[] = {
   {               "partitions", 16, 1, R_BIGINT },
   {                      "gcd", 17, 1, R_BIGINT },
   {                      "lcm", 17, 1, R_BIGINT },
+  {                   "vecsum", 20, 1, R_BIGINT },
+  {                  "vecprod", 26, 1, R_BIGINT },
   {             "exp_mangoldt", 19, 1, R_BIGINT },
   {           "jordan_totient", 22, 1, R_BIGINT },
   {        "carmichael_lambda", 22, 1, R_BIGINT },
@@ -3051,91 +3054,66 @@ gcd(...)
   PROTOTYPE: @
   ALIAS:
     lcm = 1
-    vecmin = 2
-    vecmax = 3
-    vecsum = 4
-    vecprod = 5
   PREINIT:
     int i, status = 1;
     UV ret, nullv, n;
   PPCODE:
-    if (ix == 2 || ix == 3) {
-      UV retindex = 0;
-      int sign, minmax = (ix == 2);
-      if (items == 0) XSRETURN_UNDEF;
-      if (items == 1) XSRETURN(1);
-      if (items > 1 && (status = _validate_and_set(&ret, aTHX_ ST(0), IFLAG_ANY))) {
-        sign = status;
-        for (i = 1; i < items; i++) {
-          status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
-          if (status == 0) break;
-          if (( (sign == -1 && status == 1) ||
-                (n >= ret && sign == status)
-              ) ? !minmax : minmax ) {
-            sign = status;
-            ret = n;
-            retindex = i;
-          }
-        }
-      }
-      if (status != 0) {
-        ST(0) = ST(retindex);
-        XSRETURN(1);
-      }
-    } else if (ix == 4) {
-      UV lo = 0;
-      IV hi = 0;
-      for (ret = i = 0; i < items; i++) {
-        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
-        if (status == 0) break;
-        if (status == 1) hi += (n > (UV_MAX - lo));
-        else             hi -= ((UV_MAX-n) >= lo);
-        lo += n;
-      }
-      if (status != 0)
-        RETURN_128(hi, lo);
-      ret = lo;
-    } else if (ix == 5) {
-      int sign = 1;
-      ret = 1;
-      for (i = 0; i < items; i++) {
-        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
-        if (status == 0) break;
-        if (ret > 0 && n > UV_MAX/ret) { status = 0; break; }
-        sign *= status;
-        ret *= n;
-      }
-      if (sign == -1 && status != 0) {
-        if (ret <= (UV)IV_MAX)  XSRETURN_IV(neg_iv(ret));
-        else                    status = 0;
-      }
-    } else {
-      /* For each arg, while valid input, validate+gcd/lcm.  Shortcut stop. */
-      if (ix == 0) { ret = 0; nullv = 1; }
-      else         { ret = 1; nullv = 0; }
-      for (i = 0; i < items && ret != nullv && status != 0; i++) {
-        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ABS);
-        if (status == 0) break;
-        if (i == 0) {
-          ret = n;
+    /* For each arg, while valid input, validate+gcd/lcm.  Shortcut stop. */
+    if (ix == 0) { ret = 0; nullv = 1; }
+    else         { ret = 1; nullv = 0; }
+    for (i = 0; i < items && ret != nullv && status != 0; i++) {
+      status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ABS);
+      if (status == 0) break;
+      if (i == 0) {
+        ret = n;
+      } else {
+        UV gcd = gcd_ui(ret, n);
+        if (ix == 0) {
+          ret = gcd;
         } else {
-          UV gcd = gcd_ui(ret, n);
-          if (ix == 0) {
-            ret = gcd;
-          } else {
-            n /= gcd;
-            if (n <= (UV_MAX / ret) )    ret *= n;
-            else                         status = 0;   /* Overflow */
-          }
+          n /= gcd;
+          if (n <= (UV_MAX / ret) )    ret *= n;
+          else                         status = 0;   /* Overflow */
         }
       }
     }
     if (status != 0)
       XSRETURN_UV(ret);
-    /* For min/max, use string compare if not an object */
-    if ((ix == 2 || ix == 3) && !sv_isobject(ST(0))) {
+    DISPATCHPP();
+    ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
+    XSRETURN(1);
+
+void
+vecmin(...)
+  PROTOTYPE: @
+  ALIAS:
+    vecmax = 1
+  PREINIT:
+    int i, status;
+    UV ret, n, retindex;
+  PPCODE:
+    if (items == 0) XSRETURN_UNDEF;
+    if (items == 1) XSRETURN(1);
+    retindex = 0;
+    if ((status = _validate_and_set(&ret, aTHX_ ST(0), IFLAG_ANY)) != 0) {
+      int sign = status, minmax = (ix == 0);
+      for (i = 1; i < items; i++) {
+        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+        if (status == 0) break;
+        if (( (sign == -1 && status == 1) ||
+              (n >= ret && sign == status)
+            ) ? !minmax : minmax ) {
+          sign = status;
+          ret = n;
+          retindex = i;
+        }
+      }
+    }
+    if (status != 0) {
+      ST(0) = ST(retindex);
+    } else if (1) { /* Use string compares to decide the min/max */
       int retindex = 0;
-      int minmax = (ix == 2);
+      int minmax = (ix == 0);
       STRLEN alen, blen;
       char *aptr, *bptr;
       aptr = SvPV(ST(0), alen);
@@ -3149,10 +3127,72 @@ gcd(...)
         }
       }
       ST(0) = ST(retindex);
-      XSRETURN(1);
+    } else {
+      DISPATCHPP();
     }
-    DISPATCHPP();
-    if (ix == 0 || ix == 1) ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
+    XSRETURN(1);
+
+void
+vecsum(...)
+  PROTOTYPE: @
+  ALIAS:
+    vecprod = 1
+  PREINIT:
+    int i, status;
+    UV ret, n;
+  PPCODE:
+    if (items == 0)
+      XSRETURN_UV(ix == 0 ? 0 : 1);
+    status = 1;
+    if (ix == 0) {
+      UV lo = 0;
+      IV hi = 0;
+      for (ret = 0, i = 0; i < items; i++) {
+        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+        if (status == 0) break;
+        if (status == 1) hi += (n > (UV_MAX - lo));
+        else             hi -= ((UV_MAX-n) >= lo);
+        lo += n;
+      }
+      if (status != 0)
+        RETURN_128(hi, lo);
+    } else if (ix == 1) {
+      int sign = 1;
+      for (ret = 1, i = 0; i < items; i++) {
+        status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
+        if (status == 0) break;
+        if (ret > 0 && n > UV_MAX/ret) { status = 0; break; }
+        sign *= status;
+        ret *= n;
+      }
+      if (status != 0 && sign == 1)
+        XSRETURN_UV(ret);
+      if (status != 0 && sign == -1 && ret <= (UV)IV_MAX)
+        XSRETURN_IV(neg_iv(ret));
+    }
+    if (_XS_get_callgmp() < 26) {
+      /* If we don't have GMP vecsum/vecprod, do it here. */
+      const char **sptr;
+      STRLEN *slen, rlen;
+      char *resstr;
+      SV *tmp;
+
+      Newx(sptr, items, const char*);
+      Newx(slen, items, STRLEN);
+      for (i = 0; i < items; i++) {
+        (void)_validate_int(aTHX_ ST(i), 1);
+        sptr[i] = SvPV_nomg(ST(i), slen[i]);
+      }
+      if (ix == 0) resstr = strint_vecsum( sptr, slen, items, &rlen);
+      else         resstr = strint_vecprod(sptr, slen, items, &rlen);
+      Safefree(sptr);
+      Safefree(slen);
+      ST(0) = sv_2mortal(newSVpvn(resstr, rlen));
+      free(resstr);
+    } else {
+      DISPATCHPP();
+    }
+    ST(0) = xs_to_canonical(aTHX_ ST(0));
     XSRETURN(1);
 
 void

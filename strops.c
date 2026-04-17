@@ -712,6 +712,22 @@ static UV b9_to_uv(const b9_t* x) {
   return v;
 }
 
+static void b9_product(b9_t A[], size_t a, size_t b) {
+  if (b <= a) {
+    /* .... */
+  } else if (b == a+1) {
+    b9_mul(&A[a], &A[a], &A[b]);
+  } else if (b == a+2) {
+    b9_mul(&A[a+1], &A[a+1], &A[a+2]);
+    b9_mul(&A[a], &A[a], &A[a+1]);
+  } else {
+    size_t c = a + (b-a+1)/2;
+    b9_product(A, a, c-1);
+    b9_product(A, c, b);
+    b9_mul(&A[a], &A[a], &A[c]);
+  }
+}
+
 
 /******************************************************************************/
 /******************************************************************************/
@@ -851,6 +867,112 @@ STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN
   rlen = b9_get_str(out, &A);
   b9_free(&A);  b9_free(&B);
   return rlen;
+}
+
+char* strint_vecsum(const char* const* a, const STRLEN* alen, size_t n, STRLEN* rlen)
+{
+  b9_t sum, tmp;
+  size_t i;
+  STRLEN len;
+  char *out;
+
+  b9_init(&sum);
+  b9_init(&tmp);
+  for (i = 0; i < n; i++) {
+    if (alen[i] == 0 || (alen[i] == 1 && a[i][0] == '0'))
+      continue;
+    b9_set_str(&tmp, a[i], alen[i]);
+    b9_add(&sum, &sum, &tmp);
+  }
+
+  len = b9_length(&sum);
+  out = (char*) malloc((size_t)len + 1);
+  if (out != 0) {
+    len = b9_get_str(out, &sum);
+    out[len] = '\0';
+  }
+  if (rlen) *rlen = len;
+
+  b9_free(&sum);
+  b9_free(&tmp);
+  return out;
+}
+
+char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN* rlen)
+{
+  b9_t prod, tmp, T[4], *A;
+  size_t i, k, nrem, ibase, prodn;
+  STRLEN outlen;
+  char *out;
+
+
+  b9_init(&tmp);
+  b9_init_set_uv(&prod, 1);
+
+  /* Small number of items to multiply */
+  if (n < 4) {
+    for (i = 0; i < n; i++) {
+      b9_set_str(&tmp, a[i], alen[i]);
+      b9_mul(&prod, &prod, &tmp);
+    }
+    goto return_prod;
+  }
+
+  /* Fast check for a zero */
+  for (i = 0; i < n; i++)
+    if (alen[i] == 1 && a[i][0] == '0')
+      break;
+  if (i < n) {
+    b9_set_uv(&prod, 0);
+    goto return_prod;
+  }
+
+  /* Process 1/4 of the items, product tree those, next quarter, etc.
+   *
+   * There is no performance benefit for the quarter split, but it saves
+   * us high water memory as we allocate only 1/4 of the b9 objects.
+   */
+
+  prodn = (n+3)/4;
+  A = (b9_t*) malloc(prodn * sizeof(b9_t));
+  for (i = 0; i < prodn; i++)
+    b9_init(&A[i]);
+  for (i = 0; i < 4; i++)
+    b9_init(&T[i]);
+
+  nrem = n % 4;
+  for (k = 0, ibase = 0; k < 4; k++) {
+    size_t qlen = n/4 + (k+1 <= nrem);  /* length of this window */
+    for (i = 0; i < qlen; i++)
+      b9_set_str(&A[i], a[ibase+i], alen[ibase+i]);
+    b9_product(A, 0, qlen-1);
+    b9_move(&T[k], &A[0]);
+    ibase += qlen;
+  }
+
+  for (i = 0; i < prodn; i++)
+    b9_free(&A[i]);
+  free(A);
+
+  b9_mul(&T[0],&T[0],&T[1]);
+  b9_mul(&T[2],&T[2],&T[3]);
+  b9_mul(&prod,&T[0],&T[2]);
+
+  for (i = 0; i < 4; i++)
+    b9_free(&T[i]);
+
+return_prod:
+  out = (char*) malloc((size_t)b9_length(&prod) + 1);
+  outlen = 0;
+  if (out != 0) {
+    outlen = b9_get_str(out, &prod);
+    out[outlen] = '\0';
+  }
+  if (rlen) *rlen = outlen;
+
+  b9_free(&prod);
+  b9_free(&tmp);
+  return out;
 }
 
 /******************************************************************************/
