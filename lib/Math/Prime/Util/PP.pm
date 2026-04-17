@@ -5454,8 +5454,7 @@ sub divint {
   my($a,$b) = @_;
   validate_integer($a);
   validate_integer($b);
-  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) {
-    # Simple no-error all positive case
+  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) { # Simple no-error all positive
     my $q;
     if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
       use integer; $q = $a / $b;
@@ -5475,10 +5474,10 @@ sub modint {
 }
 
 sub cdivint {
-  if ($_[1] > 0 && $_[0] >= 0) {   # Simple no-error all positive case
-    my($a,$b) = @_;
-    validate_integer($a);
-    validate_integer($b);
+  my($a,$b) = @_;
+  validate_integer($a);
+  validate_integer($b);
+  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) { # Simple no-error all positive
     my $q;
     if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
       use integer; $q = $a / $b;
@@ -13021,8 +13020,10 @@ sub random_ndigit_prime {
   my($digits) = @_;
   validate_integer_nonneg($digits);
   croak "random_ndigit_prime digits must be >= 1" unless $digits >= 1;
+
   return reftyped($_[0], Math::Prime::Util::GMP::random_ndigit_prime($digits))
     if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"} && !getconfig()->{'nobigint'};
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_ndigit_prime($digits);
 }
@@ -13030,8 +13031,10 @@ sub random_nbit_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
   croak "random_nbit_prime bits must be >= 2" unless $bits >= 2;
+
   return reftyped($_[0], Math::Prime::Util::GMP::random_nbit_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_nbit_prime"};
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_nbit_prime($bits);
 }
@@ -13039,8 +13042,10 @@ sub random_safe_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
   croak "random_safe_prime bits must be >= 3" unless $bits >= 3;
-  return reftyped($_[0], eval "Math::Prime::Util::GMP::random_safe_prime($bits)")  ## no critic qw(ProhibitStringyEval)
+
+  return maybetobigint(Math::Prime::Util::GMP::random_safe_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_safe_prime"};
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_safe_prime($bits);
 }
@@ -13048,8 +13053,10 @@ sub random_strong_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
   croak "random_strong_prime bits must be >= 128" unless $bits >= 128;
-  return reftyped($_[0], eval "Math::Prime::Util::GMP::random_strong_prime($bits)")  ## no critic qw(ProhibitStringyEval)
+
+  return maybetobigint(Math::Prime::Util::GMP::random_strong_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_strong_prime"};
+
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
 }
