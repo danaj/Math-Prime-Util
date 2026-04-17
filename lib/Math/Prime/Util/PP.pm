@@ -5451,9 +5451,11 @@ sub divrem {
 }
 
 sub divint {
-  if (!OLD_PERL_VERSION && $_[1] > 0 && $_[0] >= 0) {
+  my($a,$b) = @_;
+  validate_integer($a);
+  validate_integer($b);
+  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) {
     # Simple no-error all positive case
-    my($a,$b) = @_;
     my $q;
     if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
       use integer; $q = $a / $b;
@@ -5463,7 +5465,7 @@ sub divint {
     }
     return $q;
   }
-  (fdivrem(@_))[0];
+  (fdivrem($a,$b))[0];
 }
 sub _posmodint {   # Simple no-error all positive case
   #croak "Invalid call to _posmodint(@_)" unless $_[1] > 0 && $_[0] >= 0;
@@ -8341,8 +8343,9 @@ sub binomial {
     # This will silently coerce inputs to C 'long' type.
     $R = Math::GMP::bnok("$n","$k");
   } elsif ($n > INTMAX && $k < 100) {
-    # Incomplete work around problem with Math::BigInt not liking bigint n.
-    # Fixed in 2.003003.
+    # This is higher performance than bnok for most cases.
+    # More importantly, some versions of Math::BigInt pre-2.003003 will crash
+    # on these cases, so this works around them.
     $R = Mdivint(Mfalling_factorial($n,$k),Mfactorial($k));
   } else {
     $R = Math::BigInt::bnok("$n","$k");
@@ -11158,14 +11161,15 @@ sub divisors {
 
   my @d;
   if ($Math::Prime::Util::_GMPfunc{"divisors"}) {
-    # This trips an erroneous compile time error without the eval.
+    # This trips an erroneous compile time error without the string eval.
+    my $ok;
     if ($k < $n && $Math::Prime::Util::GMP::VERSION >= 0.53) {
-      eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\",\"$k\"); ";  ## no critic qw(ProhibitStringyEval)
+      $ok = eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\",\"$k\"); ";  ## no critic qw(ProhibitStringyEval)
     } else {
-      eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\"); ";  ## no critic qw(ProhibitStringyEval)
-      @d = grep { $_ <= $k } @d  if $k < $n;
+      $ok = eval "\@d = Math::Prime::Util::GMP::divisors(\"$n\"); ";  ## no critic qw(ProhibitStringyEval)
+      @d = grep { $_ <= $k } @d if $ok && $k < $n;
     }
-    return maybetobigintall(@d);
+    return maybetobigintall(@d) if $ok;
   }
 
   my @pe = Mfactor_exp($n);
