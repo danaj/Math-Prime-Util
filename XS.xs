@@ -1036,6 +1036,7 @@ static OP* pp_addint_custom_common(pTHX_ int opix, const char *opname, int minve
 
   slowret = addint_try_slow_result(aTHX_ opix, sva, svb, astatus, bstatus, opname);
   if (slowret != NULL) {
+    SPAGAIN;
     SP -= 1;
     SETs(slowret);
     RETURN;
@@ -1067,6 +1068,7 @@ static OP* pp_add1int_custom_common(pTHX_ int opix, const char *opname) {
 
   slowret = add1_try_slow_result(aTHX_ opix, svn);
   if (slowret != NULL) {
+    SPAGAIN;
     SETs(slowret);
     RETURN;
   }
@@ -5021,6 +5023,7 @@ void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
       }
     }
     DISPATCHPP();
+    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
     XSRETURN(1);
 
 void factorialmod(IN SV* sva, IN SV* svn)
