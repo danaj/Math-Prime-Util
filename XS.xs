@@ -335,6 +335,7 @@ static const gmp_info_t gmp_info[] = {
   {                "lucasvmod", 53, 1, R_BIGINT },
   {                  "lucasuv", 53, 2, R_BIGINT },
   {               "lucasuvmod", 53, 2, R_BIGINT },
+  {           "lucas_sequence", 13, 3, R_BIGINT }, /* P and Q are IVs */
   {            "pisano_period", 53, 1, R_BIGINT },
   {                 "powersum", 53, 1, R_BIGINT },
   {               "fromdigits", 53, 1, R_BIGINT },
@@ -3346,12 +3347,10 @@ chinese(...)
     int i, status, astatus, nstatus;
     UV ret, lcm, *an;
     SV **psva, **psvn;
-    SV *svfirstmod;
   PPCODE:
     status = 1;
     New(0, an, 2*items, UV);
     ret = 0;
-    svfirstmod = 0;
     for (i = 0; i < items; i++) {
       AV* av;
       CHECK_ARRAYREF(ST(i));
@@ -3360,7 +3359,6 @@ chinese(...)
       psva = av_fetch(av, 0, 0);
       psvn = av_fetch(av, 1, 0);
       if (psva == 0 || psvn == 0) { status = 0; break; }
-      if (i == 0) svfirstmod = *psvn;
       astatus = _validate_and_set(an+i, aTHX_ *psva, IFLAG_ANY);
       nstatus = _validate_and_set(an+i+items, aTHX_ *psvn, IFLAG_ABS);
       if (astatus == 0 || nstatus == 0) { status = 0; break; }
@@ -3390,7 +3388,7 @@ chinese(...)
       }
     }
     DISPATCHPP();
-    if (ix == 0) ST(0) = xs_objectify_result(aTHX_ svfirstmod, ST(0));
+    OBJECTIFY_STACK(1 + ix);
     XSRETURN(1 + ix);
 
 void cornacchia(IN SV* svd, IN SV* svn)
@@ -3410,18 +3408,21 @@ void cornacchia(IN SV* svd, IN SV* svn)
 void lucas_sequence(...)
   PREINIT:
     UV U, V, Qk,  n, P, Q, k;
+    int nstatus, pstatus, qstatus, kstatus;
   PPCODE:
     if (items != 4) croak("lucas_sequence: n, P, Q, k");
-    if (_validate_and_set(&n, aTHX_ ST(0), IFLAG_POS) &&
-        _validate_and_set(&P, aTHX_ ST(1), IFLAG_ANY | IFLAG_IV) &&
-        _validate_and_set(&Q, aTHX_ ST(2), IFLAG_ANY | IFLAG_IV) &&
-        _validate_and_set(&k, aTHX_ ST(3), IFLAG_NONNEG)) {
+    nstatus = _validate_and_set(&n, aTHX_ ST(0), IFLAG_POS);
+    pstatus = _validate_and_set(&P, aTHX_ ST(1), IFLAG_IV);
+    qstatus = _validate_and_set(&Q, aTHX_ ST(2), IFLAG_IV);
+    kstatus = _validate_and_set(&k, aTHX_ ST(3), IFLAG_NONNEG);
+    if (nstatus && pstatus && qstatus && kstatus) {
       lucas_seq(&U, &V, &Qk, n, (IV)P, (IV)Q, k);
       PUSHs(sv_2mortal(newSVuv( U )));  /* 4 args in, 3 out, no EXTEND needed */
       PUSHs(sv_2mortal(newSVuv( V )));
       PUSHs(sv_2mortal(newSVuv( Qk )));
     } else {
-      DISPATCHPP();
+      /* GMP lucas_sequence uses P and Q as IVs */
+      DISPATCHPP_GMPONLYIF(pstatus != 0 && qstatus != 0);
       OBJECTIFY_STACK(3);
       XSRETURN(3);
     }
@@ -5970,7 +5971,7 @@ void falling_factorial(IN SV* svn, IN SV* svk)
     int nstatus, kstatus;
     UV n, k;
   PPCODE:
-    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY | IFLAG_IV);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_IV);
     kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
     if (nstatus == 1 && kstatus == 1) {
       UV ret = (ix==0) ? falling_factorial(n,k) : rising_factorial(n,k);
