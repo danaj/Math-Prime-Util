@@ -1100,12 +1100,11 @@ sub next_prime {
   # This turns out not to be faster.
   # return $_primes_small[1+_tiny_prime_count($n)] if $n < $_primes_small[-1];
 
+  return reftyped($_[0], Math::Prime::Util::GMP::next_prime($n))
+    if $Math::Prime::Util::_GMPfunc{"next_prime"};
+
   return tobigint(MPU_32BIT ? "4294967311" : "18446744073709551629") if !ref($n) && $n >= MPU_MAXPRIME;
   # n is now either 1) not bigint and < maxprime, or (2) bigint and >= uvmax
-
-  if ($n > 4294967295 && getconfig()->{'gmp'}) {
-    return reftyped($_[0], Math::Prime::Util::GMP::next_prime($n));
-  }
 
   do {
     $n += $_wheeladvance30[$n%30];
@@ -1118,9 +1117,9 @@ sub prev_prime {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,undef,undef,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
-  if ($n > 4294967295 && getconfig()->{'gmp'}) {
-    return reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n));
-  }
+
+  return reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n))
+    if $Math::Prime::Util::_GMPfunc{"prev_prime"};
 
   do {
     $n -= $_wheelretreat30[$n%30];
@@ -2860,25 +2859,6 @@ sub is_semiprime {
   return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
   return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
 
-if (0) {  # TODO:  This is all REALLY slow without GMP
-  # TODO: Something with GMP.  If nothing else, just factor.
-  {
-    my @f = trial_factor($n, 4999);
-    return 0 if @f > 2;
-    return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
-  }
-  return 0 if _is_prime7($n);
-  {
-    my @f = pminus1_factor ($n, 250_000);
-    return 0 if @f > 2;
-    return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
-  }
-  {
-    my @f = pbrent_factor ($n, 128*1024, 3, 1);
-    return 0 if @f > 2;
-    return (_is_prime7($f[1]) ? 1 : 0) if @f == 2;
-  }
-}
   return (scalar(Mfactor($n)) == 2) ? 1 : 0;
 }
 
@@ -12230,15 +12210,15 @@ sub numtoperm {
   return () if $n == 0;
   return (0) if $n == 1;
   my $f = Mfactorial($n-1);
-  $k %= Mmulint($f,$n) if $k < 0 || int($k/$f) >= $n;
+  $k = Mmodint($k,Mmulint($f,$n)) if $k < 0 || Mdivint($k,$f) >= $n;
   my @S = map { $_ } 0 .. $n-1;
   my @V;
   while ($n-- > 0) {
-    my $i = int($k/$f);
+    my $i = Mdivint($k,$f);
     push @V, splice(@S,$i,1);
     last if $n == 0;
-    $k -= $i*$f;
-    $f /= $n;
+    $k = Msubint($k, Mmulint($i,$f));
+    $f = Mdivint($f,$n);
   }
   @V;
 }
@@ -12264,7 +12244,7 @@ sub permtonum {
       $k++ if $A->[$j] < $A->[$i];
     }
     $rank = Mmuladdint($k,$f,$rank);
-    $f /= $n-$i-1;
+    $f = Mdivint($f, $n-$i-1);
   }
   $rank;
 }
