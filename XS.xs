@@ -200,6 +200,7 @@ typedef enum {
   R_BOOL,
   R_NATIVE,
   R_BIGINT,
+  R_AREF,
   R_OTHER,
 } gmp_return_type_t;
 
@@ -322,6 +323,7 @@ static const gmp_info_t gmp_info[] = {
   {           "catalan_number", 54, 1, R_BIGINT },
   {              "bell_number", 54, 1, R_BIGINT },
   {                  "chinese", 32, 1, R_BIGINT },
+  {                 "chinese2", 53, 2, R_BIGINT },
   {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
   {                   "gcdext", 35, 3, R_BIGINT },
   {                "primorial", 37, 1, R_BIGINT },
@@ -341,6 +343,7 @@ static const gmp_info_t gmp_info[] = {
   {               "fromdigits", 53, 1, R_BIGINT },
 
   {                 "urandomb", 43, 1, R_BIGINT },
+  {                 "urandomr", 43, 1, R_BIGINT },
   {                 "urandomm", 44, 1, R_BIGINT },
   {        "random_nbit_prime", 42, 1, R_BIGINT },
   {      "random_ndigit_prime", 42, 1, R_BIGINT },
@@ -353,6 +356,9 @@ static const gmp_info_t gmp_info[] = {
   {              "sieve_range", 36, 0xFF, R_BIGINT }, /* needs objectify */
   {      "sieve_prime_cluster", 34, 0xFF, R_BIGINT }, /* needs objectify */
   {                 "divisors", 53, 0xFF, R_BIGINT }, /* needs objectify */
+#if 0
+  {                   "primes",  4, 1, R_AREF }, /* objectify ARREF */
+#endif
 
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },
@@ -2672,6 +2678,7 @@ void primes(IN SV* svlo, IN SV* svhi = 0)
       }
     } else {
       DISPATCHPP();
+      /* TODO: add entry to gmp_info, objectify the array reference */
     }
     return;
 
@@ -4059,7 +4066,7 @@ void urandomr(IN SV* svlo, IN SV* svhi)
                                          : irand32(MY_CXT.randcxt) );
       XSRETURN_UV(lo + urandomm64(MY_CXT.randcxt, hi-lo+1));
     }
-    DISPATCHPP();
+    DISPATCHPP_GMPONLYIF(lo_s >= 0 && hi_s >= 0);
     ST(0) = xs_objectify_result(aTHX_ svlo, ST(0));
     XSRETURN(1);
 
