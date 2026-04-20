@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/mulint negint/;
+use Math::Prime::Util qw/mulint/;
 
 
 my @vals = (
@@ -61,7 +61,12 @@ is_deeply( [map{"$_"}map { mulint($_->[1],$_->[0]) } @vals],
 {
   my @signed = qw/1 7 4294967295 9223372036854775808 18446744073709551615
                   13282407956253574712/;
-  is_deeply( [map{"$_"}map { mulint($_,-1) } @signed],
-             [map{"$_"}map { negint($_)    } @signed],
+  is_deeply( [map { "".mulint($_,-1) } @signed, map { "-$_" } @signed],
+             [map { strnegint($_)    } @signed, map { "-$_" } @signed],
              "mulint(n,-1) == negint(n)" );
+}
+
+sub strnegint {
+  my($n) = @_;
+  return ($n =~ /^-/)  ?  substr($n,1)  :  "-$n";
 }
