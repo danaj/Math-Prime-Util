@@ -373,5 +373,7 @@ xt/nth_twin_prime.t
 xt/lucasuv.pl
 xt/make-perrin-data.pl
 xt/test-pcbounds.pl
+xt/xop-table.pl
+xt/xop-shapes.t
 .travis.yml
 inc/Devel/CheckLib.pm

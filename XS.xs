@@ -416,6 +416,14 @@ typedef struct {
 
 START_MY_CXT
 
+static SV* _sv_const_int(pTHX_ IV v) {
+  if (v >= -1 && v < CINTS) {
+    dMY_CXT;
+    return MY_CXT.const_int[v+1];
+  }
+  return sv_2mortal(newSViv(v));
+}
+
 static int _sv_is_bigint(pTHX_ SV* n) {
   if (SvROK(n) && SvOBJECT(SvRV(n))) {
     const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
@@ -860,8 +868,7 @@ static int add1_try_native_result(pTHX_ int opix, SV* svn, int *status_out,
 
 static SV* add1_try_slow_result(pTHX_ int opix, SV* svn) {
   if (SV_USE_FAST_BIGINT_AMAGIC(svn)) {
-    dMY_CXT;
-    SV *svone = MY_CXT.const_int[2];
+    SV *svone = _sv_const_int(aTHX_ 1);
     SV *tsv = amagic_call(svn, svone, opix == 0 ? add_amg : subtr_amg, 0);
     if (tsv)
       return sv_isobject(tsv) ? xs_to_canonical(aTHX_ tsv) : tsv;
@@ -881,6 +888,8 @@ static SV* add1_try_slow_result(pTHX_ int opix, SV* svn) {
   return NULL;
 }
 
+/******************************************************************************/
+
 #if MPU_HAS_CUSTOM_OPS
 
 typedef OP* (*xop_ppfunc_t)(pTHX);
@@ -893,25 +902,6 @@ typedef struct {
   XOP xop;
 } xop_registration_t;
 static xop_registration_t* xop_find_registration(GV *namegv);
-
-static int xop_arg_is_dollar_underscore(pTHX_ OP *op) {
-#if PERL_VERSION_GE(5,18,0) && PERL_VERSION_LT(5,19,0)
-  if (!op) return 0;
-  if (op->op_type == OP_RV2SV) {
-    OP *gvop = cUNOPx(op)->op_first;
-    if (gvop && gvop->op_type == OP_GV) {
-      GV *gv = cGVOPx_gv(gvop);
-      if (gv && GvNAMELEN(gv) == 1 && GvNAME(gv)[0] == '_')
-        return 1;
-    }
-  }
-  return 0;
-#else
-  PERL_UNUSED_CONTEXT;
-  PERL_UNUSED_ARG(op);
-  return 0;
-#endif
-}
 
 static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ckobj) {
   xop_registration_t *xopreg = xop_find_registration(namegv);
@@ -934,7 +924,11 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
   cur = OpSIBLING(pushop);
   for (i = 0; i < xopreg->nargs; i++) {
     if (!cur) return entersubop;
-    if (xop_arg_is_dollar_underscore(aTHX_ cur)) return entersubop;
+    /* Previously we were rejecting (returning entersubop) anything with $_.
+     * Later this was limited to 5.18, and now removed entirely as I am no
+     * longer finding issues.  It seems like this was a trigger that showed
+     * bugs in our stack manipulation later.  Unlike simpler XS code, we have
+     * lot of back and forth XS<->Perl<->XS<->... callbacks possible. */
     if (i == 0) arg_first = cur;
     arg_last = cur;
     cur = OpSIBLING(cur);
@@ -972,10 +966,13 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
 
 static OP* xop_dispatch_binary_objectify(pTHX_ SV* sva, const char* name, int minversion) {
   dSP;
+  SV* out;
   PUTBACK;
   (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 2, minversion);
   SPAGAIN;
-  SETs(xs_objectify_result(aTHX_ sva, TOPs));
+  out = xs_objectify_result(aTHX_ sva, TOPs);
+  SPAGAIN;
+  SETs(out);
   RETURN;
 }
 
@@ -984,6 +981,18 @@ static OP* xop_dispatch_unary(pTHX_ const char* name, int minversion) {
   PUTBACK;
   (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 1, minversion);
   SPAGAIN;
+  RETURN;
+}
+
+static OP* xop_dispatch_unary_objectify(pTHX_ SV* svn, const char* name, int minversion) {
+  dSP;
+  SV* out;
+  PUTBACK;
+  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 1, minversion);
+  SPAGAIN;
+  out = xs_objectify_result(aTHX_ svn, TOPs);
+  SPAGAIN;
+  SETs(out);
   RETURN;
 }
 
@@ -1090,6 +1099,58 @@ static OP* pp_add1int_custom_common(pTHX_ int opix, const char *opname) {
 static OP* pp_add1int_custom(pTHX) { return pp_add1int_custom_common(aTHX_ 0, "add1int"); }
 static OP* pp_sub1int_custom(pTHX) { return pp_add1int_custom_common(aTHX_ 1, "sub1int"); }
 
+static OP* pp_signint_custom_common(pTHX_ int opix, const char *opname) {
+  dSP;
+  SV *svret, *svn = TOPs;
+  int status, sign, isodd, ret;
+  UV n;
+  const char* s;
+  STRLEN len;
+
+  status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+  if (status == 0) {
+    s = SvPV_nomg(svn, len);
+    if (len == 0 || s == 0) croak("%s: invalid non-empty input", opname);
+    sign = (s[0] == '-') ? -1 : (s[0] == '0') ? 0 : 1;
+    isodd = (s[len-1] == '1' || s[len-1] == '3' || s[len-1] == '5' || s[len-1] == '7' || s[len-1] == '9');
+  } else {
+    sign = (status == -1) ? -1 : (n == 0) ? 0 : 1;
+    isodd = n & 1;
+  }
+  ret = (opix==0) ? sign : (opix==1) ? isodd : !isodd;
+  svret = _sv_const_int(aTHX_ ret);
+  SETs(svret);
+  RETURN;
+}
+static OP* pp_signint_custom(pTHX) { return pp_signint_custom_common(aTHX_ 0, "signint"); }
+static OP* pp_is_odd_custom(pTHX)  { return pp_signint_custom_common(aTHX_ 1, "is_odd"); }
+static OP* pp_is_even_custom(pTHX) { return pp_signint_custom_common(aTHX_ 2, "is_even"); }
+
+static OP* pp_cmpint_custom(pTHX) {
+  dSP;
+  SV *sva = SP[-1], *svb = SP[0];
+  int astatus, bstatus, ret = 0;
+  UV a, b;
+
+  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+  if (astatus != 0 && bstatus != 0) {
+    if      (astatus > bstatus) ret = 1;
+    else if (astatus < bstatus) ret = -1;
+    else if (a == b)            ret = 0;
+    else                        ret = ((astatus == 1 && a > b) || (astatus == -1 && (IV)a > (IV)b)) ? 1 : -1;
+  } else {
+    STRLEN alen, blen;
+    char *aptr, *bptr;
+    aptr = SvPV(sva, alen);
+    bptr = SvPV(svb, blen);
+    ret = strint_cmp(aptr, alen, bptr, blen);
+  }
+  SP -= 1;
+  SETs(_sv_const_int(aTHX_ ret));
+  RETURN;
+}
+
 static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::irand", "irand", "irand custom op", pp_irand_custom, 0, {0} },
   { "Math::Prime::Util::irand64", "irand64", "irand64 custom op", pp_irand64_custom, 0, {0} },
@@ -1106,6 +1167,13 @@ static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::modint", "modint", "modint custom op", pp_modint_custom, 2, {0} },
   { "Math::Prime::Util::cdivint", "cdivint", "cdivint custom op", pp_cdivint_custom, 2, {0} },
   { "Math::Prime::Util::powint", "powint", "powint custom op", pp_powint_custom, 2, {0} },
+  { "Math::Prime::Util::is_odd", "is_odd", "is_odd custom op", pp_is_odd_custom, 1, {0} },
+  { "Math::Prime::Util::is_even", "is_even", "is_even custom op", pp_is_even_custom, 1, {0} },
+  { "Math::Prime::Util::cmpint", "cmpint", "cmpint custom op", pp_cmpint_custom, 2, {0} },
+  { "Math::Prime::Util::signint", "signint", "signint custom op", pp_signint_custom, 1, {0} },
+
+  /* We considered absint, negint, sqrtint.  Returning a possible bigint from
+   * those operations is more difficult than it looks. */
 };
 
 static xop_registration_t* xop_find_registration(GV *namegv) {
@@ -1122,6 +1190,8 @@ static xop_registration_t* xop_find_registration(GV *namegv) {
 }
 
 #endif
+
+/******************************************************************************/
 
 static void boot_register_custom_ops(pTHX) {
 #if MPU_HAS_CUSTOM_OPS
@@ -1169,8 +1239,9 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
       /* Fall-through is ok here. */
     }
     if (!gv && try_pp) {
+      GV **gvp;
       perl_require_pv("Math/Prime/Util/PP.pm");
-      GV ** gvp = (GV**)hv_fetch(MY_CXT.MPUPP, name, namelen, 0);
+      gvp = (GV**)hv_fetch(MY_CXT.MPUPP, name, namelen, 0);
       if (gvp) {
         gv = *gvp;
         classname = "Math::Prime::Util::PP";
@@ -1265,15 +1336,13 @@ static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int 
  * each one, then retrieve them from a struct using a hash index.  This
  * defeats the purpose if only done once. */
 #define RETURN_NPARITY(ret) \
-  do { int r_ = ret; \
-       dMY_CXT; \
-       if (r_ >= -1 && r_<CINTS) { ST(0) = MY_CXT.const_int[r_+1]; XSRETURN(1); } \
-       else                      { XSRETURN_IV(r_);                      } \
+  do { IV r_ = ret; \
+       ST(0) = _sv_const_int(aTHX_ r_); \
+       XSRETURN(1); \
   } while (0)
 #define PUSH_NPARITY(ret) \
-  do { int r_ = ret; \
-       if (r_ >= -1 && r_<CINTS) { PUSHs( MY_CXT.const_int[r_+1] );       } \
-       else                      { PUSHs(sv_2mortal(newSViv(r_))); } \
+  do { IV r_ = ret; \
+       PUSHs(_sv_const_int(aTHX_ r_)); \
   } while (0)
 
 /* Callback helper stack contract:
@@ -1495,11 +1564,18 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     XSRETURN(1); \
   }
 
+#define RETURN_SV_CANONICAL(sv) \
+  { \
+    SV* out_ = xs_to_canonical(aTHX_ sv); \
+    SPAGAIN; \
+    ST(0) = out_; \
+    XSRETURN(1); \
+  }
+
 #define RETURN_STRING_BIGINT(sv,len) \
   { \
     SvCUR_set(sv, len);  SvPOK_on(sv);  *SvEND(sv) = '\0'; \
-    ST(0) = xs_to_canonical(aTHX_ sv); \
-    XSRETURN(1); \
+    RETURN_SV_CANONICAL(sv) \
   }
 
 #define PUSH_BIGINT_STR(str,len) \
@@ -1516,8 +1592,8 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     if (SV_USE_BIGINT_AMAGIC(sv)) { \
       SV* tsv_ = amagic_call(sv, &PL_sv_undef, op, AMGf_noright|AMGf_unary); \
       if (tsv_) { \
-        ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
-        XSRETURN(1); \
+        if (sv_isobject(tsv_)) { RETURN_SV_CANONICAL(tsv_); } \
+        else                   { SPAGAIN; ST(0) = tsv_; XSRETURN(1); } \
       } \
     } \
   } while(0)
@@ -1527,8 +1603,8 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
         SV_USE_BIGINT_AMAGIC(svb) ) { \
       SV* tsv_ = amagic_call(sva, svb, op, 0); \
       if (tsv_) { \
-        ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
-        XSRETURN(1); \
+        if (sv_isobject(tsv_)) { RETURN_SV_CANONICAL(tsv_); } \
+        else                   { SPAGAIN; ST(0) = tsv_; XSRETURN(1); } \
       } \
     } \
   } while(0)
@@ -1538,8 +1614,8 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
         SV_USE_FAST_BIGINT_AMAGIC(svb) ) { \
       SV* tsv_ = amagic_call(sva, svb, op, 0); \
       if (tsv_) { \
-        ST(0) = sv_isobject(tsv_) ?  xs_to_canonical(aTHX_ tsv_)  : tsv_; \
-        XSRETURN(1); \
+        if (sv_isobject(tsv_)) { RETURN_SV_CANONICAL(tsv_); } \
+        else                   { SPAGAIN; ST(0) = tsv_; XSRETURN(1); } \
       } \
     } \
   } while(0)
@@ -3201,8 +3277,7 @@ vecsum(...)
     } else {
       DISPATCHPP();
     }
-    ST(0) = xs_to_canonical(aTHX_ ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void
 vecprefixsum(...)
