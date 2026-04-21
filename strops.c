@@ -1114,14 +1114,14 @@ bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
 
 STRLEN strint_divint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
-  STRLEN len;
+  STRLEN len = 0;
   if (!strint_divmod(out, &len, 0, 0, a,alen, b,blen)) return 0;
   return len;
 }
 
 STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
-  STRLEN len;
+  STRLEN len = 0;
   if (!strint_divmod(0, 0, out, &len, a,alen, b,blen)) return 0;
   return len;
 }

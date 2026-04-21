@@ -984,18 +984,6 @@ static OP* xop_dispatch_unary(pTHX_ const char* name, int minversion) {
   RETURN;
 }
 
-static OP* xop_dispatch_unary_objectify(pTHX_ SV* svn, const char* name, int minversion) {
-  dSP;
-  SV* out;
-  PUTBACK;
-  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 1, minversion);
-  SPAGAIN;
-  out = xs_objectify_result(aTHX_ svn, TOPs);
-  SPAGAIN;
-  SETs(out);
-  RETURN;
-}
-
 static OP* pp_irand_custom(pTHX) {
   dSP;
   dMY_CXT;
@@ -1291,18 +1279,21 @@ static NOINLINE int dispatch_external(pTHX_ const CV* thiscv, I32 context, int n
   I32 callflags = VCALL_PP;
   uint32_t ver = 0;
   bool usegmp = ginfoi >= 0 && gmp_is_ok;
+  int nret;
 
   if (usegmp) {
     ver = gmp_info[ginfoi].version;
     callflags |= VCALL_GMP;
   }
 
-  _vcallsubn(aTHX_ context, callflags, name, nitems, ver);
+  nret = _vcallsubn(aTHX_ context, callflags, name, nitems, ver);
 
   /* TODO: _vcallsubn returns the number of values we got back.  Use this
    *       together with the gmp_info type to decide what to objectify.
    *       We're missing the input sv that gives us the desired return class.
    */
+
+  return nret;
 }
 #define DISPATCHPP() dispatch_external(aTHX_ cv, GIMME_V, items, TRUE)
 
@@ -3264,7 +3255,6 @@ vecsum(...)
       const char **sptr;
       STRLEN *slen, rlen;
       char *resstr;
-      SV *tmp;
 
       Newx(sptr, items, const char*);
       Newx(slen, items, STRLEN);
@@ -4875,7 +4865,6 @@ void prime_signature(IN SV* svn)
         nf.e[j] = t;
       }
       if (GIMME_V == G_ARRAY) {
-        dMY_CXT;
         EXTEND(SP, (EXTEND_TYPE)nfactors);
         for (i = 0; i < nfactors; i++)
           PUSH_NPARITY(nf.e[i]);
@@ -5845,7 +5834,6 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
           Safefree(totients);
         } else {
           signed char* mu = range_moebius(lo, hi);
-          dMY_CXT;
           for (i = 0; i < count; i++)
             PUSH_NPARITY(mu[i]);
           Safefree(mu);
@@ -5856,7 +5844,6 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
         if (ix == 0) {
           PUSHs(sv_2mortal(newSVuv(totient(UV_MAX))));
         } else {
-          dMY_CXT;
           PUSH_NPARITY(-1);  /* moebius of 2^32-1, 2^64-1, 2^128-1 => -1 */
         }
       }
@@ -6956,7 +6943,6 @@ void numtoperm(IN UV n, IN SV* svk)
       }
       _mod_with(&k, kstatus, fn);
       if (num_to_perm(k, n, S)) {
-        dMY_CXT;
         EXTEND(SP, (EXTEND_TYPE)n);
         for (i = 0; i < (int)n; i++)
           PUSH_NPARITY( S[i] );
@@ -7171,7 +7157,6 @@ void todigits(SV* svn, int base=10, int length=-1)
       int digits[128];
       IV len = to_digit_array(digits, n, base, length);
       if (len >= 0) {
-        dMY_CXT;
         EXTEND(SP, (EXTEND_TYPE)len);
         for (i = 0; i < len; i++)
           PUSH_NPARITY( digits[len-i-1] );
@@ -7197,7 +7182,6 @@ void todigits(SV* svn, int base=10, int length=-1)
       }
       if (len == 1 && str[0] == '0') XSRETURN(0);
       {
-        dMY_CXT;
         EXTEND(SP, (EXTEND_TYPE)len);
         for (i = 0; i < (int)len; i++)
           PUSH_NPARITY(str[i]-'0');
