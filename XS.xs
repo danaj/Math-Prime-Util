@@ -1017,24 +1017,28 @@ static OP* pp_irand64_custom(pTHX) {
 static OP* pp_validate_integer_custom(pTHX) {
   dSP;
   xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_ANY);
+  SPAGAIN;
   SETs(&PL_sv_yes);
   RETURN;
 }
 static OP* pp_validate_integer_nonneg_custom(pTHX) {
   dSP;
   xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_NONNEG);
+  SPAGAIN;
   SETs(&PL_sv_yes);
   RETURN;
 }
 static OP* pp_validate_integer_positive_custom(pTHX) {
   dSP;
   xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_POS);
+  SPAGAIN;
   SETs(&PL_sv_yes);
   RETURN;
 }
 static OP* pp_validate_integer_abs_custom(pTHX) {
   dSP;
   xs_validate_integer_inplace(aTHX_ TOPs, IFLAG_ABS);
+  SPAGAIN;
   SETs(&PL_sv_yes);
   RETURN;
 }
@@ -1152,12 +1156,12 @@ static OP* pp_cmpint_custom(pTHX) {
 }
 
 static xop_registration_t xop_registrations[] = {
-  { "Math::Prime::Util::irand", "irand", "irand custom op", pp_irand_custom, 0, {0} },
-  { "Math::Prime::Util::irand64", "irand64", "irand64 custom op", pp_irand64_custom, 0, {0} },
   { "Math::Prime::Util::_validate_integer", "_validate_integer", "_validate_integer custom op", pp_validate_integer_custom, 1, {0} },
   { "Math::Prime::Util::_validate_integer_nonneg", "_validate_integer_nonneg", "_validate_integer_nonneg custom op", pp_validate_integer_nonneg_custom, 1, {0} },
   { "Math::Prime::Util::_validate_integer_positive", "_validate_integer_positive", "_validate_integer_positive custom op", pp_validate_integer_positive_custom, 1, {0} },
   { "Math::Prime::Util::_validate_integer_abs", "_validate_integer_abs", "_validate_integer_abs custom op", pp_validate_integer_abs_custom, 1, {0} },
+  { "Math::Prime::Util::irand", "irand", "irand custom op", pp_irand_custom, 0, {0} },
+  { "Math::Prime::Util::irand64", "irand64", "irand64 custom op", pp_irand64_custom, 0, {0} },
   { "Math::Prime::Util::addint", "addint", "addint custom op", pp_addint_custom, 2, {0} },
   { "Math::Prime::Util::subint", "subint", "subint custom op", pp_subint_custom, 2, {0} },
   { "Math::Prime::Util::add1int", "add1int", "add1int custom op", pp_add1int_custom, 1, {0} },
@@ -1280,7 +1284,7 @@ static int find_gmp_info(const char *name) {
       return i;
   return -1;
 }
-static NOINLINE void dispatch_external(pTHX_ const CV* thiscv, I32 context, int nitems, bool gmp_is_ok)
+static NOINLINE int dispatch_external(pTHX_ const CV* thiscv, I32 context, int nitems, bool gmp_is_ok)
 {
   const char *name = GvNAME(CvGV(thiscv));
   const int ginfoi = find_gmp_info(name);
@@ -1424,6 +1428,7 @@ static SV* xs_objectify_result(pTHX_ SV* input, SV* output) {
  *
  * INPUT                  OUTPUT           COMMENTS
  * ---------------------  ---------------  -----------
+ * undef                  undef            leave this alone
  * UV or IV               UV / IV          fast path
  * string fits in UV/IV   UV / IV
  * bigint object fits     UV / IV
@@ -1437,7 +1442,7 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
   STRLEN len;
   uint32_t stype;
 
-  if (SVNUMTEST(sv)) return sv;
+  if (!SvOK(sv) || SVNUMTEST(sv)) return sv;
 
   str = SvPV_nomg(sv, len);
   stype = _parse_strnum(str, len);
@@ -1496,20 +1501,6 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
 #define FASTSETSVINT(sv,setpos,val) SETSVINT(sv,setpos,val,(IV)val)
 #endif
 
-#define RETURN_128(hi,lo) \
-  do { \
-    if (hi == 0) \
-      ST(0) = sv_2mortal(newSVuv(lo)); \
-    else if (hi == -1 && lo > IV_MAX) \
-      ST(0) = sv_2mortal(newSViv((IV)lo)); \
-    else { \
-      char str_[40]; \
-      uint32_t slen_ = to_string_128(str_, hi, lo); \
-      ST(0) = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn(str_, slen_))); \
-    } \
-    XSRETURN(1); \
-  } while(0)
-
 #define CREATE_RETURN_AV(av) \
   do { \
        av = newAV(); \
@@ -1564,13 +1555,16 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     XSRETURN(1); \
   }
 
-#define RETURN_SV_CANONICAL(sv) \
+#define RETURN_SV(svexpr) \
   { \
-    SV* out_ = xs_to_canonical(aTHX_ sv); \
+    SV* out_ = svexpr; \
     SPAGAIN; \
     ST(0) = out_; \
     XSRETURN(1); \
   }
+
+#define RETURN_SV_CANONICAL(sv) \
+  RETURN_SV(xs_to_canonical(aTHX_ sv))
 
 #define RETURN_STRING_BIGINT(sv,len) \
   { \
@@ -1585,6 +1579,19 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     SPAGAIN; \
     PUSHs(sv_); \
   } while (0)
+
+#define RETURN_128(hi,lo) \
+  do { \
+    if (hi == 0) \
+      XSRETURN_UV(lo); \
+    if (hi == -1 && lo > IV_MAX) \
+      XSRETURN_IV((IV)lo); \
+    { \
+      char str_[40]; \
+      uint32_t slen_ = to_string_128(str_, hi, lo); \
+      RETURN_SV_CANONICAL(sv_2mortal(newSVpvn(str_, slen_))); \
+    } \
+  } while(0)
 
 #if 1
 #define TRY_MAGIC_UNARY(sv, op) \
@@ -2583,8 +2590,7 @@ void prime_count_upper(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 
 void sum_primes(IN SV* svlo, IN SV* svhi = 0)
@@ -2626,8 +2632,7 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
       else     XSRETURN_UNDEF;
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svlo, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
   PREINIT:
@@ -3165,8 +3170,7 @@ gcd(...)
     if (status != 0)
       XSRETURN_UV(ret);
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void
 vecmin(...)
@@ -3716,8 +3720,7 @@ void powerfree_count(IN SV* svn, IN int k = 2)
       }
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void
 is_power(IN SV* svn, IN UV k = 0, IN SV* svroot = 0)
@@ -3885,8 +3888,7 @@ void nth_perfect_power(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void nth_ramanujan_prime(IN SV* svn)
   ALIAS:
@@ -3991,8 +3993,7 @@ void next_prime(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void next_prime_power(IN SV* svn)
   ALIAS:
@@ -4028,8 +4029,7 @@ void next_perfect_power(IN SV* svn)
       XSRETURN_IV(neg_iv(n));
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void prev_perfect_power(IN SV* svn)
   PREINIT:
@@ -4047,8 +4047,7 @@ void prev_perfect_power(IN SV* svn)
         XSRETURN_IV(neg_iv(n));
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void next_chen_prime(IN SV* svn)
   PREINIT:
@@ -4109,8 +4108,7 @@ void urandomb(IN UV bits)
       if (res || ix == 0) XSRETURN_UV(res);
     }
     DISPATCHPP_GMPONLYIF(ix != 1 || bits != uvmax_maxlen);
-    ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void urandomm(IN SV* svn)
   PREINIT:
@@ -4122,8 +4120,7 @@ void urandomm(IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void urandomr(IN SV* svlo, IN SV* svhi)
   PREINIT:
@@ -4142,8 +4139,7 @@ void urandomr(IN SV* svlo, IN SV* svhi)
       XSRETURN_UV(lo + urandomm64(MY_CXT.randcxt, hi-lo+1));
     }
     DISPATCHPP_GMPONLYIF(lo_s >= 0 && hi_s >= 0);
-    ST(0) = xs_objectify_result(aTHX_ svlo, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void toint(IN SV* svn)
   PREINIT:
@@ -4178,16 +4174,13 @@ void toint(IN SV* svn)
       if (x >= 0.0 && x < nvuvmaxval+1.0) XSRETURN_UV((UV)x);
       if (x <  0.0 && x > nvivminval-1.0) XSRETURN_IV((IV)x);
       /* Doesn't fit, so go through Math::BigFloat */
-      ST(0) = xs_call_root_1_sv(aTHX_ "_int_from_float", svn);
-      XSRETURN(1);
+      RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
     }
-    if (stype & SNUMFLAG_BIGINT) {
-      ST(0) = xs_to_canonical(aTHX_ svn);  /* => bigint of proper class */
-      XSRETURN(1);
-    }
-    /* It doesn't look like a number, but let Math::BigFloat decide. */
-    ST(0) = xs_call_root_1_sv(aTHX_ "_int_from_float", svn);
-    XSRETURN(1);
+    if (stype & SNUMFLAG_BIGINT)
+      RETURN_SV_CANONICAL(svn);   /* Converts to appropriate bigint */
+    /* It's not clear what the input is.  Let Math::BigFloat decide. */
+    RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
+
 
 void pisano_period(IN SV* svn)
   ALIAS:
@@ -4210,8 +4203,7 @@ void pisano_period(IN SV* svn)
         XSRETURN_UV(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void random_factored_integer(IN SV* svn)
   PREINIT:
@@ -4250,8 +4242,9 @@ void contfrac(IN SV* svnum, IN SV* svden)
         PUSHs(sv_2mortal(newSVuv( cf[i] )));
       Safefree(cf);
     } else {
-      DISPATCHPP();
-      return;
+      int nret = DISPATCHPP();
+      SPAGAIN;
+      XSRETURN(nret);
     }
 
 void from_contfrac(...)
@@ -4290,9 +4283,10 @@ void from_contfrac(...)
     if (nstatus == 1) {
       XPUSHs(sv_2mortal(newSVuv( cfA1 )));
       XPUSHs(sv_2mortal(newSVuv( cfB1 )));
-    } else {
-      DISPATCHPP();
+      XSRETURN(2);
     }
+    DISPATCHPP();
+    SPAGAIN;
     XSRETURN(2);
 
 void convergents(...)
@@ -4319,8 +4313,9 @@ void convergents(...)
       }
     }
     Safefree(L);
-    DISPATCHPP();
-    return;
+    len = DISPATCHPP();
+    SPAGAIN;
+    XSRETURN(len);
 
 void bestrational(IN SV* svx, IN SV* svdbound)
   PREINIT:
@@ -4342,6 +4337,7 @@ void bestrational(IN SV* svx, IN SV* svdbound)
       }
     }
     DISPATCHPP();
+    SPAGAIN;
     XSRETURN(2);
 
 void next_calkin_wilf(IN SV* svnum, IN SV* svden)
@@ -4450,8 +4446,9 @@ void farey(IN SV* svn, IN SV* svk = 0)
         }
       }
     }
-    DISPATCHPP();
-    return;
+    kresult = DISPATCHPP();
+    SPAGAIN;
+    XSRETURN(kresult);
 
 void next_farey(IN SV* svn, IN SV* svfrac)
   ALIAS:
@@ -4935,8 +4932,7 @@ jordan_totient(IN SV* sva, IN SV* svn)
     }
     overflow:
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ sva, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void almost_prime_count(IN SV* svk, IN SV* svn)
   ALIAS:
@@ -4962,8 +4958,7 @@ void almost_prime_count(IN SV* svk, IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void nth_almost_prime(IN SV* svk, IN SV* svn)
   ALIAS:
@@ -5035,8 +5030,7 @@ void powmod(IN SV* sva, IN SV* svg, IN SV* svn)
       XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
   ALIAS:
@@ -5091,8 +5085,7 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
       RETURN_STRING_BIGINT(tmp, rlen);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
   ALIAS:
@@ -5122,8 +5115,7 @@ void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
       RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
   PREINIT:
@@ -5147,8 +5139,7 @@ void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
       }
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void factorialmod(IN SV* sva, IN SV* svn)
   PREINIT:
@@ -5163,8 +5154,7 @@ void factorialmod(IN SV* sva, IN SV* svn)
       XSRETURN_UV( factorialmod(a, n) );
     }
     DISPATCHPP_GMPONLYIF(astatus == 1);
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void invmod(IN SV* sva, IN SV* svn)
   ALIAS:
@@ -5193,8 +5183,7 @@ void invmod(IN SV* sva, IN SV* svn)
       XSRETURN_UV(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void allsqrtmod(IN SV* sva, IN SV* svn)
   PREINIT:
@@ -5283,8 +5272,7 @@ void qnr(IN SV* svn)
       else          XSRETURN_UV(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void
 is_smooth(IN SV* svn, IN SV* svk)
@@ -5394,8 +5382,7 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
       if (ret > 0) XSRETURN_UV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 
 void kronecker(IN SV* sva, IN SV* svb)
@@ -5458,8 +5445,7 @@ void addint(IN SV* sva, IN SV* svb)
     }
     /* Others get dispatched here */
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ sva, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
   ALIAS:
@@ -5516,8 +5502,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ sva, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void add1int(IN SV* svn)
   ALIAS:
@@ -5538,8 +5523,7 @@ void add1int(IN SV* svn)
       XSRETURN(1);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void absint(IN SV* svn)
   ALIAS:
@@ -5564,8 +5548,7 @@ void absint(IN SV* svn)
       RETURN_STRING_BIGINT(tmp,len);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void signint(IN SV* svn)
   ALIAS:
@@ -5660,8 +5643,7 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
       }
     }
     DISPATCHPP_GMPONLYIF(svret == 0);
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void divrem(IN SV* sva, IN SV* svb)
   ALIAS:
@@ -5759,8 +5741,7 @@ void lshiftint(IN SV* svn, IN SV* svk = 0)
       }
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void
 gcdext(IN SV* sva, IN SV* svb)
@@ -5799,8 +5780,7 @@ stirling(IN UV n, IN UV m, IN UV type = 1)
       if (s != 0) XSRETURN_IV(s);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 NV
 _XS_ExponentialIntegral(IN SV* x)
@@ -5898,8 +5878,7 @@ dedekind_psi(IN SV* svn)
       if (r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void sqrtint(IN SV* svn)
   ALIAS:
@@ -5928,8 +5907,7 @@ void sqrtint(IN SV* svn)
       if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void prime_omega(IN SV* svn)
   ALIAS:
@@ -5986,8 +5964,7 @@ void factorial(IN SV* svn)
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void sumtotient(IN SV* svn)
   PREINIT:
@@ -6004,8 +5981,7 @@ void sumtotient(IN SV* svn)
       }
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void binomial(IN SV* svn, IN SV* svk)
   PREINIT:
@@ -6030,8 +6006,7 @@ void binomial(IN SV* svn, IN SV* svk)
       }
     }
     DISPATCHPP_GMPONLYIF(nstatus == 1 && kstatus != 0);
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void multifactorial(IN SV* svn, IN SV* svk)
   PREINIT:
@@ -6043,8 +6018,7 @@ void multifactorial(IN SV* svn, IN SV* svk)
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void falling_factorial(IN SV* svn, IN SV* svk)
   ALIAS:
@@ -6064,8 +6038,7 @@ void falling_factorial(IN SV* svn, IN SV* svk)
       if (ret != IV_MAX) XSRETURN_IV(ret);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void mertens(IN SV* svn)
   ALIAS:
@@ -6100,8 +6073,7 @@ void mertens(IN SV* svn)
       if (status != 0) RETURN_NPARITY(r);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svn, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 int _is_congruent_number_filter(IN UV n)
   CODE:
@@ -7016,8 +6988,7 @@ void permtonum(IN SV* svp)
         XSRETURN_UV(num);
     }
     DISPATCHPP();
-    ST(0) = xs_objectify_result(aTHX_ svp, ST(0));
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(0));
 
 void randperm(IN UV n, IN UV k = 0)
   PREINIT:
@@ -7254,7 +7225,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       }
     }
     DISPATCHPP();
-    if (ix == 2) ST(0) = xs_objectify_result(aTHX_ 0, ST(0));
+    if (ix == 2) RETURN_SV_CANONICAL(ST(0));
     return;
 
 void is_harshad(SV* svn, int base = 10)
