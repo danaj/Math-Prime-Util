@@ -10251,6 +10251,7 @@ sub trial_factor {
     # Batch primes and use gcd to check.  If using Math::BigInt, 2-5x faster.
     while ($I+3 <= $#_primes_small && $_primes_small[$I+3] <= $limit && $I <= 1951956) {
       my($f1,$f2,$f3,$f4) = @_primes_small[$I .. $I+3];
+      $n = Math::BigInt->new("$n") if ref($n) ne 'Math::BigInt'; # possible
       my $g = $n->bgcd($f1<=5581 ? $f1*$f2*$f3*$f4 : Mmulint($f1*$f4,$f2*$f3));
       $I += 4;
       next if $g->is_one;

@@ -32,6 +32,10 @@ Revision history for Perl module Math::Prime::Util
     - vecwindow { } $step,$size,@list calls block with windows of size objects
 
 
+    [FIXES]
+
+    - chebyshev_theta and chebyshev_psi had tables corrected for 3 ranges.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+
@@ -61,6 +65,8 @@ Revision history for Perl module Math::Prime::Util
       for 5x to 100x speedup.  absint and negint, can be 5x faster.
 
     - lshiftint, rshiftint, rashiftint similar, for small shift amounts.
+
+    - vecsum and vecprod 100x faster if GMP not available (vs Calc).
 
     - znlog faster, PP znlog much faster.
 
