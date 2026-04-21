@@ -66,7 +66,7 @@ SKIP: {
 
 {
   my $m = 10403;  # 101 * 103
-  is(factorialmod(102, $m), factorial(102) % $m,
+  is(factorialmod(102, $m), 5252,
      "factorialmod below composite-zero cutoff remains non-trivial");
   is(factorialmod(103, $m), 0,
      "factorialmod at composite-zero cutoff returns zero");
