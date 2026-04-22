@@ -58,8 +58,6 @@
 - Investigate optree constant folding in PP compilation for performance.
   Use B::Deparse to check.
 
-- Ensure a fast path for Math::GMP from MPU -> MPU:GMP -> GMP, and back.
-
 - More Pari:  parforprime
 
 - znlog:
@@ -571,8 +569,6 @@ OEIS lucky numbers:
 
 - nth_ramanujan_lower, should be redone like upper.
 
-- calculate primecount 24^14 and use it in t/81-bignum.t.
-
 - vecpairwise {... $a,$b ...} \@A,\@B
   List::MoreUtils::pairwise
 
@@ -589,13 +585,6 @@ OEIS lucky numbers:
   https://eprint.iacr.org/2025/2083.pdf
 
 - move to 5.10.1 minimum
-
-- we're flakey about return types with different bigint type
-  powmod returns typeof($n), but invmod returns $_BIGINT.  Usually.
-
-- API change to use tobigint / maybetobigint instead of reftyped.
-  They can set the class now, so no need to keep trying to mix classes.
-  So we will expect to return $BIGINT class, not the input class.
 
 - should vecsort have a code block option?
   usort does not.  Time to add list reverse is negligible.
@@ -646,3 +635,40 @@ OEIS lucky numbers:
 - string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
 
 - nth_lucky bounds:  https://arxiv.org/pdf/2604.07142
+
+- Better psi(x) and Riemann(psi(x))
+  https://github.com/kimwalisch/primecount/pull/112/changes#top
+  https://doi.org/10.48550/arXiv.1410.1083
+
+- toint for bigints does a redundant second parse.
+  split out into something like sv=xs_to_canonical_bigint(sv)
+
+- Check PP validation on 5.6.2.
+
+- redo t/32-iterators as subtests.
+
+- randperm, shuffle, vecsample should return count in scalar context
+  and should be documented
+
+- more of the is_...prime PPFE functions should be aliased.
+
+- is_frobenius_pseudoprime, careful with P/Q using 0 to mean something.
+
+- xops in priority:
+  urandomm urandomr
+  is_square
+  is_congruent
+  kronecker
+  addmod submod mulmod
+  is_prime
+  sqrtint
+  absint
+  negint
+
+- is_semiprime using 128-bit factoring.  Other things that could?
+
+- GMP dispatch missing:
+    Pi
+    primes
+
+- GMP dispatch canonical stack, see divisors, factors, etc.
