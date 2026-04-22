@@ -669,7 +669,6 @@ static int _vcallsubn(pTHX_ I32 flags, I32 stashflags, const char* name, int nar
 static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask);
 static SV* xs_to_bigint(pTHX_ SV* r);
 static SV* xs_to_canonical(pTHX_ SV* sv);
-static SV* xs_objectify_result(pTHX_ SV* input, SV* output);
 
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
@@ -964,13 +963,13 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
   return newop;
 }
 
-static OP* xop_dispatch_binary_objectify(pTHX_ SV* sva, const char* name, int minversion) {
+static OP* xop_dispatch_binary_canonical(pTHX_ const char* name, int minversion) {
   dSP;
   SV* out;
   PUTBACK;
   (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 2, minversion);
   SPAGAIN;
-  out = xs_objectify_result(aTHX_ sva, TOPs);
+  out = xs_to_canonical(aTHX_ TOPs);
   SPAGAIN;
   SETs(out);
   RETURN;
@@ -1054,7 +1053,7 @@ static OP* pp_addint_custom_common(pTHX_ int opix, const char *opname, int minve
     RETURN;
   }
 
-  return xop_dispatch_binary_objectify(aTHX_ sva, opname, minversion);
+  return xop_dispatch_binary_canonical(aTHX_ opname, minversion);
 }
 
 static OP* pp_addint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 0, "addint", 52); }
@@ -1392,29 +1391,6 @@ static SV* xs_call_cv_noinput_1_sv(pTHX_ CV* subcv) {
   return ret;
 }
 
-static SV* xs_objectify_result(pTHX_ SV* input, SV* output) {
-  /* Leave unchanged: undef, objects, small integers */
-  if (!SvOK(output) || sv_isobject(output) || SVNUMTEST(output))
-    return output;
-  /* If they didn't give us a bigint, then try to be smart */
-  if (!input || !sv_isobject(input)) {
-    return xs_call_root_1_sv(aTHX_ "_to_bigint_if_needed", sv_2mortal(newSVsv(output)));
-  } else {
-    const char *iname = HvNAME_get(SvSTASH(SvRV(input)));
-    if (strEQ(iname, "Math::BigInt")) {
-      return xs_call_root_1_sv(aTHX_ "_to_bigint", sv_2mortal(newSVsv(output)));
-    } else if (strEQ(iname, "Math::GMPz")) {
-      return xs_call_root_1_sv(aTHX_ "_to_gmpz", sv_2mortal(newSVsv(output)));
-    } else if (strEQ(iname, "Math::GMP")) {
-      return xs_call_root_1_sv(aTHX_ "_to_gmp", sv_2mortal(newSVsv(output)));
-    } else { /* Return it as: ref(input)->new(result) */
-      return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(iname, 0)), "new",
-                                       sv_2mortal(newSVsv(output)));
-    }
-  }
-  return output;
-}
-
 /* Takes an SV and returns a mortalized SV of the correct native/bigint form.
  *
  * INPUT                  OUTPUT           COMMENTS
@@ -1452,9 +1428,9 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
       return sv;
     /* Construct canonical bigint: MY_CXT.bigintname->new(str) */
     if (MY_CXT.bigintname) {
-      return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(MY_CXT.bigintname, 0)),
-                                        "new",
-                                        sv_2mortal(newSVpvn(str, len)));
+      return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(MY_CXT.bigintname,0)),
+                                       "new",
+                                       sv_2mortal(newSVpvn(str, len)));
     }
   }
   /* We can't understand the input.  Return it unchanged. */

@@ -200,7 +200,6 @@ sub mpu_PPM_regex {
       Mlucasumod Mvecfirst Mvecsort Mvecsorti
       Saddint Ssubint Smulint Sdivint Spowint
       Mtoint
-      reftyped
       validate_integer     validate_integer_nonneg
       validate_integer_abs validate_integer_positive
       tobigint maybetobigint maybetobigintall

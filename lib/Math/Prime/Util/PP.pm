@@ -64,9 +64,8 @@ our $_BIGINT;
 # implementation would be to make the perl subs here use a pp_{...} prefix.
 
 
-*reftyped = \&Math::Prime::Util::_reftyped;
 *tobigint = \&Math::Prime::Util::_to_bigint;
-*maybetobigint = \&Math::Prime::Util::_to_bigint_if_needed;
+*maybetobigint = \&Math::Prime::Util::_maybe_bigint;
 *maybetobigintall = \&Math::Prime::Util::_maybe_bigint_allargs;
 *_bigint_to_int = \&Math::Prime::Util::_bigint_to_int;
 *getconfig = \&Math::Prime::Util::prime_get_config;
@@ -1100,7 +1099,7 @@ sub next_prime {
   # This turns out not to be faster.
   # return $_primes_small[1+_tiny_prime_count($n)] if $n < $_primes_small[-1];
 
-  return reftyped($_[0], Math::Prime::Util::GMP::next_prime($n))
+  return maybetobigint(Math::Prime::Util::GMP::next_prime($n))
     if $Math::Prime::Util::_GMPfunc{"next_prime"};
 
   return tobigint(MPU_32BIT ? "4294967311" : "18446744073709551629") if !ref($n) && $n >= MPU_MAXPRIME;
@@ -1118,7 +1117,7 @@ sub prev_prime {
   validate_integer_nonneg($n);
   return (undef,undef,undef,2,3,3,5,5,7,7,7,7)[$n] if $n <= 11;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::prev_prime($n))
+  return maybetobigint(Math::Prime::Util::GMP::prev_prime($n))
     if $Math::Prime::Util::_GMPfunc{"prev_prime"};
 
   do {
@@ -1512,7 +1511,7 @@ sub jordan_totient {
   return Mtotient($n)       if $k == 1;
   return ($n == 1) ? 1 : 0  if $n <= 1;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::jordan_totient($k, $n))
+  return maybetobigint(Math::Prime::Util::GMP::jordan_totient($k, $n))
     if $Math::Prime::Util::_GMPfunc{"jordan_totient"};
 
   my $totient = 1;
@@ -1530,7 +1529,7 @@ sub euler_phi {
   my($n) = @_;
   return 0 if defined $n && $n < 0;
 
-  return reftyped($_[0],Math::Prime::Util::GMP::totient($n))
+  return maybetobigint(Math::Prime::Util::GMP::totient($n))
     if $Math::Prime::Util::_GMPfunc{"totient"};
 
   validate_integer_nonneg($n);
@@ -2395,7 +2394,7 @@ sub is_perfect_power {
 sub _perfect_power_count {
   my($n) = @_;
   return 0+($n>=1)+($n>=4) if $n < 8;
-  #return reftyped($_[0], Math::Prime::Util::GMP::perfect_power_count($n))
+  #return maybetobigint(Math::Prime::Util::GMP::perfect_power_count($n))
   #  if $Math::Prime::Util::_GMPfunc{"perfect_power_count"};
   my @T = (1);
 
@@ -3234,7 +3233,7 @@ sub is_carmichael {
   validate_integer($n);
   return 0 if $n < 561 || ($n % 2) == 0;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::is_carmichael($n))
+  return maybetobigint(Math::Prime::Util::GMP::is_carmichael($n))
     if $Math::Prime::Util::_GMPfunc{"is_carmichael"};
 
   # This works fine, but very slow
@@ -3389,7 +3388,7 @@ sub divisor_sum {
     unless !defined $k || validate_integer_nonneg($k);
   $k = 1 if !defined $k;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::sigma($n, $k))
+  return maybetobigint(Math::Prime::Util::GMP::sigma($n, $k))
     if $Math::Prime::Util::_GMPfunc{"sigma"};
 
   my @factors = Mfactor_exp($n);
@@ -3631,7 +3630,7 @@ sub prime_count {
 
   return 0 if $high < 2 || $low > $high;
 
-  return reftyped($high, Math::Prime::Util::GMP::prime_count($low,$high))
+  return maybetobigint(Math::Prime::Util::GMP::prime_count($low,$high))
     if $Math::Prime::Util::_GMPfunc{"prime_count"}
     && (ref($high) eq 'Math::BigInt' || ($high-$low) < int($low/1_000_000));
 
@@ -3971,7 +3970,7 @@ sub prime_count_lower {
 
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
-  return reftyped($_[0], Math::Prime::Util::GMP::prime_count_lower($x))
+  return maybetobigint(Math::Prime::Util::GMP::prime_count_lower($x))
     if $Math::Prime::Util::_GMPfunc{"prime_count_lower"};
 
   $x = _upgrade_to_float($x) if $x > 10000000000000000;
@@ -4048,7 +4047,7 @@ sub prime_count_upper {
   # Give an exact answer for what we have in our little table.
   return _tiny_prime_count($x) if $x < $_primes_small[-1];
 
-  return reftyped($_[0], Math::Prime::Util::GMP::prime_count_upper($x))
+  return maybetobigint(Math::Prime::Util::GMP::prime_count_upper($x))
     if $Math::Prime::Util::_GMPfunc{"prime_count_upper"};
 
   $x = _upgrade_to_float($x) if $x > 10000000000000000;
@@ -5177,7 +5176,7 @@ sub powint {
   my($a, $b) = @_;
   validate_integer($a);
   validate_integer($b);
-  return reftyped($_[0], Math::Prime::Util::GMP::powint($a,$b))
+  return maybetobigint(Math::Prime::Util::GMP::powint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"powint"};
   croak "powint: exponent must be >= 0" if $b < 0;
 
@@ -5230,7 +5229,7 @@ sub mulint {
   validate_integer($a);
   validate_integer($b);
   return 0 if $a == 0 || $b == 0;
-  return reftyped($_[0], Math::Prime::Util::GMP::mulint($a,$b))
+  return maybetobigint(Math::Prime::Util::GMP::mulint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"mulint"};
 
   my $r = $a * $b;
@@ -5245,7 +5244,7 @@ sub addint {
   my($a, $b) = @_;
   validate_integer($a);
   validate_integer($b);
-  return reftyped($_[0], Math::Prime::Util::GMP::addint($a,$b))
+  return maybetobigint(Math::Prime::Util::GMP::addint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"addint"};
 
   my $r = $a + $b;
@@ -5260,7 +5259,7 @@ sub subint {
   my($a, $b) = @_;
   validate_integer($a);
   validate_integer($b);
-  return reftyped($_[0], Math::Prime::Util::GMP::subint($a,$b))
+  return maybetobigint(Math::Prime::Util::GMP::subint($a,$b))
     if $Math::Prime::Util::_GMPfunc{"subint"};
 
   my $r = $a - $b;
@@ -5475,7 +5474,7 @@ sub cdivint {
 sub absint {
   my($n) = @_;
   validate_integer_abs($n);
-  reftyped($_[0], $n);
+  $n;
 }
 sub negint {
   my($n) = @_;
@@ -5484,7 +5483,7 @@ sub negint {
   return -$n if ref($n) || $n < SINTMAX;
   if ($n > 0) { $n = "-$n"; }
   else        { $n =~ s/^-//; }
-  reftyped($_[0], $n);
+  maybetobigint($n);
 }
 sub signint {
   my($n) = @_;
@@ -5640,13 +5639,8 @@ sub gcdext {
   if ($x == 0) { return (0, (-1,0,1)[($y>=0)+($y>0)], abs($y)); }
   if ($y == 0) { return ((-1,0,1)[($x>=0)+($x>0)], 0, abs($x)); }
 
-  if ($Math::Prime::Util::_GMPfunc{"gcdext"}) {
-    my($a,$b,$g) = Math::Prime::Util::GMP::gcdext($x,$y);
-    $a = reftyped($_[0], $a);
-    $b = reftyped($_[0], $b);
-    $g = reftyped($_[0], $g);
-    return ($a,$b,$g);
-  }
+  return maybetobigintall(Math::Prime::Util::GMP::gcdext($x,$y))
+    if $Math::Prime::Util::_GMPfunc{"gcdext"};
 
   my($a,$b,$g,$u,$v,$w);
   if (abs($x) < (~0>>1) && abs($y) < (~0>>1)) {
@@ -5738,9 +5732,9 @@ sub _from_128 {
 }
 
 sub vecsum {
-  return reftyped($_[0], @_ ? $_[0] : 0)  if @_ <= 1;
+  return (@_ == 0) ? 0 : maybetobigint($_[0]) if @_ <= 1;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::vecsum(@_))
+  return maybetobigint(Math::Prime::Util::GMP::vecsum(@_))
     if $Math::Prime::Util::_GMPfunc{"vecsum"};
   my $sum = 0;
   if (OLD_PERL_VERSION) { $_="$_" for @_ };
@@ -5761,7 +5755,7 @@ sub vecsum {
 sub vecprefixsum {
   my @v = (@_ == 1 && ref $_[0] eq 'ARRAY') ? @{$_[0]} : @_;
   return unless @v;
-  return reftyped($_[0],$v[0]) if @v == 1;
+  return maybetobigint($v[0]) if @v == 1;
 
   my @psum;
   my $sum = 0;
@@ -5794,10 +5788,10 @@ sub _product_mult {
 
 sub vecprod {
   return 1 unless @_;
-  return reftyped($_[0], Math::Prime::Util::GMP::vecprod(@_))
+  return maybetobigint(Math::Prime::Util::GMP::vecprod(@_))
     if $Math::Prime::Util::_GMPfunc{"vecprod"};
 
-  return $_[0] if @_ == 1;
+  return maybetobigint($_[0]) if @_ == 1;
 
   # Argh, Perl 5.6.2.
   if (OLD_PERL_VERSION) {
@@ -6812,7 +6806,7 @@ sub mulmod {
   }
 
   # Try GMP
-  return reftyped($_[0], Math::Prime::Util::GMP::mulmod($a,$b,$n))
+  return maybetobigint(Math::Prime::Util::GMP::mulmod($a,$b,$n))
     if $Math::Prime::Util::_GMPfunc{"mulmod"};
 
   my $refn = ref($n);
@@ -6868,10 +6862,8 @@ sub powmod {
   }
   return $b < 0 ? undef : $b > 0 ? 0 : 1 if $a == 0;
 
-  if ($Math::Prime::Util::_GMPfunc{"powmod"}) {
-    my $r = Math::Prime::Util::GMP::powmod($a,$b,$n);
-    return (defined $r) ? reftyped($_[0], $r) : undef;
-  }
+  return maybetobigint(Math::Prime::Util::GMP::powmod($a,$b,$n))
+    if $Math::Prime::Util::_GMPfunc{"powmod"};
 
   # If the exponent is negative: a=1/a ; b=-b
   if ($b < 0) {
@@ -6918,7 +6910,7 @@ sub muladdmod {
     #$c %= $n if $c >= $n;   # For mulsubmod
     return _addmod(_mulmod($a,$b,$n),$c,$n);
   }
-  return reftyped($_[0], Math::Prime::Util::GMP::muladdmod($a,$b,$c,$n))
+  return maybetobigint(Math::Prime::Util::GMP::muladdmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"muladdmod"};
 
   $n = tobigint($n) unless ref($n);
@@ -6948,7 +6940,7 @@ sub mulsubmod {
     $c = ($c < $n)  ?  $n-$c  :  $n-($c % $n);  # $c = -$c (mod n)
     return _addmod(_mulmod($a,$b,$n),$c,$n);
   }
-  return reftyped($_[0], Math::Prime::Util::GMP::mulsubmod($a,$b,$c,$n))
+  return maybetobigint(Math::Prime::Util::GMP::mulsubmod($a,$b,$c,$n))
     if $Math::Prime::Util::_GMPfunc{"mulsubmod"};
 
   # return Msubmod(Mmulmod($a,$b,$n),$c,$n);
@@ -7104,7 +7096,7 @@ sub is_power {
       my $isneg = ($n < 0);
       $n =~ s/^-// if $isneg;
       $$refp = Mrootint($n, $a);
-      $$refp = reftyped($_[0], $$refp) if $$refp > INTMAX;
+      $$refp = maybetobigint($$refp) if $$refp > INTMAX;
       $$refp = Mnegint($$refp) if $isneg;
     }
     return $k;
@@ -7210,7 +7202,7 @@ sub is_polygonal {
   if ($Math::Prime::Util::_GMPfunc{"polygonal_nth"}) {
     my $nth = Math::Prime::Util::GMP::polygonal_nth($n, $k);
     return 0 unless $nth;
-    $$refp = reftyped($_[0], $nth) if defined $refp;
+    $$refp = maybetobigint($nth) if defined $refp;
     return 1;
   }
 
@@ -7820,9 +7812,9 @@ sub logint {
       # logint in 0.47, powmod in 0.36, powint in 0.52
       my $r = Math::Prime::Util::GMP::powmod($b, $e, $n);
       $r = $n if $r == 0;
-      $$refp = reftyped($_[0], $r);
+      $$refp = maybetobigint($r);
     }
-    return reftyped($_[0], $e);
+    return maybetobigint($e);
   }
 
   my $log = _logint($n,$b);
@@ -7880,7 +7872,7 @@ sub stirling {
     return Mfactorial($n-1) if $n & 1;
     return Mvecprod(-1, Mfactorial($n-1));
   }
-  return reftyped($_[0], Math::Prime::Util::GMP::stirling($n,$m,$type))
+  return maybetobigint(Math::Prime::Util::GMP::stirling($n,$m,$type))
     if $Math::Prime::Util::_GMPfunc{"stirling"};
   # Go through vecsum with quoted negatives to make sure we don't overflow.
   my $s;
@@ -8241,7 +8233,7 @@ sub binomial {
   validate_integer($k);
 
   # 1. Try GMP
-  return reftyped($_[0], Math::Prime::Util::GMP::binomial($n,$k))
+  return maybetobigint(Math::Prime::Util::GMP::binomial($n,$k))
     if $Math::Prime::Util::_GMPfunc{"binomial"} &&
        ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296));
 
@@ -8310,13 +8302,13 @@ sub binomialmod {
   validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::binomialmod($n,$k,$m))
+  return maybetobigint(Math::Prime::Util::GMP::binomialmod($n,$k,$m))
     if $Math::Prime::Util::_GMPfunc{"binomialmod"};
 
   # Avoid the possible enormously slow bigint creation.
   if ($Math::Prime::Util::_GMPfunc{"binomial"} && $Math::Prime::Util::_GMPfunc{"modint"}) {
     if ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296)) {
-      return reftyped($_[2], Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
+      return maybetobigint(Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
     }
   }
 
@@ -8398,7 +8390,7 @@ sub factorialmod {
   validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
-  return reftyped($_[1], Math::Prime::Util::GMP::factorialmod($n,$m))
+  return maybetobigint(Math::Prime::Util::GMP::factorialmod($n,$m))
     if $Math::Prime::Util::_GMPfunc{"factorialmod"} && $n < ~0;
 
   return 0 if $n >= $m || $m == 1;
@@ -8902,7 +8894,7 @@ sub znorder {
   return undef if $a <= 0;
   return 1 if $a == 1;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::znorder($a,$n))
+  return maybetobigint(Math::Prime::Util::GMP::znorder($a,$n))
     if $Math::Prime::Util::_GMPfunc{"znorder"};
 
   return undef if Mgcd($a, $n) > 1;
@@ -11077,7 +11069,7 @@ sub ecm_factor {
     $ncurves = 0 if !defined $ncurves;
     my @ef = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
     if (@ef > 1) {
-      my $ecmfac = reftyped($n, $ef[-1]);
+      my $ecmfac = maybetobigint($ef[-1]);
       return (@f, _found_factor($ecmfac, $n, "ECM (GMP) B1=$B1 curves $ncurves"));
     }
     return (@f, $n);
@@ -11270,7 +11262,7 @@ sub ramanujan_tau {
   # Use GMP if we have no XS or if size is small
   if ($n < 100000 || !getconfig()->{'xs'}) {
     if ($Math::Prime::Util::_GMPfunc{"ramanujan_tau"}) {
-      return reftyped($_[0], Math::Prime::Util::GMP::ramanujan_tau($n));
+      return maybetobigint(Math::Prime::Util::GMP::ramanujan_tau($n));
     }
   }
   Mvecprod(map { _taupower($_->[0],$_->[1]) } Mfactor_exp($n));
@@ -12953,7 +12945,7 @@ sub urandomb {
 sub urandomm {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return reftyped($_[0], Math::Prime::Util::GMP::urandomm($n))
+  return maybetobigint(Math::Prime::Util::GMP::urandomm($n))
     if $Math::Prime::Util::_GMPfunc{"urandomm"};
   return 0 if $n <= 1;
   my $r;
@@ -12979,7 +12971,7 @@ sub urandomr {
   return undef if $lo > $hi;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $lo if $lo == $hi;
   # Only pass non-negative inputs to GMP (GMP backend requires non-negative).
-  return reftyped($_[0], Math::Prime::Util::GMP::urandomr($lo, $hi))
+  return maybetobigint(Math::Prime::Util::GMP::urandomr($lo, $hi))
     if $Math::Prime::Util::_GMPfunc{"urandomr"} && $lo >= 0;
   Maddint($lo, Murandomm(Madd1int(Msubint($hi, $lo))));
 }
@@ -12990,7 +12982,7 @@ sub random_prime {
   else                 { validate_integer_nonneg($low); }
   validate_integer_nonneg($high);
 
-  return reftyped($_[0], Math::Prime::Util::GMP::random_prime($low, $high))
+  return maybetobigint(Math::Prime::Util::GMP::random_prime($low, $high))
     if $Math::Prime::Util::_GMPfunc{"random_prime"};
 
   require Math::Prime::Util::RandomPrimes;
@@ -13002,7 +12994,7 @@ sub random_ndigit_prime {
   validate_integer_nonneg($digits);
   croak "random_ndigit_prime digits must be >= 1" unless $digits >= 1;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::random_ndigit_prime($digits))
+  return maybetobigint(Math::Prime::Util::GMP::random_ndigit_prime($digits))
     if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"} && !getconfig()->{'nobigint'};
 
   require Math::Prime::Util::RandomPrimes;
@@ -13013,7 +13005,7 @@ sub random_nbit_prime {
   validate_integer_nonneg($bits);
   croak "random_nbit_prime bits must be >= 2" unless $bits >= 2;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::random_nbit_prime($bits))
+  return maybetobigint(Math::Prime::Util::GMP::random_nbit_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_nbit_prime"};
 
   require Math::Prime::Util::RandomPrimes;
@@ -13051,7 +13043,7 @@ sub random_maurer_prime {
   validate_integer_nonneg($bits);
   croak "random_maurer_prime bits must be >= 2" unless $bits >= 2;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::random_maurer_prime($bits))
+  return maybetobigint(Math::Prime::Util::GMP::random_maurer_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_maurer_prime"};
 
   require Math::Prime::Util::RandomPrimes;
@@ -13067,7 +13059,7 @@ sub random_shawe_taylor_prime {
   validate_integer_nonneg($bits);
   croak "random_shawe_taylor_prime bits must be >= 2" unless $bits >= 2;
 
-  return reftyped($_[0], Math::Prime::Util::GMP::random_shawe_taylor_prime($bits))
+  return maybetobigint(Math::Prime::Util::GMP::random_shawe_taylor_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime"};
 
   require Math::Prime::Util::RandomPrimes;

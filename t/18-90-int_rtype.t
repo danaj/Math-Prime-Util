@@ -21,9 +21,8 @@ use Math::BigInt;
 #   1) native if it fits, regardless of input form.
 #   2) bigint otherwise, regardless of input form.
 #
-# We will attempt to preserve the input type, typically based on the first
-# argument.  That is, if the input was a "Math::GMPz" object then we will
-# try to output either native or Math::GMPz.
+# Bigint outputs are canonicalized to the configured bigint class rather than
+# preserving the input object's class.
 
 # Expect all the 5.6 workarounds to be deprecated in 2026.
 

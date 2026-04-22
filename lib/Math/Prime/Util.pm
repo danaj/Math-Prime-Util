@@ -432,44 +432,37 @@ sub _to_bigint_abs {
   my $n = _to_bigint($_[0]);
   return ($n < 0) ? -$n : $n;
 }
-sub _to_bigint_if_needed {
+
+# v0.73 and earlier:
+#    The user could use a different bigint class.  All our functions would try
+#    to respect that and return results of the same class.  If the input was
+#    native and output was bigint, they'd get MBI.  Internal calcs were almost
+#    always in MBI except certain functions that tried to preserve it.
+# v0.74:
+#    The user can set the preferred bigint class.  We try to use this class.
+#    But if they pass in a bigint object, we convert to that class.  Usually.
+#    Still have the issue of multi-input functions having to choose one.
+# v0.75:
+#    Like v0.74, the user can set the bigint class (MBI if not set) at runtime.
+#    This is used for all calculations and output.  The input class(es) don't
+#    have any impact.  "reftyped" is gone.
+#
+# The XS code calls a "to canonical" process which ensures the result is
+# either undef, a native integer type (if fits), or a $_BIGINT object.
+
+# For both of these:
+# 1) we aren't checking the ref to make sure it eq $_BIGINT
+# 2) we aren't turning non-bigints into 0+"x".  Validate does that.
+
+sub _maybe_bigint {
+  _load_bigint() unless defined $_BIGINT;
   return $_[0] if !defined $_[0] || ref($_[0]);
-  if ($_[0] >= INTMAX || $_[0] <= INTMIN) {    # Probably a bigint
-    my $n = _to_bigint($_[0]);
-    return $n if $n > INTMAX || $n < INTMIN;   # Definitely a bigint
+  if ($_[0] >= INTMAX || $_[0] <= INTMIN) {
+    my $n = $_BIGINT->new("$_[0]");
+    return $_[0] = $n  if $n > INTMAX || $n < INTMIN;
   }
   $_[0];
 }
-sub _to_gmpz {
-  do { require Math::GMPz; } unless defined $Math::GMPz::VERSION;
-  return (ref($_[0]) eq 'Math::GMPz') ? $_[0] : Math::GMPz->new($_[0]);
-}
-sub _to_gmp {
-  do { require Math::GMP; } unless defined $Math::GMP::VERSION;
-  return (ref($_[0]) eq 'Math::GMP') ? $_[0] : Math::GMP->new($_[0]);
-}
-sub _reftyped {
-  return undef unless defined $_[1];
-  my $ref0 = ref($_[0]);
-  if (OLD_PERL_VERSION) {
-    # Perl 5.6 truncates arguments to doubles if you look at them funny
-    return "$_[1]" if "$_[1]" <= INTMAX && "$_[1]" >= INTMIN;
-  } elsif ($_[1] >= 0) {
-    return $_[1] if $_[1] < ~0;
-  } else {
-    return $_[1] if $_[1] > -(~0>>1);
-  }
-  my $bign;
-  if ($ref0) {
-    $bign = $ref0->new("$_[1]");
-  } else {
-    _load_bigint() unless defined $_BIGINT;
-    $bign = $_BIGINT->new("$_[1]");
-  }
-  return $bign if $bign > INTMAX || $bign < INTMIN;
-  0+"$_[1]";
-}
-
 sub _maybe_bigint_allargs {
   _load_bigint() unless defined $_BIGINT;
   for my $i (0..$#_) {
@@ -514,7 +507,7 @@ sub random_maurer_prime_with_cert {
 
   if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
     my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
-    return (Math::Prime::Util::_reftyped($_[0],$n), $cert);
+    return (_maybe_bigint($n), $cert);
   }
 
   require Math::Prime::Util::RandomPrimes;
@@ -528,7 +521,7 @@ sub random_shawe_taylor_prime_with_cert {
 
   if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"}) {
     my($n,$cert) =Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
-    return (Math::Prime::Util::_reftyped($_[0],$n), $cert);
+    return (_maybe_bigint($n), $cert);
   }
 
   require Math::Prime::Util::RandomPrimes;
@@ -543,7 +536,7 @@ sub random_proven_prime_with_cert {
   # Go to Maurer with GMP
   if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
     my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
-    return (Math::Prime::Util::_reftyped($_[0],$n), $cert);
+    return (_maybe_bigint($n), $cert);
   }
 
   require Math::Prime::Util::RandomPrimes;
@@ -1058,17 +1051,20 @@ backend.
 
 The default bigint class is L<Math::BigInt>, which is not particularly speedy
 but is available by default in all Perl distributions, and is well tested.
-If you want to try something different, you can install and use L<Math::GMPz>
-or L<Math::GMP> which will be B<much> faster.  You can have this module
-use and return them using, for example:
+You can install and use L<Math::GMPz> or L<Math::GMP> which will be
+B<much> faster.  You can have this module use and return them, for example:
 
   prime_set_config(bigint => Math::GMPz);
   my $n = next_prime(~0);
   say "$n ",ref($n);
   # 18446744073709551629 Math::GMPz
 
-If you use Math::BigInt, I highly recommend also installing one of
-L<Math::BigInt::GMPz>, L<Math::BigInt::GMP>, or L<Math::BigInt::LTM>.
+If you want to use Math::BigInt, I highly recommend also installing
+L<Math::BigInt::GMPz> or L<Math::BigInt::GMP>.
+
+When a result does not fit in a native integer, it is returned using the
+configured bigint class.  This is canonical form output: the class of bigint
+input arguments does not affect the class of the returned bigint result.
 
 If you are using bigints, here are some performance suggestions:
 
@@ -3098,9 +3094,9 @@ times slower as well as more memory.
 
 All these functions accept native integers (IV/UV), bigints, and string
 representations of integers.  Results will be in native types if possible,
-and as objects of the chosen bigint class otherwise.  Best performance
-will still be had by native operations within range, or by using fast
-classes like L<Math::GMPz> if most operations need it.
+and as objects of the chosen bigint class (via L</prime_set_config>) otherwise.
+Best performance will still be had by native operations within range, or by
+using fast classes like L<Math::GMPz> if most operations need it.
 We give correct behavior while only paying the performance penalty when
 needed, although there is still some overhead since we are not built
 into the language like Raku or Python.

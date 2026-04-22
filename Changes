@@ -2,6 +2,12 @@ Revision history for Perl module Math::Prime::Util
 
 0.75 2026-?
 
+    [API Changes]
+
+    - When a function returns an integer result larger than native type size,
+      it will use the user configured bigint class (default Math::BigInt).
+      We no longer try to preserve the input bigint class.
+
     [ADDED]
 
     - is_safe_prime(n)                returns 1 if odd pos n and (n-1)/2 prime
