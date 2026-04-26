@@ -5347,13 +5347,15 @@ sub _tquotient {
     $b = Math::Pari->new("$b") unless $refb eq 'Math::Pari';
     $q = Math::Pari::gdivent(abs($a),abs($b));
     $q = Math::Pari::gneg($q) if ($a < 0) != ($b < 0);
+  } elsif ($refa || $refb) {
+    my($A,$B) = (Math::BigInt->new("$a"), Math::BigInt->new("$b"));
+    $A->upgrade(undef);  $B->upgrade(undef);
+    $q = abs($A) / abs($B);
+    $q = -$q if ($A < 0) != ($B < 0);
+    $q = tobigint($q) if defined $_BIGINT && ref($q) ne $_BIGINT;
   } else {
-    # Force no upgrade so 'use bignum' won't screw us over.
-    my $A = Math::BigInt->new("$a")->upgrade(undef);
-    my $B = Math::BigInt->new("$b")->upgrade(undef);
     $q = abs($a) / abs($b);
     $q = -$q if ($a < 0) != ($b < 0);
-    $q = $refa->new("$q") if $refa ne 'Math::BigInt' && $refb ne 'Math::BigInt';
   }
   $q;
   #return $q <= INTMAX && $q >= INTMIN  ?  _bigint_to_int($q)  :  $q;
@@ -8375,6 +8377,7 @@ sub rising_factorial {
 
 sub factorial {
   my($n) = @_;
+  _validate_integer_nonneg($n);
   return (1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600)[$n]
     if $n <= 12;
 
@@ -8396,7 +8399,7 @@ sub factorial {
 
 sub factorialmod {
   my($n,$m) = @_;
-  validate_integer($n);
+  validate_integer_nonneg($n);
   validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
 
@@ -12551,7 +12554,7 @@ sub setcontainsany {
   if (@in == 1 && ref($in[0]) eq 'ARRAY') {
     $iset = $in[0];
   } else {
-    $iset = \@in;
+    $iset = Mtoset(@in);
   }
   # For better performance, make iset the larger
   ($set,$iset) = ($iset,$set) if scalar(@$set) > scalar(@$iset);
@@ -13063,9 +13066,11 @@ sub miller_rabin_random {
   }
 
   # getconfig()->{'assume_rh'})  ==>  2*log(n)^2
-  if ($k >= int(3*$n/4) ) {
-    for (2 .. int(3*$n/4)+2) {
-      return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, $_);
+  my $maxk = Mdivint(Mmulint(3,$n),4);
+  if ($k >= $maxk) {
+    $maxk = Maddint($maxk,2);
+    for (my $b = 2; $b <= $maxk; $b = Madd1int($b)) {
+      return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, $b);
     }
     return 1;
   }

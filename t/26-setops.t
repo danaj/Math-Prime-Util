@@ -373,6 +373,11 @@ subtest 'setcontainsany', sub {
 
   is( setcontainsany([-5..-1],[-3]),     1, "setcontainsany neg true");
   is( setcontainsany([-5..-1],[-65536]), 0, "setcontainsany neg false");
+
+  # We should act as if toset ran on scalar lists
+  ok( setcontainsany([1,2,3], "01"), 'scalar string as toset');
+  ok( setcontainsany([1,2,3], "04", "002"), 'scalar list as toset');
+  ok(!setcontainsany([1,2,3], "04", "005"), 'scalar string as toset (miss)');
 };
 
 

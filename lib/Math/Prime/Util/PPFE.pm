@@ -267,6 +267,7 @@ sub entropy_bytes {
 *sumliouville = \&Math::Prime::Util::PP::sumliouville;
 *frobenius_number = \&Math::Prime::Util::PP::frobenius_number;
 *binomial = \&Math::Prime::Util::PP::binomial;
+*factorial = \&Math::Prime::Util::PP::factorial;
 *multifactorial = \&Math::Prime::Util::PP::multifactorial;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
 *catalan_number = \&Math::Prime::Util::PP::catalan_number;
@@ -587,12 +588,6 @@ sub lucasuv {
   _validate_integer($Q);
   _validate_integer_nonneg($k);
   return Math::Prime::Util::PP::lucasuv($P,$Q,$k);
-}
-
-sub factorial {
-  my($n) = @_;
-  _validate_integer_nonneg($n);
-  return Math::Prime::Util::PP::factorial($n);
 }
 
 sub stirling {

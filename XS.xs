@@ -1289,7 +1289,6 @@ static NOINLINE int dispatch_external(pTHX_ const CV* thiscv, I32 context, int n
 
   /* TODO: _vcallsubn returns the number of values we got back.  Use this
    *       together with the gmp_info type to decide what to objectify.
-   *       We're missing the input sv that gives us the desired return class.
    */
 
   return nret;
