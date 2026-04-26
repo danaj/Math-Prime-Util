@@ -268,7 +268,7 @@ sub _validate_integer {
     croak "Parameter '$n' must be an integer" unless $n->is_int;
     if ($n->is_negative) { $_[0]=_bigint_to_int($_[0]) if $n >= INTMIN; }
     else                 { $_[0]=_bigint_to_int($_[0]) if $n <= INTMAX; }
-  } elsif ($refn =~ /^Math::/ && $refn ne 'Math::BigFloat') {
+  } elsif (defined $_BIGINT && $refn eq $_BIGINT) {
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX && $n >= INTMIN;
   } else {
     $_[0] = "$_[0]";
@@ -298,7 +298,7 @@ sub _validate_integer_nonneg {
     croak "Parameter '$n' must be a non-negative integer"
       if !$n->is_int || $n->is_negative;
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
-  } elsif ($refn =~ /^Math::/ && $refn ne 'Math::BigFloat') {
+  } elsif (defined $_BIGINT && $refn eq $_BIGINT) {
     croak "Parameter '$n' must be a non-negative integer" if $n < 0;
     $_[0] = _bigint_to_int($_[0]) if $n <= INTMAX;
   } else {
@@ -335,6 +335,9 @@ sub _try_real_gmp_func {
     return $fr if !ref($x) || ($fr < 1e15 && $fr > -1e15);
   }
   my $dig = _find_big_acc($x);
+  if (ref($x) && ref($x) ne 'Math::BigFloat') {
+    $dig = length($x) > $dig  ?  length($x)  :  $dig;
+  }
   my $str = $fref->($x, $dig);
   return _upgrade_to_float($str);
 }
@@ -563,6 +566,7 @@ sub is_prime {
   return 0 if $n < 2;
 
   if (ref($n) eq 'Math::BigInt') {
+    # This is faster with Math::BigInt, but not with the other classes.
     return 0 unless Math::BigInt::bgcd($n, B_PRIM235)->is_one;
   } else {
     if ($n < 7) { return ($n == 2) || ($n == 3) || ($n == 5) ? 2 : 0; }
@@ -3932,35 +3936,41 @@ sub prime_count_approx {
   # my $result = int(LogarithmicIntegral($x) - LogarithmicIntegral(sqrt($x))/2);
   # my $result = RiemannR($x) + 0.5;
 
-  # Make sure we get enough accuracy, and also not too much more than needed
-  $x->accuracy(length($x->copy->as_int->bstr())+2) if $floatx;
+  return Mtoint(Math::Prime::Util::RiemannR($x) + 0.5) if !$floatx;
 
-  my $result;
-  if ($Math::Prime::Util::_GMPfunc{"riemannr"} || !ref($x)) {
-    # Fast if we have our GMP backend, and ok for native.
-    $result = Math::Prime::Util::PP::RiemannR($x);
-  } else {
-    $result = $floatx ? Math::BigFloat->bzero : 0;
-    $result->accuracy($x->accuracy) if $floatx;
-    $result += MLi($x);
-    $result -= MLi(sqrt($x))/2;
-    my $intx = $floatx ? tobigint($x->bfround(0)) : $x;
-    for my $k (3 .. 1000) {
-      my $m = Mmoebius($k);
-      next unless $m != 0;
-      # With Math::BigFloat and the Calc backend, FP root is ungodly slow.
-      # Use integer root instead.  For more accuracy (not useful here):
-      # my $v = Math::BigFloat->new( "" . Mrootint($x->as_int,$k) );
-      # $v->accuracy(length($v)+5);
-      # $v = $v - Math::BigFloat->new(($v**$k - $x))->bdiv($k * $v**($k-1));
-      # my $term = LogarithmicIntegral($v)/$k;
-      my $term = MLi(Mrootint($intx,$k)) / $k;
-      last if $term < .25;
-      if ($m == 1) { $result += $term; }
-      else         { $result -= $term; }
+  # Make sure we get enough accuracy, and also not too much more than needed
+  my $intx = tobigint($x->copy->bfround(0));
+  my $xacc = 2+length($intx);
+  $x->accuracy($xacc);
+
+  return Mtoint(RiemannR($x)+0.5) if $Math::Prime::Util::_GMPfunc{"riemannr"};
+
+  my @terms;
+  push @terms, MLi($x);
+  push @terms, -MLi(sqrt($x))/2;
+
+  for my $k (3 .. 2000) {
+    my $m = Mmoebius($k);
+    next unless $m != 0;
+
+    # This is very slow.  We'll use the integer root instead.
+    #my $tli = MLi($x->copy->broot($k,$xacc));
+
+    my $root = Mrootint($intx,$k);
+    if ($root > 2**53) {
+      $root = Math::BigFloat->new("$root");
+      $root->accuracy(length("$root")+5);
     }
+    my $tli = MLi($root);
+
+    my $term = Math::BigFloat->new($tli)->bdiv($k,$xacc);
+    last if $term < .001;
+    push @terms, $m == 1 ? $term : -$term;
   }
 
+  # Sum the terms from smallest to largest.
+  my $result = Math::BigFloat->bzero;
+  $result->badd($_,$xacc) for reverse @terms;
   Mtoint($result+0.5);
 }
 
@@ -11625,37 +11635,6 @@ sub RiemannR {
     $x = $x <= INTMAX && $x >= INTMIN ? _bigint_to_int($x)
                                       : _upgrade_to_float("$x");
   }
-
-# TODO: look into this as a generic solution
-if (0 && $Math::Prime::Util::_GMPfunc{"zeta"}) {
-  my($wantbf,$xdigits) = _bfdigits($x);
-  $x = _upgrade_to_float($x);
-
-  my $extra_acc = 4;
-  $xdigits += $extra_acc;
-  $x->accuracy($xdigits);
-
-  my $logx = log($x);
-  my $part_term = $x->copy->bone;
-  my $sum = $x->copy->bone;
-  my $tol = $x->copy->bone->brsft($xdigits-1, 10);
-  my $bigk = $x->copy->bone;
-  my $term;
-  for my $k (1 .. 10000) {
-    $part_term *= $logx / $bigk;
-    my $zarg = $bigk->copy->binc;
-    my $zeta = (RiemannZeta($zarg) * $bigk) + $bigk;
-    #my $strval = Math::Prime::Util::GMP::zeta($k+1, $xdigits + int(($k+1) / 3));
-    #my $zeta = Math::BigFloat->new($strval)->bdec->bmul($bigk)->badd($bigk);
-    $term = $part_term / $zeta;
-    $sum += $term;
-    last if $term < ($tol * $sum);
-    $bigk->binc;
-  }
-  $sum->bround($xdigits-$extra_acc);
-  my $strval = "$sum";
-  return ($wantbf)  ?  Math::BigFloat->new($strval,$wantbf)  :  0.0 + $strval;
-}
 
   if (ref($x) =~ /^Math::Big/) {
     require Math::Prime::Util::ZetaBigFloat;
