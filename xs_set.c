@@ -30,10 +30,16 @@ int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bmax) {
   if (typea == IARR_TYPE_POS || typeb == IARR_TYPE_POS)
     return IARR_TYPE_BAD;
   /* NEG+NEG  NEG+ANY  ANY+NEG */
-  if ((IV)amax > 0 && (IV)bmax > 0 && amax + bmax > (UV)IV_MAX)
-    return IARR_TYPE_BAD;  /* overflow */
-  if ((IV)amin < 0 && (IV)bmin < 0 && (UV)(-(IV)amin) + (UV)(-(IV)bmin) > (UV)IV_MAX)
-    return IARR_TYPE_BAD;  /* underflow */
+  if ((IV)amax > 0 && (IV)bmax > 0) {
+    if (UV_MAX-amax < bmax || amax + bmax > (UV)IV_MAX)
+      return IARR_TYPE_BAD;  /* overflow */
+  }
+  if ((IV)amin < 0 && (IV)bmin < 0) {
+    UV aneg = neg_iv(amin);
+    UV bneg = neg_iv(bmin);
+    if (UV_MAX-aneg < bneg || aneg + bneg > (UV)IV_MAX)
+      return IARR_TYPE_BAD;  /* underflow */
+  }
   if (((IV)amin > 0 || (IV)bmin > 0) && (IV)(amin+bmin) >= 0)
     return IARR_TYPE_ANY;  /* Result is all positive */
   return IARR_TYPE_NEG;
