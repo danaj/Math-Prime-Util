@@ -728,7 +728,7 @@ static void b9_reduce_mod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *m)
 
 static void b9_product(b9_t A[], size_t a, size_t b) {
   if (b <= a) {
-    /* .... */
+    /* A[a] already correct */
   } else if (b == a+1) {
     b9_mul(&A[a], &A[a], &A[b]);
   } else if (b == a+2) {
@@ -868,9 +868,13 @@ STRLEN strint_add_s(char* out, const char* a, STRLEN alen, const char* b, STRLEN
   /* Fast +1 / -1 for cases with no carry */
   if (blen == 1 && b[0] == '1') {
     int aneg = a[0] == '-', negb = !!negate_b;
-    if ((aneg==negb && a[alen-1] != '9') || (aneg!=negb && a[alen-1] != '0')) {
+    int same_sign = (aneg == negb);
+    STRLEN digits = alen - (aneg ? 1 : 0);
+
+    if ( (same_sign && a[alen-1] != '9') ||
+         (!same_sign && digits > 1 && a[alen-1] != '0') ) {
       memcpy(out, a, alen-1);
-      out[alen-1] = a[alen-1] + (aneg==negb ? 1 : -1);
+      out[alen-1] = a[alen-1] + (same_sign ? 1 : -1);
       return alen;
     }
   }
@@ -1107,7 +1111,7 @@ STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit)
 
 /* Signed floor division and remainder of decimal integer strings.
  * Either qout or rout (and its length pointer) may be NULL.
- * qout needs alen+2 bytes; rout needs blen+1 bytes.
+ * qout needs alen+1 bytes; rout needs blen bytes.
  * Remainder has the sign of b (floor convention).
  * Returns false if b = 0, true otherwise. */
 bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
@@ -1130,6 +1134,22 @@ STRLEN strint_divint(char* out, const char* a, STRLEN alen, const char* b, STRLE
 {
   STRLEN len = 0;
   if (!strint_divmod(out, &len, 0, 0, a,alen, b,blen)) return 0;
+  return len;
+}
+
+STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
+{
+  STRLEN len;
+  b9_t ba, bb, bq, br;
+  b9_init_set_str(&ba, a, alen);
+  b9_init_set_str(&bb, b, blen);
+  if (bb.n == 0) { b9_free(&ba);  b9_free(&bb);  return 0; }
+  b9_init(&bq);  b9_init(&br);
+  b9_divmod(&bq, &br, &ba, &bb);
+  if (br.n > 0)
+    b9_add_uv(&bq, &bq, 1);
+  len = b9_get_str(out, &bq);
+  b9_free(&ba);  b9_free(&bb);  b9_free(&bq);  b9_free(&br);
   return len;
 }
 
@@ -1275,7 +1295,7 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
           /* Remaining batches: plain UV loop with q*q > v termination */
           for (; pi < nprimes; pi++) {
             UV q = (UV)primes[pi];
-            if (q * q > v) break;
+            if (q > v / q) break;
             while (v % q == 0) { v /= q;  out_f[(*nf)++] = q; }
           }
           *uv_out = v;
@@ -1302,22 +1322,6 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
     if (str_to_uv_s(str_out, rlen, uv_out)) return 0;
     return rlen;
   }
-}
-
-STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
-{
-  STRLEN len;
-  b9_t ba, bb, bq, br;
-  b9_init_set_str(&ba, a, alen);
-  b9_init_set_str(&bb, b, blen);
-  if (bb.n == 0) { b9_free(&ba);  b9_free(&bb);  return 0; }
-  b9_init(&bq);  b9_init(&br);
-  b9_divmod(&bq, &br, &ba, &bb);
-  if (br.n > 0)
-    b9_add_uv(&bq, &bq, 1);
-  len = b9_get_str(out, &bq);
-  b9_free(&ba);  b9_free(&bb);  b9_free(&bq);  b9_free(&br);
-  return len;
 }
 
 

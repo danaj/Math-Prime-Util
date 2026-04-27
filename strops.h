@@ -82,7 +82,7 @@ extern bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
 extern STRLEN strint_divint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 /* out needs blen bytes.  Returns 0 on failure. */
 extern STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
-/* out needs alen+2 bytes.  Returns 0 on failure. */
+/* out needs alen+1 bytes.  Returns 0 on failure. */
 extern STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
 /* Return a mod b as a UV.  b > 0.  For negative a, returns |a| mod b. */
