@@ -34,49 +34,49 @@ WriteMakefile1(
     LICENSE      => 'perl',
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
-    OBJECT       => 'cache.o '        .
-                    'factor.o '       .
+    OBJECT       => 'XS.o '           .
+                    'util.o '         .
                     'factor128.o '    .
+                    'factor.o '       .
+                    'rootmod.o '      .
+                    'strops.o '       .
                     'primality.o '    .
+                    'sieve_cluster.o '.
+                    'congruent_numbers.o ' .
+                    'totients.o '     .
+                    'sieve.o '        .
+                    'lucky_numbers.o '.
+                    'factmod.o '      .
+                    'lmo.o '          .
+                    'almost_primes.o '.
+                    'prime_counts.o ' .
+                    'legendre_phi.o ' .
                     'lucas_seq.o '    .
                     'aks.o '          .
-                    'legendre_phi.o ' .
-                    'lehmer.o '       .
-                    'lmo.o '          .
-                    'random_prime.o ' .
-                    'sieve.o '        .
-                    'sieve_cluster.o '.
-                    'ramanujan_primes.o ' .
+                    'ds_iset.o '      .
+                    'moebius.o '      .
                     'semi_primes.o '  .
-                    'almost_primes.o '.
                     'twin_primes.o '  .
-                    'omega_primes.o ' .
-                    'prime_count_cache.o ' .
-                    'prime_counts.o ' .
+                    'ramanujan_primes.o ' .
+                    'powerful.o '     .
+                    'powerfree.o '    .
+                    'real.o '         .
+                    'sort.o '         .
+                    'chacha.o '       .
+                    'rational.o '     .
                     'prime_sums.o '   .
                     'prime_powers.o ' .
-                    'lucky_numbers.o '.
+                    'prime_count_cache.o ' .
                     'goldbach.o '     .
+                    'lehmer.o '       .
+                    'omega_primes.o ' .
                     'perfect_powers.o ' .
-                    'congruent_numbers.o ' .
-                    'powerfree.o '    .
-                    'powerful.o '     .
-                    'rational.o '     .
-                    'real.o '         .
-                    'rootmod.o '      .
-                    'sort.o '         .
-                    'totients.o '     .
-                    'moebius.o '      .
-                    'factmod.o '      .
-                    'strops.o '       .
-                    'util.o '         .
-                    'intcomplexity.o '.
                     'inverse_interpolate.o ' .
-                    'entropy.o '      .
+                    'intcomplexity.o '.
+                    'cache.o '        .
                     'csprng.o '       .
-                    'chacha.o '       .
-                    'ds_iset.o '      .
-                    'XS.o',
+                    'random_prime.o ' .
+                    'entropy.o',
     LIBS         => ['-lm'],
 
     EXE_FILES    => ['bin/primes.pl', 'bin/factor.pl'],
