@@ -62,6 +62,16 @@
 #define IFLAG_ABS      0x00000004U  /* Absolute value returned */
 #define IFLAG_IV       0x00000008U  /* Value returned as IV */
 
+#if 1
+  /* This is NEGATE_2UV(iv) from handy.h */
+  #define neg_iv(n) ((UV)-((n)+1) + 1U)
+#else
+UV neg_iv(UV n);
+#endif
+
+void _mod_with(UV *a, int astatus, UV n);
+int _sign_cmp(int xsign, UV x, int ysign, UV y);
+
 int _sv_is_bigint(pTHX_ SV* n);
 int _sv_is_bigint_fast(pTHX_ SV* n);
 uint32_t _parse_strnum(const char* s, STRLEN len);

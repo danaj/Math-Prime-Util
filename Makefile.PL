@@ -67,13 +67,13 @@ WriteMakefile1(
                     'rational.o '     .
                     'prime_sums.o '   .
                     'prime_powers.o ' .
+                    'perfect_powers.o ' .
                     'prime_count_cache.o ' .
-                    'goldbach.o '     .
                     'lehmer.o '       .
                     'omega_primes.o ' .
-                    'perfect_powers.o ' .
                     'inverse_interpolate.o ' .
                     'intcomplexity.o '.
+                    'goldbach.o '     .
                     'cache.o '        .
                     'csprng.o '       .
                     'random_prime.o ' .
