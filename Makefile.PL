@@ -35,7 +35,6 @@ WriteMakefile1(
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
     OBJECT       => 'XS.o '           .
-                    'xs_internal.o '  .
                     'util.o '         .
                     'factor128.o '    .
                     'factor.o '       .
@@ -64,6 +63,8 @@ WriteMakefile1(
                     'real.o '         .
                     'sort.o '         .
                     'chacha.o '       .
+                    'xs_internal.o '  .
+                    'xs_set.o '       .
                     'rational.o '     .
                     'prime_sums.o '   .
                     'prime_powers.o ' .

@@ -24,6 +24,8 @@ XS.xs
 ptypes.h
 xs_internal.h
 xs_internal.c
+xs_set.h
+xs_set.c
 mathl.h
 montmath.h
 multicall.h
