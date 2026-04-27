@@ -6821,11 +6821,8 @@ sub mulmod {
   return maybetobigint(Math::Prime::Util::GMP::mulmod($a,$b,$n))
     if $Math::Prime::Util::_GMPfunc{"mulmod"};
 
+  $n = tobigint($n) if !ref($n) || (defined $_BIGINT && ref($n) ne $_BIGINT);
   my $refn = ref($n);
-  if (!$refn) {
-    $n = tobigint($n);
-    $refn = ref($n);
-  }
   $a = $refn->new("$a") unless ref($a) eq $refn;
   $b = $refn->new("$b") unless ref($b) eq $refn;
   my $r = ($a * $b) % $n;
@@ -6837,11 +6834,8 @@ sub _bi_powmod {
   croak "_bi_powmod must have positive exponent" if $b < 0;
   croak "_bi_powmod must have n > 1" if $n <= 1;
 
+  $n = tobigint($n) if !ref($n) || (defined $_BIGINT && ref($n) ne $_BIGINT);
   my $refn = ref($n);
-  if (!$refn) {
-    $n = tobigint($n);
-    $refn = ref($n);
-  }
   $b = $refn->new($b) unless ref($b) eq $refn;
 
   my $r = $refn->new($a);
