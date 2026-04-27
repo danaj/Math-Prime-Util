@@ -22,6 +22,8 @@ README
 TODO
 XS.xs
 ptypes.h
+xs_internal.h
+xs_internal.c
 mathl.h
 montmath.h
 multicall.h

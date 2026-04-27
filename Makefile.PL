@@ -35,6 +35,7 @@ WriteMakefile1(
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
     OBJECT       => 'XS.o '           .
+                    'xs_internal.o '  .
                     'util.o '         .
                     'factor128.o '    .
                     'factor.o '       .
