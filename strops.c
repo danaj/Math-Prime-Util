@@ -76,6 +76,9 @@ static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
 /* Limbs needed for a decimal string of len digits. */
 #define B9_NLIMBS(len)  (((len) + B9_DIGS - 1) / B9_DIGS)
 
+/* Decimal digits needed for any UV value. */
+#define B9_UV_DEC_DIGS  ((BITS_PER_WORD == 64) ? 20 : 10)
+
 /* Inline limb slots: 2 UVs worth, so 4 limbs on 64-bit (36 digits)
  * or 2 limbs on 32-bit with uint64_t (12 digits).
  * Avoids malloc for many real-world inputs. */
@@ -220,7 +223,7 @@ static STRLEN b9_get_str(char *buf, const b9_t *x)
 static void b9_set_uv(b9_t *x, UV v)
 {
   uint32_t n = 0;
-  b9_ensure(x, (20 + B9_DIGS - 1) / B9_DIGS);
+  b9_ensure(x, (uint32_t)B9_NLIMBS(B9_UV_DEC_DIGS));
   x->neg = 0;
   if (v == 0) { x->n = 0;  return; }
   while (v > 0) { x->d[n++] = (b9limb_t)((UV)(v % B9_BASE)); v /= (UV)B9_BASE; }
@@ -484,8 +487,8 @@ static void b9_pow(b9_t *out, const b9_t *a, UV exp)
 /* There are a few places that want a power of two.  This wraps it. */
 static void b9_init_set_pow2(b9_t *x, UV k)
 {
-  if (k <= 31) {
-    b9_init_set_uv(x, 1U << k);
+  if (k < BITS_PER_WORD) {
+    b9_init_set_uv(x, UVCONST(1) << k);
   } else {
     b9_init_set_uv(x, 2);
     b9_pow(x, x, k);
@@ -710,6 +713,17 @@ static UV b9_to_uv(const b9_t* x) {
   for (i = x->n; i-- > 0; )
     v = v * (UV)B9_BASE + (UV)x->d[i];
   return v;
+}
+
+static int b9_cmp_abs(const b9_t *a, const b9_t *b)
+{
+  return b9mag_cmp(a->d, a->n, b->d, b->n);
+}
+
+static void b9_reduce_mod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *m)
+{
+  b9_divmod(NULL, tmp, a, m);
+  b9_move(out, tmp);
 }
 
 static void b9_product(b9_t A[], size_t a, size_t b) {
@@ -1030,19 +1044,19 @@ STRLEN strint_muladdmod_s(char* out,
   b9_init_set_str(&B, b, blen);
   b9_init_set_str(&C, c, clen);
   b9_init_set_str(&M, m, mlen);
+  if (M.n == 0) {
+    b9_free(&A);  b9_free(&B);  b9_free(&C);  b9_free(&M);
+    return 0;
+  }
   if (M.neg) M.neg = 0;         /* work with |M| */
   b9_init(&R);
   if (negate_c) b9_neg(&C);
 
   /* Reduce A and B mod M to keep the intermediate product small */
-  if (b9_cmp(&A, &M) >= 0) {
-    b9_divmod(NULL, &R, &A, &M);
-    b9_move(&A, &R);
-  }
-  if (b9_cmp(&B, &M) >= 0) {
-    b9_divmod(NULL, &R, &B, &M);
-    b9_move(&B, &R);
-  }
+  if (b9_cmp_abs(&A, &M) >= 0)
+    b9_reduce_mod(&A, &R, &A, &M);
+  if (b9_cmp_abs(&B, &M) >= 0)
+    b9_reduce_mod(&B, &R, &B, &M);
 
   b9_mul(&A, &A, &B);
   b9_add(&A, &A, &C);
