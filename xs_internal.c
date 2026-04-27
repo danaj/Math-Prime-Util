@@ -9,6 +9,7 @@
 #include "ppport.h"
 
 #include "ptypes.h"
+#include "sort.h"
 #include "xs_internal.h"
 
 #if 0
@@ -227,4 +228,242 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
     else                  { *val = (UV)n; }
   }
   return status;
+}
+
+SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i) {
+  if (svarr == 0) {
+    SV **svp = av_fetch(av, i, 0);
+    return svp ? *svp : &PL_sv_undef;
+  }
+  return svarr[i];
+}
+
+#define READ_UV_IARR(dst, src, itype) \
+  { \
+    UV n; \
+    int istatus = _validate_and_set(&n, aTHX_ src, IFLAG_ANY); \
+    if      (istatus == -1)                  itype |= IARR_TYPE_NEG; \
+    else if (istatus == 1 && n > (UV)IV_MAX) itype |= IARR_TYPE_POS; \
+    if (istatus == 0 || itype == IARR_TYPE_BAD) break; \
+    dst = n; \
+  }
+
+int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr)
+{
+  Size_t len, i;
+  int itype = IARR_TYPE_ANY;
+  UV  *r;
+  DECL_ARREF(avp);
+
+  USE_ARREF(avp, sva, fstr, AR_READ);
+  len = len_avp;
+  *retlen = len;
+  if (len == 0) {
+    *ret = 0;
+    return itype;
+  }
+  New(0, r, len, UV);
+  for (i = 0; i < len; i++) {
+    SV *iv = FETCH_ARREF(avp,i);
+    if (iv == 0) continue;
+    if (SVNUMTEST(iv)) {
+      IV n = SvIVX(iv);
+      if (n < 0) {
+        if (SvIsUV(iv))  itype |= IARR_TYPE_POS;
+        else             itype |= IARR_TYPE_NEG;
+        if (itype == IARR_TYPE_BAD) break;
+      }
+      r[i] = (UV)n;
+    } else {
+      READ_UV_IARR(r[i], iv, itype);
+    }
+  }
+  if (i < len) {
+    Safefree(r);
+    *ret = 0;
+    return IARR_TYPE_BAD;
+  }
+  *ret = r;
+  if (want_sort) {
+    if (itype == IARR_TYPE_NEG) {
+      for (i = 1; i < len; i++)
+        if ( (IV)r[i] <= (IV)r[i-1] )
+          break;
+    } else {
+      for (i = 1; i < len; i++)
+        if (r[i] <= r[i-1])
+          break;
+    }
+    if (i < len)
+      sort_dedup_uv_array(r, itype == IARR_TYPE_NEG, retlen);
+  }
+  return itype;
+}
+
+/* Check whether an SV is a non-magical arrayref whose elements are all native
+ * non-negative integers in strictly increasing order (i.e. sorted and unique).
+ * On success returns the AvARRAY pointer and sets *lenp; otherwise NULL.
+ * Used by the set-op fast path to skip intermediate UV array allocation. */
+SV** _check_sorted_nonneg_arrayref(pTHX_ SV *sv, size_t *lenp)
+{
+  AV *av;
+  SV **arr;
+  size_t len, i;
+  if (!SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVAV) return NULL;
+  av = (AV*)SvRV(sv);
+  if (SvMAGICAL(av)) return NULL;
+  arr = AvARRAY(av);
+  len = av_count(av);
+  for (i = 0; i < len; i++) {
+    SV *elem = arr[i];
+    if (!SVNUMTEST(elem) || (!SvIsUV(elem) && SvIVX(elem) < 0)) return NULL;
+    if (i > 0 && SvUVX(elem) <= SvUVX(arr[i-1]))                return NULL;
+  }
+  *lenp = len;
+  return arr;
+}
+
+int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svbase, size_t len)
+{
+  size_t i;
+  int itype = IARR_TYPE_ANY;
+  UV  *r;
+  *retlen = len;
+  if (len == 0) {
+    *ret = 0;
+    return itype;
+  }
+  New(0, r, len, UV);
+  for (i = 0; i < len; i++) {
+    SV *iv = svbase[i];
+    if (SVNUMTEST(iv)) {
+      IV n = SvIVX(iv);
+      if (n < 0) {
+        if (SvIsUV(iv))  itype |= IARR_TYPE_POS;
+        else             itype |= IARR_TYPE_NEG;
+        if (itype == IARR_TYPE_BAD) break;
+      }
+      r[i] = (UV)n;
+    } else {
+      READ_UV_IARR(r[i], iv, itype);
+    }
+  }
+  if (i < len) {
+    Safefree(r);
+    *ret = 0;
+    return IARR_TYPE_BAD;
+  }
+  *ret = r;
+  if (want_sort) {
+    if (itype == IARR_TYPE_NEG) {
+      for (i = 1; i < len; i++)
+        if ( (IV)r[i] <= (IV)r[i-1] )
+          break;
+    } else {
+      for (i = 1; i < len; i++)
+        if (r[i] <= r[i-1])
+          break;
+    }
+    if (i < len)
+      sort_dedup_uv_array(r, itype == IARR_TYPE_NEG, retlen);
+  }
+  return itype;
+}
+
+int arrayref_to_digit_array(pTHX_ UV** ret, AV* av, int base)
+{
+  SSize_t len, i;
+  UV *r, carry = 0;
+  if (SvTYPE((SV*)av) != SVt_PVAV)
+    croak("fromdigits first argument must be a string or array reference");
+  len = av_count(av);
+  New(0, r, len, UV);
+  for (i = len-1; i >= 0; i--) {
+    SV** psvd = av_fetch(av, i, 0);
+    if (_validate_and_set(r+i, aTHX_ *psvd, IFLAG_ANY) != 1) break;
+    r[i] += carry;
+    if (r[i] >= (UV)base && i > 0) {
+      carry = r[i] / base;
+      r[i] -= carry * base;
+    } else {
+      carry = 0;
+    }
+  }
+  if (i >= 0) {
+    Safefree(r);
+    return -1;
+  }
+  /* printf("array is ["); for(i=0;i<len;i++)printf("%lu,",r[i]); printf("]\n"); */
+  *ret = r;
+  return len;
+}
+
+#undef READ_UV_IARR
+
+int _compare_array_refs(pTHX_ SV* a, SV* b)
+{
+  AV *ava, *avb;
+  SSize_t i, alen, blen;
+  if ( ((!SvROK(a)) || (SvTYPE(SvRV(a)) != SVt_PVAV)) ||
+       ((!SvROK(b)) || (SvTYPE(SvRV(b)) != SVt_PVAV)) )
+    return -1;
+  ava = (AV*) SvRV(a);
+  avb = (AV*) SvRV(b);
+  alen = av_len(ava);
+  blen = av_len(avb);
+  if (alen != blen)
+    return 0;
+  for (i = 0; i <= alen; i++) {
+    SV** iva = av_fetch(ava, i, 0);
+    SV** ivb = av_fetch(avb, i, 0);
+    SV *sva, *svb;
+    int res;
+
+    if (!iva || !ivb)  return -1;
+    sva = *iva;
+    svb = *ivb;
+
+    if (!SvOK(sva) && !SvOK(svb))  /* Two undefs are fine. */
+      continue;
+    if (!SvOK(sva) || !SvOK(svb))  /* One undef isn't ok. */
+      return 0;
+    /* Hashes, I/O, etc. are not ok. */
+    if (SvTYPE(sva) >= SVt_PVAV || SvTYPE(svb) >= SVt_PVAV)
+      return -1;
+
+    /* One of them is a non-object reference */
+    if ( (SvROK(sva) && !sv_isobject(sva)) ||
+         (SvROK(svb) && !sv_isobject(svb)) ) {
+      /* Always error if either one is not an array reference. */
+      if ( (SvROK(sva) && SvTYPE(SvRV(sva)) != SVt_PVAV) ||
+           (SvROK(svb) && SvTYPE(SvRV(svb)) != SVt_PVAV) )
+        return -1;
+      /* One reference, one non-reference = not equal */
+      if (SvROK(sva) != SvROK(svb))
+        return 0;
+      /* Now we know both are array references.  Compare. */
+      res = _compare_array_refs(aTHX_ sva, svb);
+      if (res == 1) continue;
+      return res;
+    }
+
+    /* Common case: two simple integers */
+    if (    SVNUMTEST(sva) && SVNUMTEST(svb)
+         && (SvTYPE(sva) == SVt_IV || SvTYPE(sva) == SVt_PVIV)
+         && (SvTYPE(svb) == SVt_IV || SvTYPE(svb) == SVt_PVIV) ) {
+      UV va = my_svuv(sva), vb = my_svuv(svb);
+      if (va != vb) return 0;
+      continue;
+    }
+
+    /* This function is more useful if we allow more than strictly integers */
+    {  /* Compare the string representation */
+      STRLEN alen, blen;
+      const char* stra = SvPV(sva, alen);
+      const char* strb = SvPV(svb, blen);
+      if (alen != blen || strcmp(stra,strb) != 0)
+        return 0;
+    }
+  }
+  return 1;
 }
