@@ -1357,6 +1357,7 @@ sub nth_lucky_lower {
 
 sub is_lucky {
   my($n) = @_;
+  validate_integer($n);
 
   # Pretests
   return 0 if $n <= 0 || !($n % 2) || ($n % 6) == 5 || $_lf63[$n % 63];
@@ -1406,11 +1407,11 @@ sub goldbach_pairs {
   return goldbach_pair_count($n) unless wantarray;
   validate_integer_nonneg($n);
   return () if $n < 4;
-  return Mis_prime($n-2) ? (2) : ()  if $n & 1 || $n == 4;
+  return Mis_prime($n-2) ? (2) : ()  if $n == 4 || Mis_odd($n);
   my @L;
   Mforprimes( sub {
     push @L,$n-$_ if Mis_prime($n-$_);
-  }, Mrshiftint($n,1), $n-3);
+  }, Mrshiftint($n), $n-3);
   reverse @L;
 }
 
@@ -1531,13 +1532,11 @@ sub jordan_totient {
 sub euler_phi {
   return _euler_phi_range(@_) if scalar @_ > 1;
   my($n) = @_;
-  return 0 if defined $n && $n < 0;
+  validate_integer($n);
+  return 0+($n==1) if $n <= 1;
 
   return maybetobigint(Math::Prime::Util::GMP::totient($n))
     if $Math::Prime::Util::_GMPfunc{"totient"};
-
-  validate_integer_nonneg($n);
-  return $n if $n <= 1;
 
   my ($t2, $tot) = (1,1);
 
@@ -5213,8 +5212,8 @@ sub powint {
 
   if (!ref($a) && !ref($b) && $b < MPU_MAXBITS) {
     if ($b == 3) {
-      return int($a*$a*$a) if $a <= 99999;
-      return Mmulint(int($a*$a), $a) if $a <= 31622776;
+      return int($a*$a*$a) if $a <= 99999 && $a >= -99999;
+      return Mmulint(int($a*$a), $a) if $a <= 31622776 && $a >= -31622776;
     } else {
       # Check if inside limit of int on 32-bit
       my $r = $a ** $b;
@@ -7164,9 +7163,9 @@ sub is_power {
 
 sub is_square {
   my($n) = @_;
-  return 0 if $n < 0;
   #Mis_power($n,2);
   validate_integer($n);
+  return 0 if $n < 0;
   _is_perfect_square($n);
 }
 
