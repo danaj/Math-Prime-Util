@@ -2087,7 +2087,7 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
   PREINIT:
     uint32_t nc, cl[100];
     UV i, lo, hi, cval, nprimes, *list;
-    int done;
+    int done, nret;
   PPCODE:
     nc = items-1;
     if (items > 100) croak("sieve_prime_cluster: too many entries");
@@ -2113,8 +2113,10 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       }
     }
     if (!done) {
-      DISPATCHPP();
-      return;
+      nret = DISPATCHPP();
+      SPAGAIN;
+      OBJECTIFY_STACK(nret);
+      XSRETURN(nret);
     }
 
 void is_pseudoprime(IN SV* svn, ...)
