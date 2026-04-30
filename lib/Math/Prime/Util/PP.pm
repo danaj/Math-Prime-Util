@@ -5923,14 +5923,22 @@ sub vecpmex {
 
 sub sumdigits {
   my($n,$base) = @_;
+  croak "Parameter must be defined" if !defined $n;
+
+  if (defined $base) {
+    validate_integer_nonneg($base);
+    croak "sumdigits: invalid base: $base" if $base < 2 || $base > 36;
+  } else {
+    if    ($n =~ s/^0b//) { $base = 2; }
+    elsif ($n =~ s/^0x//) { $base = 16; }
+    else                  { $base = 10; }
+  }
+
   my $sum = 0;
-  $base =  2 if !defined $base && $n =~ s/^0b//;
-  $base = 16 if !defined $base && $n =~ s/^0x//;
-  if (!defined $base || $base == 10) {
+  if ($base == 10) {
     $n =~ tr/0123456789//cd;
     $sum += $_ for (split(//,$n));
   } else {
-    croak "sumdigits: invalid base: $base" if $base < 2;
     my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
     for my $c (split(//,lc($n))) {
       my $p = index($cmap,$c);

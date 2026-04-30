@@ -6279,12 +6279,17 @@ void is_happy(SV* svn, UV base = 10, UV k = 2)
     XSRETURN(1);
 
 void
-sumdigits(SV* svn, UV base = 10)
+sumdigits(SV* svn, SV* svbase = 0)
   PREINIT:
-    UV sum;
+    UV sum, base = 10;
     STRLEN i, len;
     const char* s;
   PPCODE:
+    if (!SvOK(svn)) croak("Parameter must be defined");
+    if (items > 1 && !_validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG)) {
+      DISPATCHPP();
+      XSRETURN(1);
+    }
     if (base < 2 || base > 36) croak("%s: invalid base: %"UVuf, SUBNAME, base);
     sum = 0;
     /* faster for integer input in base 10 */
