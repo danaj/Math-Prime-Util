@@ -118,6 +118,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mtrial_factor = \&Math::Prime::Util::trial_factor;
 *Mdivisors = \&Math::Prime::Util::divisors;
 *Mdivisor_sum = \&Math::Prime::Util::divisor_sum;
+*Mis_prob_prime = \&Math::Prime::Util::is_prob_prime;
 *Mis_prime = \&Math::Prime::Util::is_prime;
 *Mis_semiprime = \&Math::Prime::Util::is_semiprime;
 *Mis_prime_power = \&Math::Prime::Util::is_prime_power;
@@ -1021,7 +1022,7 @@ sub twin_primes {
   }
   validate_integer_nonneg($high);
   my @tp;
-  if ($Math::Prime::Util::_GMPfunc{"twin_twin_primes"}) {
+  if ($Math::Prime::Util::_GMPfunc{"sieve_twin_primes"}) {
     @tp = Math::Prime::Util::GMP::sieve_twin_primes($low, $high);
   } else {
     @tp = sieve_prime_cluster($low, $high, 2);
@@ -2857,9 +2858,9 @@ sub is_semiprime {
     return 0 if ($n %  4) == 0 || ($n %  6) == 0 || ($n %  9) == 0
              || ($n % 10) == 0 || ($n % 14) == 0 || ($n % 15) == 0;
   }
-  return (Math::Prime::Util::is_prob_prime($n>>1) ? 1 : 0) if ($n % 2) == 0;
-  return (Math::Prime::Util::is_prob_prime($n/3)  ? 1 : 0) if ($n % 3) == 0;
-  return (Math::Prime::Util::is_prob_prime($n/5)  ? 1 : 0) if ($n % 5) == 0;
+  return Mis_prob_prime(Mdivint($n,2)) ? 1 : 0 if ($n % 2) == 0;
+  return Mis_prob_prime(Mdivint($n,3)) ? 1 : 0 if ($n % 3) == 0;
+  return Mis_prob_prime(Mdivint($n,5)) ? 1 : 0 if ($n % 5) == 0;
 
   return (scalar(Mfactor($n)) == 2) ? 1 : 0;
 }
@@ -3158,10 +3159,10 @@ sub ramanujan_sum {
   validate_integer_nonneg($k);
   validate_integer_nonneg($n);
   return 0 if $k < 1 || $n <  1;
-  my $g = $k / Mgcd($k,$n);
+  my $g = Mdivint($k,Mgcd($k,$n));
   my $m = Mmoebius($g);
   return $m if $m == 0 || $k == $g;
-  $m * (Mtotient($k) / Mtotient($g));
+  Mmulint($m, Mdivint(Mtotient($k),Mtotient($g)));
 }
 
 sub liouville {
@@ -3249,7 +3250,7 @@ sub is_carmichael {
   for my $a (5,7,11,13,17,19,23,29,31,37,41,43) {
     if (($fn % $a) == 0) {
       return 0 if (($n-1) % ($a-1)) != 0;   # Korselt
-      $fn /= $a;
+      $fn = Mdivint($fn,$a);
       return 0 unless $fn % $a;             # not square free
     }
   }
@@ -3268,7 +3269,7 @@ sub is_carmichael {
       } else {
         return 0 if $gcd != $a;              # Not square free
         return 0 if (($n-1) % ($a-1)) != 0;  # factor doesn't divide
-        $fn /= $a;
+        $fn = Mdivint($fn,$a);
       }
     }
     return 1;
@@ -3302,7 +3303,7 @@ sub is_quasi_carmichael {
   if ($n < 2000) {
     # In theory for performance, but mainly keeping to show direct method.
     my $lim = $f[-1];
-    $lim = (($n-$lim*$lim) + $lim - 1) / $lim;
+    $lim = Mcdivint($n-$lim*$lim,$lim);
     for my $b (1 .. $f[0]-1) {
       my $nb = $n - $b;
       $nbases++ if Mvecall(sub { $nb % ($_-$b) == 0 }, @f);
@@ -3316,14 +3317,14 @@ sub is_quasi_carmichael {
   } else {
     my($spf,$lpf) = ($f[0], $f[-1]);
     if (scalar(@f) == 2) {
-      foreach my $d (Mdivisors($n/$spf - 1)) {
+      foreach my $d (Mdivisors(Mdivint($n,$spf) - 1)) {
         my $k = $spf - $d;
         my $p = $n - $k;
         last if $d >= $spf;
         $nbases++ if Mvecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
       }
     } else {
-      foreach my $d (Mdivisors($lpf * ($n/$lpf - 1))) {
+      foreach my $d (Mdivisors(Mmulint($lpf,Mdivint($n,$lpf)-1))) {
         my $k = $lpf - $d;
         my $p = $n - $k;
         next if $k == 0 || $k >= $spf;
