@@ -6319,68 +6319,91 @@ sumdigits(SV* svn, SV* svbase = 0)
     }
     XSRETURN_UV(sum);
 
-void todigits(SV* svn, int base=10, int length=-1)
+void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
   ALIAS:
     todigitstring = 1
-    fromdigits = 2
   PREINIT:
-    int i, status;
-    UV n;
-    char *str;
+    int nstatus, bstatus, lstatus, tlen, nret, i;
+    UV n, base;
   PPCODE:
-    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
-    status = 0;
-    if (ix == 0 || ix == 1) {
-      status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    bstatus = lstatus = 1;
+    base = 10;
+    tlen = -1;
+    if (items > 1) {
+      bstatus = _validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG);
+      if (base < 2 || (ix == 1 && base > 36))
+        croak("%s: invalid base: %"UVuf, SUBNAME, base);
     }
-    /* todigits with native input */
-    if (ix == 0 && status != 0 && length < 128) {
-      int digits[128];
-      IV len = to_digit_array(digits, n, base, length);
-      if (len >= 0) {
-        EXTEND(SP, (EXTEND_TYPE)len);
-        for (i = 0; i < len; i++)
-          PUSH_NPARITY( digits[len-i-1] );
-        XSRETURN(len);
-      }
+    if (items > 2) {
+      UV uvtlen;
+      lstatus = _validate_and_set(&uvtlen, aTHX_ svtlen, IFLAG_NONNEG);
+      if (lstatus != 0 && uvtlen > (UV)PERL_INT_MAX) lstatus = 0;
+      if (lstatus != 0) tlen = uvtlen;
     }
-    /* todigitstring with native input */
-    if (ix == 1 && status != 0 && length < 128) {
-      char s[128+1];
-      IV len = to_digit_string(s, n, base, length);
-      if (len >= 0) {
-        XPUSHs(sv_2mortal(newSVpv(s, len)));
-        XSRETURN(1);
+    if (bstatus != 1 || lstatus != 1) {
+      nret = DISPATCHPP();
+      XSRETURN(nret);
+    }
+    if (nstatus != 0 && tlen < 128) {
+      if (ix == 0) {             /* todigits with native input */
+        int digits[128];
+        IV len = to_digit_array(digits, n, base, tlen);
+        if (len >= 0) {
+          EXTEND(SP, (EXTEND_TYPE)len);
+          for (i = 0; i < len; i++)
+            PUSH_NPARITY( digits[len-i-1] );
+          XSRETURN(len);
+        }
+      } else {                   /* todigitstring with native input */
+        char s[128+1];
+        IV len = to_digit_string(s, n, base, tlen);
+        if (len >= 0) {
+          XPUSHs(sv_2mortal(newSVpv(s, len)));
+          XSRETURN(1);
+        }
       }
     }
     /* todigits or todigitstring base 10 (large size) */
-    if ((ix == 0 || ix == 1) && base == 10 && length < 0) {
+    if (base == 10 && tlen < 0) {
       STRLEN len;
-      str = SvPV(svn, len);
+      char *str = SvPV(svn, len);
       if (ix == 1) {
         XPUSHs(sv_2mortal(newSVpv(str, len)));
         XSRETURN(1);
       }
       if (len == 1 && str[0] == '0') XSRETURN(0);
-      {
-        EXTEND(SP, (EXTEND_TYPE)len);
-        for (i = 0; i < (int)len; i++)
-          PUSH_NPARITY(str[i]-'0');
-      }
+      EXTEND(SP, (EXTEND_TYPE)len);
+      for (i = 0; i < (int)len; i++)
+        PUSH_NPARITY(str[i]-'0');
       XSRETURN(len);
     }
-    if (ix == 2) { /* fromdigits */
+    nret = DISPATCHPP();
+    XSRETURN(nret);
+
+void fromdigits(SV* svn, SV* svbase = 0)
+  PREINIT:
+    int bstatus;
+    UV n, base;
+  PPCODE:
+    if (!SvOK(svn)) croak("Parameter must be defined");
+    bstatus = 1;
+    base = 10;
+    if (items > 1)
+      bstatus = _validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG);
+    if (base < 2) croak("%s: invalid base: %"UVuf, SUBNAME, base);
+    if (bstatus == 1) {
       if (!SvROK(svn)) {  /* string */
-        if (from_digit_string(&n, SvPV_nolen(svn), base)) {
+        if (from_digit_string(&n, SvPV_nolen(svn), base))
           XSRETURN_UV(n);
-        }
       } else if (!_sv_is_bigint(aTHX_ svn)) {     /* array ref of digits */
+        char *str;
         UV* r = 0;
         int len = arrayref_to_digit_array(aTHX_ &r, (AV*) SvRV(svn), base);
         if (from_digit_to_UV(&n, r, len, base)) {
           Safefree(r);
           XSRETURN_UV(n);
-        } else if (from_digit_to_str(&str, r, len, base)){
+        } else if (from_digit_to_str(&str, r, len, base)) {
           Safefree(r);
           PUSH_BIGINT_STR(str, strlen(str));
           Safefree(str);
@@ -6390,8 +6413,7 @@ void todigits(SV* svn, int base=10, int length=-1)
       }
     }
     DISPATCHPP();
-    if (ix == 2) RETURN_SV_CANONICAL(ST(0));
-    return;
+    RETURN_SV_CANONICAL(ST(0));
 
 void is_harshad(SV* svn, int base = 10)
   PREINIT:

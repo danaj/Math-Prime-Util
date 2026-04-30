@@ -7458,7 +7458,6 @@ my @_digitmap = (0..9, 'a'..'z');
 my %_mapdigit = map { $_digitmap[$_] => $_ } 0 .. $#_digitmap;
 sub _splitdigits {
   my($n, $base, $len) = @_;    # n is num or bigint, base is in range
-  validate_integer_nonneg($n);
   my @d;
   if ($base == 10) {
     @d = split(//,"$n");
@@ -7474,7 +7473,7 @@ sub _splitdigits {
       $n = ($n-$rem)/$base;    # Always an exact division
     }
   }
-  if ($len >= 0 && $len != scalar(@d)) {
+  if (defined $len && $len >= 0 && $len != scalar(@d)) {
     while (@d < $len) { unshift @d, 0; }
     while (@d > $len) { shift @d; }
   }
@@ -7484,10 +7483,10 @@ sub _splitdigits {
 sub todigits {
   my($n,$base,$len) = @_;
   validate_integer_abs($n);
-  $base = 10 unless defined $base;
-  $len = -1 unless defined $len;
-  croak "todigits: invalid base: $base" if $base < 2;
-  return if $n == 0;
+  if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
+  croak "todigits: invalid base: $base" if $base < 2;  # large bases are ok
+  validate_integer_nonneg($len) if defined $len;
+  return () if $n == 0 || (defined $len && $len == 0);
   _splitdigits($n, $base, $len);
 }
 
@@ -7504,19 +7503,19 @@ sub _tobinarystring {
     $n = Math::BigInt->new("$n") if $refn ne 'Math::BigInt';
     return $n->to_base(2);
   }
-  return join("", _splitdigits($n, 2, -1));
+  return join("", _splitdigits($n, 2));
 }
 
 sub todigitstring {
   my($n,$base,$len) = @_;
   validate_integer($n);
-  $base = 10 unless defined $base;
-  return _tobinarystring($n) if $base == 2 && !defined $len;
+  if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
   croak "todigitstring: invalid base: $base" if $base < 2 || $base > 36;
-  $len = -1 unless defined $len;
+  return _tobinarystring($n) if $base == 2 && !defined $len;
+  validate_integer_nonneg($len) if defined $len;
   $n =~ s/^-//;
 
-  return "" if $len == 0 || $n == 0;
+  return "" if $n == 0 || (defined $len && $len == 0);
 
   if ($n < INTMAX) {
     if ($base != 2 && $base != 8 && $base != 16) {
@@ -7527,7 +7526,7 @@ sub todigitstring {
     $s = sprintf("%b",$n)  if $base ==  2;
     $s = sprintf("%o",$n)  if $base ==  8;
     $s = sprintf("%x",$n)  if $base == 16;
-    if ($len > 0) {
+    if (defined $len) {
       $s = substr($s,0,$len);
       $s = '0' x ($len-length($s)) . $s if length($s) < $len;
     }
@@ -7553,7 +7552,7 @@ sub todigitstring {
       $s = join("", map { $_digitmap[$_] } @d);
     }
   }
-  if ($len > 0) {
+  if (defined $len) {
     $s = substr($s,0,$len);
     $s = '0' x ($len-length($s)) . $s if length($s) < $len;
   }
@@ -7583,8 +7582,9 @@ sub _FastIntegerInput {
 
 sub fromdigits {
   my($r, $base) = @_;
-  $base = 10 unless defined $base;
-  croak "fromdigits: invalid base: $base" if $base < 2;
+  croak "Parameter must be defined" if !defined $r;
+  if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
+  croak "fromdigits: invalid base: $base" if $base < 2;  # large bases are ok
   my $refr = ref($r);
 
   if ($refr && $refr !~ /^Math::/) {
