@@ -270,6 +270,7 @@ sub entropy_bytes {
 *factorial = \&Math::Prime::Util::PP::factorial;
 *multifactorial = \&Math::Prime::Util::PP::multifactorial;
 *subfactorial = \&Math::Prime::Util::PP::subfactorial;
+*stirling = \&Math::Prime::Util::PP::stirling;
 *catalan_number = \&Math::Prime::Util::PP::catalan_number;
 *bell_number = \&Math::Prime::Util::PP::bell_number;
 *fubini = \&Math::Prime::Util::PP::fubini;
@@ -342,6 +343,9 @@ sub entropy_bytes {
 *factorialmod = \&Math::Prime::Util::PP::factorialmod;
 *binomialmod = \&Math::Prime::Util::PP::binomialmod;
 *lucas_sequence = \&Math::Prime::Util::PP::lucas_sequence;
+*lucasu = \&Math::Prime::Util::PP::lucasu;
+*lucasv = \&Math::Prime::Util::PP::lucasv;
+*lucasuv = \&Math::Prime::Util::PP::lucasuv;
 *lucasumod = \&Math::Prime::Util::PP::lucasumod;
 *lucasvmod = \&Math::Prime::Util::PP::lucasvmod;
 *lucasuvmod = \&Math::Prime::Util::PP::lucasuvmod;
@@ -565,37 +569,6 @@ sub is_mersenne_prime {
   _validate_integer($p);
   return 0 if $p < 0;
   return Math::Prime::Util::PP::is_mersenne_prime($p);
-}
-sub lucasu {
-  my($P, $Q, $k) = @_;
-  my ($vp, $vq) = ($P, $Q);
-  _validate_integer($vp);
-  _validate_integer($vq);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::lucasu($P,$Q,$k);
-}
-sub lucasv {
-  my($P, $Q, $k) = @_;
-  my ($vp, $vq) = ($P, $Q);
-  _validate_integer($vp);
-  _validate_integer($vq);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::lucasv($P,$Q,$k);
-}
-sub lucasuv {
-  my($P, $Q, $k) = @_;
-  _validate_integer($P);
-  _validate_integer($Q);
-  _validate_integer_nonneg($k);
-  return Math::Prime::Util::PP::lucasuv($P,$Q,$k);
-}
-
-sub stirling {
-  my($n, $k, $type) = @_;
-  _validate_integer_nonneg($n);
-  _validate_integer_nonneg($k);
-  _validate_integer_nonneg($type) if defined $type;
-  return Math::Prime::Util::PP::stirling($n, $k, $type);
 }
 
 sub gcd {

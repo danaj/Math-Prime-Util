@@ -7867,10 +7867,18 @@ sub bernfrac {
 
 sub stirling {
   my($n, $m, $type) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_nonneg($m);
+  if (!defined $type) {
+    $type = 1;
+  } else {
+    validate_integer_nonneg($type);
+    croak "stirling type must be 1, 2, or 3" unless $type == 1 || $type == 2 || $type == 3;
+  }
+
   return 1 if $m == $n;
   return 0 if $n == 0 || $m == 0 || $m > $n;
-  $type = 1 unless defined $type;
-  croak "stirling type must be 1, 2, or 3" unless $type == 1 || $type == 2 || $type == 3;
+
   if ($m == 1) {
     return 1 if $type == 2;
     return Mfactorial($n) if $type == 3;
@@ -9232,8 +9240,6 @@ sub lucas_sequence {
   validate_integer($P);
   validate_integer($Q);
   validate_integer_nonneg($k);
-  croak "lucas_sequence: n must be > 0" if $n < 1;
-  croak "lucas_sequence: k must be >= 0" if $k < 0;
 
   return (0,0,0) if $n == 1;
 
@@ -9248,8 +9254,10 @@ sub lucas_sequence {
 
 sub lucasuv {
   my($P, $Q, $k) = @_;
+  validate_integer($P);
+  validate_integer($Q);
+  validate_integer_nonneg($k);
 
-  croak "lucasuv: k must be >= 0" if $k < 0;
   return (0,2) if $k == 0;
 
   if ($Math::Prime::Util::_GMPfunc{"lucasuv"} && $Math::Prime::Util::GMP::VERSION >= 0.53) {
@@ -9431,6 +9439,10 @@ sub lucasuvmod {
   }
   ($U,$V);
 }
+
+# For lucasu and lucasv, we call other functions.  We rely on the GMP and PP
+# functions to do the validation.  Since we don't read or process the inputs
+# ourselves, we just pass them on.
 
 sub lucasu {
   return maybetobigint( Math::Prime::Util::GMP::lucasu($_[0], $_[1], $_[2]) )
