@@ -4913,25 +4913,32 @@ gcdext(IN SV* sva, IN SV* svb)
     }
 
 void
-stirling(IN UV n, IN UV m, IN UV type = 1)
+stirling(IN SV* svn, IN SV* svm, IN UV type = 1)
+  PREINIT:
+    UV n, m;
+    int nstatus, mstatus;
   PPCODE:
     if (type != 1 && type != 2 && type != 3)
       croak("stirling: type must be 1, 2, or 3");
-    if (n == m)
-      XSRETURN_UV(1);
-    else if (n == 0 || m == 0 || m > n)
-      XSRETURN_UV(0);
-    else if (type == 3) {
-      UV s = stirling3(n, m);
-      if (s != 0) XSRETURN_UV(s);
-    } else if (type == 2) {
-      IV s = stirling2(n, m);
-      if (s != 0) XSRETURN_IV(s);
-    } else if (type == 1) {
-      IV s = stirling1(n, m);
-      if (s != 0) XSRETURN_IV(s);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    mstatus = _validate_and_set(&m, aTHX_ svm, IFLAG_NONNEG);
+    if (nstatus == 1 && mstatus == 1) {
+      if (n == m)
+        XSRETURN_UV(1);
+      if (n == 0 || m == 0 || m > n)
+        XSRETURN_UV(0);
+      if (type == 3) {
+        UV s = stirling3(n, m);
+        if (s != 0) XSRETURN_UV(s);
+      } else if (type == 2) {
+        IV s = stirling2(n, m);
+        if (s != 0) XSRETURN_IV(s);
+      } else if (type == 1) {
+        IV s = stirling1(n, m);
+        if (s != 0) XSRETURN_IV(s);
+      }
     }
-    DISPATCHPP();
+    DISPATCHPP_GMPONLYIF(nstatus == 1 && mstatus == 1);
     RETURN_SV_CANONICAL(ST(0));
 
 NV
@@ -6089,27 +6096,26 @@ void vecsorti(IN SV* sva)
     XSRETURN(1);
 
 
-void numtoperm(IN UV n, IN SV* svk)
+void numtoperm(IN SV* svn, IN SV* svk)
   PREINIT:
-    UV k, fn;
-    int kstatus;
+    UV k, n, fn;
+    int nstatus, kstatus;
     int nret;
     int i, S[32];
   PPCODE:
-    if (n == 0)
-      XSRETURN_EMPTY;
-    if (n < 32 && (kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY)) != 0){
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY);
+    if (nstatus != 0 && kstatus != 0 && n < 32) {
+      if (n == 0) XSRETURN_EMPTY;
       fn = factorial(n);
-      if (fn == 0) {
-        nret = _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, SUBNAME, items,47);
-        XSRETURN(nret);
-      }
-      _mod_with(&k, kstatus, fn);
-      if (num_to_perm(k, n, S)) {
-        EXTEND(SP, (EXTEND_TYPE)n);
-        for (i = 0; i < (int)n; i++)
-          PUSH_NPARITY( S[i] );
-        XSRETURN(n);
+      if (fn != 0) {
+        _mod_with(&k, kstatus, fn);
+        if (num_to_perm(k, n, S)) {
+          EXTEND(SP, (EXTEND_TYPE)n);
+          for (i = 0; i < (int)n; i++)
+            PUSH_NPARITY( S[i] );
+          XSRETURN(n);
+        }
       }
     }
     nret = _vcallsubn(aTHX_ GIMME_V, VCALL_PP|VCALL_GMP, SUBNAME, items, 47);
@@ -6139,12 +6145,19 @@ void permtonum(IN SV* svp)
     DISPATCHPP();
     RETURN_SV_CANONICAL(ST(0));
 
-void randperm(IN UV n, IN UV k = 0)
+void randperm(IN SV* svn, IN SV* svk = 0)
   PREINIT:
-    UV i, *S;
+    int nstatus, kstatus;
+    UV n, k, i, *S;
     dMY_CXT;
   PPCODE:
-    if (items == 1) k = n;
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    if (items == 1) { kstatus = nstatus;  k = nstatus ? n : 0; }
+    else            { kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);}
+    if (nstatus == 0 || kstatus == 0) {
+      int nret = DISPATCHPP();
+      XSRETURN(nret);
+    }
     if (k > n) k = n;
     if (k == 0) XSRETURN_EMPTY;
     New(0, S, k, UV);
