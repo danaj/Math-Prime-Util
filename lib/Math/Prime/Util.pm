@@ -2062,8 +2062,8 @@ Given non-negative integers C<k> and C<n>, returns the
 C<n>-th C<k>-omega prime.
 This is the C<n>-th integer divisible by exactly C<k> different primes.
 
-The implementation does a binary search lookup with
-L</omega_prime_count> so is reasonably efficient for large values.
+The implementation does a search using L</omega_prime_count>
+so is reasonably efficient for large values.
 
 C<undef> is returned for C<n == 0> and for all C<k == 0>
 other than C<n == 1>.

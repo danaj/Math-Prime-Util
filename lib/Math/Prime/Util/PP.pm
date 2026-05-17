@@ -4960,13 +4960,15 @@ sub nth_omega_prime {
   return Mpn_primorial($k) if $n == 1;
   return undef if $k == 0;  # n==1 already returned
 
-  # Very inefficient algorithm.
-  my $i = Mpn_primorial($k);
-  while (1) {
-    $i++ while Mprime_omega($i) != $k;
-    return $i if --$n == 0;
-    $i++;
-  }
+  return Math::Prime::Util::nth_prime_power($n) if $k == 1;
+
+  my $lo = Mpn_primorial($k);
+  return $lo if $n == 1;
+
+  return _inverse_interpolate(
+    $lo, 0, $n, $k,
+    sub { Math::Prime::Util::omega_prime_count($_[0], $_[1]) }
+  );
 }
 
 sub nth_ramanujan_prime_upper {
