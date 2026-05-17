@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/
-  addint subint mulint negint absint cmpint
+  addint subint add1int sub1int mulint negint absint cmpint
   divint modint cdivint divrem fdivrem cdivrem tdivrem
   powint
   addmod submod mulmod powmod divmod muladdmod mulsubmod
@@ -18,12 +18,14 @@ my $ivmin = $use64 ? "-9223372036854775808" : "-2147483648";
 # just past UV boundary
 my $uvmax1 = $use64 ? "18446744073709551616" : "4294967296";
 my $ivmax1 = $use64 ? "9223372036854775808" : "2147483648";
+my $ivmin1 = $use64 ? "-9223372036854775809" : "-2147483649";
 
 plan tests =>
             + 1                # addint associativity
             + 1                # subint(IV_MIN, 1) crosses to bigint
             + 1                # addint(UV_MAX, 1) crosses to bigint
             + 1                # addint(IV_MIN, -1) crosses to bigint
+            + 1                # add1int/sub1int boundary crossings
             + 1                # subint(0, UV_MAX) = -UV_MAX
             + 1                # subint(IV_MIN, IV_MAX) extreme spread
             + 1                # mulint near-boundary products
@@ -75,6 +77,14 @@ is("".addint($uvmax, 1), $uvmax1, "addint(UV_MAX, 1) crosses into bigint");
   my $expect_below_ivmin = subint($ivmin, 1);
   # IV_MIN - 1 should be one less
   is("".addint($expect_below_ivmin, 1), $ivmin, "addint(IV_MIN-1, 1) returns to IV_MIN");
+}
+
+{
+  my $below_ivmin = sub1int($ivmin);
+  my $above_uvmax = add1int($uvmax);
+  is_deeply(["$below_ivmin", 0+!!ref($below_ivmin), "$above_uvmax", 0+!!ref($above_uvmax)],
+            [$ivmin1, 1, $uvmax1, 1],
+            "add1int/sub1int cross native boundaries exactly");
 }
 
 ##### subint: extreme negation and spread

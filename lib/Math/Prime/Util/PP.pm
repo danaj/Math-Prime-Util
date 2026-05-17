@@ -5316,21 +5316,15 @@ sub subint {
 sub add1int {
   my($a) = @_;
   validate_integer($a);
-  my $r = $a+1;
-  if (!ref($r)) {
-    return $r if $r < INTMAX;
-    $r = tobigint($a) + 1;
-  }
+  return $a + 1 if !ref($a) && $a < INTMAX;
+  my $r = tobigint($a) + 1;
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 sub sub1int {
   my($a) = @_;
   validate_integer($a);
-  my $r = $a-1;
-  if (!ref($r)) {
-    return $r if $r < INTMAX;
-    $r = tobigint($a) - 1;
-  }
+  return $a - 1 if !ref($a) && $a > INTMIN;
+  my $r = tobigint($a) - 1;
   return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
 }
 

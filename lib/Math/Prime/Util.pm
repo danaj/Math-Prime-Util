@@ -1916,7 +1916,7 @@ faster.
 
 =head2 print_primes
 
-  print_primes(1_000_000);             # print the first 1 million primes
+  print_primes(1_000_000);             # print primes up to 1 million
   print_primes(1000, 2000);            # print primes in range
   print_primes(2,1000,fileno(STDERR))  # print to a different descriptor
 
