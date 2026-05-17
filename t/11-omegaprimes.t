@@ -20,8 +20,8 @@ my @counts_at_1e6 = (1,78734,288726,379720,208034,42492,2285,8,0,0,0,0,0,0,0,0,0
 my @counts_at_1e4 = (1,1280,4097,3695,894,33,0,0,0,0,0);
 
 plan tests =>   6   # omega_primes sieve
-              + 6   # count
-              + 8   # nth_omega_prime
+              + 7   # count
+              + 9   # nth_omega_prime
                 ;
 
 ###### omega_primes
@@ -40,6 +40,8 @@ is_deeply([map { omega_prime_count($_, 1e4) } 0..10], \@counts_at_1e4, "k-omega 
 
 is(omega_prime_count(6,9e4), 19, "There are 19 6-omega-primes <= 90,000");
 is(omega_prime_count(8,2e7), 10, "There are 10 8-omega-primes <= 20,000,000");
+eval { omega_prime_count(-2,100); };
+like($@, qr/non-negative integer/, "omega_prime_count rejects negative k");
 
 SKIP: {
   skip "Slow in PP", 2 unless $usexs || $extra;
@@ -64,3 +66,5 @@ SKIP: {
   skip "nth_omega_prime is very slow in PP", 1 unless $usexs;
   is(nth_omega_prime(8,122), 46692030, "The 122nd 8-omega prime is 46692030");
 }
+eval { nth_omega_prime(-2,5); };
+like($@, qr/non-negative integer/, "nth_omega_prime rejects negative k");

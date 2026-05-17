@@ -65,6 +65,14 @@ subtest 'counting almost primes', sub {
   is_deeply([map{almost_prime_count($_,206)}1..10],[46,67,48,26,12,4,2,0,0,0],"almost_prime_count_approx n=206, k 1..10");
 
   is(almost_prime_count(10,1024),1,"almost_prime_count(10,1024) = 1");
+
+  is_deeply([map { almost_prime_count($_->[0], $_->[1]) } ([3,8], [2,4], [1,2])],
+            [1,1,1], "almost_prime_count handles reduced k=0 cases");
+
+  for my $sub (qw/almost_prime_count almost_prime_count_approx almost_prime_count_lower almost_prime_count_upper/) {
+    eval { no strict 'refs'; &{$sub}(-2, 100); };
+    like($@, qr/non-negative integer/, "$sub rejects negative k");
+  }
 };
 
 ###### Test nth_almost_prime
@@ -85,6 +93,11 @@ subtest 'nth almost prime', sub {
   }
 
   is("".nth_almost_prime(100,3), "2852213850513516153367582212096", "nth_almost_prime with k=100 n=3");
+
+  for my $sub (qw/nth_almost_prime nth_almost_prime_approx nth_almost_prime_lower nth_almost_prime_upper/) {
+    eval { no strict 'refs'; &{$sub}(-2, 5); };
+    like($@, qr/non-negative integer/, "$sub rejects negative k");
+  }
 };
 
 ###### Test limits

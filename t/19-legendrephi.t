@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/legendre_phi/;
+use Math::Prime::Util qw/legendre_phi prime_count/;
 
 #my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -14,6 +14,7 @@ use Math::Prime::Util qw/legendre_phi/;
 my @legendre_sums = (
   [ 0,  92372, 0],
   [ 5,  15, 1],
+  [100, 25, 1],
   [ 89, 4, 21 ],
   [ 46, 4, 11 ],
   [ 47, 4, 12 ],
