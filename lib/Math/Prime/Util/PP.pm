@@ -72,6 +72,7 @@ our $_BIGINT;
 *getconfig = \&Math::Prime::Util::prime_get_config;
 
 BEGIN {  # These should happen at compile time to take advantage of custom ops
+*canonicalize_integers = \&Math::Prime::Util::_canonicalize_integers;
 *validate_integer = \&Math::Prime::Util::_validate_integer;
 *validate_integer_nonneg = \&Math::Prime::Util::_validate_integer_nonneg;
 *validate_integer_positive = \&Math::Prime::Util::_validate_integer_positive;
@@ -5787,7 +5788,7 @@ sub vecsum {
       $sum = tobigint(0);
       if (ref($sum) eq 'Math::Pari') { $sum += "$_" for @_; }
       else                           { $sum += $_   for @_; }
-      $sum = _bigint_to_int($sum) if $sum <= INTMAX && $sum >= INTMIN;
+      canonicalize_integers(\$sum);
       return $sum;
     }
   }
@@ -5815,10 +5816,7 @@ sub vecprefixsum {
     }
     push @psum, $sum += $v;
   }
-  if ($need_post) { # All bigint sums should be checked for possibly native
-    # We are using validate_integer for canonicalization -- with XS it's FAST.
-    for (@psum) { validate_integer($_) if ref($_); }
-  }
+  canonicalize_integers(\@psum) if $need_post;
   @psum;
 }
 
@@ -8437,7 +8435,7 @@ sub rising_factorial {
 
 sub factorial {
   my($n) = @_;
-  _validate_integer_nonneg($n);
+  validate_integer_nonneg($n);
   return (1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600)[$n]
     if $n <= 12;
   croak "factorial: input too large" if ref($n);
@@ -9959,10 +9957,10 @@ sub is_catalan_pseudoprime {
 sub is_frobenius_pseudoprime {
   my($n, $P, $Q) = @_;
   croak "is_frobenius_pseudoprime: expected 1 or 3 arguments" if @_ == 2;
-  _validate_integer($n);
+  validate_integer($n);
   if (@_ >= 3) {
-    _validate_integer($P);
-    _validate_integer($Q);
+    validate_integer($P);
+    validate_integer($Q);
   } else {
     ($P,$Q) = (0,0);
   }

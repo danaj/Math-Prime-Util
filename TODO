@@ -243,8 +243,6 @@
 - Add OEIS sequence, a(n) = the k-th k-powerful number
   mpu 'for my $k (1..40) { say "$k ",nth_powerful($k,$k); }'
 
-- Better inverse interpolation in PP.
-
 - For almost primes in PP, maybe use Lagrange estimator to start, given
   that we have no bounds.
 
@@ -405,9 +403,13 @@ OEIS lucky numbers:
   - direct cache should not skip 0,1.  Removes a test
   - try cache with wheel30 instead of odds.  240/128 fewer entries.
 
+- Better inverse interpolation in PP.
+
 - test Brent and/or Chandrupatla with inverse interp
   https://www.embeddedrelated.com/showarticle/855.php
   also see May 2025 email about this
+
+- xt validation test for monotonic approx/bounds.
 
 - is_congruent_number
 
@@ -555,6 +557,8 @@ OEIS lucky numbers:
 - t/81-bignum should try different bigint classes
 
 - ecm: tinyecm128 -> tinyecm64 (uint64_t)  [do this soon]
+  = Should this be uint64_t or UV?
+  = where?  factor.c?  ecm64?  ecm with ecm128?
 
 - waring_goldbach(n,k,t)  {p1}^k + {p2}^k + ... + {pt}^k
 

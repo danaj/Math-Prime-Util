@@ -39,13 +39,14 @@ my %correct = (
   Math::BigFloat->new("9") => 11,
 );
 
-plan tests =>   2                      # undefined and empty string
-              + scalar(@incorrect)     # values that should be rejected
-              + scalar(keys(%correct)) # values that should be accepted
-              + 2                      # infinity and nan
-              + 2                      # internal validators normalize scalar ints
-              + 1                      # internal validators reject coderefs
-              + 1;                     # long invalid string
+plan tests => 2                      # undefined and empty string
+            + scalar(@incorrect)     # values that should be rejected
+            + scalar(keys(%correct)) # values that should be accepted
+            + 2                      # infinity and nan
+            + 2                      # internal validators normalize scalar ints
+            + 1                      # internal validators reject coderefs
+            + 5                      # internal canonicalization helper
+            + 1;                     # long invalid string
 
 my $qrnn = qr/ must be a (non-negative|positive) integer/;
 
@@ -120,6 +121,45 @@ SKIP: {
   $ok++ if !defined eval { Math::Prime::Util::_validate_integer_nonneg(sub { 123 }); 1 } &&
             $@ =~ /must be a non-negative integer/;
   is($ok, 2, "_validate_integer* reject coderefs");
+}
+
+{
+  my $x = Math::BigInt->new(123);
+  Math::Prime::Util::_canonicalize_integers(\$x);
+  is(ref($x), "", "_canonicalize_integers scalar ref down-converts small bigint");
+}
+
+{
+  my $x = Math::BigInt->new("123456789012345678901234567890");
+  Math::Prime::Util::_canonicalize_integers(\$x);
+  is("".ref($x).":$x", "Math::BigInt:123456789012345678901234567890",
+     "_canonicalize_integers scalar ref keeps large bigint");
+}
+
+{
+  my @v = ("42", Math::BigInt->new(7),
+           Math::BigInt->new("123456789012345678901234567890"),
+           undef);
+  Math::Prime::Util::_canonicalize_integers(\@v);
+  is_deeply([map { defined($_) ? ((ref($_)||"").":$_") : "undef" } @v],
+            [":42", ":7", "Math::BigInt:123456789012345678901234567890", "undef"],
+            "_canonicalize_integers array ref canonicalizes elements");
+}
+
+{
+  my @v;
+  $v[2] = Math::BigInt->new(5);
+  Math::Prime::Util::_canonicalize_integers(\@v);
+  ok(!exists($v[0]) && !exists($v[1]) && exists($v[2]) && !ref($v[2]) && $v[2] == 5,
+     "_canonicalize_integers array ref preserves holes");
+}
+
+{
+  my $ok = 0;
+  $ok++ if !eval { Math::Prime::Util::_canonicalize_integers(5); 1 };
+  my $x = "abc";
+  $ok++ if !eval { Math::Prime::Util::_canonicalize_integers(\$x); 1 };
+  is($ok, 2, "_canonicalize_integers rejects bad inputs");
 }
 
 

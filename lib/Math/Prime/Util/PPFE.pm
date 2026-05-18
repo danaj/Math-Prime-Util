@@ -9,11 +9,29 @@ use Math::Prime::Util::Entropy;
 
 package Math::Prime::Util;
 use Carp qw/carp croak confess/;
+use Scalar::Util qw/reftype/;
 
 *_validate_integer = \&Math::Prime::Util::PP::_validate_integer;
 *_validate_integer_nonneg = \&Math::Prime::Util::PP::_validate_integer_nonneg;
 *_validate_integer_positive = \&Math::Prime::Util::PP::_validate_integer_positive;
 *_validate_integer_abs = \&Math::Prime::Util::PP::_validate_integer_abs;
+
+sub _canonicalize_integers {
+  my($r) = @_;
+  my $type = reftype($r);
+  if (defined $type && $type eq 'ARRAY') {
+    for my $i (0..$#$r) {
+      next unless exists $r->[$i] && defined $r->[$i];
+      _validate_integer($r->[$i]);
+    }
+  } elsif (defined $type && ($type eq 'SCALAR' || $type eq 'REF')) {
+    # Later we can optimize -- this does everything we need (and much more).
+    _validate_integer($$r) if defined $$r;
+  } else {
+    croak "_canonicalize_integers: expected scalar or array reference";
+  }
+  return;
+}
 
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;

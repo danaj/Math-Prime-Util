@@ -1732,6 +1732,39 @@ bool _validate_integer(SV* svn)
   OUTPUT:
     RETVAL
 
+void _canonicalize_integers(SV* svr)
+  PREINIT:
+    SV *target, *elem, *out;
+    Size_t i;
+    DECL_ARREF(input);
+  PPCODE:
+    if (!SvROK(svr))
+      croak("_canonicalize_integers: expected scalar or array reference");
+    target = SvRV(svr);
+    if (SvTYPE(target) == SVt_PVAV) {
+      USE_ARREF(input, svr, "_canonicalize_integers", AR_WRITE);
+      for (i = 0; i < len_input; i++) {
+        if (svarr_input) {
+          if (!svarr_input[i]) continue;
+          elem = svarr_input[i];
+        } else {
+          SV** svp = av_fetch(avp_input, (SSize_t)i, 0);
+          if (!svp || !*svp) continue;
+          elem = *svp;
+        }
+        out = xs_to_canonical(aTHX_ elem);
+        if (out != elem)
+          sv_setsv(elem, out);
+      }
+    } else if (xs_is_sv_scalar_ref(svr)) {
+      out = xs_to_canonical(aTHX_ target);
+      if (out != target)
+        sv_setsv(target, out);
+    } else {
+      croak("_canonicalize_integers: expected scalar or array reference");
+    }
+    XSRETURN(0);
+
 void prime_memfree()
   PREINIT:
     dMY_CXT;
