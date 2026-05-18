@@ -1221,8 +1221,8 @@ sub partitionsq {
     $part[$j] = $pos-$neg;
   }
   my $q = $part[$n];
-  $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX;
-  return $q;
+  canonicalize_integers(\$q);
+  $q;
 }
 
 
@@ -5565,7 +5565,8 @@ sub lshiftint {
     $n = tobigint($n);
   }
   $n = $n << $k;
-  return $n <= INTMAX ? _bigint_to_int($n) : $n;
+  canonicalize_integers(\$n);
+  $n;
 
   #my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   #Mmulint($n, $k2);
@@ -5584,7 +5585,8 @@ sub rshiftint {
     $n = tobigint($n);
   }
   $n = $n >> $k;
-  return $n <= INTMAX ? _bigint_to_int($n) : $n;
+  canonicalize_integers(\$n);
+  $n;
 
   #my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   #(Mtdivrem($n, $k2))[0];
@@ -7058,9 +7060,8 @@ sub invmod {
   } else {
     $I = Math::BigInt->new("$a")->bmodinv("$n");
     $I = undef if defined $I && !$I->is_int();
-    $I = tobigint("$I") if defined $I;
   }
-  $I = _bigint_to_int($I) if defined $I && $I <= INTMAX;
+  canonicalize_integers(\$I);
   return $I;
 }
 
@@ -7648,7 +7649,7 @@ sub fromdigits {
     my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
     croak "fromdigits: invalid digit for base $base" if $r =~ /[^$cmap]/i;
   }
-  if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/) {
+  if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/ && $base <= 36) {
     $n = $_BIGINT->new($r, $base);
   } elsif ($BIGINTVERSION < 1.999814) {
     $n=_FastIntegerInput([map{index("0123456789abcdefghijklmnopqrstuvwxyz",$_)}split(//,lc($r))],$base);
@@ -7659,9 +7660,9 @@ sub fromdigits {
     elsif ($base == 10) { $n = Math::BigInt->new($r); }
     elsif ($base == 16) { $n = Math::BigInt->from_hex($r); }
     else {                $n = Math::BigInt->from_base($r,$base); }
-    $n = tobigint($n) if defined $_BIGINT && $_BIGINT ne 'Math::BigInt';
   }
-  return $n <= INTMAX ? _bigint_to_int($n) : $n;
+  canonicalize_integers(\$n);
+  $n;
 }
 
 sub is_harshad {
@@ -7758,7 +7759,8 @@ sub sqrtint {
   } else {
     $R = Math::BigInt->new("$n")->bsqrt;
   }
-  return $R <= INTMAX  ?  _bigint_to_int($R)  :  $R;
+  canonicalize_integers(\$R);
+  $R;
 }
 
 sub rootint {
@@ -7817,7 +7819,7 @@ sub rootint {
   } else {
     $R = Math::BigInt->new("$n")->broot($k);
   }
-  $R = _bigint_to_int($R) if $R <= INTMAX;
+  canonicalize_integers(\$R);
   $$refp = Mpowint($R,$k) if defined $refp;
   $R;
 }
@@ -7845,7 +7847,8 @@ sub _logint {
   # Just in case something failed, escape via using Math::BigInt's blog
   if ($l == MPU_INFINITY || !defined($l<=>MPU_INFINITY)) {
     my $R = Math::BigInt->new("$n")->copy->blog($b);
-    return $R <= INTMAX  ?  _bigint_to_int($R)  :  $R;
+    canonicalize_integers(\$R);
+    return $R;
   }
 
   my $R = int($l);
@@ -9148,13 +9151,13 @@ sub _znlog_solve {
   my($a,$g,$n,$gorder,$_verbose) = @_;
   ($a,$g,$n,$gorder) = map { tobigint($_) } ($a,$g,$n,$gorder);
   my $x = _dlp_bsgs($a, $g, $n, $gorder, $_verbose);
-  $x = _bigint_to_int($x) if ref($x) && $x <= INTMAX;
+  canonicalize_integers(\$x);
   return $x if Mpowmod($g,$x,$n) == $a;
   print "  BSGS giving up\n" if $x == 0 && $_verbose;
   print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
   $x = _dlp_trial($a, $g, $n, $gorder-1);
-  $x = _bigint_to_int($x) if defined $x && ref($x) && $x <= INTMAX;
-  return $x;
+  canonicalize_integers(\$x);
+  $x;
 }
 
 sub znlog {
@@ -9571,8 +9574,8 @@ sub fibonacci {
   }
   return $k if $k <= 1;
   my($a,$b) = _fibnm($k-1);
-  $b = _bigint_to_int($b) if ref($b) && $b <= INTMAX;
-  return $b;
+  canonicalize_integers(\$b);
+  $b;
 }
 sub lucas_number {
   my($k) = @_;

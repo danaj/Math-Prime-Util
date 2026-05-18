@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/next_prime/;
+use Math::Prime::Util qw/toint next_prime/;
 use Math::BigInt try=>"GMP,Pari";
 use Math::BigFloat;
 use Config;
@@ -123,6 +123,19 @@ SKIP: {
   is($ok, 2, "_validate_integer* reject coderefs");
 }
 
+################################################################################
+
+# How to find the default bigint class?
+# 1. assume Math::BigInt.  That is Wrong.
+# 2. ref(powint(2,80)).  Works but many things being tested here.
+# 3. ref(toint("1208925819614629174706176")).  Works, almost there.
+# 4. _load_bigint().  Very low level private function.  Works.
+#
+# In later tests we would want to use (3).  Here we'll use (4).
+#
+my $bigint_class = Math::Prime::Util::_load_bigint();
+#diag "Default bigint type: $bigint_class";
+
 {
   my $x = Math::BigInt->new(123);
   Math::Prime::Util::_canonicalize_integers(\$x);
@@ -132,7 +145,7 @@ SKIP: {
 {
   my $x = Math::BigInt->new("123456789012345678901234567890");
   Math::Prime::Util::_canonicalize_integers(\$x);
-  is("".ref($x).":$x", "Math::BigInt:123456789012345678901234567890",
+  is("".ref($x).":$x", "$bigint_class:123456789012345678901234567890",
      "_canonicalize_integers scalar ref keeps large bigint");
 }
 
@@ -142,7 +155,7 @@ SKIP: {
            undef);
   Math::Prime::Util::_canonicalize_integers(\@v);
   is_deeply([map { defined($_) ? ((ref($_)||"").":$_") : "undef" } @v],
-            [":42", ":7", "Math::BigInt:123456789012345678901234567890", "undef"],
+            [":42", ":7", "$bigint_class:123456789012345678901234567890", "undef"],
             "_canonicalize_integers array ref canonicalizes elements");
 }
 

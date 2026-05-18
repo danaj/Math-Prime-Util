@@ -105,6 +105,7 @@ use Math::Prime::Util qw/
   is_bpsw_prime
   valuation
   vecequal
+  toint
 /;
 # TODO:  ExponentialIntegral
 #        LogarithmicIntegral
@@ -393,10 +394,10 @@ subtest 'factoring', sub {
   is_deeply([factor_exp($n)],[linear_to_exp(@f)],"factor_exp($n)");
 
   $n = "36893488147419103258";  # 2 * 18446744073709551629
-  @f = (2, Math::BigInt->new("18446744073709551629"));
+  @f = (2, toint("18446744073709551629"));
   my @got = factor($n);
   is_deeply([map {"$_"} @got], [map {"$_"} @f], "factor($n)");
-  is(ref($got[1]), "Math::BigInt", "factor($n) large factor is canonical");
+  is(ref($got[1]), ref($f[1]), "factor($n) large factor is canonical");
   is(scalar(factor($n)), 2, "scalar factor($n)");
 
   is_deeply([map {"$_"} divisors(23489223467134234890234680)],
