@@ -5612,9 +5612,10 @@ sub powersum {
 
   my @v;
   if ($k < $n) {
+    my $np1 = Madd1int($n);
     for my $j (1..$k) {
       my $F = Mfactorial($j);
-      my $B = Mbinomial($n+1,$j+1);
+      my $B = Mbinomial($np1,$j+1);
       my $S = Mstirling($k,$j,2);
       push @v, Mvecprod($F,$B,$S);
     }
@@ -5677,8 +5678,8 @@ sub gcdext {
   my($x,$y) = @_;
   validate_integer($x);
   validate_integer($y);
-  if ($x == 0) { return (0, (-1,0,1)[($y>=0)+($y>0)], abs($y)); }
-  if ($y == 0) { return ((-1,0,1)[($x>=0)+($x>0)], 0, abs($x)); }
+  if ($x == 0) { return (0, (-1,0,1)[($y>=0)+($y>0)], Mabsint($y)); }
+  if ($y == 0) { return ((-1,0,1)[($x>=0)+($x>0)], 0, Mabsint($x)); }
 
   return maybetobigintall(Math::Prime::Util::GMP::gcdext($x,$y))
     if $Math::Prime::Util::_GMPfunc{"gcdext"};
@@ -5803,13 +5804,20 @@ sub vecprefixsum {
 
   my @psum;
   my $sum = 0;
+  my $need_post = 0;
   if (OLD_PERL_VERSION) { $_="$_" for @v };  # TODO: still needed?
 
   foreach my $v (@v) {
     validate_integer($v);
-    $sum = tobigint($sum)
-      if !ref $sum && ($sum+$v > (INTMAX-513) || $sum+$v < (INTMIN+513));
+    if (!ref $sum && ($sum+$v > (INTMAX-513) || $sum+$v < (INTMIN+513))) {
+      $sum = tobigint($sum);
+      $need_post = 1;
+    }
     push @psum, $sum += $v;
+  }
+  if ($need_post) { # All bigint sums should be checked for possibly native
+    # We are using validate_integer for canonicalization -- with XS it's FAST.
+    for (@psum) { validate_integer($_) if ref($_); }
   }
   @psum;
 }

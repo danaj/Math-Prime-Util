@@ -1198,7 +1198,7 @@ static SV* xs_call_cv_noinput_1_sv(pTHX_ CV* subcv) {
  * string fits in UV/IV   UV / IV
  * bigint object fits     UV / IV
  * big string             BIGINT object
- * BIGINT object          BIGINT object    no work needed
+ * BIGINT object          BIGINT object    return unchanged
  * other bigint class     BIGINT object    converted class
  */
 static SV* xs_to_canonical(pTHX_ SV* sv) {
