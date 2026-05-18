@@ -6983,7 +6983,8 @@ sub muladdmod {
   }
   $c = tobigint($c) unless ref($c);
   my $r = (($a * $b) + $c) % $n;
-  return $r <= INTMAX ? _bigint_to_int($r) : $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
@@ -7015,7 +7016,8 @@ sub mulsubmod {
   }
   $c = tobigint($c) unless ref($c);
   my $r = (($a * $b) - $c) % $n;
-  return $r <= INTMAX ? _bigint_to_int($r) : $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 
 sub invmod {
