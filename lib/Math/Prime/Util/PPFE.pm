@@ -20,17 +20,25 @@ sub _canonicalize_integers {
   my($r) = @_;
   my $type = reftype($r);
   if (defined $type && $type eq 'ARRAY') {
+
     for my $i (0..$#$r) {
       next unless exists $r->[$i] && defined $r->[$i];
       _validate_integer($r->[$i]);
+      $r->[$i] = _to_bigint($r->[$i]) if ref($r->[$i]);
     }
+
   } elsif (defined $type && ($type eq 'SCALAR' || $type eq 'REF')) {
-    # Later we can optimize -- this does everything we need (and much more).
-    _validate_integer($$r) if defined $$r;
+
+    if (defined $$r) {
+      # Later we can optimize to do only what we need.
+      _validate_integer($$r);
+      $$r = _to_bigint($$r) if ref($$r);
+    }
+
   } else {
     croak "_canonicalize_integers: expected scalar or array reference";
   }
-  return;
+  return;  # Explicitly return nothing
 }
 
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;

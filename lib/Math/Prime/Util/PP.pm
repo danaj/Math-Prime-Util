@@ -5267,7 +5267,8 @@ sub powint {
   return Mmulint(Mmulint($a,$a),$a) if $b == 3;
 
   my $r = tobigint($a) ** tobigint($b);
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 
 sub mulint {
@@ -5284,7 +5285,8 @@ sub mulint {
     return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) * $b;
   }
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 sub addint {
   my($a, $b) = @_;
@@ -5299,7 +5301,8 @@ sub addint {
     return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) + $b;
   }
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 sub subint {
   my($a, $b) = @_;
@@ -5314,21 +5317,24 @@ sub subint {
     return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) - $b;
   }
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 sub add1int {
   my($a) = @_;
   validate_integer($a);
   return $a + 1 if !ref($a) && $a < INTMAX;
   my $r = tobigint($a) + 1;
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 sub sub1int {
   my($a) = @_;
   validate_integer($a);
   return $a - 1 if !ref($a) && $a > INTMIN;
   my $r = tobigint($a) - 1;
-  return $r <= INTMAX && $r >= INTMIN  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 
 # We could streamline these, but there is little benefit, and in theory
@@ -5404,8 +5410,8 @@ sub tdivrem {
   } else {
     $q = _tquotient($a, $b);
     $r = $a - $b * $q;
-    $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX && $q >= INTMIN;
-    $r = _bigint_to_int($r) if ref($r) && $r <= INTMAX && $r >= INTMIN;
+    canonicalize_integers(\$q) if ref($q);
+    canonicalize_integers(\$r) if ref($r);
   }
   ($q,$r);
 }
@@ -5426,8 +5432,8 @@ sub fdivrem {
   # qf = qt-I     rf = rt+I*d    I = (signum(rt) = -signum(b)) 1 : 0
   if ( ($r < 0 && $b > 0) || ($r > 0 && $b < 0) )
     { $q--; $r += $b; }
-  $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX && $q >= INTMIN;
-  $r = _bigint_to_int($r) if ref($r) && $r <= INTMAX && $r >= INTMIN;
+  canonicalize_integers(\$q) if ref($q);
+  canonicalize_integers(\$r) if ref($r);
   ($q,$r);
 }
 # Ceiling Division
@@ -5445,8 +5451,8 @@ sub cdivrem {
   $r = $a - $b * $q;
   if ($r != 0 && (($a >= 0) == ($b >= 0)))
     { $q++; $r -= $b; }
-  $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX && $q >= INTMIN;
-  $r = _bigint_to_int($r) if ref($r) && $r <= INTMAX && $r >= INTMIN;
+  canonicalize_integers(\$q) if ref($q);
+  canonicalize_integers(\$r) if ref($r);
   ($q,$r);
 }
 # Euclidean Division
@@ -5466,8 +5472,8 @@ sub divrem {
     if ($b > 0) { $q--; $r += $b; }
     else        { $q++; $r -= $b; }
   }
-  $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX && $q >= INTMIN;
-  $r = _bigint_to_int($r) if ref($r) && $r <= INTMAX && $r >= INTMIN;
+  canonicalize_integers(\$q) if ref($q);
+  canonicalize_integers(\$r) if ref($r);
   ($q,$r);
 }
 
@@ -5847,7 +5853,7 @@ sub vecprod {
   # Argh, Perl 5.6.2.
   if (OLD_PERL_VERSION) {
     my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
-    $prod = _bigint_to_int($prod) if ref($prod) && $prod <= INTMAX && $prod >= INTMIN;
+    canonicalize_integers(\$prod);
     return $prod;
   }
 
@@ -5865,8 +5871,7 @@ sub vecprod {
   # Product tree
   # my $prod = _product_mulint(0, $#_, \@_);
   my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
-
-  $prod = _bigint_to_int($prod) if ref($prod) && $prod <= INTMAX && $prod >= INTMIN;
+  canonicalize_integers(\$prod);
   $prod;
 }
 
@@ -8360,9 +8365,8 @@ sub binomial {
     $R = Math::BigInt::bnok("$n","$k");
   }
   $R = -$R if $negate;
-  return $R <= INTMAX && $R >= INTMIN            ?  _bigint_to_int($R)
-       : defined $_BIGINT && $_BIGINT eq ref($R) ?  $R
-       :                                            tobigint($R);
+  canonicalize_integers(\$R);
+  $R;
 }
 
 sub binomialmod {
@@ -8448,12 +8452,12 @@ sub factorial {
   } elsif ($_BIGINT eq 'Math::GMP') {
     $r = Math::GMP::bfac($n);
   } elsif ($Math::Prime::Util::_GMPfunc{"factorial"}) {
-    $r = maybetobigint(Math::Prime::Util::GMP::factorial($n));
+    $r = Math::Prime::Util::GMP::factorial($n);
   } else {
     $r = Math::BigInt->new("$n")->bfac();
-    $r = tobigint("$r") if $_BIGINT ne 'Math::BigInt';
   }
-  return ref $r && $r <= INTMAX  ?  _bigint_to_int($r)  :  $r;
+  canonicalize_integers(\$r);
+  $r;
 }
 
 sub factorialmod {
@@ -9388,8 +9392,8 @@ sub lucasuv {
     $Vl = $Vl * $Vl - ($Ql+$Ql);
     $Ql *= $Ql;
   }
-  $Uh = _bigint_to_int($Uh) if $Uh <= INTMAX && $Uh >= INTMIN;
-  $Vl = _bigint_to_int($Vl) if $Vl <= INTMAX && $Vl >= INTMIN;
+  canonicalize_integers(\$Uh);
+  canonicalize_integers(\$Vl);
   ($Uh, $Vl);
 }
 
