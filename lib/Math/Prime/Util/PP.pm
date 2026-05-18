@@ -5522,6 +5522,7 @@ sub cdivint {
 sub absint {
   my($n) = @_;
   validate_integer_abs($n);
+  canonicalize_integers(\$n);
   $n;
 }
 sub negint {
@@ -5629,6 +5630,7 @@ sub powersum {
       push @v, Mvecprod($F,$B,$S);
     }
   } else {
+    croak "powersum: n too large for direct summation" if $n > 10000;
     @v = map { Mpowint($_,$k) } 1..$n;
   }
   Mvecsum(@v);
@@ -5668,9 +5670,9 @@ sub gcd {
     $gcd = Math::GMP::gcd($gcd,$_) for @N;
   } else {
     $gcd = Math::BigInt::bgcd(map { Math::BigInt->new("$_") } @N);
-    $gcd = tobigint($gcd);
   }
-  return $gcd <= INTMAX  ?  _bigint_to_int($gcd)  :  $gcd;
+  canonicalize_integers(\$gcd);
+  return $gcd;
 }
 sub lcm {
   my(@v) = @_;
@@ -7086,14 +7088,14 @@ sub negmod {
 
   if ($n <= 0) {
     return undef if $n == 0;   # standard mod behavior with n = 0
-    $n = tobigint($n) if $n <= INTMIN && !ref($n);
-    $n = -$n;                  # we use |n|, unlike modint
+    $n = Mnegint($n);          # we use |n|, unlike modint
   }
   # Easy:
   # Msubmod(0, $a, $n);
 
   $a = Mmodint($a,$n) if $a >= $n || $a < 0;
-  return $a ? $n-$a : 0;
+  return 0 if $a == 0;
+  return ref($n) ? Msubint($n,$a) : $n - $a;
 }
 
 # No validation.
