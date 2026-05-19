@@ -1732,6 +1732,10 @@ bool _validate_integer(SV* svn)
   OUTPUT:
     RETVAL
 
+void _canonicalized_integer(SV* svn)
+  PPCODE:
+    RETURN_SV(xs_to_canonical(aTHX_ svn));
+
 void _canonicalize_integers(SV* svr)
   PREINIT:
     SV *target, *elem, *out;
@@ -2447,7 +2451,7 @@ vecmin(...)
     UV ret, n, retindex;
   PPCODE:
     if (items == 0) XSRETURN_UNDEF;
-    if (items == 1) XSRETURN(1);
+    if (items == 1) RETURN_SV_CANONICAL(ST(0));
     retindex = 0;
     if ((status = _validate_and_set(&ret, aTHX_ ST(0), IFLAG_ANY)) != 0) {
       int sign = status, minmax = (ix == 0);
@@ -2464,12 +2468,12 @@ vecmin(...)
       }
     }
     if (status != 0) {
-      ST(0) = ST(retindex);
+      /* retindex is already set. */
     } else if (1) { /* Use string compares to decide the min/max */
-      int retindex = 0;
       int minmax = (ix == 0);
       STRLEN alen, blen;
       char *aptr, *bptr;
+      retindex = 0;
       aptr = SvPV(ST(0), alen);
       (void) strint_minmax(minmax, 0, 0, aptr, alen);
       for (i = 1; i < items; i++) {
@@ -2480,11 +2484,10 @@ vecmin(...)
           retindex = i;
         }
       }
-      ST(0) = ST(retindex);
     } else {
       DISPATCHPP_RETURN();
     }
-    XSRETURN(1);
+    RETURN_SV_CANONICAL(ST(retindex));
 
 void
 vecsum(...)
@@ -5199,14 +5202,16 @@ void binomial(IN SV* svn, IN SV* svk)
 
 void multifactorial(IN SV* svn, IN SV* svk)
   PREINIT:
+    int nstatus, kstatus;
     UV n, k, r;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) &&
-        _validate_and_set(&k, aTHX_ svk, IFLAG_POS)) {
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    if (nstatus == 1 && kstatus == 1) {
       r = multifactorial(n, k);
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
-    DISPATCHPP_RETURN();
+    DISPATCHPP_RETURN_GMPIF(nstatus == 1 && kstatus == 1);
 
 void falling_factorial(IN SV* svn, IN SV* svk)
   ALIAS:

@@ -40,6 +40,11 @@ sub _canonicalize_integers {
   }
   return;  # Explicitly return nothing
 }
+sub _canonicalized_integer {
+  my $n = $_[0];
+  _canonicalize_integers(\$n);
+  $n;
+}
 
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
 *prime_memfree  = \&Math::Prime::Util::PP::prime_memfree;
