@@ -2018,7 +2018,7 @@ sub powerful_count {
   validate_integer($n);   $n = 0 if $n < 0;
   if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
 
-  return $n if $k <= 1 || $n <= 1;
+  return canonicalized_integer($n) if $k <= 1 || $n <= 1;
 
   if ($k == 2) {
     my $sum = 0;
@@ -2048,7 +2048,7 @@ sub nth_powerful {
   if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
 
   return undef if $n == 0;
-  return $n if $k <= 1 || $n <= 1;
+  return canonicalized_integer($n) if $k <= 1 || $n <= 1;
   return Mpowint(2,$k) if $n == 2;
   return Mpowint(2,$k+1) if $n == 3;
 
@@ -2746,7 +2746,7 @@ sub smooth_count {
   validate_integer_nonneg($k);
   return 0 if $n < 1;
   return 1 if $k <= 1;
-  return $n if $k >= $n;
+  return canonicalized_integer($n) if $k >= $n;
 
   my $sum = 1 + Mlogint($n,2);
   if ($k >= 3) {
@@ -2784,8 +2784,8 @@ sub rough_count {
   my($n, $k) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($k);
-  return $n if $k <= 2;
-  return $n-($n>>1) if $k <= 3;
+  return canonicalized_integer($n) if $k <= 2;
+  return Msubint($n,Mrshiftint($n)) if $k == 3;
   Math::Prime::Util::legendre_phi($n, Mprime_count($k-1));
 }
 
@@ -3249,8 +3249,8 @@ sub exp_mangoldt {
 sub carmichael_lambda {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return Mtotient($n) if $n < 8;           # = phi(n) for n < 8
-  return $n >> 2 if ($n & ($n-1)) == 0;    # = phi(n)/2 = n/4 for 2^k, k>2
+  return Mtotient($n) if $n < 8;                 # = phi(n) for n < 8
+  return Mrshiftint($n,2) if ($n & ($n-1)) == 0; # = phi(n)/2 = n/4 for 2^k, k>2
 
   my @pe = Mfactor_exp($n);
   $pe[0]->[1]-- if $pe[0]->[0] == 2 && $pe[0]->[1] > 2;
@@ -3408,21 +3408,14 @@ sub is_fundamental {
   0;
 }
 
-my @_ds_overflow =  # We'll use BigInt math if the input is larger than this.
-  (~0 > 4294967295)
-   ? (124, 3000000000000000000, 3000000000, 2487240, 64260, 7026)
-   : ( 50,           845404560,      52560,    1548,   252,   84);
 sub divisor_sum {
   my($n, $k) = @_;
   validate_integer_nonneg($n);
   return 0 if $n == 0;
 
   if (_is_cref($k)) {
-    my $sum = $n-$n;
-    my $refn = ref($n);
-    foreach my $d (Mdivisors($n)) {
-      $sum += $k->( $refn ? $refn->new("$d") : $d );
-    }
+    my $sum = 0;
+    Mfordivisors(sub { $sum += $k->($_); }, $n);
     return $sum;
   }
   return 1 if $n == 1;
@@ -3566,7 +3559,7 @@ sub legendre_phi {
     @_s3 = (0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7,8);
     @_s4 = (0,1,1,1,1,1,1,1,1,1,1,2,2,3,3,3,3,4,4,5,5,5,5,6,6,6,6,6,6,7,7,8,8,8,8,8,8,9,9,9,9,10,10,11,11,11,11,12,12,12,12,12,12,13,13,13,13,13,13,14,14,15,15,15,15,15,15,16,16,16,16,17,17,18,18,18,18,18,18,19,19,19,19,20,20,20,20,20,20,21,21,21,21,21,21,21,21,22,22,22,22,23,23,24,24,24,24,25,25,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,29,29,29,29,30,30,30,30,30,30,31,31,32,32,32,32,33,33,33,33,33,33,34,34,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,38,38,39,39,39,39,40,40,40,40,40,40,41,41,42,42,42,42,42,42,43,43,43,43,44,44,45,45,45,45,46,46,47,47,47,47,47,47,47,47,47,47,48);
   }
-  return _tablephi($x,$a) if $a <= 6;
+  return canonicalized_integer(_tablephi($x,$a)) if $a <= 6;
   return 0+($x>0) if $a >= Math::Prime::Util::prime_count_upper($x); # Huge $a
   $primes = Mprimes(Mnth_prime_upper($a+1)) unless defined $primes;
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
@@ -3676,7 +3669,7 @@ sub prime_count {
 
   return maybetobigint(Math::Prime::Util::GMP::prime_count($low,$high))
     if $Math::Prime::Util::_GMPfunc{"prime_count"}
-    && (ref($high) eq 'Math::BigInt' || ($high-$low) < int($low/1_000_000));
+    && (ref($high) || ($high-$low) < int($low/1_000_000));
 
   my $count = 0;
   $count++ if ($low <= 2) && ($high >= 2);   # Count 2
@@ -3685,7 +3678,7 @@ sub prime_count {
   $high-- if ($high % 2) == 0; # Make high go to odd number.
   return $count if $low > $high;
 
-  if (   ref($low) eq 'Math::BigInt' || ref($high) eq 'Math::BigInt'
+  if (   ref($low) || ref($high)
       || ($high-$low) < 10
       || ($high-$low) < int($low/100_000_000_000) ) {
     # Trial primes seems best.  Needs some tuning.
@@ -4193,10 +4186,10 @@ sub twin_prime_count {
   validate_integer_nonneg($high);
   my $sum = 0;
   while ($low <= $high) {
-    my $seghigh = ($high-$high) + $low + 1e7 - 1;
+    my $seghigh = Maddint($low, 9_999_999);
     $seghigh = $high if $seghigh > $high;
     $sum += scalar(@{Math::Prime::Util::twin_primes($low,$seghigh)});
-    $low = $seghigh + 1;
+    $low = Madd1int($seghigh);
   }
   $sum;
 }
@@ -4343,10 +4336,10 @@ sub ramanujan_prime_count {
   validate_integer_nonneg($high);
   my $sum = 0;
   while ($low <= $high) {
-    my $seghigh = ($high-$high) + $low + 1e9 - 1;
+    my $seghigh = Maddint($low, 999_999_999);
     $seghigh = $high if $seghigh > $high;
     $sum += scalar(@{Math::Prime::Util::ramanujan_primes($low,$seghigh)});
-    $low = $seghigh + 1;
+    $low = Madd1int($seghigh);
   }
   $sum;
 }
@@ -5259,7 +5252,7 @@ sub powint {
   }
 
   return 1 if $b == 0;
-  return $a if $b == 1;
+  return canonicalized_integer($a) if $b == 1;
   if ($b == 2) {
     return int("$a")*int("$a") if abs($a) < MPU_HALFWORD;
     return Mmulint($a,$a);
@@ -5364,7 +5357,7 @@ sub mulsubint { Msubint(Mmulint($_[0],$_[1]),$_[2]); }
 
 sub _tquotient {
   my($a,$b) = @_;
-  return $a if $b == 1;
+  return canonicalized_integer($a) if $b == 1;
 
   $a = tobigint($a) if ($a >= SINTMAX || $a <= INTMIN) && !ref($a);
   $b = tobigint($b) if ($b >= SINTMAX || $b <= INTMIN) && !ref($b);
@@ -5541,10 +5534,11 @@ sub negint {
   my($n) = @_;
   validate_integer($n);
   return 0 if $n == 0;  # Perl 5.6 has to have this: if $n=0 => -$n = -0
-  return -$n if ref($n) || $n < SINTMAX;
+  return canonicalized_integer(-$n) if ref($n);
+  return -$n if $n < SINTMAX;
   if ($n > 0) { $n = "-$n"; }
   else        { $n =~ s/^-//; }
-  maybetobigint($n);
+  canonicalized_integer($n);
 }
 sub signint {
   my($n) = @_;
@@ -5617,7 +5611,7 @@ sub powersum {
   validate_integer_nonneg($n);
   validate_integer_nonneg($k);
 
-  return $n if $n <= 1 || $k == 0;
+  return canonicalized_integer($n) if $n <= 1 || $k == 0;
 
   return Mdivint(Mvecprod($n, Madd1int($n), Madd1int(Mmulint($n,2))),6) if $k==2;
   return Mdivint(Mvecprod(
@@ -5819,7 +5813,7 @@ sub vecprefixsum {
   return unless @v;
   if (@v == 1) {
     validate_integer($v[0]);
-    return maybetobigint($v[0]);
+    return canonicalized_integer($v[0]);
   }
 
   my @psum;
@@ -6036,7 +6030,7 @@ sub mult_digital_root {
   }
   my $dr = $n;
   $dr = Mvecprod(Mtodigits($dr,$base))  while $dr >= $base;
-  $dr;
+  canonicalized_integer($dr);
 }
 
 sub is_happy {
@@ -13324,7 +13318,7 @@ sub urandomr {
   validate_integer($lo);
   validate_integer($hi);
   return undef if $lo > $hi;  ## no critic qw(ProhibitExplicitReturnUndef)
-  return $lo if $lo == $hi;
+  return canonicalized_integer($lo) if $lo == $hi;
   # Only pass non-negative inputs to GMP (GMP backend requires non-negative).
   return maybetobigint(Math::Prime::Util::GMP::urandomr($lo, $hi))
     if $Math::Prime::Util::_GMPfunc{"urandomr"} && $lo >= 0;

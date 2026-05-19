@@ -189,7 +189,7 @@ sub mpu_PPM_regex {
       MLi Mpowersum
       Murandomb Murandomm Mvaluation
       Mprimes
-      Mis_power Mis_prime Mis_prime_power Mis_odd Mis_even
+      Mis_power Mis_prime Mis_prob_prime Mis_prime_power Mis_odd Mis_even
       Mdivisor_sum Mis_congruent Mis_divisible
       Mis_semiprime Mis_square_free Mhclassno
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum Mvecuniq
@@ -198,10 +198,11 @@ sub mpu_PPM_regex {
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
       Mlucasumod Mvecfirst Mvecsort Mvecsorti
-      Saddint Ssubint Smulint Sdivint Spowint
+      Saddint Ssubint Smulint Sdivint Spowint Surandomm
       Mtoint
       validate_integer     validate_integer_nonneg
       validate_integer_abs validate_integer_positive
+      canonicalize_integers canonicalized_integer
       tobigint maybetobigint maybetobigintall
       getconfig
   );

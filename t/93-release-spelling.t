@@ -23,7 +23,7 @@ add_stopwords(qw/-th
                  primorial primorials
                  semiprime semiprimes
                  precalculated premultiplier
-                 benchmarking hardcoded online
+                 benchmarking hardcoded online aliasing
                  unoptimized unusably orderings
                  coprime summatory
                  RiemannR LambertW

@@ -564,6 +564,7 @@ subtest 'canonical bigint returns', sub {
     if !defined($new_bigint) || $new_bigint eq 'Math::BigInt';
 
   my $n = Math::BigInt->new("123456789012345678901234567890");
+  my $p2 = 2 * Math::BigInt->new("18446744073709551629");
   my @tests = (
     [ "vecsum single",          vecsum($n),                   $n ],
     [ "vecprod single",         vecprod($n),                  $n ],
@@ -572,6 +573,8 @@ subtest 'canonical bigint returns', sub {
     [ "binomial n choose 1",    binomial($n,1),               $n ],
     [ "falling_factorial n,1",  falling_factorial($n,1),      $n ],
     [ "multifactorial k > n",   multifactorial($n,$n+1),      $n ],
+    [ "divisor_sum callback",   divisor_sum($p2, sub { $_[0] }),
+                                                             "55340232221128654890" ],
   );
 
   for my $t (@tests) {

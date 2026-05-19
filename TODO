@@ -570,6 +570,9 @@ OEIS lucky numbers:
 
 - nth_ramanujan_lower, should be redone like upper.
 
+- ramanujan_prime_count calls ramanujan_primes, and
+  ramanujan_primes generates all primes up to high
+
 - vecpairwise {... $a,$b ...} \@A,\@B
   List::MoreUtils::pairwise
 
@@ -698,3 +701,7 @@ OEIS lucky numbers:
   E.g. ds_iset.c.
 
 - @v = intrange($a, $b)
+  use in allrootmod, some other places
+
+- floor_sum:
+  sum_{i=0..n-1} floor((a*i+b)/m)

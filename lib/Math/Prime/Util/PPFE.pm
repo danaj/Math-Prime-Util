@@ -519,6 +519,8 @@ sub entropy_bytes {
 *almost_primes = \&Math::Prime::Util::PP::almost_primes;
 *omega_primes = \&Math::Prime::Util::PP::omega_primes;
 
+*Pi = \&Math::Prime::Util::PP::Pi;
+
 
 # We are doing the validation here so the PP code doesn't have to do it.
 
@@ -587,13 +589,6 @@ sub mulsubmod {
   my ($a, $b, $c, $n) = @_;
   _validate_integer($a); _validate_integer($b); _validate_integer($c); _validate_integer($n);
   return Math::Prime::Util::PP::mulsubmod($a,$b,$c, $n);
-}
-
-
-sub Pi {
-  my($digits) = @_;
-  _validate_integer_nonneg($digits) if defined $digits;
-  return Math::Prime::Util::PP::Pi($digits);
 }
 
 #############################################################################
