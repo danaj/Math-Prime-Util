@@ -72,6 +72,7 @@ our $_BIGINT;
 *getconfig = \&Math::Prime::Util::prime_get_config;
 
 BEGIN {  # These should happen at compile time to take advantage of custom ops
+*canonicalized_integer = \&Math::Prime::Util::_canonicalized_integer;
 *canonicalize_integers = \&Math::Prime::Util::_canonicalize_integers;
 *validate_integer = \&Math::Prime::Util::_validate_integer;
 *validate_integer_nonneg = \&Math::Prime::Util::_validate_integer_nonneg;
@@ -1189,7 +1190,7 @@ sub partitions {
     }
     $part[$j] = $psum1 - $psum2;
   }
-  return $part[$n];
+  canonicalized_integer($part[$n]);
 }
 
 sub partitionsq {
@@ -1220,9 +1221,7 @@ sub partitionsq {
     }
     $part[$j] = $pos-$neg;
   }
-  my $q = $part[$n];
-  canonicalize_integers(\$q);
-  $q;
+  canonicalized_integer($part[$n]);
 }
 
 
@@ -5267,8 +5266,7 @@ sub powint {
   return Mmulint(Mmulint($a,$a),$a) if $b == 3;
 
   my $r = tobigint($a) ** tobigint($b);
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 
 sub mulint {
@@ -5285,8 +5283,7 @@ sub mulint {
     return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) * $b;
   }
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 sub addint {
   my($a, $b) = @_;
@@ -5301,8 +5298,7 @@ sub addint {
     return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) + $b;
   }
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 sub subint {
   my($a, $b) = @_;
@@ -5317,8 +5313,7 @@ sub subint {
     return $r if $r < INTMAX && $r > INTMIN;
     $r = tobigint($a) - $b;
   }
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 sub add1int {
   my($a) = @_;
@@ -5333,8 +5328,7 @@ sub sub1int {
   validate_integer($a);
   return $a - 1 if !ref($a) && $a > INTMIN;
   my $r = tobigint($a) - 1;
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 
 # We could streamline these, but there is little benefit, and in theory
@@ -5522,8 +5516,7 @@ sub cdivint {
 sub absint {
   my($n) = @_;
   validate_integer_abs($n);
-  canonicalize_integers(\$n);
-  $n;
+  canonicalized_integer($n);
 }
 sub negint {
   my($n) = @_;
@@ -5566,8 +5559,7 @@ sub lshiftint {
     $n = tobigint($n);
   }
   $n = $n << $k;
-  canonicalize_integers(\$n);
-  $n;
+  canonicalized_integer($n);
 
   #my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   #Mmulint($n, $k2);
@@ -5586,8 +5578,7 @@ sub rshiftint {
     $n = tobigint($n);
   }
   $n = $n >> $k;
-  canonicalize_integers(\$n);
-  $n;
+  canonicalized_integer($n);
 
   #my $k2 = (!defined $k) ? 2 : ($k < MPU_MAXBITS) ? (1<<$k) : Mpowint(2,$k);
   #(Mtdivrem($n, $k2))[0];
@@ -5671,8 +5662,7 @@ sub gcd {
   } else {
     $gcd = Math::BigInt::bgcd(map { Math::BigInt->new("$_") } @N);
   }
-  canonicalize_integers(\$gcd);
-  return $gcd;
+  canonicalized_integer($gcd);
 }
 sub lcm {
   my(@v) = @_;
@@ -5683,7 +5673,7 @@ sub lcm {
     if ($y <= 0) { return 0 if $y == 0;  $y = Mabsint($y); }
     $lcm = defined $lcm ? Mmulint($lcm, Mdivint($y, Mgcd($lcm,$y))) : $y;
   }
-  return $lcm;
+  canonicalized_integer($lcm);
 }
 sub gcdext {
   my($x,$y) = @_;
@@ -5785,10 +5775,11 @@ sub _from_128 {
 }
 
 sub vecsum {
-  return (@_ == 0) ? 0 : maybetobigint($_[0]) if @_ <= 1;
-
+  return 0 if @_ == 0;
+  return canonicalized_integer($_[0]) if @_ == 1;
   return maybetobigint(Math::Prime::Util::GMP::vecsum(@_))
     if $Math::Prime::Util::_GMPfunc{"vecsum"};
+
   my $sum = 0;
   if (OLD_PERL_VERSION) { $_="$_" for @_ };
   foreach my $v (@_) {
@@ -5798,8 +5789,7 @@ sub vecsum {
       $sum = tobigint(0);
       if (ref($sum) eq 'Math::Pari') { $sum += "$_" for @_; }
       else                           { $sum += $_   for @_; }
-      canonicalize_integers(\$sum);
-      return $sum;
+      return canonicalized_integer($sum);
     }
   }
   $sum;
@@ -5849,16 +5839,14 @@ sub _product_mult {
 
 sub vecprod {
   return 1 unless @_;
+  return canonicalized_integer($_[0]) if @_ == 1;
   return maybetobigint(Math::Prime::Util::GMP::vecprod(@_))
     if $Math::Prime::Util::_GMPfunc{"vecprod"};
-
-  return maybetobigint($_[0]) if @_ == 1;
 
   # Argh, Perl 5.6.2.
   if (OLD_PERL_VERSION) {
     my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
-    canonicalize_integers(\$prod);
-    return $prod;
+    return canonicalized_integer($prod);
   }
 
   # Try native for non-negative/non-zero inputs
@@ -5875,21 +5863,20 @@ sub vecprod {
   # Product tree
   # my $prod = _product_mulint(0, $#_, \@_);
   my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
-  canonicalize_integers(\$prod);
-  $prod;
+  canonicalized_integer($prod);
 }
 
 sub vecmin {
   return unless @_;
   my $min = shift;
   for (@_) { $min = $_ if $_ < $min; }
-  $min;
+  canonicalized_integer($min);
 }
 sub vecmax {
   return unless @_;
   my $max = shift;
   for (@_) { $max = $_ if $_ > $max; }
-  $max;
+  canonicalized_integer($max);
 }
 
 sub vecextract {
@@ -6985,8 +6972,7 @@ sub muladdmod {
   }
   $c = tobigint($c) unless ref($c);
   my $r = (($a * $b) + $c) % $n;
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
@@ -7018,8 +7004,7 @@ sub mulsubmod {
   }
   $c = tobigint($c) unless ref($c);
   my $r = (($a * $b) - $c) % $n;
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 
 sub invmod {
@@ -7065,8 +7050,7 @@ sub invmod {
     $I = Math::BigInt->new("$a")->bmodinv("$n");
     $I = undef if defined $I && !$I->is_int();
   }
-  canonicalize_integers(\$I);
-  return $I;
+  canonicalized_integer($I);
 }
 
 sub divmod {
@@ -7665,8 +7649,7 @@ sub fromdigits {
     elsif ($base == 16) { $n = Math::BigInt->from_hex($r); }
     else {                $n = Math::BigInt->from_base($r,$base); }
   }
-  canonicalize_integers(\$n);
-  $n;
+  canonicalized_integer($n);
 }
 
 sub is_harshad {
@@ -7763,8 +7746,7 @@ sub sqrtint {
   } else {
     $R = Math::BigInt->new("$n")->bsqrt;
   }
-  canonicalize_integers(\$R);
-  $R;
+  canonicalized_integer($R);
 }
 
 sub rootint {
@@ -7851,8 +7833,7 @@ sub _logint {
   # Just in case something failed, escape via using Math::BigInt's blog
   if ($l == MPU_INFINITY || !defined($l<=>MPU_INFINITY)) {
     my $R = Math::BigInt->new("$n")->copy->blog($b);
-    canonicalize_integers(\$R);
-    return $R;
+    return canonicalized_integer($R);
   }
 
   my $R = int($l);
@@ -8344,8 +8325,10 @@ sub binomial {
   }
 
   # 4. Overflow.  Solve using Math::BigInt
-  return 1 if $k == 0;                   # Work around bug in old
-  return $n if $k == 1 || $k == $n-1;    # Math::BigInt (fixed in 1.90)
+
+  # Special cases, partly to work around bug in old Math::BigInt (pre 1.90)
+  return 1 if $k == 0 || $k == $n;
+  return canonicalized_integer($n) if $k == 1 || $k == $n-1;
 
   my $R;
   $n = tobigint($n) unless ref($n);
@@ -8372,8 +8355,7 @@ sub binomial {
     $R = Math::BigInt::bnok("$n","$k");
   }
   $R = -$R if $negate;
-  canonicalize_integers(\$R);
-  $R;
+  canonicalized_integer($R);
 }
 
 sub binomialmod {
@@ -8426,7 +8408,8 @@ sub multifactorial {
 }
 sub _falling_factorial {
   my($n,$m) = @_;
-  if ($m <= 1) { return ($m == 0) ? 1 : $n }
+  return 1 if $m == 0;
+  return canonicalized_integer($n) if $m == 1;
   return 0 if $n >= 0 && $m > $n;
   return Mvecprod($n,map { Msubint($n,$_) } 1 .. Msubint($m,1))  if $m < 250;
   Mmulint(Mbinomial($n,$m),Mfactorial($m));
@@ -8463,8 +8446,7 @@ sub factorial {
   } else {
     $r = Math::BigInt->new("$n")->bfac();
   }
-  canonicalize_integers(\$r);
-  $r;
+  canonicalized_integer($r);
 }
 
 sub factorialmod {
@@ -9155,13 +9137,11 @@ sub _znlog_solve {
   my($a,$g,$n,$gorder,$_verbose) = @_;
   ($a,$g,$n,$gorder) = map { tobigint($_) } ($a,$g,$n,$gorder);
   my $x = _dlp_bsgs($a, $g, $n, $gorder, $_verbose);
-  canonicalize_integers(\$x);
-  return $x if Mpowmod($g,$x,$n) == $a;
+  return canonicalized_integer($x) if Mpowmod($g,$x,$n) == $a;
   print "  BSGS giving up\n" if $x == 0 && $_verbose;
   print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
   $x = _dlp_trial($a, $g, $n, $gorder-1);
-  canonicalize_integers(\$x);
-  $x;
+  canonicalized_integer($x);
 }
 
 sub znlog {
@@ -9578,8 +9558,7 @@ sub fibonacci {
   }
   return $k if $k <= 1;
   my($a,$b) = _fibnm($k-1);
-  canonicalize_integers(\$b);
-  $b;
+  canonicalized_integer($b);
 }
 sub lucas_number {
   my($k) = @_;

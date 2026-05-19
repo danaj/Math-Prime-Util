@@ -42,6 +42,7 @@ if ($broken64) {
                + 1   # liouville
                + 1   # ispower
                + 1   # random primes
+               + 1   # canonical bigint returns
                + 1   # vecequal
                + 1;  # $_ didn't get changed
 }
@@ -83,7 +84,14 @@ use Math::Prime::Util qw/
   gcdext
   chinese
   is_power
+  binomial
+  falling_factorial
+  multifactorial
   pn_primorial
+  vecsum
+  vecprod
+  vecmin
+  vecmax
   ExponentialIntegral
   LogarithmicIntegral
   RiemannR
@@ -541,6 +549,37 @@ subtest 'random primes', sub {
   is(miller_rabin_random(1009), 1, "MRR(1009) = 1");   # runs one random base
 
   } # ^^^ skipped without $extra
+};
+
+###############################################################################
+
+subtest 'canonical bigint returns', sub {
+  my $old_bigint = Math::Prime::Util::prime_get_config()->{bigintclass}
+                   || Math::Prime::Util::_load_bigint();
+
+  prime_set_config(trybigint => 'Math::GMPz,Math::GMP');
+  my $new_bigint = Math::Prime::Util::prime_get_config()->{bigintclass};
+
+  plan skip_all => "No alternate bigint class available"
+    if !defined($new_bigint) || $new_bigint eq 'Math::BigInt';
+
+  my $n = Math::BigInt->new("123456789012345678901234567890");
+  my @tests = (
+    [ "vecsum single",          vecsum($n),                   $n ],
+    [ "vecprod single",         vecprod($n),                  $n ],
+    [ "vecmin single",          vecmin($n),                   $n ],
+    [ "vecmax single",          vecmax($n),                   $n ],
+    [ "binomial n choose 1",    binomial($n,1),               $n ],
+    [ "falling_factorial n,1",  falling_factorial($n,1),      $n ],
+    [ "multifactorial k > n",   multifactorial($n,$n+1),      $n ],
+  );
+
+  for my $t (@tests) {
+    my($name, $got, $expect) = @$t;
+    is("".ref($got).":$got","$new_bigint:$expect","$name returns canonical bigint");
+  }
+
+  prime_set_config(bigint => $old_bigint);
 };
 
 ###############################################################################

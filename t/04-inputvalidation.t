@@ -45,7 +45,7 @@ plan tests => 2                      # undefined and empty string
             + 2                      # infinity and nan
             + 2                      # internal validators normalize scalar ints
             + 1                      # internal validators reject coderefs
-            + 5                      # internal canonicalization helper
+            + 7                      # internal canonicalization helper
             + 1;                     # long invalid string
 
 my $qrnn = qr/ must be a (non-negative|positive) integer/;
@@ -147,6 +147,21 @@ my $bigint_class = Math::Prime::Util::_load_bigint();
   Math::Prime::Util::_canonicalize_integers(\$x);
   is("".ref($x).":$x", "$bigint_class:123456789012345678901234567890",
      "_canonicalize_integers scalar ref keeps large bigint");
+}
+
+{
+  my $x = Math::BigInt->new(123);
+  my $r = Math::Prime::Util::_canonicalized_integer($x);
+  is_deeply([ref($r), "$r", ref($x), "$x"],
+            ["", "123", "Math::BigInt", "123"],
+            "_canonicalized_integer returns native without mutating source");
+}
+
+{
+  my $x = Math::BigInt->new("123456789012345678901234567890");
+  my $r = Math::Prime::Util::_canonicalized_integer($x);
+  is("".ref($r).":$r", "$bigint_class:123456789012345678901234567890",
+     "_canonicalized_integer returns canonical large bigint");
 }
 
 {
