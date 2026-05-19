@@ -250,6 +250,15 @@ sub _bfdigits {
 }
 
 
+sub _canonicalized_integer {
+  my $n = $_[0];
+  if (defined $n) {
+    validate_integer($n);
+    $n = tobigint($n) if ref($n);
+  }
+  $n;
+}
+
 sub _validate_integer {
   if (OLD_PERL_VERSION && defined $_[0] && !ref($_[0])) {
     no warnings 'numeric';

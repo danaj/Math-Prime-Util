@@ -16,6 +16,8 @@ use Scalar::Util qw/reftype/;
 *_validate_integer_positive = \&Math::Prime::Util::PP::_validate_integer_positive;
 *_validate_integer_abs = \&Math::Prime::Util::PP::_validate_integer_abs;
 
+*_canonicalized_integer = \&Math::Prime::Util::PP::_canonicalized_integer;
+
 sub _canonicalize_integers {
   my($r) = @_;
   my $type = reftype($r);
@@ -39,11 +41,6 @@ sub _canonicalize_integers {
     croak "_canonicalize_integers: expected scalar or array reference";
   }
   return;  # Explicitly return nothing
-}
-sub _canonicalized_integer {
-  my $n = $_[0];
-  _canonicalize_integers(\$n);
-  $n;
 }
 
 *_prime_memfreeall = \&Math::Prime::Util::PP::_prime_memfreeall;
