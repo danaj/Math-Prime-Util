@@ -8480,13 +8480,13 @@ sub factorialmod {
 
   return 0 if $n >= $m || $m == 1;
 
-  return factorial($n) % $m if $n <= 10;
+  return Mmodint(factorial($n),$m) if $n <= 10;
 
   my($F, $N, $m_prime) = (1, $n, Mis_prime($m));
 
   # Check for Wilson's theorem letting us go backwards
   $n = $m-$n-1 if $m_prime && $n > Mrshiftint($m);
-  return ($n == 0) ? ($m-1) : 1  if $n < 2;
+  return ($n == 0) ? Msubint($m,1) : 1  if $n < 2;
 
   if ($n > 100 && !$m_prime) {   # Check for a composite that leads to zero
     my $maxpk = 0;
@@ -8574,11 +8574,11 @@ sub fubini {
 
   my $cmax = $n < 500 ? $n : 500;
   _add_fubini($_fubinis) until defined $_fubinis->[$cmax];
-  return $_fubinis->[$n] if defined $_fubinis->[$n];
+  return canonicalized_integer($_fubinis->[$n]) if defined $_fubinis->[$n];
 
   my @F = @$_fubinis;  # copy the cached values to our own.
   _add_fubini(\@F) until defined $F[$n];
-  return $F[$n];
+  canonicalized_integer($F[$n]);
 }
 
 
@@ -8682,6 +8682,7 @@ sub from_contfrac {
 
   my $b0 = shift @_;
   validate_integer($b0);
+  canonicalize_integers(\$b0);
 
   my($A0,$A1,$B0,$B1) = (1,$b0,0,1);
 
@@ -8703,6 +8704,7 @@ sub convergents {
   my @result;
   my($p0,$q0) = (1, 0);        # convergent_{-1}
   my($p1,$q1) = ($cf[0], 1);   # convergent_0
+  canonicalize_integers(\$p1);
 
   push @result, [$p1, $q1];
   for my $i (1..$#cf) {
@@ -8790,7 +8792,9 @@ sub next_calkin_wilf {
   validate_integer_positive($num);
   validate_integer_positive($den);
   croak "next_calkin_wilf: rational must be reduced" if Mgcd($num,$den) != 1;
-  ($den, Mvecprod(2,$den,Mdivint($num,$den)) + $den - $num);
+  my $prod = Mvecprod(2, $den, Mdivint($num,$den));
+  my $sum = Msubint(Maddint($prod, $den), $num);
+  (canonicalized_integer($den), $sum);
 }
 sub next_stern_brocot {
   my($num,$den) = @_;
@@ -8862,9 +8866,9 @@ sub farey {
     validate_integer_nonneg($k);
     return undef if $k >= $len;
     for (1 .. $k) {
-      $j = Mdivint(($q0 + $n), $q1);
-      $p2 = Mmulint($j, $p1) - $p0;
-      $q2 = Mmulint($j, $q1) - $q0;
+      $j = Mdivint(Maddint($q0, $n), $q1);
+      $p2 = Mmulsubint($j, $p1, $p0);
+      $q2 = Mmulsubint($j, $q1, $q0);
       ($p0, $q0, $p1, $q1) = ($p1, $q1, $p2, $q2);
     }
     return [$p0,$q0];
@@ -8875,9 +8879,9 @@ sub farey {
   my @V;
   for (1 .. $len) {
     push @V, [$p0, $q0];
-    $j = Mdivint(($q0 + $n), $q1);
-    $p2 = Mmulint($j, $p1) - $p0;
-    $q2 = Mmulint($j, $q1) - $q0;
+    $j = Mdivint(Maddint($q0, $n), $q1);
+    $p2 = Mmulsubint($j, $p1, $p0);
+    $q2 = Mmulsubint($j, $q1, $q0);
     ($p0, $q0, $p1, $q1) = ($p1, $q1, $p2, $q2);
   }
   @V;
@@ -8904,9 +8908,41 @@ sub next_farey {
   return farey($n, farey_rank($n,[$p,$q])) if $q > $n;
 
   my($u,$v) = Mgcdext($p,$q);
-  my $d = Mmulint(Mdivint(($n+$u),$q),$q) - $u;
-  my $c = Mdivint((Mmulint($d,$p)+1),$q);
+  my $d = Mmulsubint(Mdivint(Maddint($n,$u),$q),$q,$u);
+  my $c = Mdivint(Mmuladdint($d,$p,1),$q);
   [$c,$d];
+}
+
+# Return sum_{i=0..n-1} floor((a*i + b) / m).
+# This is the standard Euclidean floor-sum reduction: peel off whole
+# multiples when a >= m or b >= m, then transpose the remaining lattice
+# count so the arguments shrink like the Euclidean algorithm.  It runs in
+# logarithmic time and uses constant memory.
+#
+# farey_rank calls this as _floor_sum(v, q, p, p-1), which equals:
+#   sum_{r=1..v} floor((p*r - 1) / q)
+sub _floor_sum {
+  my($n, $m, $a, $b) = @_;
+  my $sum = 0;
+
+  while ($n > 0) {
+    if ($a >= $m) {
+      my($q, $r) = Mdivrem($a, $m);
+      my $tri = Mdivint(Mmulint($n, Msub1int($n)), 2);
+      $sum = Maddint($sum, Mmulint($tri, $q));
+      $a = $r;
+    }
+    if ($b >= $m) {
+      my($q, $r) = Mdivrem($b, $m);
+      $sum = Maddint($sum, Mmulint($n, $q));
+      $b = $r;
+    }
+    my $y = Maddint(Mmulint($a, $n), $b);
+    last if $y < $m;
+    ($n, $b) = Mdivrem($y, $m);
+    ($m, $a) = ($a, $m);
+  }
+  $sum;
 }
 
 sub farey_rank {
@@ -8929,16 +8965,42 @@ sub farey_rank {
   my $g = Mgcd($p,$q);
   ($p,$q) = (Mdivint($p,$g),Mdivint($q,$g)) if $g != 1;
 
-  my @count = (0,0,map { Mdivint(Mmulint($p,$_)-1,$q); } 2..$n);
+  my $pm1 = Msub1int($p);
   my $sum = 1;
-  for my $i (2 .. $n) {
-    my $icount = $count[$i];
-    for (my $j = Mmulint($i,2); $j <= $n; $j = Maddint($j,$i)) {
-      $count[$j] -= $icount;
+
+  # Count reduced fractions below p/q using Mobius inversion:
+  #   1 + sum_{d=1..n} mu(d) * sum_{m=1..floor(n/d)} floor((p*m-1)/q)
+  # Group by floor(n/d), so we need only O(sqrt(n)) floor sums.
+  if ($n <= 1_000_000) {
+    my @mertens = (0);
+    push @mertens, $mertens[-1] + $_ for Mmoebius(1, $n);
+
+    for (my $lo = 1; $lo <= $n; ) {
+      my $v = Mdivint($n, $lo);
+      my $hi = Mdivint($n, $v);
+      my $mdelta = $mertens[0+$hi] - $mertens[0+Msub1int($lo)];
+      $sum = Maddint($sum, Mmulint($mdelta, _floor_sum($v, $q, $p, $pm1)))
+        if $mdelta != 0;
+      $lo = Madd1int($hi);
     }
-    $sum += $icount;
+  } else {
+    my %mcache = (0 => 0);
+    my $mertens = sub {
+      my $x = shift;
+      return $mcache{$x} if exists $mcache{$x};
+      $mcache{$x} = Math::Prime::Util::mertens($x);
+    };
+
+    for (my $lo = 1; $lo <= $n; ) {
+      my $v = Mdivint($n, $lo);
+      my $hi = Mdivint($n, $v);
+      my $mdelta = Msubint($mertens->($hi), $mertens->(Msub1int($lo)));
+      $sum = Maddint($sum, Mmulint($mdelta, _floor_sum($v, $q, $p, $pm1)))
+        if $mdelta != 0;
+      $lo = Madd1int($hi);
+    }
   }
-  $sum;
+  canonicalized_integer($sum);
 }
 
 # End of Rational maps
