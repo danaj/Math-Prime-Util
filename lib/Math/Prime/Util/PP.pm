@@ -250,9 +250,20 @@ sub _bfdigits {
 }
 
 
+# Be careful optimizing this without consideration.
+# When XS is enabled, this is never used.
+#
+# Most paths use this as if it were:
+#   canonicalized_result() with good internal input we just want to shape
+# but some paths use this as if it were:
+#   validated_result() with user input to be validated + canonicalized
+#
+# What we have here is conservative, with only one fast path for small ints.
+#
 sub _canonicalized_integer {
   my $n = $_[0];
   if (defined $n) {
+    return 0+$n if !ref($n) && $n =~ /\A[+-]?\d{1,9}\z/;
     validate_integer($n);
     $n = tobigint($n) if ref($n);
   }
