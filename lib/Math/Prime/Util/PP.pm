@@ -1152,7 +1152,7 @@ sub next_prime {
     $n += $_wheeladvance30[$n%30];
   } while !($n%7) || !_is_prime7($n);
 
-  $n;
+  canonicalized_integer($n);
 }
 
 sub prev_prime {
@@ -1167,8 +1167,7 @@ sub prev_prime {
     $n -= $_wheelretreat30[$n%30];
   } while !($n%7) || !_is_prime7($n);
 
-  $n = _bigint_to_int($n) if ref($n) && $n <= INTMAX;
-  $n;
+  canonicalized_integer($n);
 }
 
 sub next_prime_power {
@@ -9222,7 +9221,7 @@ sub _znlog_solve {
   return canonicalized_integer($x) if Mpowmod($g,$x,$n) == $a;
   print "  BSGS giving up\n" if $x == 0 && $_verbose;
   print "  BSGS incorrect answer $x\n" if $x > 0 && $_verbose > 1;
-  $x = _dlp_trial($a, $g, $n, $gorder-1);
+  $x = _dlp_trial($a, $g, $n, Msub1int($gorder));
   canonicalized_integer($x);
 }
 
@@ -9307,7 +9306,7 @@ sub znprimroot {
   return 5 if $p == 3 && $iseven;
   my $ispow = ($k > 1);
 
-  my $phi = $p-1;
+  my $phi = Msub1int($p);
   my $psquared = $ispow ? Mmulint($p,$p) : 0;
 
   my @phidivfac = map  { Mdivint($phi, $_) }
@@ -10073,11 +10072,10 @@ sub is_frobenius_pseudoprime {
   if ($k == 0) {
     $k = Mkronecker($D, $n);
     return 0 if $k == 0;
-    my $Q2 = (2*abs($Q)) % $n;
-    $Vcomp = ($k == 1) ? 2 : ($Q >= 0) ? $Q2 : $n-$Q2;
+    $Vcomp = $k == 1 ? 2 : Mmulmod(2,$Q,$n);
   }
 
-  my($U, $V) = lucasuvmod($P, $Q, $n-$k, $n);
+  my($U, $V) = lucasuvmod($P, $Q, Msubint($n,$k), $n);
   return 1 if $U == 0 && $V == $Vcomp;
   0;
 }
@@ -10106,7 +10104,7 @@ sub is_mersenne_prime {
   my $mp = Msub1int(Mlshiftint(1,$p));
 
   # Definitely faster than using Math::BigInt that doesn't have GMP.
-  return (0 == (Math::Prime::Util::GMP::lucasuvmod(4, 1, $mp+1, $mp))[0])
+  return (0 == (Math::Prime::Util::GMP::lucasuvmod(4,1,Madd1int($mp),$mp))[0])
     if $Math::Prime::Util::_GMPfunc{"lucasuvmod"};
 
   my $V = 4;
@@ -10261,7 +10259,7 @@ sub is_aks_prime {
   return 1 if Mmulint($slim,$slim) >= $n;
   # Check b^(n-1) = 1 mod n for b in [2..s]
   for my $a (2 .. $s) {
-    return 0 if Mpowmod($a, $n-1, $n) != 1;
+    return 0 if Mpowmod($a, Msub1int($n), $n) != 1;
   }
 
   $n = tobigint($n) if $n >= (MPU_HALFWORD-1);
@@ -10338,6 +10336,7 @@ sub trial_factor {
   my($n, $limit) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($limit) if defined $limit;
+  canonicalize_integers(\$n);
 
   return ($n==1) ? () : ($n)  if $n < 4;
 
@@ -10556,6 +10555,7 @@ my @_fsublist = (
 sub factor {
   my($N) = @_;
   validate_integer_nonneg($N);
+  canonicalize_integers(\$N);
 
   my @factors;
   if ($N < 4) {
@@ -10637,6 +10637,7 @@ sub _stub_factor {
   my($n, $rounds) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($rounds) if defined $rounds;
+  canonicalize_integers(\$n);
 
   my @f = _basic_factor($n);
   return @f if $n < 4;
@@ -10735,6 +10736,7 @@ sub prho_factor {
   validate_integer_nonneg($n);
   validate_integer_nonneg($rounds) if defined $rounds;
   validate_integer_nonneg($pa) if defined $pa;
+  canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -10808,6 +10810,7 @@ sub pbrent_factor {
   validate_integer_nonneg($n);
   validate_integer_nonneg($rounds) if defined $rounds;
   validate_integer_nonneg($pa) if defined $pa;
+  canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -10949,6 +10952,7 @@ sub pminus1_factor {
   validate_integer_nonneg($n);
   validate_integer_nonneg($B1) if defined $B1;
   validate_integer_nonneg($B2) if defined $B2;
+  canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -10985,6 +10989,7 @@ sub cheb_factor {
   validate_integer_nonneg($n);
   validate_integer_nonneg($B1) if defined $B1;
   validate_integer_nonneg($initx) if defined $initx;
+  canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11034,6 +11039,7 @@ sub holf_factor {
   validate_integer_nonneg($n);
   validate_integer_nonneg($rounds) if defined $rounds;
   validate_integer_nonneg($startrounds) if defined $startrounds;
+  canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11084,6 +11090,7 @@ sub fermat_factor {
   my($n, $rounds) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($rounds) if defined $rounds;
+  canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11266,13 +11273,13 @@ sub _factor_ecm {
 sub ecm_factor {
   my($n, $B1, $B2, $ncurves) = @_;
   validate_integer_nonneg($n);
-  my @f = _basic_factor($n);
-  return @f if $n < 4;
-  return (@f, $n) if _is_prime7($n);
-
   validate_integer_nonneg($B1) if defined $B1;
   validate_integer_nonneg($B2) if defined $B2;
   validate_integer_nonneg($ncurves) if defined $ncurves;
+  canonicalize_integers(\$n);
+  my @f = _basic_factor($n);
+  return @f if $n < 4;
+  return (@f, $n) if _is_prime7($n);
 
   if ($Math::Prime::Util::_GMPfunc{"ecm_factor"}) {
     $B1 = 0 if !defined $B1;
@@ -11328,7 +11335,7 @@ sub divisors {
   }
 
   my @pe = Mfactor_exp($n);
-  return (1,$n) if @pe == 1 && $pe[0]->[1] == 1 && $n <= $k;
+  return (1,$pe[0]->[0]) if @pe == 1 && $pe[0]->[1] == 1 && $n <= $k;
 
   @d = (1);
   for my $pe (@pe) {
@@ -11955,8 +11962,8 @@ sub LambertW {
 my $_Pi = "3.141592653589793238462643383279503";
 sub Pi {
   my($digits) = @_;
+  validate_integer_nonneg($digits) if @_ > 0;
   return 0.0+$_Pi unless $digits;
-  validate_integer_nonneg($digits);
   return 0.0+sprintf("%.*lf", $digits-1, $_Pi) if $digits < 15;
   return _upgrade_to_float($_Pi, $digits) if $digits < 30;
 
@@ -12099,7 +12106,12 @@ sub _forcomp_sub {
   } else {
     $beg = 4 if $beg < 4;
   }
-  $end = tobigint(~0) if $end == ~0 && !ref($end);
+
+  if (ref($end)) { $end = canonicalized_integer($end); }
+  else           { $end = tobigint(~0) if $end == ~0;  }
+  if (ref($beg)) { $beg = canonicalized_integer($beg); }
+  else           { $beg = tobigint($beg) if ref($end); }
+
   _run_for_loop {
     my $pp;
     local *_ = \$pp;
@@ -12130,6 +12142,11 @@ sub _forfac_sub {
   else              { ($beg,$end) = (1, $beg);        }
   validate_integer_nonneg($end);
   $beg = 1 if $beg < 1;
+
+  if (ref($end)) { $end = canonicalized_integer($end); }
+  else           { $end = tobigint(~0) if $end == ~0;  }
+  if (ref($beg)) { $beg = canonicalized_integer($beg); }
+  else           { $beg = tobigint($beg) if ref($end); }
 
   _run_for_loop {
     my $pp;
