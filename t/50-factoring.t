@@ -204,6 +204,13 @@ subtest 'specific factoring algorithms', sub {
   }
   # TODO: old versions of MPUGMP didn't pull out factors of 3 or 5.
   #extra_factor_test("ecm_factor", sub {Math::Prime::Util::ecm_factor(shift)});
+
+  ok(!eval { Math::Prime::Util::trial_factor("18446744073709551616", "10foo"); 1 },
+     "trial_factor rejects invalid limit");
+  ok(!eval { Math::Prime::Util::pbrent_factor(91, "10foo"); 1 },
+     "pbrent_factor rejects invalid rounds");
+  ok(!eval { Math::Prime::Util::pbrent_factor(91, 4, "10foo"); 1 },
+     "pbrent_factor rejects invalid parameter");
 };
 
 subtest 'specific cases for factoring code coverage', sub {

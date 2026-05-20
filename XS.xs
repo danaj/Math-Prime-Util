@@ -1560,7 +1560,7 @@ PPCODE:
     MY_CXT.bigintname = NULL;
     MY_CXT.bigintstash = NULL;
   }
-  return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
+  return; /* skip implicit PUTBACK, returning @_ to caller, more efficient */
 
 #endif
 
@@ -1584,7 +1584,7 @@ PPCODE:
   MY_CXT.forexit = 0;
   MY_CXT.bigintname = NULL;
   MY_CXT.bigintstash = NULL;
-  return; /* skip implicit PUTBACK, returning @_ to caller, more efficient*/
+  return; /* skip implicit PUTBACK, returning @_ to caller, more efficient */
 
 
 void csrand(IN SV* seed = 0)
@@ -3947,52 +3947,61 @@ trial_factor(IN SV* svn, ...)
     pminus1_factor = 9
     ecm_factor = 10
   PREINIT:
+    int nstatus, a1status, a2status;
     UV n, arg1, arg2;
     static const UV default_arg1[] =
        {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000};
      /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1 */
   PPCODE:
-    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) || ix == 10) {
-      if (ix == 0 && !_XS_get_callgmp()) {
-        UV limit = (items >= 2) ? my_svuv(ST(1)) : 0;
-        if (limit > 0 && limit <= 1000000) {
-          STRLEN slen;
-          const char *str = SvPV_nomg(svn, slen);
-          uint32_t *primes = NULL;
-          uint32_t nprimes;
-          int nf = 0, fi;
-          int nf_alloc = (int)(slen * 4) + 16;
-          UV *fac_buf, cofactor_uv;
-          char *cofactor_str;
-          STRLEN cofactor_len;
-          Newx(fac_buf, nf_alloc, UV);
-          Newx(cofactor_str, slen + 1, char);
-          nprimes = range_prime_sieve_32(&primes, (uint32_t)limit, 0);
-          cofactor_len = strint_trial_factor(cofactor_str, &cofactor_uv,
-                                             fac_buf, &nf,
-                                             str, slen, primes, nprimes);
-          Safefree(primes);
-          EXTEND(SP, nf + 1);
-          for (fi = 0; fi < nf; fi++)
-            PUSHs(sv_2mortal(newSVuv(fac_buf[fi])));
-          if (cofactor_len == 0) {
-            if (cofactor_uv > 1)
-              PUSHs(sv_2mortal(newSVuv(cofactor_uv)));
-          } else {
-            PUSH_BIGINT_STR(cofactor_str, cofactor_len);
-          }
-          Safefree(fac_buf);
-          Safefree(cofactor_str);
-          PUTBACK;
-          return;
-        }
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    if (items > 1) a1status=_validate_and_set(&arg1, aTHX_ ST(1), IFLAG_NONNEG);
+    else           { a1status = 1; arg1 = default_arg1[ix]; }
+    if (items > 2) a2status=_validate_and_set(&arg2, aTHX_ ST(2), IFLAG_NONNEG);
+    else           { a2status = 1; arg2 = 0; }
+
+    /* See if we can do strint trial factoring here */
+    if (ix == 0 && !_XS_get_callgmp() && nstatus == 0 && a2status == 1
+                && a1status == 1 && arg1 > 0 && arg1 <= 1000000) {
+      UV limit = arg1;
+      STRLEN slen;
+      const char *str = SvPV_nomg(svn, slen);
+      uint32_t *primes = NULL;
+      uint32_t nprimes;
+      int nret = 0, nf = 0, fi;
+      int nf_alloc = (int)(slen * 4) + 16;
+      UV *fac_buf, cofactor_uv;
+      char *cofactor_str;
+      STRLEN cofactor_len;
+      Newx(fac_buf, nf_alloc, UV);
+      Newx(cofactor_str, slen + 1, char);
+      nprimes = range_prime_sieve_32(&primes, (uint32_t)limit, 0);
+      cofactor_len = strint_trial_factor(cofactor_str, &cofactor_uv,
+                                         fac_buf, &nf,
+                                         str, slen, primes, nprimes);
+      Safefree(primes);
+      EXTEND(SP, nf + 1);
+      for (fi = 0; fi < nf; fi++) {
+        PUSHs(sv_2mortal(newSVuv(fac_buf[fi])));
+        nret++;
       }
-      DISPATCHPP_RETURN();
+      if (cofactor_len == 0) {
+        if (cofactor_uv > 1) {
+          PUSHs(sv_2mortal(newSVuv(cofactor_uv)));
+          nret++;
+        }
+      } else {
+        PUSH_BIGINT_STR(cofactor_str, cofactor_len);
+        nret++;
+      }
+      Safefree(fac_buf);
+      Safefree(cofactor_str);
+      XSRETURN(nret);
     }
+
+    if (ix == 10 || nstatus == 0 || a1status == 0 || a2status == 0)
+      DISPATCHPP_RETURN();
+
     if (n == 0)  XSRETURN_UV(0);
-    /* Must read arguments before pushing anything */
-    arg1 = (items >= 2) ? my_svuv(ST(1)) : default_arg1[ix];
-    arg2 = (items >= 3) ? my_svuv(ST(2)) : 0;
     /* Small factors */
     while ( (n% 2) == 0 ) {  n /=  2;  XPUSHs(sv_2mortal(newSVuv( 2 ))); }
     while ( (n% 3) == 0 ) {  n /=  3;  XPUSHs(sv_2mortal(newSVuv( 3 ))); }
