@@ -393,6 +393,18 @@ OEIS lucky numbers:
   See about moving more GMP related things to that file.
   If/when the GMP backend finally does objects, remove it all.
 
+- Expand the GMP inputs so we can dispach these:
+  - is_frobenius_pseudoprime: GMP only if P,Q validated native.
+  - lucas_sequence: same P,Q native restriction.
+  - is_power, is_prime_power, is_polygonal: GMP only when no root/reference.
+  - random_ndigit_prime: GMP only for non-native digit or max-native edge cases.
+  - urandomr: GMP only for non-negative bounds.
+  - factorialmod: GMP only for native non-negative a.
+  - logint: GMP only when no third return-ref is requested.
+  - stirling: GMP only for native n,m.
+  - binomial, multifactorial: GMP only for argument shapes GMP can handle.
+  - fromdigits: currently explicitly blocks GMP, GMP needs full support.
+
 - faster next_prime_power / prev_prime_power?
 - PP next_prime_power, prev_prime_power: skip evens.
 
@@ -705,3 +717,5 @@ OEIS lucky numbers:
 
 - floor_sum:
   sum_{i=0..n-1} floor((a*i+b)/m)
+
+- binomial should dispatch 0.53+ (older only positive 32-bit args)

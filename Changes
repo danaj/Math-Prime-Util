@@ -53,6 +53,15 @@ Revision history for Perl module Math::Prime::Util
 
     - all divisors for large n are properly converted to bigint if needed.
 
+    - Better input validation for many PP and XS paths, especially for
+      random funcs, digit/base conversion, combinatorial counts, iterator
+      arguments, and large size limits.
+
+    - PP/XS/GMP consistency fixes.  Better returning of canonical bigint class.
+
+    - miller_rabin_random requires nbases > 0, and no longer accepts a third
+      argument.  Neither of these were documented.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+
@@ -87,17 +96,19 @@ Revision history for Perl module Math::Prime::Util
 
     - znlog faster, PP znlog much faster.
 
-    - miller_rabin_random requires nbases > 0, and no longer accepts a third
-      argument.  Neither of these were documented.
-
     - forsetproduct no longer aliases the input arrays.
 
     - randperm consistently uses a Fisher-Yates-Knuth shuffle in all cases,
-      both in XS and PP.  Only the first k entries are returned, and a shuffle
-      map is used so the full range doesn't always have to be allocated.
+      both in XS and PP.  randperm(n,k) returns the first k values of the
+      same process as randperm(n).  A shuffle map is used so the full range
+      doesn't always have to be allocated.
 
     - randperm, shuffle, and vecsample all return the count of results when
       called in scalar context, without consuming random state.
+
+    - Removed many direct PP-to-GMP fallback calls.  Dispatch to the GMP
+      backend is done directly from XS in most cases.  This does impact the
+      no-XS-but-with-GMP configuration which should only be seen for testing.
 
 
 0.74 2026-03-13
