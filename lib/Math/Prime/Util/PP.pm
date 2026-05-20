@@ -7166,7 +7166,7 @@ sub is_power {
 
   if ($a != 0) {
     if ($a == 1) {
-      $$refp = $n if defined $refp;
+      $$refp = canonicalized_integer($n) if defined $refp;
       return 1;                           # Everything is a 1st power
     }
     return 0 if $n < 0 && $a % 2 == 0;    # Negative n never an even power
@@ -7233,7 +7233,9 @@ sub is_prime_power {
     if @_ >= 2 && !_is_sref($refp);
   return 0 if $n <= 1;
 
-  if (Mis_prime($n)) { $$refp = $n if defined $refp; return 1; }
+  if (Mis_prime($n)) {
+    $$refp = canonicalized_integer($n) if defined $refp; return 1;
+  }
   my $r;
   my $k = Mis_power($n,0,\$r);
   if ($k) {
@@ -7770,6 +7772,7 @@ sub rootint {
     if @_ >= 3 && !_is_sref($refp);
 
   if ($k == 1) {
+    canonicalize_integers(\$n);
     $$refp = $n if defined $refp;
     return $n;
   }
@@ -8805,6 +8808,7 @@ sub calkin_wilf_n {
 
   my @CF = _rational_cfrac($num,$den);
   # Note:  vecsum(@CF) gives the number of bits in the output
+  croak "calkin_wilf_n: too many bits in output" if Mvecsum(@CF) > SINTMAX;
 
   $CF[-1]--;
   my $bitstr = '1';
@@ -8816,6 +8820,7 @@ sub stern_brocot_n {
   validate_integer_positive($num);
   validate_integer_positive($den);
   my @CF = _rational_cfrac($num,$den);
+  croak "stern_brocot_n: too many bits in output" if Mvecsum(@CF) > SINTMAX;
   $CF[-1]--;
   my $bitstr = '1';
   $bitstr .= (1-($_%2)) x $CF[$_]  for 0 .. $#CF;
@@ -10740,6 +10745,7 @@ sub prho_factor {
 sub _factor_pbrent {
   my($n, $rounds, $pa) = @_;
   $rounds = 4*1024*1024 unless defined $rounds;
+  croak "pbrent_factor: rounds must fit in native signed integer" if $rounds > SINTMAX;
   $pa = 1 unless defined $pa;
 
   my($Xi,$Xm) = (2,2);
@@ -10994,6 +11000,8 @@ sub _factor_holf {
   my($n, $rounds, $startrounds) = @_;
   $rounds = 64*1024*1024 unless defined $rounds;
   $startrounds = 1 if !defined $startrounds || $startrounds < 1;
+  croak "holf_factor: rounds must fit in native signed integer" if $rounds > SINTMAX;
+  croak "holf_factor: startrounds must fit in native signed integer" if $startrounds > SINTMAX;
 
   if (ref($n)) {
     for my $i ($startrounds .. $rounds) {
@@ -11110,6 +11118,9 @@ sub _factor_ecm {
   }
 
   $B2 = 10*$B1 unless defined $B2 && $B2 > 0;
+  croak "ecm_factor: B1 must fit in native signed integer" if $B1 > SINTMAX;
+  croak "ecm_factor: B2 must fit in native signed integer" if $B2 > SINTMAX;
+  croak "ecm_factor: ncurves must fit in native signed integer" if $ncurves > SINTMAX;
   my $sqrt_b1 = int(sqrt($B1)+1);
 
   # Affine code.  About 3x slower than the projective, and no stage 2.
@@ -11385,6 +11396,7 @@ sub chebyshev_psi {
 sub hclassno {
   my($n) = @_;
   validate_integer($n);
+  croak "hclassno: n must fit in native signed integer" if $n > SINTMAX;
 
   return -1 if $n == 0;
   return 0 if $n < 0 || ($n % 4) == 1 || ($n % 4) == 2;
@@ -11960,6 +11972,7 @@ sub Pi {
   return 0.0+$_Pi unless $digits;
   return 0.0+sprintf("%.*lf", $digits-1, $_Pi) if $digits < 15;
   return _upgrade_to_float($_Pi, $digits) if $digits < 30;
+  croak "Pi: digits must fit in native signed integer" if $digits > SINTMAX;
 
   # Performance ranking:
   #   MPU::GMP         Uses AGM or Ramanujan/Chudnosky with binary splitting
@@ -13238,6 +13251,7 @@ sub foralmostprimes {
   else             { ($lo,$hi) = (1, $lo);         }
   validate_integer_nonneg($hi);
 
+  return if $k > Mlogint($hi, 2);
   $lo = Mvecmax($lo, Mpowint(2, $k));
   return if $lo > $hi;
 
@@ -13342,6 +13356,7 @@ sub random_ndigit_prime {
   my($digits) = @_;
   validate_integer_nonneg($digits);
   croak "random_ndigit_prime digits must be >= 1" unless $digits >= 1;
+  croak "random_ndigit_prime: digits must fit in native signed integer" if $digits > SINTMAX;
 
   return maybetobigint(Math::Prime::Util::GMP::random_ndigit_prime($digits))
     if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"} && !getconfig()->{'nobigint'};
@@ -13353,6 +13368,7 @@ sub random_nbit_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
   croak "random_nbit_prime bits must be >= 2" unless $bits >= 2;
+  croak "random_nbit_prime: bits must fit in native signed integer" if $bits > SINTMAX;
 
   return maybetobigint(Math::Prime::Util::GMP::random_nbit_prime($bits))
     if $Math::Prime::Util::_GMPfunc{"random_nbit_prime"};

@@ -93,6 +93,7 @@ plan tests => 2 +  # require_ok
               1 +  # Goldbach
               1 +  # config
               1 +  # random
+              1 +  # large input guards
               1;   # $_ is ok
 
 use Math::Prime::Util qw/:all/;
@@ -1634,6 +1635,38 @@ subtest 'random', sub {
   #  random_shawe_taylor_prime
   #  random_unrestricted_semiprime
   #  random_semiprime
+};
+
+subtest 'large input guards', sub {
+  my $huge = Math::BigInt->new("100000000000000000000");
+  my $err;
+
+  eval { calkin_wilf_n($huge, 1); 1 } or $err = $@;
+  like($err, qr/calkin_wilf_n: too many bits in output/, "calkin_wilf_n guards huge output");
+
+  undef $err;
+  eval { stern_brocot_n($huge, 1); 1 } or $err = $@;
+  like($err, qr/stern_brocot_n: too many bits in output/, "stern_brocot_n guards huge output");
+
+  my $calls = 0;
+  foralmostprimes { $calls++ } $huge, 1, 10;
+  is($calls, 0, "foralmostprimes skips impossible huge k without callback");
+
+  undef $err;
+  eval { random_ndigit_prime($huge); 1 } or $err = $@;
+  like($err, qr/random_ndigit_prime: digits must fit in native signed integer/, "random_ndigit_prime guards huge digits");
+
+  undef $err;
+  eval { random_nbit_prime($huge); 1 } or $err = $@;
+  like($err, qr/random_nbit_prime: bits must fit in native signed integer/, "random_nbit_prime guards huge bits");
+
+  undef $err;
+  eval { Pi($huge); 1 } or $err = $@;
+  like($err, qr/Pi: digits must fit in native signed integer/, "Pi guards huge digits");
+
+  undef $err;
+  eval { hclassno($huge); 1 } or $err = $@;
+  like($err, qr/hclassno: n must fit in native signed integer/, "hclassno guards huge n");
 };
 
 # Not here:
