@@ -3959,7 +3959,13 @@ sub prime_count_approx {
 
   my @terms;
   push @terms, MLi($x);
-  push @terms, -MLi(sqrt($x))/2;
+
+  my $root = Mrootint($intx,2);
+  if ($root > 2**53) {
+    $root = Math::BigFloat->new("$root");
+    $root->accuracy(length("$root")+5);
+  }
+  push @terms, -MLi($root)/2;
 
   for my $k (3 .. 2000) {
     my $m = Mmoebius($k);
@@ -3968,7 +3974,8 @@ sub prime_count_approx {
     # This is very slow.  We'll use the integer root instead.
     #my $tli = MLi($x->copy->broot($k,$xacc));
 
-    my $root = Mrootint($intx,$k);
+    $root = Mrootint($intx,$k);
+    last if $root <= 1;
     if ($root > 2**53) {
       $root = Math::BigFloat->new("$root");
       $root->accuracy(length("$root")+5);
@@ -7595,7 +7602,9 @@ sub fromdigits {
   $r =~ s/^0*//;
   return 0 if $r eq "";
   { # Validate string
-    my $cmap = substr("0123456789abcdefghijklmnopqrstuvwxyz",0,$base);
+    my $cchars = "0123456789abcdefghijklmnopqrstuvwxyz";
+    my $clen = $base > length($cchars) ? length($cchars) : int($base);
+    my $cmap = substr($cchars,0,$clen);
     croak "fromdigits: invalid digit for base $base" if $r =~ /[^$cmap]/i;
   }
   if (defined $_BIGINT && $_BIGINT =~ /^Math::(GMPz|GMP)$/ && $base <= 36) {

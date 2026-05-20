@@ -80,6 +80,11 @@
 #  define FIX_MULTICALL_REFCOUNT
 #endif
 
+/* Some older Perl headers define Perl_isfinite in terms of helpers that are
+ * not available in all builds.  This only sees a local NV, so avoid those
+ * compatibility macros entirely. */
+#define MPU_NV_ISFINITE(x) ((x) == (x) && ((x) - (x)) == 0.0)
+
 /* Perl globals we use for setting a and b inside the called block */
 #define plAgv PL_firstgv
 #define plBgv PL_secondgv
@@ -2533,8 +2538,8 @@ vecsum(...)
       STRLEN *slen, rlen;
       char *resstr;
 
-      Newx(sptr, items, const char*);
-      Newx(slen, items, STRLEN);
+      New(0, sptr, items, const char*);
+      New(0, slen, items, STRLEN);
       for (i = 0; i < items; i++) {
         (void)_validate_int(aTHX_ ST(i), 1);
         sptr[i] = SvPV_nomg(ST(i), slen[i]);
@@ -3551,7 +3556,7 @@ void bestrational(IN SV* svx, IN SV* svdbound)
         !sv_isobject(svx) &&
         looks_like_number(svx)) {
       NV x = SvNV(svx);
-      if (Perl_isfinite(x) && bestrational(&P, &Q, x, dbound)) {
+      if (MPU_NV_ISFINITE(x) && bestrational(&P, &Q, x, dbound)) {
         if (x >= 0.0) {
           XPUSHs(sv_2mortal(newSVuv(P)));
           XPUSHs(sv_2mortal(newSVuv(Q)));
@@ -3972,8 +3977,8 @@ trial_factor(IN SV* svn, ...)
       UV *fac_buf, cofactor_uv;
       char *cofactor_str;
       STRLEN cofactor_len;
-      Newx(fac_buf, nf_alloc, UV);
-      Newx(cofactor_str, slen + 1, char);
+      New(0, fac_buf, nf_alloc, UV);
+      New(0, cofactor_str, slen + 1, char);
       nprimes = range_prime_sieve_32(&primes, (uint32_t)limit, 0);
       cofactor_len = strint_trial_factor(cofactor_str, &cofactor_uv,
                                          fac_buf, &nf,
