@@ -195,28 +195,28 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
     nfactors = pbrent_factor(n, factors, 2*br_rounds, 3);
     if (nfactors > 1) return nfactors;
 #endif
-    /* Random 64-bit inputs at this point:
-     *   About 3.1% are small enough that we did with HOLF.
-     *   montmath:  96.89% pbrent,  0.01% pbrent2
-     *   fast:      73.43% pbrent, 21.97% squfof, 1.09% p-1, 0.49% prho, long
-     *   slow:      75.34% squfof, 19.47% pbrent, 0.20% p-1, 0.06% prho
-     */
-    /* SQUFOF with these parameters gets 99.9% of everything left */
-    if (nbits <= 62) {
+#if HAS_ECM64
+    /* SQUFOF is still good for smaller inputs, better to skip for larger */
+    if (nbits <= 48) {
       nfactors = squfof_factor(n, factors, sq_rounds);
       if (nfactors > 1) return nfactors;
     }
 
-#if HAS_ECM64
     nfactors = tinyecm64_factor(n, factors, 500, 30, 0);
     if (nfactors > 1) return nfactors;
 
     nfactors = tinyecm64_factor(n, factors, 2000, 30, 30);
     if (nfactors > 1) return nfactors;
 
-    nfactors = tinyecm64_factor(n, factors, 8000, 2, 60);
+    nfactors = tinyecm64_factor(n, factors, 8000, 5, 60);
     if (nfactors > 1) return nfactors;
 #else
+    /* SQUFOF is useful in all cases before p-1 */
+    if (nbits <= 62) {
+      nfactors = squfof_factor(n, factors, sq_rounds);
+      if (nfactors > 1) return nfactors;
+    }
+
     nfactors = pminus1_factor(n, factors, 8000, 120000);
     if (nfactors > 1) return nfactors;
 #endif
