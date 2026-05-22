@@ -62,6 +62,9 @@ Revision history for Perl module Math::Prime::Util
     - miller_rabin_random requires nbases > 0, and no longer accepts a third
       argument.  Neither of these were documented.
 
+    - prime_count_approx without GMP preserves more high-precision digits for
+      very large inputs and avoids some old Math::BigFloat non-finite results.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+
@@ -73,6 +76,9 @@ Revision history for Perl module Math::Prime::Util
       This is 300 to 1000 times faster than factoring in Perl.
       In turn this can speed up some other functions that require factoring.
       Installing the GMP backend is preferred.
+
+    - Added 64-bit ECM based on the 128-bit ECM above, can make factoring
+      64-bit integers slightly faster.
 
     - urandomm is up to 5x faster without GMP.
 

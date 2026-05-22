@@ -21,6 +21,7 @@
 #include "lucas_seq.h"
 #include "montmath.h"
 static int holf32(uint32_t n, UV *factors, uint32_t rounds);
+static int tinyecm64_factor(UV n, UV *factors, UV B1, int ncurves, int sigma_offset);
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -206,9 +207,16 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
       nfactors = squfof_factor(n, factors, sq_rounds);
       if (nfactors > 1) return nfactors;
     }
-    /* At this point we should only have 16+ digit semiprimes. */
+
+    nfactors = tinyecm64_factor(n, factors, 500, 40, 0);
+    if (nfactors > 1) return nfactors;
+
     nfactors = pminus1_factor(n, factors, 8000, 120000);
     if (nfactors > 1) return nfactors;
+
+    nfactors = tinyecm64_factor(n, factors, 2000, 10, 40);
+    if (nfactors > 1) return nfactors;
+
     /* Get the stragglers */
     nfactors = pbrent_factor(n, factors, 500000, 5);
     if (nfactors > 1) return nfactors;
@@ -883,6 +891,334 @@ int prho_factor(UV n, UV *factors, UV rounds)
   }
   return no_factor(n,factors);
 }
+
+
+/******************************************************************************/
+/* Tiny ECM -- elliptic curve factoring, 64-bit prototype                     */
+/******************************************************************************/
+
+#if BITS_PER_WORD == 64 && HAVE_UINT64
+
+static INLINE uint64_t tecm64_addmod(uint64_t a, uint64_t b, uint64_t n)
+{
+  uint64_t r = a + b;
+  if (r < a || r >= n) r -= n;
+  return r;
+}
+
+static INLINE uint64_t tecm64_submod(uint64_t a, uint64_t b, uint64_t n)
+{
+  return (a >= b) ? a - b : n - (b - a);
+}
+
+static INLINE uint64_t tecm64_halfmod(uint64_t a, uint64_t n)
+{
+  if (a & 1) {
+    uint64_t t = a + n;
+    return (t < a) ? (UINT64_C(1) << 63) | (t >> 1) : t >> 1;
+  }
+  return a >> 1;
+}
+
+static uint64_t tecm64_mulmod(uint64_t a, uint64_t b, uint64_t n)
+{
+#if HAVE_UINT128
+  return (uint64_t)(((uint128_t)a * b) % n);
+#else
+  uint64_t r = 0;
+  if (a >= n) a %= n;
+  if (b >= n) b %= n;
+  if (a < b) { uint64_t t = a; a = b; b = t; }
+  while (b) {
+    if (b & 1) r = tecm64_addmod(r, a, n);
+    b >>= 1;
+    if (b) a = tecm64_addmod(a, a, n);
+  }
+  return r;
+#endif
+}
+
+#define tecm64_sqrmod(a,n) tecm64_mulmod(a,a,n)
+
+static uint64_t tecm64_powmod(uint64_t a, UV k, uint64_t n)
+{
+  uint64_t r = 1;
+  if (a >= n) a %= n;
+  while (k) {
+    if (k & 1) r = tecm64_mulmod(r, a, n);
+    k >>= 1;
+    if (k) a = tecm64_sqrmod(a, n);
+  }
+  return r;
+}
+
+static uint64_t tecm64_gcd(uint64_t a, uint64_t b)
+{
+  while (b) { uint64_t t = b; b = a % b; a = t; }
+  return a;
+}
+
+/* Binary extended modular inverse for odd n.  Returns 0 if gcd(a,n) > 1. */
+static uint64_t tecm64_modinv(uint64_t a, uint64_t n)
+{
+  uint64_t u, v, x1, x2;
+  if (a == 0) return 0;
+  u = a % n;  v = n;
+  x1 = 1;     x2 = 0;
+  while (u != 1 && v != 1) {
+    while ((u & 1) == 0) {
+      u >>= 1;
+      x1 = (x1 & 1) ? tecm64_halfmod(x1, n) : x1 >> 1;
+    }
+    while ((v & 1) == 0) {
+      v >>= 1;
+      x2 = (x2 & 1) ? tecm64_halfmod(x2, n) : x2 >> 1;
+    }
+    if (u >= v) {
+      u -= v;
+      x1 = tecm64_submod(x1, x2, n);
+    } else {
+      v -= u;
+      x2 = tecm64_submod(x2, x1, n);
+    }
+    if (u == 0 || v == 0) return 0;
+  }
+  return (u == 1) ? x1 : x2;
+}
+
+typedef struct {
+  uint64_t n;
+#if HAVE_UINT128
+  uint64_t ninv, r2;
+#endif
+} mont64_t;
+
+static void tecm64_mont_setup(mont64_t *ctx, uint64_t n)
+{
+  ctx->n = n;
+#if HAVE_UINT128
+  {
+    uint64_t x = (3*n)^2;
+    x *= (uint64_t)2 - n * x;
+    x *= (uint64_t)2 - n * x;
+    x *= (uint64_t)2 - n * x;
+    x *= (uint64_t)2 - n * x;
+    ctx->ninv = (uint64_t)0 - x;
+    ctx->r2 = tecm64_powmod(2, 128, n);
+  }
+#endif
+}
+
+static INLINE uint64_t tecm64_mont_mulmod(uint64_t a, uint64_t b,
+                                          const mont64_t *ctx)
+{
+#if HAVE_UINT128
+  uint128_t t = (uint128_t)a * b;
+  uint64_t  m = (uint64_t)t * ctx->ninv;
+  uint128_t u = (t + (uint128_t)m * ctx->n) >> 64;
+  if (u >= ctx->n) u -= ctx->n;
+  return (uint64_t)u;
+#else
+  return tecm64_mulmod(a, b, ctx->n);
+#endif
+}
+
+#define tecm64_mont_sqrmod(a,ctx) tecm64_mont_mulmod(a,a,ctx)
+
+static INLINE uint64_t tecm64_mont_enter(uint64_t a, const mont64_t *ctx)
+{
+#if HAVE_UINT128
+  return tecm64_mont_mulmod(a % ctx->n, ctx->r2, ctx);
+#else
+  return a % ctx->n;
+#endif
+}
+
+static INLINE uint64_t tecm64_mont_exit(uint64_t a, const mont64_t *ctx)
+{
+#if HAVE_UINT128
+  return tecm64_mont_mulmod(a, 1, ctx);
+#else
+  return a;
+#endif
+}
+
+typedef struct { uint64_t X, Z; } ecpt64_t;
+
+static INLINE void ecm_double64(ecpt64_t *R, const ecpt64_t *P,
+                                uint64_t A24, const mont64_t *ctx)
+{
+  uint64_t n = ctx->n;
+  uint64_t u = tecm64_mont_sqrmod(tecm64_submod(P->X, P->Z, n), ctx);
+  uint64_t v = tecm64_mont_sqrmod(tecm64_addmod(P->X, P->Z, n), ctx);
+  uint64_t w = tecm64_submod(v, u, n);
+  R->X = tecm64_mont_mulmod(u, v, ctx);
+  R->Z = tecm64_mont_mulmod(w, tecm64_addmod(u, tecm64_mont_mulmod(A24, w, ctx), n), ctx);
+}
+
+static INLINE void ecm_dadd64(ecpt64_t *R,
+                              const ecpt64_t *P, const ecpt64_t *Q,
+                              const ecpt64_t *Pm, const mont64_t *ctx)
+{
+  uint64_t n = ctx->n;
+  uint64_t u = tecm64_mont_mulmod(tecm64_submod(P->X, P->Z, n),
+                                  tecm64_addmod(Q->X, Q->Z, n), ctx);
+  uint64_t v = tecm64_mont_mulmod(tecm64_addmod(P->X, P->Z, n),
+                                  tecm64_submod(Q->X, Q->Z, n), ctx);
+  uint64_t s = tecm64_addmod(u, v, n);
+  uint64_t d = tecm64_submod(u, v, n);
+  R->X = tecm64_mont_mulmod(tecm64_mont_sqrmod(s, ctx), Pm->Z, ctx);
+  R->Z = tecm64_mont_mulmod(tecm64_mont_sqrmod(d, ctx), Pm->X, ctx);
+}
+
+static void ecm_mul64(ecpt64_t *R, const ecpt64_t *P, UV k,
+                      uint64_t A24, const mont64_t *ctx)
+{
+  ecpt64_t R0, R1;
+  UV bit;
+  if (k == 1) { *R = *P; return; }
+  R0 = *P;
+  ecm_double64(&R1, &R0, A24, ctx);
+  if (k == 2) { *R = R1; return; }
+  bit = (UV)1 << (8*sizeof(UV) - 1);
+  while (!(bit & k)) bit >>= 1;
+  for (bit >>= 1; bit; bit >>= 1) {
+    if (k & bit) {
+      ecm_dadd64(&R0, &R0, &R1, P, ctx);
+      ecm_double64(&R1, &R1, A24, ctx);
+    } else {
+      ecm_dadd64(&R1, &R0, &R1, P, ctx);
+      ecm_double64(&R0, &R0, A24, ctx);
+    }
+  }
+  *R = R0;
+}
+
+/* Same fixed Suyama sigma sequence as tinyecm128. */
+static const uint16_t ecm64_sigmas[] = {
+   11,   13,   17,   19,   23,   29,   31,   37,   41,   43,
+   47,   53,   59,   61,   67,   71,   73,   79,   83,   89,
+  103,  127,  139,  149,  151,  157,  163,  181,  191,  197,
+  199,  211,  223,  227,  233,  239,  257,  271,  293,  313,
+  331,  337,  347,  359,  379,  389,  397,  401,  409,  421,
+  443,  449,  457,  479,  487,  509,  521,  523,  547,  557,
+  587,  641,  653,  659,  673,  677,  683,  691,  719,  727,
+  739,  751,  769,  797,  809,  853,  919,  929,  941,  997,
+ 1049, 1051, 1063, 1091, 1093, 1109, 1117, 1129, 1153, 1201,
+ 1217, 1229, 1283, 1327, 1361, 1381, 1427, 1447, 1459, 1471,
+ 1481, 1489, 1543, 1549, 1571, 1621, 1709, 1723, 1753, 1759,
+ 1801, 1811, 1867, 1987, 2039, 2099, 2113, 2131, 2251, 2309,
+ 2347, 2381, 2399, 2447, 2473, 2551, 2557, 2663, 2677, 2689,
+ 2713, 2719, 2749, 2857, 2879, 2887, 2939, 3001, 3061, 3067,
+ 3121, 3137, 3187, 3251, 3259, 3271, 3307, 3359, 3371, 3373,
+ 3467, 3593, 3607, 3623, 3643, 3709, 3733, 3793, 3851, 3923,
+ 3989, 4019, 4049, 4129, 4231, 4253, 4283, 4339, 4349, 4441,
+ 4523, 4649, 4787, 4987, 4999, 5171, 5237, 5273, 5297, 5333,
+ 5387, 5471, 5479, 5647, 5749, 5791, 6101, 6163, 6257, 6299,
+ 6337, 6451, 6491, 6659, 6793, 6823, 6967, 7013, 7229, 7253,
+ 7333, 7369, 7477, 7621, 7793, 7817, 8059, 8167, 8209, 8263,
+ 8311, 8377, 8573, 8641, 8741, 8837, 8863, 8963, 9001, 9151,
+ 9203, 9433, 9697, 9743, 9781, 9883,10007,10069,10099,10139,
+10163,10193,10267,10429,10457,10487,10691,10837,10949,11087,
+11243,11321,11411,11681,11813,11903,12011,12263,12277,12401,
+12409,12437,12479,12569,12619,12739,12911,13331,13367,13537,
+13721,13789,13841,13873,14051,14149,14221,14419,14431,14827,
+14887,15077,15289,15467,15511,15649,15773,15797,15859,15901,
+16057,16141,16217,16529,16547,16553,16619,17299,17393,17419,
+17449,17737,17921,18049,18223,19073,19183,19477,20021,20323,
+20347,20759,20929,21023,21157,21587,21611,21613,21673,21751,
+21799,21821,22109,22469,22651,22943,23327,23459,23567,23767,
+23911,23957,24001,24197,24281,24407,24799,24851,25147,25183,
+25469,25679,25703,26561,26683,26701,26821,27073,27191,27271,
+27277,27427,27487,27539,27617,27647,27673,27749,27983,28319,
+28789,28843,29017,29123,29209,29669,29803,29921,30323,30809,
+30851,30911,30983,31397,31541,31963,32369,32561,32771,32969,
+33029,33083,33487,33637,33757,34057,34381,34513,34613,34807,
+35083,35171,35311,35381,36013,36251,36493,36529,36551,36913,
+36919,37363,37517,37699,37907,38047,38177,38273,38749,38903
+};
+#define NECM64_SIGMAS ((int)(sizeof(ecm64_sigmas)/sizeof(ecm64_sigmas[0])))
+
+static uint64_t tinyecm64(uint64_t n, UV B1, int ncurves, int sigma_offset)
+{
+  mont64_t ctx;
+  UV sqrtB1, j;
+  int ci;
+
+  if (n < 3 || (n & 1) == 0) return 0;
+  tecm64_mont_setup(&ctx, n);
+  sqrtB1 = (UV)sqrt((double)B1);
+
+  for (ci = 0; ci < ncurves && sigma_offset+ci < NECM64_SIGMAS; ci++) {
+    uint64_t sigma, ui, vi, umv, t3uv;
+    uint64_t u2, u3, v2, v3, umv2, umv3;
+    uint64_t abs_num_r, num, den_r, den_inv, A24;
+    ecpt64_t P;
+
+    sigma = ecm64_sigmas[sigma_offset+ci];
+    ui = sigma * sigma - 5;
+    vi = 4 * sigma;
+    umv = ui - vi;
+    t3uv = 3 * ui + vi;
+
+    u2 = tecm64_mulmod(ui % n, ui % n, n);
+    u3 = tecm64_mulmod(u2, ui % n, n);
+    v2 = tecm64_mulmod(vi % n, vi % n, n);
+    v3 = tecm64_mulmod(v2, vi % n, n);
+    umv2 = tecm64_mulmod(umv % n, umv % n, n);
+    umv3 = tecm64_mulmod(umv2, umv % n, n);
+
+    abs_num_r = tecm64_mulmod(umv3, t3uv % n, n);
+    num = abs_num_r ? n - abs_num_r : 0;
+    den_r = tecm64_mulmod(tecm64_mulmod(u3, vi % n, n), 16 % n, n);
+    den_inv = tecm64_modinv(den_r, n);
+    if (den_inv == 0) continue;
+    A24 = tecm64_mont_mulmod(tecm64_mont_enter(num, &ctx),
+                             tecm64_mont_enter(den_inv, &ctx), &ctx);
+
+    P.X = tecm64_mont_enter(u3, &ctx);
+    P.Z = tecm64_mont_enter(v3, &ctx);
+
+    j = 0;
+    START_DO_FOR_EACH_PRIME(2,B1) {
+      UV k = p;
+      if (p <= sqrtB1) { UV pm = B1 / p; while (k <= pm) k *= p; }
+      ecm_mul64(&P, &P, k, A24, &ctx);
+      if ((j++ % 64) == 0) {
+        uint64_t g = tecm64_gcd(tecm64_mont_exit(P.Z, &ctx), n);
+        if (g > 1 && g < n) RETURN_FROM_EACH_PRIME(return g);
+        if (g == n)         RETURN_FROM_EACH_PRIME(goto next_curve);
+      }
+    } END_DO_FOR_EACH_PRIME
+    {
+      uint64_t g = tecm64_gcd(tecm64_mont_exit(P.Z, &ctx), n);
+      if (g > 1 && g < n) return g;
+    }
+
+next_curve:;
+  }
+  return 0;
+}
+
+static int tinyecm64_factor(UV n, UV *factors, UV B1, int ncurves, int sigma_offset)
+{
+  uint64_t f = tinyecm64((uint64_t)n, B1, ncurves, sigma_offset);
+  return (f > 1 && f < n) ? found_factor(n, (UV)f, factors)
+                          : no_factor(n, factors);
+}
+
+#else
+
+static int tinyecm64_factor(UV n, UV *factors, UV B1, int ncurves, int sigma_offset)
+{
+  (void)B1;
+  (void)ncurves;
+  (void)sigma_offset;
+  return no_factor(n, factors);
+}
+
+#endif
+
 
 /* Pollard's P-1 */
 int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
