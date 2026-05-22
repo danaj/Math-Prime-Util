@@ -3952,17 +3952,19 @@ trial_factor(IN SV* svn, ...)
     pminus1_factor = 9
     ecm_factor = 10
   PREINIT:
-    int nstatus, a1status, a2status;
-    UV n, arg1, arg2;
+    int nstatus, a1status, a2status, a3status;
+    UV n, arg1, arg2, arg3;
     static const UV default_arg1[] =
-       {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000};
-     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1 */
+       {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000, 4000};
+     /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1,    ECM64 */
   PPCODE:
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (items > 1) a1status=_validate_and_set(&arg1, aTHX_ ST(1), IFLAG_NONNEG);
     else           { a1status = 1; arg1 = default_arg1[ix]; }
     if (items > 2) a2status=_validate_and_set(&arg2, aTHX_ ST(2), IFLAG_NONNEG);
     else           { a2status = 1; arg2 = 0; }
+    if (items > 3) a3status=_validate_and_set(&arg3, aTHX_ ST(3), IFLAG_NONNEG);
+    else           { a3status = 1; arg3 = 0; }
 
     /* See if we can do strint trial factoring here */
     if (ix == 0 && !_XS_get_callgmp() && nstatus == 0 && a2status == 1
@@ -4003,7 +4005,8 @@ trial_factor(IN SV* svn, ...)
       XSRETURN(nret);
     }
 
-    if (ix == 10 || nstatus == 0 || a1status == 0 || a2status == 0)
+    if (nstatus==0 || a1status==0 || a2status==0 || a3status==0 ||
+        (ix==10 && (_XS_get_callgmp() || !HAS_ECM64 || (items > 2 && arg2 > arg1))))
       DISPATCHPP_RETURN();
 
     if (n == 0)  XSRETURN_UV(0);
@@ -4016,20 +4019,26 @@ trial_factor(IN SV* svn, ...)
     else {
       UV factors[MPU_MAX_FACTORS+1];
       int i, nfactors = 0;
+      if (items < 3) {
+        if (ix ==  8) arg2 = 1;        /* use X*X + 1 */
+        if (ix ==  9) arg2 = 10*arg1;  /* B2 = 10*B1  */
+      }
+      if (ix == 10) arg3 = (items < 4) ? 100 : arg3;  /* 100 curves */
       switch (ix) {
-        case 0:  nfactors = trial_factor  (n, factors, 2, arg1);  break;
-        case 1:  nfactors = fermat_factor (n, factors, arg1);  break;
-        case 2:  nfactors = holf_factor   (n, factors, arg1);  break;
-        case 3:  nfactors = squfof_factor (n, factors, arg1);  break;
-        case 4:  nfactors = lehman_factor (n, factors, arg1);  break;
-        case 5:  nfactors = prho_factor   (n, factors, arg1);  break;
-        case 6:  nfactors = cheb_factor   (n, factors, arg1, arg2);  break;
-        case 7:  nfactors = pplus1_factor (n, factors, arg1);  break;
-        case 8:  if (items < 3) arg2 = 1;
-                 nfactors = pbrent_factor (n, factors, arg1, arg2);  break;
-        case 9:
-        default: if (items < 3) arg2 = 10*arg1;
-                 nfactors = pminus1_factor(n, factors, arg1, arg2);  break;
+        case 0:  nfactors = trial_factor    (n, factors, 2, arg1);  break;
+        case 1:  nfactors = fermat_factor   (n, factors, arg1);  break;
+        case 2:  nfactors = holf_factor     (n, factors, arg1);  break;
+        case 3:  nfactors = squfof_factor   (n, factors, arg1);  break;
+        case 4:  nfactors = lehman_factor   (n, factors, arg1);  break;
+        case 5:  nfactors = prho_factor     (n, factors, arg1);  break;
+        case 6:  nfactors = cheb_factor     (n, factors, arg1, arg2);    break;
+        case 7:  nfactors = pplus1_factor   (n, factors, arg1);          break;
+        case 8:  nfactors = pbrent_factor   (n, factors, arg1, arg2);    break;
+        case 9:  nfactors = pminus1_factor  (n, factors, arg1, arg2);    break;
+#if HAS_ECM64
+        case 10: nfactors = tinyecm64_factor(n, factors, arg1, arg3, 0); break;
+#endif
+        default: break;
       }
       EXTEND(SP, (EXTEND_TYPE)nfactors);
       for (i = 0; i < nfactors; i++)

@@ -77,8 +77,8 @@ Revision history for Perl module Math::Prime::Util
       In turn this can speed up some other functions that require factoring.
       Installing the GMP backend is preferred.
 
-    - Added 64-bit ECM based on the 128-bit ECM above, can make factoring
-      64-bit integers slightly faster.
+    - Added 64-bit ECM based on the 128-bit ECM above, faster factoring of
+      64-bit integers.  Semiprimes can be 2-3x faster.
 
     - urandomm is up to 5x faster without GMP.
 

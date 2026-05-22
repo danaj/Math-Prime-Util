@@ -591,9 +591,9 @@ static uint128_t squfof128(uint128_t n, UV rounds) {
  *****************************************************************************/
 
 static uint128_t pminus1_128(uint128_t n, UV B1, UV B2) {
-  if (B1 < 7) return 0;
-
   mont128_t ctx;
+
+  if (B1 < 7) return 0;
   mont_setup128(&ctx, n);
 
   /*--- Stage 1 -----------------------------------------------------------*/
@@ -826,8 +826,9 @@ static const uint16_t ecm_sigmas[] = {
  * ncurves curves, Suyama parameterization, stage-1 bound B1. */
 static uint128_t tinyecm128(uint128_t n, UV B1, int ncurves, int sigma_offset) {
   mont128_t ctx;
-  mont_setup128(&ctx, n);
   UV sqrtB1 = (UV)sqrt((double)B1);
+
+  mont_setup128(&ctx, n);
 
   for (int ci = 0; ci < ncurves && sigma_offset+ci < NECM128_SIGMAS; ci++) {
     UV sigma = ecm_sigmas[sigma_offset+ci];

@@ -21,7 +21,6 @@
 #include "lucas_seq.h"
 #include "montmath.h"
 static int holf32(uint32_t n, UV *factors, uint32_t rounds);
-static int tinyecm64_factor(UV n, UV *factors, UV B1, int ncurves, int sigma_offset);
 
 /*
  * You need to remember to use UV for unsigned and IV for signed types that
@@ -208,14 +207,19 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
       if (nfactors > 1) return nfactors;
     }
 
-    nfactors = tinyecm64_factor(n, factors, 500, 40, 0);
+#if HAS_ECM64
+    nfactors = tinyecm64_factor(n, factors, 500, 30, 0);
     if (nfactors > 1) return nfactors;
 
+    nfactors = tinyecm64_factor(n, factors, 2000, 30, 30);
+    if (nfactors > 1) return nfactors;
+
+    nfactors = tinyecm64_factor(n, factors, 8000, 2, 60);
+    if (nfactors > 1) return nfactors;
+#else
     nfactors = pminus1_factor(n, factors, 8000, 120000);
     if (nfactors > 1) return nfactors;
-
-    nfactors = tinyecm64_factor(n, factors, 2000, 10, 40);
-    if (nfactors > 1) return nfactors;
+#endif
 
     /* Get the stragglers */
     nfactors = pbrent_factor(n, factors, 500000, 5);
@@ -897,7 +901,7 @@ int prho_factor(UV n, UV *factors, UV rounds)
 /* Tiny ECM -- elliptic curve factoring, 64-bit prototype                     */
 /******************************************************************************/
 
-#if BITS_PER_WORD == 64 && HAVE_UINT64
+#if HAS_ECM64
 
 static INLINE uint64_t tecm64_addmod(uint64_t a, uint64_t b, uint64_t n)
 {
@@ -1013,11 +1017,18 @@ static INLINE uint64_t tecm64_mont_mulmod(uint64_t a, uint64_t b,
                                           const mont64_t *ctx)
 {
 #if HAVE_UINT128
-  uint128_t t = (uint128_t)a * b;
-  uint64_t  m = (uint64_t)t * ctx->ninv;
-  uint128_t u = (t + (uint128_t)m * ctx->n) >> 64;
-  if (u >= ctx->n) u -= ctx->n;
-  return (uint64_t)u;
+  /* REDC needs the carry above 2^128 when n > 2^63. */
+  uint128_t ab = (uint128_t)a * b;
+  uint64_t lo = (uint64_t)ab;
+  uint64_t hi = (uint64_t)(ab >> 64);
+  uint64_t m = lo * ctx->ninv;
+  uint64_t mn_hi = (uint64_t)(((uint128_t)m * ctx->n) >> 64);
+  uint64_t u = hi + mn_hi;
+  int ov = (u < hi);
+  u += (lo != 0);
+  ov += (u < (uint64_t)(lo != 0));
+  if (ov || u >= ctx->n) u -= ctx->n;
+  return u;
 #else
   return tecm64_mulmod(a, b, ctx->n);
 #endif
@@ -1139,11 +1150,11 @@ static const uint16_t ecm64_sigmas[] = {
 };
 #define NECM64_SIGMAS ((int)(sizeof(ecm64_sigmas)/sizeof(ecm64_sigmas[0])))
 
-static uint64_t tinyecm64(uint64_t n, UV B1, int ncurves, int sigma_offset)
+static uint64_t tinyecm64(uint64_t n, UV B1, uint32_t ncurves, uint32_t sigma_offset)
 {
   mont64_t ctx;
   UV sqrtB1, j;
-  int ci;
+  uint32_t ci;
 
   if (n < 3 || (n & 1) == 0) return 0;
   tecm64_mont_setup(&ctx, n);
@@ -1200,24 +1211,17 @@ next_curve:;
   return 0;
 }
 
-static int tinyecm64_factor(UV n, UV *factors, UV B1, int ncurves, int sigma_offset)
+int tinyecm64_factor(UV n, UV *factors, UV B1, UV ncurves, UV sigma_offset)
 {
-  uint64_t f = tinyecm64((uint64_t)n, B1, ncurves, sigma_offset);
+  uint64_t f;
+  if (ncurves      > NECM64_SIGMAS) ncurves      = NECM64_SIGMAS;
+  if (sigma_offset > NECM64_SIGMAS) sigma_offset = NECM64_SIGMAS;
+  f = tinyecm64((uint64_t)n, B1, ncurves, sigma_offset);
   return (f > 1 && f < n) ? found_factor(n, (UV)f, factors)
                           : no_factor(n, factors);
 }
 
-#else
-
-static int tinyecm64_factor(UV n, UV *factors, UV B1, int ncurves, int sigma_offset)
-{
-  (void)B1;
-  (void)ncurves;
-  (void)sigma_offset;
-  return no_factor(n, factors);
-}
-
-#endif
+#endif  /* HAS_ECM64 */
 
 
 /* Pollard's P-1 */

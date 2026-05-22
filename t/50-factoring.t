@@ -202,8 +202,10 @@ subtest 'specific factoring algorithms', sub {
     skip "No lehman_factor in PP", 10 unless $usexs;
     extra_factor_test("lehman_factor", sub {Math::Prime::Util::lehman_factor(shift)});
   }
-  # TODO: old versions of MPUGMP didn't pull out factors of 3 or 5.
-  #extra_factor_test("ecm_factor", sub {Math::Prime::Util::ecm_factor(shift)});
+  SKIP: {
+    skip "Old GMP", 10 if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION < 0.22;
+    extra_factor_test("ecm_factor", sub {Math::Prime::Util::ecm_factor(shift)});
+  }
 
   ok(!eval { Math::Prime::Util::trial_factor("18446744073709551616", "10foo"); 1 },
      "trial_factor rejects invalid limit");
@@ -232,6 +234,10 @@ subtest 'specific cases for factoring code coverage', sub {
   SKIP: {
     skip "cheb_factor for 64-bit input", 1 unless $use64 || !$usexs;
     is_deeply( [Math::Prime::Util::cheb_factor("2466600463243213733",1000)], [1552318819,1588978007], "cheb factor 1552318819 * 1588978007" );
+  }
+  SKIP: {
+    skip "tinyecm64 C path", 1 unless $use64 && $usexs && !$usegmp;
+    is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,0,3)], [3289045043,4060989437], "tinyecm64 64-bit Montgomery reduction" );
   }
 };
 
