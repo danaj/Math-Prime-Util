@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/znorder/;
+use Math::Prime::Util qw/mulint powint znorder/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -38,6 +38,11 @@ my @mult_orders = (
 if ($use64) {
   push @mult_orders, [2, 2405286912458753, 1073741824];  # Pari #1031
 }
+push @mult_orders,
+  [10000019, powint(3,123), mulint(2,powint(3,122))],
+  ["314159265358979323", powint(2,123), powint(2,121)],
+  ["314159265358979323", powint(4,123), powint(2,244)],
+  ["314159265358979323", powint(5,123), mulint(4,powint(5,122))];
 
 plan tests => scalar(@mult_orders);
 

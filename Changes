@@ -116,6 +116,8 @@ Revision history for Perl module Math::Prime::Util
       backend is done directly from XS in most cases.  This does impact the
       no-XS-but-with-GMP configuration which should only be seen for testing.
 
+    - znorder(a, p^e) is much faster for large prime powers p^e.
+
 
 0.74 2026-03-13
 

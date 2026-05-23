@@ -9009,6 +9009,45 @@ sub is_primitive_root {
   1;
 }
 
+sub _znorder_prime_power {
+  my($a, $p, $e, $pe) = @_;
+  my $amod = Mmodint($a, $pe);
+  return 1 if $amod <= 1;
+
+  if ($p == 2) {
+    return 1 if $e <= 1;
+    return Mmodint($amod, 4) == 1 ? 1 : 2 if $e == 2;
+    if (Mmodint($amod, 4) == 1) {
+      my $s = Mvaluation(Msubint($amod, 1), 2);
+      return Mpowint(2, $e > $s ? $e - $s : 0);
+    } else {
+      my $s = Mvaluation(Maddint($amod, 1), 2);
+      return Mpowint(2, $e > $s ? $e - $s : 1);
+    }
+  }
+
+  # p is odd.  Compute ord_p(a) by starting with p-1 and removing unneeded factors.
+  my $phi = Msubint($p, 1);
+  my $ord = $phi;
+  for my $f (Mfactor_exp($phi)) {
+    my($q, $qe) = @$f;
+    for (1 .. $qe) {
+      last if Mmodint($ord, $q) != 0;
+      my $cand = Mdivint($ord, $q);
+      last if Mpowmod($amod, $cand, $p) != 1;
+      $ord = $cand;
+    }
+  }
+  if ($e > 1) {
+    # Lift ord_p(a) to ord_{p^e}(a) using LTE:
+    #   ord_{p^e}(a) = ord_p(a) * p^max(0, e - v_p(a^ord_p(a)-1)).
+    my $x = Mpowmod($amod, $ord, $pe);
+    my $s = ($x == 1) ? $e : Mvaluation(Msubint($x, 1), $p);
+    $ord = Mmulint($ord, Mpowint($p, $e - $s)) if $e > $s;
+  }
+  $ord;
+}
+
 sub znorder {
   my($a, $n) = @_;
   validate_integer($a);
@@ -9026,38 +9065,7 @@ sub znorder {
   foreach my $fn (Mfactor_exp($n)) {
     my($p, $e) = @$fn;
     my $pe = ($e == 1) ? $p : Mpowint($p, $e);
-    my $amod = Mmodint($a, $pe);
-    next if $amod <= 1;
-    # phi(p^e) = (p-1) * p^(e-1)
-    my $pm1 = Msubint($p, 1);
-    my $phi = ($e == 1) ? $pm1 : Mmulint($pm1, Mpowint($p, $e-1));
-
-    # For small phi, enumerate sorted divisors directly.
-    if ($phi < 2 ** MPU_MAXBITS) {
-      my $found = 0;
-      foreach my $d (Mdivisors($phi)) {
-        if (Mpowmod($amod, $d, $pe) == 1) {
-          $order = Mlcm($order, $d);
-          $found = 1;
-          last;
-        }
-      }
-      return undef unless $found;
-      next;
-    }
-
-    # Algorithm 1.7 from A. Das applied to phi(p^e).
-    my $k = 1;
-    foreach my $f (Mfactor_exp($phi)) {
-      my($pi, $ei, $enum) = ($f->[0], $f->[1], 0);
-      my $phidiv = Mdivint($phi, Mpowint($pi, $ei));
-      my $b = Mpowmod($amod, $phidiv, $pe);
-      while ($b != 1) {
-        return undef if $enum++ >= $ei;
-        $b = Mpowmod($b, $pi, $pe);
-        $k = Mmulint($k, $pi);
-      }
-    }
+    my $k = _znorder_prime_power($a, $p, $e, $pe);
     $order = Mlcm($order, $k);
   }
   $order;
