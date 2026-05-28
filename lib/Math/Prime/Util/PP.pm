@@ -9030,9 +9030,8 @@ sub _znorder_prime_power {
   my $phi = Msubint($p, 1);
   my $ord = $phi;
   for my $f (Mfactor_exp($phi)) {
-    my($q, $qe) = @$f;
-    for (1 .. $qe) {
-      last if Mmodint($ord, $q) != 0;
+    my $q = $f->[0];
+    while (Mmodint($ord, $q) == 0) {
       my $cand = Mdivint($ord, $q);
       last if Mpowmod($amod, $cand, $p) != 1;
       $ord = $cand;
@@ -9041,8 +9040,12 @@ sub _znorder_prime_power {
   if ($e > 1) {
     # Lift ord_p(a) to ord_{p^e}(a) using LTE:
     #   ord_{p^e}(a) = ord_p(a) * p^max(0, e - v_p(a^ord_p(a)-1)).
-    my $x = Mpowmod($amod, $ord, $pe);
-    my $s = ($x == 1) ? $e : Mvaluation(Msubint($x, 1), $p);
+    my $s = 1;
+    my $p_pow = Mmulint($p, $p);
+    while ($s < $e && Mpowmod($a, $ord, $p_pow) == 1) {
+        $s++;
+        $p_pow = Mmulint($p_pow, $p);
+    }
     $ord = Mmulint($ord, Mpowint($p, $e - $s)) if $e > $s;
   }
   $ord;
