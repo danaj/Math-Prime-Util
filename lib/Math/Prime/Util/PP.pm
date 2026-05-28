@@ -7799,7 +7799,7 @@ sub _logint {
   } else {
     $l = log("$n");
   }
-  $l /= log($b);
+  $l /= log("$b");
 
   # Just in case something failed, escape via using Math::BigInt's blog
   if ($l == MPU_INFINITY || !defined($l<=>MPU_INFINITY)) {

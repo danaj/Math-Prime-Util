@@ -2976,7 +2976,7 @@ This corresponds to Pari/GP's C<sqrtnint> function.
   my $be; my $e = logint(1000, 2, \$be);
   say "largest power of 2 less than or equal to 1000:  2^$e = $be";
 
-Given a non-zero positive integer C<n> and an integer base C<b> greater
+Given a positive integer C<n> and an integer base C<b> greater
 than 1, returns the largest integer C<e> such that C<< b^e <= n >>.
 
 If a third argument is present, it must be a scalar reference.
