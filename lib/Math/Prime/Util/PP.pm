@@ -9043,8 +9043,8 @@ sub _znorder_prime_power {
     my $s = 1;
     my $p_pow = Mmulint($p, $p);
     while ($s < $e && Mpowmod($a, $ord, $p_pow) == 1) {
-        $s++;
-        $p_pow = Mmulint($p_pow, $p);
+      $s++;
+      $p_pow = Mmulint($p_pow, $p);
     }
     $ord = Mmulint($ord, Mpowint($p, $e - $s)) if $e > $s;
   }
@@ -9358,6 +9358,9 @@ sub lucas_sequence {
   validate_integer_nonneg($k);
 
   return (0,0,0) if $n == 1;
+
+  return maybetobigintall(Math::Prime::Util::GMP::lucas_sequence($n,$P,$Q,$k))
+    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.13 && !ref($P) && !ref($Q);
 
   return (lucasuvmod($P,$Q,$k,$n), Mpowmod($Q,$k,$n));
 }

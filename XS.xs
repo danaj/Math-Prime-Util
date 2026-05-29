@@ -165,8 +165,8 @@ static const gmp_info_t gmp_info[] = {
   {                "lshiftint", 53, 1, R_BIGINT },
   {                "rshiftint", 53, 1, R_BIGINT },
   {               "rashiftint", 53, 1, R_BIGINT },
-  {                   "logint", 47, 1, R_BIGINT },  /* no root return */
-  {                  "rootint", 40, 1, R_BIGINT },  /* no root return */
+  {                   "logint", 47, 1, R_BIGINT }, /* no root return */
+  {                  "rootint", 40, 1, R_BIGINT }, /* no root return */
   {                "muladdint", 54, 1, R_BIGINT },
   {                "mulsubint", 54, 1, R_BIGINT },
   {                "addmulint", 54, 1, R_BIGINT },
@@ -227,7 +227,7 @@ static const gmp_info_t gmp_info[] = {
   {              "is_strong_lucas_pseudoprime",  1, 1, R_BOOL },
   {        "is_extra_strong_lucas_pseudoprime",  1, 1, R_BOOL },
   { "is_almost_extra_strong_lucas_pseudoprime", 13, 1, R_BOOL },
-  {                 "is_frobenius_pseudoprime", 24, 1, R_BOOL },
+  {                 "is_frobenius_pseudoprime", 54, 1, R_BOOL }, /* v0.24 IVs */
   {       "is_frobenius_underwood_pseudoprime", 13, 1, R_BOOL },
   {         "is_frobenius_khashin_pseudoprime", 30, 1, R_BOOL },
   {                      "miller_rabin_random", 46, 1, R_BOOL },
@@ -267,7 +267,7 @@ static const gmp_info_t gmp_info[] = {
   {                "primorial", 37, 1, R_BIGINT },
   {             "pn_primorial", 37, 1, R_BIGINT },
   {                "permtonum", 47, 1, R_BIGINT },
-  {           "multifactorial", 51, 1, R_BIGINT },
+  {           "multifactorial", 54, 1, R_BIGINT }, /* v0.51 with UV args */
   {             "subfactorial", 51, 1, R_BIGINT },
   {        "falling_factorial", 51, 1, R_BIGINT },
   {         "rising_factorial", 51, 1, R_BIGINT },
@@ -275,13 +275,13 @@ static const gmp_info_t gmp_info[] = {
   {                "lucasvmod", 53, 1, R_BIGINT },
   {                  "lucasuv", 53, 2, R_BIGINT },
   {               "lucasuvmod", 53, 2, R_BIGINT },
-  {           "lucas_sequence", 13, 3, R_BIGINT }, /* P and Q are IVs */
+  {           "lucas_sequence", 54, 3, R_BIGINT }, /* v0.13 if P and Q are IVs */
   {            "pisano_period", 53, 1, R_BIGINT },
   {                 "powersum", 53, 1, R_BIGINT },
-  {               "fromdigits", 53, 1, R_BIGINT },
+  {               "fromdigits", 54, 1, R_BIGINT },
 
   {                 "urandomb", 43, 1, R_BIGINT },
-  {                 "urandomr", 43, 1, R_BIGINT },
+  {                 "urandomr", 54, 1, R_BIGINT }, /* v0.43 with non-neg */
   {                 "urandomm", 44, 1, R_BIGINT },
   {        "random_nbit_prime", 42, 1, R_BIGINT },
   {      "random_ndigit_prime", 42, 1, R_BIGINT },
@@ -2380,7 +2380,7 @@ is_frobenius_pseudoprime(IN SV* svn, IN SV* svp = 0, IN SV* svq = 0)
     if (nstatus != 0 && pstatus != 0 && qstatus != 0 &&
         P <= maxparam && P >= -maxparam && Q <= maxparam && Q >= -maxparam)
       RETURN_NPARITY(is_frobenius_pseudoprime(n, P, Q));
-    DISPATCHPP_RETURN_GMPIF(pstatus != 0 && qstatus != 0);
+    DISPATCHPP_RETURN();
 
 void
 miller_rabin_random(IN SV* svn, IN SV* svnbases = 0)
@@ -2773,8 +2773,7 @@ void lucas_sequence(...)
       PUSHs(sv_2mortal(newSVuv( Qk )));
       XSRETURN(3);
     }
-    /* GMP lucas_sequence uses P and Q as IVs */
-    DISPATCHPP_RETURN_GMPIF(pstatus != 0 && qstatus != 0);
+    DISPATCHPP_RETURN();
 
 void lucasuvmod(IN SV* svp, IN SV* svq, IN SV* svk, IN SV* svn)
   ALIAS:
@@ -3377,7 +3376,7 @@ void urandomr(IN SV* svlo, IN SV* svhi)
                                          : irand32(MY_CXT.randcxt) );
       XSRETURN_UV(lo + urandomm64(MY_CXT.randcxt, hi-lo+1));
     }
-    DISPATCHPP_RETURN_GMPIF(lo_s >= 0 && hi_s >= 0);
+    DISPATCHPP_RETURN();
 
 void toint(IN SV* svn)
   PREINIT:
@@ -5234,7 +5233,7 @@ void multifactorial(IN SV* svn, IN SV* svk)
       r = multifactorial(n, k);
       if (n == 0 || r > 0) XSRETURN_UV(r);
     }
-    DISPATCHPP_RETURN_GMPIF(nstatus == 1 && kstatus == 1);
+    DISPATCHPP_RETURN();
 
 void falling_factorial(IN SV* svn, IN SV* svk)
   ALIAS:
@@ -6451,7 +6450,7 @@ void fromdigits(SV* svn, SV* svbase = 0)
         }
       }
     }
-    DISPATCHPP_RETURN_GMPIF(0); /* GMP fromdigits needs full support */
+    DISPATCHPP_RETURN();
 
 void is_harshad(SV* svn, int base = 10)
   PREINIT:
