@@ -7,6 +7,8 @@ extern int  _XS_get_verbose(void);
 extern void _XS_set_verbose(int v);
 extern int  _XS_get_callgmp(void);
 extern void _XS_set_callgmp(int v);
+extern int  _XS_get_nobigint(void);
+extern void _XS_set_nobigint(int v);
 /* Disable all manual seeding */
 extern bool  _XS_get_secure(void);
 extern void _XS_set_secure(void);

@@ -7903,6 +7903,9 @@ sub stirling {
     return Mvecprod(-1, Mfactorial($n-1));
   }
 
+  return maybetobigint(Math::Prime::Util::GMP::stirling($n,$m,$type))
+    if $Math::Prime::Util::_GMPfunc{"stirling"} && !ref($n) && !ref($m);
+
   # Go through vecsum with quoted negatives to make sure we don't overflow.
   my $s;
   if ($type == 3) {
@@ -8270,10 +8273,12 @@ sub binomial {
   else         {  return 0 if $k < 0 && $k > $n;  }
   $k = $n - $k if $k < 0;
 
-  # 2. Try GMP
+  # 2. Try GMP (0.54 supports everything, 0.53 UI k, 0.22 uint32_t n and k).
   return maybetobigint(Math::Prime::Util::GMP::binomial($n,$k))
-    if $Math::Prime::Util::_GMPfunc{"binomial"} && !ref($k) &&
-       ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296));
+    if $Math::Prime::Util::_GMPfunc{"binomial"} &&
+       (   $Math::Prime::Util::GMP::VERSION >= 0.54 ||
+          ($Math::Prime::Util::GMP::VERSION >= 0.53 && !ref($k)) ||
+          ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296)  );
 
   # TODO: consider reflection for large k (e.g. k=n-2 => k=2)
   # Also, be careful with large n and k with bigints.
@@ -8425,8 +8430,10 @@ sub factorialmod {
   validate_integer_nonneg($n);
   validate_integer_abs($m);
   return (undef,0)[$m] if $m <= 1;
-
   return 0 if $n >= $m || $m == 1;
+
+  return maybetobigint(Math::Prime::Util::GMP::factorialmod($n,$m))
+    if $Math::Prime::Util::_GMPfunc{"factorialmod"} && !ref($n) && $n <= SINTMAX;
 
   return Mmodint(factorial($n),$m) if $n <= 10;
 
@@ -13277,6 +13284,10 @@ sub random_ndigit_prime {
   validate_integer_nonneg($digits);
   croak "random_ndigit_prime digits must be >= 1" unless $digits >= 1;
   croak "random_ndigit_prime: digits must fit in native signed integer" if $digits > SINTMAX;
+
+  return maybetobigint(Math::Prime::Util::GMP::random_ndigit_prime($digits))
+    if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"}
+    && !getconfig()->{'nobigint'};
 
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_ndigit_prime($digits);

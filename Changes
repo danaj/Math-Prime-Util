@@ -65,6 +65,9 @@ Revision history for Perl module Math::Prime::Util
     - prime_count_approx without GMP preserves more high-precision digits for
       very large inputs and avoids some old Math::BigFloat non-finite results.
 
+    - The legacy nobigint option is now mirrored into XS.
+      random_ndigit_prime honors it even when GMP dispatch is available.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

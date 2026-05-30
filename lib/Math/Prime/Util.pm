@@ -156,7 +156,10 @@ sub import {
       $_Config{$opt} = 1 if @options != @_;
       @_ = @options;
     }
-    _XS_set_secure() if $_Config{'xs'} && $_Config{'secure'};
+    if ($_Config{'xs'}) {
+      _XS_set_secure()    if $_Config{'secure'};
+      _XS_set_nobigint(1) if $_Config{'nobigint'};
+    }
     goto &Exporter::import;
 }
 
@@ -286,6 +289,7 @@ sub prime_set_config {
       _XS_set_callgmp($_HAVE_GMP) if $_Config{'xs'};
     } elsif ($param eq 'nobigint') {
       $_Config{'nobigint'} = ($value) ? 1 : 0;
+      _XS_set_nobigint($_Config{'nobigint'}) if $_Config{'xs'};
     } elsif ($param eq 'bigint' || $param eq 'trybigint') {
       my $class = _load_bigint_class($value);
       if (defined $class) {
@@ -6727,6 +6731,7 @@ the configuration, so changing it has no effect.  The settings include:
   assume_rh       whether to assume the Riemann hypothesis (default 0)
   secure          disable ability to manually seed the CSPRNG
   xs_factor_bits  factor() uses XS for this many bits (up to 128)
+  nobigint        whether random_ndigit_prime is non-bigint
 
 =head2 prime_set_config
 
@@ -6778,6 +6783,11 @@ Allows setting of some parameters.  Currently the only parameters are:
                as that will use system entropy without giving anything
                to the caller.  The point of this option is to ensure that
                any called functions do not try to control the RNG.
+
+  nobigint     Legacy option.  This only affects L</random_ndigit_prime>,
+               where it restricts results to native-size integers and
+               rejects digit counts that cannot produce native-size results.
+               Most users should leave this off.
 
 
 =head1 FACTORING FUNCTIONS

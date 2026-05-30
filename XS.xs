@@ -183,7 +183,7 @@ static const gmp_info_t gmp_info[] = {
   {                   "divmod", 53, 1, R_BIGINT }, /* 36 with n > 0 */
   {                "muladdmod", 53, 1, R_BIGINT },
   {                "mulsubmod", 53, 1, R_BIGINT },
-  {             "factorialmod", 53, 1, R_BIGINT }, /* 47 with m > 0 */
+  {             "factorialmod", 54, 1, R_BIGINT }, /* 47 with m > 0 */
   {              "binomialmod", 53, 1, R_BIGINT },
   {                  "sqrtmod", 53, 1, R_BIGINT }, /* 53 for composites */
   {                   "divrem", 52, 2, R_BIGINT },
@@ -252,8 +252,8 @@ static const gmp_info_t gmp_info[] = {
   {             "exp_mangoldt", 19, 1, R_BIGINT },
   {           "jordan_totient", 22, 1, R_BIGINT },
   {        "carmichael_lambda", 22, 1, R_BIGINT },
-  {                 "binomial", 22, 1, R_BIGINT },
-  {                 "stirling", 26, 1, R_BIGINT },
+  {                 "binomial", 54, 1, R_BIGINT }, /* v0.22 n > 0, k native */
+  {                 "stirling", 54, 1, R_BIGINT }, /* v0.26 with UV n and m */
   {                   "lucasu", 29, 1, R_BIGINT },
   {                   "lucasv", 29, 1, R_BIGINT },
   {                "fibonacci", 54, 1, R_BIGINT },
@@ -284,7 +284,7 @@ static const gmp_info_t gmp_info[] = {
   {                 "urandomr", 54, 1, R_BIGINT }, /* v0.43 with non-neg */
   {                 "urandomm", 44, 1, R_BIGINT },
   {        "random_nbit_prime", 42, 1, R_BIGINT },
-  {      "random_ndigit_prime", 42, 1, R_BIGINT },
+  {      "random_ndigit_prime", 54, 1, R_BIGINT }, /* v0.42 with UV n */
   {      "random_strong_prime", 43, 1, R_BIGINT },
   {      "random_maurer_prime", 43, 1, R_BIGINT },
   {"random_shawe_taylor_prime", 43, 1, R_BIGINT },
@@ -1686,21 +1686,23 @@ UV _is_csprng_well_seeded()
   ALIAS:
     _XS_get_verbose = 1
     _XS_get_callgmp = 2
-    _XS_get_secure = 3
-    _XS_set_secure = 4
-    _get_forexit = 5
-    _start_for_loop = 6
-    _get_prime_cache_size = 7
+    _XS_get_nobigint = 3
+    _XS_get_secure = 4
+    _XS_set_secure = 5
+    _get_forexit = 6
+    _start_for_loop = 7
+    _get_prime_cache_size = 8
   CODE:
     switch (ix) {
       case 0:  { dMY_CXT; RETVAL = is_csprng_well_seeded(MY_CXT.randcxt); } break;
-      case 1:  RETVAL = _XS_get_verbose(); break;
-      case 2:  RETVAL = _XS_get_callgmp(); break;
-      case 3:  RETVAL = _XS_get_secure(); break;
-      case 4:  _XS_set_secure(); RETVAL = 1; break;
-      case 5:  { dMY_CXT; RETVAL = MY_CXT.forexit; } break;
-      case 6:  { dMY_CXT; MY_CXT.forcount++; RETVAL = MY_CXT.forexit; MY_CXT.forexit = 0; } break;
-      case 7:
+      case 1:  RETVAL = _XS_get_verbose();   break;
+      case 2:  RETVAL = _XS_get_callgmp();   break;
+      case 3:  RETVAL = _XS_get_nobigint();  break;
+      case 4:  RETVAL = _XS_get_secure();    break;
+      case 5:  _XS_set_secure(); RETVAL = 1; break;
+      case 6:  { dMY_CXT; RETVAL = MY_CXT.forexit; } break;
+      case 7:  { dMY_CXT; MY_CXT.forcount++; RETVAL = MY_CXT.forexit; MY_CXT.forexit = 0; } break;
+      case 8:
       default: RETVAL = get_prime_cache(0,0); break;
     }
   OUTPUT:
@@ -1796,7 +1798,8 @@ void prime_precalc(IN SV* svn)
 void _XS_set_verbose(IN SV* svn)
   ALIAS:
     _XS_set_callgmp = 1
-    _end_for_loop = 2
+    _XS_set_nobigint = 2
+    _end_for_loop = 3
   PREINIT:
     UV n;
   PPCODE:
@@ -1805,7 +1808,8 @@ void _XS_set_verbose(IN SV* svn)
     switch (ix) {
       case 0:  _XS_set_verbose(n);  break;
       case 1:  _XS_set_callgmp(n);  break;
-      case 2:
+      case 2:  _XS_set_nobigint(n); break;
+      case 3:
       default: { dMY_CXT; MY_CXT.forcount--; MY_CXT.forexit = n > 0; } break;
     }
     XSRETURN(0);
@@ -3319,7 +3323,8 @@ void random_ndigit_prime(IN SV* svdigits)
       UV res = random_ndigit_prime(MY_CXT.randcxt, digits);
       if (res != 0) XSRETURN_UV(res);
     }
-    DISPATCHPP_RETURN_GMPIF(dstatus != 1 || digits != uvmax_maxlen);
+    /* We could implement the nobigint completely here if we cared */
+    DISPATCHPP_RETURN_GMPIF(!_XS_get_nobigint());
 
 void random_nbit_prime(IN SV* svbits)
   ALIAS:
@@ -4386,7 +4391,7 @@ void factorialmod(IN SV* sva, IN SV* svn)
       if (n == 1) XSRETURN_UV(0);
       XSRETURN_UV( factorialmod(a, n) );
     }
-    DISPATCHPP_RETURN_GMPIF(astatus == 1);
+    DISPATCHPP_RETURN();
 
 void invmod(IN SV* sva, IN SV* svn)
   ALIAS:
@@ -4995,7 +5000,7 @@ stirling(IN SV* svn, IN SV* svm, IN UV type = 1)
         if (s != 0) XSRETURN_IV(s);
       }
     }
-    DISPATCHPP_RETURN_GMPIF(nstatus == 1 && mstatus == 1);
+    DISPATCHPP_RETURN();
 
 NV
 _XS_ExponentialIntegral(IN SV* x)
@@ -5221,7 +5226,7 @@ void binomial(IN SV* svn, IN SV* svk)
         if (ret != 0) XSRETURN_UV(ret);
       }
     }
-    DISPATCHPP_RETURN_GMPIF(nstatus == 1 && kstatus != 0);
+    DISPATCHPP_RETURN();
 
 void multifactorial(IN SV* svn, IN SV* svk)
   PREINIT:

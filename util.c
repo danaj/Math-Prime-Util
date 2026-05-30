@@ -40,6 +40,10 @@ static int _call_gmp = 0;
 void _XS_set_callgmp(int v) { _call_gmp = v; }
 int  _XS_get_callgmp(void) { return _call_gmp; }
 
+static int _nobigint = 0;
+void _XS_set_nobigint(int v) { _nobigint = v; }
+int  _XS_get_nobigint(void) { return _nobigint; }
+
 static bool _secure = 0;
 void _XS_set_secure(void) { _secure = 1; }
 bool  _XS_get_secure(void) { return _secure; }
