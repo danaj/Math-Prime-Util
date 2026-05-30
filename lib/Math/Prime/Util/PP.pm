@@ -9360,7 +9360,7 @@ sub lucas_sequence {
   return (0,0,0) if $n == 1;
 
   return maybetobigintall(Math::Prime::Util::GMP::lucas_sequence($n,$P,$Q,$k))
-    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.13 && !ref($P) && !ref($Q);
+    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.13 && !ref($P) && !ref($Q) && $P <= SINTMAX && $Q <= SINTMAX;
 
   return (lucasuvmod($P,$Q,$k,$n), Mpowmod($Q,$k,$n));
 }

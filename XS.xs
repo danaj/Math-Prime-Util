@@ -295,6 +295,7 @@ static const gmp_info_t gmp_info[] = {
   {      "sieve_prime_cluster", 34, 0xFF, R_BIGINT },
   {                 "divisors", 53, 0xFF, R_BIGINT },
   {                   "factor", 41, 0xFF, R_BIGINT },
+  {                "euler_phi", 54, 0xFF, R_BIGINT },
 
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },
