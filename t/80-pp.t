@@ -1658,11 +1658,11 @@ subtest 'large input guards', sub {
 
   undef $err;
   eval { random_ndigit_prime($huge); 1 } or $err = $@;
-  like($err, qr/random_ndigit_prime: digits must fit in native signed integer/, "random_ndigit_prime guards huge digits");
+  like($err, qr/random_ndigit_prime: digits must/, "random_ndigit_prime guards huge digits");
 
   undef $err;
   eval { random_nbit_prime($huge); 1 } or $err = $@;
-  like($err, qr/random_nbit_prime: bits must fit in native signed integer/, "random_nbit_prime guards huge bits");
+  like($err, qr/random_nbit_prime: bits must/, "random_nbit_prime guards huge bits");
 
   undef $err;
   eval { Pi($huge); 1 } or $err = $@;

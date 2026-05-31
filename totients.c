@@ -384,7 +384,7 @@ UV jordan_totient(UV k, UV n) {
   UV totient;
 
   if (k == 0 || n <= 1) return (n == 1);
-  if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return 0;
+  if (k > 6 || (k > 1 && n >= jordan_overflow[k-2])) return UV_MAX;
 
   totient = 1;
   /* Similar to Euler totient, shortcut even inputs */

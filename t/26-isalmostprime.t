@@ -29,7 +29,7 @@ my %kap=(
    20 => [1048576,1572864,2359296,2621440,3538944,3670016,3932160,5308416,5505024,5767168],
 );
 
-plan tests => 11 + scalar(keys(%kap));
+plan tests => 11 + scalar(keys(%kap)) + 1;
 
 for my $k (0 .. 10) {
   my @exp = map { fac_is_almost_prime($k, $_) } 0 .. 40;
@@ -44,7 +44,8 @@ while (my($k, $pvals) = each (%kap)) {
   is( 0, $failed, "Test first $nvals $k-almost-primes return true" );
 }
 
-# TODO: bignums
+is( is_almost_prime("1000000000000000000000000000000", 16), 0,
+    "huge k cannot be the factor count of a small n" );
 
 
 sub fac_is_almost_prime {

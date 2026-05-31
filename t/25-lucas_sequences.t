@@ -5,6 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/lucasu    lucasv    lucasuv
                          lucasumod lucasvmod lucasuvmod
+                         lucas_sequence
                          fibonacci lucas_number
                          foroddcomposites modint/;
 
@@ -118,8 +119,8 @@ if (!$usegmp || $Math::Prime::Util::GMP::VERSION >= 0.53) {
 
 
 my @oeis_81264 = (323, 377, 1891, 3827, 4181, 5777, 6601, 6721, 8149, 10877, 11663, 13201, 13981, 15251, 17119, 17711, 18407, 19043, 23407, 25877, 27323, 30889, 34561, 34943, 35207, 39203, 40501, 50183, 51841, 51983, 52701, 53663, 60377, 64079, 64681);
-# The PP lucas sequence is really slow.
-$#oeis_81264 = 2 unless $usexs || $usegmp;
+# The PP Lucas sequence is really slow; GMP does not accelerate this path.
+$#oeis_81264 = 2 unless $usexs;
 
 plan tests => 1     # fibonacci
             + 1     # lucas_number
@@ -131,7 +132,8 @@ plan tests => 1     # fibonacci
             + 1     # check D values
             + 1     # issue 47
             + 1     # modint compare
-            + 1;    # bigint
+            + 1     # bigint
+            + 1;    # lucas_sequence
 
 subtest 'fibonacci' => sub {
   my @F15 = qw/610 -377 233 -144 89 -55 34 -21 13 -8 5 -3 2 -1 1 0 1 1 2 3 5 8 13 21 34 55 89 144 233 377 610/;
@@ -285,4 +287,17 @@ subtest 'bigint', sub {
      "281234951900970815965553779", "lucasumod with all large bigint inputs" );
   is("".lucasvmod("98230984092384092384", "-2938094809238420923423423234", 1777, "398908340943094334094290237"),
      "286001090644956921206996074", "lucasvmod with all large bigint inputs" );
+};
+
+subtest 'lucas_sequence (deprecated)', sub {
+  # While this is deprecated, we'll do VERY basic tests
+  is(join(" ",lucas_sequence(17,3,1,5)), "4 4 1", "lucas_sequence(17,3,1,5)");
+  is_deeply(
+    [map {"$_"} lucas_sequence("1000000000000000000000000000039",
+                               "10000000000000000000000007",
+                              "-100000000000000000000000011",
+                               12345)],
+    [qw/492435907443214536814131894271 751142964815205387549964523398 408123716508113807572124270379/],
+    "lucas_sequence with large P and Q"
+  );
 };

@@ -712,7 +712,7 @@ UV powersum(UV n, UV k)
   UV a, a2, i, sum;
 
   if (n <= 1 || k == 0) return n;
-  if (k >= BITS_PER_WORD || n > _max_ps_n[k]) return 0;
+  if (k >= BITS_PER_WORD || n > _max_ps_n[k]) return UV_MAX;
   if (n == 2) return 1 + (UVCONST(1) << k);
 
   a = (n+1)/2 * (n|1);    /* (n*(n+1))/2 */

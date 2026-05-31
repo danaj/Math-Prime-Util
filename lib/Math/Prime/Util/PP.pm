@@ -42,6 +42,7 @@ BEGIN {
   use constant SINTMAX         => (INTMAX >> 1);
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
+  use constant MAX_RANDOM_BITS => 4294967295;
 }
 
 # TODO: Change this whole file to use this / tobigint
@@ -1544,6 +1545,8 @@ sub jordan_totient {
   my($k, $n) = @_;
   validate_integer_nonneg($k);
   validate_integer_nonneg($n);
+  croak "jordan_totient: k must fit in a UV" if $k > INTMAX;
+
   return ($n == 1) ? 1 : 0  if $k == 0;
   return Mtotient($n)       if $k == 1;
   return ($n == 1) ? 1 : 0  if $n <= 1;
@@ -2890,24 +2893,15 @@ sub is_almost_prime {
   my($k, $n) = @_;
   validate_integer_nonneg($k);
   validate_integer($n);
-  return 0 if $n <= 0;
 
+  return 0 if $n <= 0;
   return 0+($n==1) if $k == 0;
   return (Mis_prime($n) ? 1 : 0) if $k == 1;
   return Mis_semiprime($n) if $k == 2;
-  return 0 if ($n >> $k) == 0;
+  return 0 if ref($k) ? $k > Mlogint($n, 2) : ($n >> $k) == 0;
 
-  # TODO: Optimization here
-  if (0) {  # This seems to just be slower
-    while ($k > 0 && !($n % 2)) { $k--;  $n >>= 1; }
-    while ($k > 0 && !($n % 3)) { $k--;  $n /= 3; }
-    while ($k > 0 && !($n % 5)) { $k--;  $n /= 5; }
-    while ($k > 0 && !($n % 7)) { $k--;  $n /= 7; }
-    return 0+($n == 1) if $k == 0;
-    return (Mis_prime($n) ? 1 : 0) if $k == 1;
-    return Mis_semiprime($n) if $k == 2;
-    return 0 if $n < Mpowint(11,$k);
-  }
+  return 0+Math::Prime::Util::GMP::is_almost_prime($k,$n)
+    if $Math::Prime::Util::_GMPfunc{"is_almost_prime"} && !ref($k);
 
   return (scalar(Mfactor($n)) == $k) ? 1 : 0;
 }
@@ -5587,6 +5581,7 @@ sub powersum {
   my($n, $k) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($k);
+  croak "powersum: k must fit in a UV" if $k > INTMAX;
 
   return canonicalized_integer($n) if $n <= 1 || $k == 0;
 
@@ -7101,18 +7096,14 @@ sub is_power {
     if @_ >= 3 && !_is_sref($refp);
   return 0 if abs($n) <= 3 && !$a;
 
-  if ($Math::Prime::Util::_GMPfunc{"is_power"} && !ref($a) &&
-      ($Math::Prime::Util::GMP::VERSION >= 0.42 ||
-       ($Math::Prime::Util::GMP::VERSION >= 0.28 && $n > 0))) {
+  if ($Math::Prime::Util::_GMPfunc{"is_power"} &&
+      $Math::Prime::Util::GMP::VERSION >= 0.42 && !ref($a)) {
     my $k = Math::Prime::Util::GMP::is_power($n,$a);
     return 0 unless $k > 0;
     if (defined $refp) {
       $a = $k unless $a;
-      my $isneg = ($n < 0);
-      $n =~ s/^-// if $isneg;
-      $$refp = Mrootint($n, $a);
-      $$refp = maybetobigint($$refp) if $$refp > INTMAX;
-      $$refp = Mnegint($$refp) if $isneg;
+      $$refp = ($n >= 0) ? Mrootint($n, $a)
+                         : Mnegint(Mrootint(Mabsint($n), $a));
     }
     return $k;
   }
@@ -8373,6 +8364,10 @@ sub multifactorial {
   validate_integer_positive($k);
   return 1 if $n == 0;
   return Mfactorial($n) if $k == 1;
+  return maybetobigint(Math::Prime::Util::GMP::multifactorial($n,$k))
+    if $Math::Prime::Util::_GMPfunc{"multifactorial"} &&
+       $Math::Prime::Util::GMP::VERSION >= 0.51 &&
+       !ref($n) && !ref($k);
   # TODO: If we have Math::GMPz, we could call Rmpz_mfac_uiui(R,n,k)
   my($i, @t) = ($n);
   while (1) {
@@ -9367,7 +9362,10 @@ sub lucas_sequence {
   return (0,0,0) if $n == 1;
 
   return maybetobigintall(Math::Prime::Util::GMP::lucas_sequence($n,$P,$Q,$k))
-    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} && $Math::Prime::Util::GMP::VERSION >= 0.13 && !ref($P) && !ref($Q) && $P <= SINTMAX && $Q <= SINTMAX;
+    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} &&
+       $Math::Prime::Util::GMP::VERSION >= 0.13 &&
+       !ref($P) && $P >= INTMIN && $P <= SINTMAX &&
+       !ref($Q) && $Q >= INTMIN && $Q <= SINTMAX;
 
   return (lucasuvmod($P,$Q,$k,$n), Mpowmod($Q,$k,$n));
 }
@@ -13230,6 +13228,7 @@ sub foralmostprimes {
 sub urandomb {
   my($n) = @_;
   validate_integer_nonneg($n);
+  croak "urandomb: bits must be between 0 and ",MAX_RANDOM_BITS if $n > MAX_RANDOM_BITS;
   return 0 if $n <= 0;
   return ( Math::Prime::Util::irand() >> (32-$n) ) if $n <= 32;
   return ( Math::Prime::Util::irand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
@@ -13282,7 +13281,7 @@ sub random_prime {
 sub random_ndigit_prime {
   my($digits) = @_;
   validate_integer_nonneg($digits);
-  croak "random_ndigit_prime digits must be >= 1" unless $digits >= 1;
+  croak "random_ndigit_prime: digits must be >= 1" unless $digits >= 1;
   croak "random_ndigit_prime: digits must fit in native signed integer" if $digits > SINTMAX;
 
   return maybetobigint(Math::Prime::Util::GMP::random_ndigit_prime($digits))
@@ -13295,8 +13294,7 @@ sub random_ndigit_prime {
 sub random_nbit_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
-  croak "random_nbit_prime bits must be >= 2" unless $bits >= 2;
-  croak "random_nbit_prime: bits must fit in native signed integer" if $bits > SINTMAX;
+  croak "random_nbit_prime: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
 
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_nbit_prime($bits);
@@ -13304,7 +13302,7 @@ sub random_nbit_prime {
 sub random_safe_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
-  croak "random_safe_prime bits must be >= 3" unless $bits >= 3;
+  croak "random_safe_prime: bits must be between 3 and ",MAX_RANDOM_BITS if $bits < 3 || $bits > MAX_RANDOM_BITS;
 
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_safe_prime($bits);
@@ -13312,10 +13310,54 @@ sub random_safe_prime {
 sub random_strong_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
-  croak "random_strong_prime bits must be >= 128" unless $bits >= 128;
+  croak "random_strong_prime: bits must be between 128 and ",MAX_RANDOM_BITS if $bits < 128 || $bits > MAX_RANDOM_BITS;
 
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
+}
+
+
+sub random_maurer_prime_with_cert {
+  my($bits) = @_;
+  validate_integer_nonneg($bits);
+  croak "random_maurer_prime_with_cert: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
+
+  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
+    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
+    return (maybetobigint($n), $cert);
+  }
+
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
+}
+
+sub random_shawe_taylor_prime_with_cert {
+  my($bits) = @_;
+  validate_integer_nonneg($bits);
+  croak "random_shawe_taylor_prime_with_cert: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
+
+  if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"}) {
+    my($n,$cert) =Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
+    return (maybetobigint($n), $cert);
+  }
+
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
+}
+
+sub random_proven_prime_with_cert {
+  my($bits) = @_;
+  validate_integer_nonneg($bits);
+  croak "random_proven_prime_with_cert: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
+
+  # Go to Maurer with GMP
+  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
+    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
+    return (maybetobigint($n), $cert);
+  }
+
+  require Math::Prime::Util::RandomPrimes;
+  return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
 }
 
 sub random_proven_prime {
@@ -13325,7 +13367,7 @@ sub random_proven_prime {
 sub random_maurer_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
-  croak "random_maurer_prime bits must be >= 2" unless $bits >= 2;
+  croak "random_maurer_prime: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
 
   require Math::Prime::Util::RandomPrimes;
   my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
@@ -13338,7 +13380,7 @@ sub random_maurer_prime {
 sub random_shawe_taylor_prime {
   my($bits) = @_;
   validate_integer_nonneg($bits);
-  croak "random_shawe_taylor_prime bits must be >= 2" unless $bits >= 2;
+  croak "random_shawe_taylor_prime: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
 
   require Math::Prime::Util::RandomPrimes;
   my ($n, $cert) = Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
@@ -13348,37 +13390,10 @@ sub random_shawe_taylor_prime {
   return $n;
 }
 
-sub miller_rabin_random {
-  my($n, $k) = @_;
-  validate_integer($n);
-  if (scalar(@_) == 1 ) { $k = 1; } else { validate_integer_positive($k); }
-
-  return 0 if $n < 2;
-
-  # getconfig()->{'assume_rh'})  ==>  2*log(n)^2
-  my $maxk = Mdivint(Mmulint(3,$n),4);
-  if ($k >= $maxk) {
-    $maxk = Maddint($maxk,2);
-    for (my $b = 2; $b <= $maxk; $b = Madd1int($b)) {
-      return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, $b);
-    }
-    return 1;
-  }
-  my $brange = $n-2;
-  return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, Murandomm($brange)+2 );
-  $k--;
-  while ($k > 0) {
-    my $nbases = ($k >= 20) ? 20 : $k;
-    return 0 unless is_strong_pseudoprime($n, map { Murandomm($brange)+2 } 1 .. $nbases);
-    $k -= $nbases;
-  }
-  1;
-}
-
 sub random_semiprime {
   my($b) = @_;
   validate_integer_nonneg($b);
-  croak "random_semiprime bits must be >= 4" unless $b >= 4;
+  croak "random_semiprime: bits must be between 4 and ",MAX_RANDOM_BITS if $b < 4 || $b > MAX_RANDOM_BITS;
 
   my $n;
   my $min = Mpowint(2,$b-1);
@@ -13394,7 +13409,7 @@ sub random_semiprime {
 sub random_unrestricted_semiprime {
   my($b) = @_;
   validate_integer_nonneg($b);
-  croak "random_unrestricted_semiprime bits must be >= 3" unless $b >= 3;
+  croak "random_unrestricted_semiprime: bits must be between 3 and ",MAX_RANDOM_BITS if $b < 3 || $b > MAX_RANDOM_BITS;
 
   my $n;
   my $min = Mpowint(2,$b-1);
@@ -13504,6 +13519,33 @@ sub random_factored_integer {
     my $r = Mvecprod(@S);
     return ($r, Mvecsorti(\@S)) if $r <= $n && (1+Murandomm($n)) <= $r;
   }
+}
+
+sub miller_rabin_random {
+  my($n, $k) = @_;
+  validate_integer($n);
+  if (scalar(@_) == 1 ) { $k = 1; } else { validate_integer_positive($k); }
+
+  return 0 if $n < 2;
+
+  # getconfig()->{'assume_rh'})  ==>  2*log(n)^2
+  my $maxk = Mdivint(Mmulint(3,$n),4);
+  if ($k >= $maxk) {
+    $maxk = Maddint($maxk,2);
+    for (my $b = 2; $b <= $maxk; $b = Madd1int($b)) {
+      return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, $b);
+    }
+    return 1;
+  }
+  my $brange = $n-2;
+  return 0 unless Math::Prime::Util::is_strong_pseudoprime($n, Murandomm($brange)+2 );
+  $k--;
+  while ($k > 0) {
+    my $nbases = ($k >= 20) ? 20 : $k;
+    return 0 unless is_strong_pseudoprime($n, map { Murandomm($brange)+2 } 1 .. $nbases);
+    $k -= $nbases;
+  }
+  1;
 }
 
 ################################################################################

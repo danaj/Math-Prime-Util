@@ -73,6 +73,7 @@ plan tests => 0
             + scalar(keys(%bppow))
             + 5  # is_power
             + 2*scalar(keys %powers) + scalar(@negpowers)
+            + 4  # large explicit exponent
             + 13  # tests for 3,5,7 power
             + 12 # is_power/is_prime_power interface
             + 3  # is_square
@@ -133,6 +134,16 @@ foreach my $e (0 .. $#negpowers) {
   is( is_power(-7 ** $e), $negpowers[$e], "is_power(-7^$e ) = $negpowers[$e]" );
 }
 is( is_power(-1,5), 1, "-1 is a 5th power" );
+
+{
+  my $huge_even = "1000000000000000000000000000000";
+  my $huge_odd  = "1000000000000000000000000000001";
+  is( is_power(16, $huge_even), 0, "16 is not a huge-th power" );
+  is( is_power(1,  $huge_even), 1, "1 is a huge-th power" );
+  is( is_power(-1, $huge_odd),  1, "-1 is an odd huge-th power" );
+  is( is_power(-1, $huge_even), 0, "-1 is not an even huge-th power" );
+}
+
 {
   my($ispow, $root);
   $ispow = is_power(24, 2, \$root);

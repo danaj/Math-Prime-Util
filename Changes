@@ -8,8 +8,15 @@ Revision history for Perl module Math::Prime::Util
       it will use the user configured bigint class (default Math::BigInt).
       We no longer try to preserve the input bigint class.
 
-    - random_bytes and entropy_bytes accept inputs 0 to 2^31-2.  The previously
-      documented values were ambiguous (unsigned).  This makes them concrete.
+    - random_bytes and entropy_bytes accept inputs 0 to 2^31-2 (max portable
+      size for a Perl string).  The previously documented values were
+      ambiguous (unsigned).  This makes them concrete.
+
+    - urandomb and functions that produce n-bit random primes or semiprimes
+      are limited to 2^32-1 bits.
+
+    - jordan_totient(k,n) and powersum(n,k) now require exponent k to fit
+      in an unsigned native integer.
 
     [ADDED]
 
@@ -67,6 +74,11 @@ Revision history for Perl module Math::Prime::Util
 
     - The legacy nobigint option is now mirrored into XS.
       random_ndigit_prime honors it even when GMP dispatch is available.
+
+    - Better GMP dispatch with big inputs.  is_power, lucas_sequence,
+      is_almost_prime, and multifactorial avoid older GMP paths that could
+      truncate or reject large arguments, while using GMP 0.54+ where it
+      supports the larger API.
 
     [FUNCTIONALITY AND PERFORMANCE]
 

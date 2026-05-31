@@ -62,6 +62,7 @@ subtest 'expected failures', sub {
 
   #ok(!eval { random_nbit_prime(undef); }, "random_nbit_prime(undef)");
   ok(!eval { random_nbit_prime(0); }, "random_nbit_prime(0)");
+  ok(!eval { random_nbit_prime("1000000000000000000000000000000"); }, "random_nbit_prime(huge)");
   #ok(!eval { random_nbit_prime(-5); }, "random_nbit_prime(-5)");
 
   #ok(!eval { random_maurer_prime(undef); }, "random_maurer_prime(undef)");
@@ -219,7 +220,7 @@ subtest 'strong primes', sub {
   ok(!eval { random_strong_prime(127); }, "random_strong_prime(127) throws error as expected");
   for my $bits (128, 247, 512) {
     SKIP: {
-      skip "skipping random_strong_prime($bits) without GMP", 2 unless $usegmp;
+      skip "skipping random_strong_prime($bits) without XS+GMP", 2 unless $usexs && $usegmp;
       my $p = random_strong_prime($bits);
       check_bits($p,$bits, 'strong');
       ok (!is_smooth($p-1, 10000) && !is_smooth($p+1, 10000),

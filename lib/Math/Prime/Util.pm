@@ -501,50 +501,19 @@ sub _csrand_p {
 
 
 #############################################################################
-# Random primes.  These are front end functions that do input validation,
-# load the RandomPrimes module, and call its function.
+# Random primes.  Code lives in PP with dispatch to MPU::RandomPrimes.
 
 sub random_maurer_prime_with_cert {
-  my($bits) = @_;
-  _validate_integer_nonneg($bits);
-  croak "random_maurer_prime bits must be >= 2" unless $bits >= 2;
-
-  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
-    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
-    return (_maybe_bigint($n), $cert);
-  }
-
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_maurer_prime_with_cert($bits);
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::random_maurer_prime_with_cert(@_);
 }
-
 sub random_shawe_taylor_prime_with_cert {
-  my($bits) = @_;
-  _validate_integer_nonneg($bits);
-  croak "random_shawe_taylor_prime bits must be >= 2" unless $bits >= 2;
-
-  if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"}) {
-    my($n,$cert) =Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
-    return (_maybe_bigint($n), $cert);
-  }
-
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::random_shawe_taylor_prime_with_cert(@_);
 }
-
 sub random_proven_prime_with_cert {
-  my($bits) = @_;
-  _validate_integer_nonneg($bits);
-  croak "random_proven_prime bits must be >= 2" unless $bits >= 2;
-
-  # Go to Maurer with GMP
-  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
-    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
-    return (_maybe_bigint($n), $cert);
-  }
-
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::random_proven_prime_with_cert(@_);
 }
 
 #############################################################################
@@ -4827,6 +4796,8 @@ tuple with n.  As with C<euler_phi>, 0 is returned for all C<< n < 1 >>.
 This function can be used to generate some other useful functions, such as
 L</dedekind_psi>, where C<psi(n) = J(2,n) / J(1,n)>.
 
+The exponent C<k> must fit in an unsigned native integer.
+
 =head2 dedekind_psi
 
   say "psi(30) = ", dedekind_psi(30);   # 72
@@ -5708,6 +5679,8 @@ This corresponds to Mathematica's C<Pochhammer[x,n]> function.
 Given two non-negative integers C<n> and C<k>, returns the sum of C<k>-th
 powers of the first C<n> positive integers.
 
+The exponent C<k> must fit in an unsigned native integer.
+
 With C<k=2> this is (L<OEIS A000330|http://oeis.org/A000330>).
 With C<k=3> this is (L<OEIS A000537|http://oeis.org/A000537>).
 With C<k=4> this is (L<OEIS A000538|http://oeis.org/A000538>).
@@ -6354,6 +6327,8 @@ Given a number of bits C<b>, returns a random unsigned integer
 less than C<2^b>.  The result will be uniformly distributed
 between C<0> and C<2^b-1> inclusive.
 
+The number of bits must be between C<0> and C<4,294,967,295>.
+
 =head2 urandomm
 
   $n = urandomm(100);    # random integer in [0,99]
@@ -6481,8 +6456,8 @@ For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
   my $bigprime = random_nbit_prime(512);
 
 Selects a random n-bit prime, where the input is an integer number of bits.
-A prime with the nth bit set will be selected.  The number of bits must be
-C<2> or greater.
+A prime with the nth bit set will be selected.
+The number of bits must be between C<2> and C<4,294,967,295>.
 
 For bit sizes of 64 and lower, L</random_prime> is used, which gives completely
 uniform results in this range.  For sizes larger than 64, Algorithm 1 of
@@ -6504,7 +6479,8 @@ L<Math::Prime::Util::GMP>.
   my $bigprime = random_safe_prime(512);
 
 Produces an n-bit safe prime.  This is a prime C<p> where C<p = 2q+1> and
-C<q> is also prime.  The number of bits must be C<3> or greater.
+C<q> is also prime.
+The number of bits must be between C<3> and C<4,294,967,295>.
 
 These types of primes are sometimes useful for discrete logarithm based
 cryptography, and can be generated more efficiently using
@@ -6515,9 +6491,9 @@ simultaneous sieving.
 
   my $bigprime = random_strong_prime(512);
 
-Constructs an n-bit strong prime using Gordon's algorithm.  The number of
-bits must be C<128> or greater.  We consider a strong prime I<p> to be one
-where
+Constructs an n-bit strong prime using Gordon's algorithm.
+The number of bits must be between C<128> and C<4,294,967,295>.
+We consider a strong prime I<p> to be one where
 
 =over
 
@@ -6549,8 +6525,9 @@ with large bit sizes, install L<Math::Prime::Util::GMP>.
 
   my $bigprime = random_proven_prime(512);
 
-Constructs an n-bit random proven prime.  The number of bits must be C<2>
-or greater.  Internally this may use
+Constructs an n-bit random proven prime.
+The number of bits must be between C<2> and C<4,294,967,295>.
+Internally this may use
 L</is_provable_prime>(L</random_nbit_prime>) or
 L</random_maurer_prime> depending on the platform and bit size.
 
@@ -6564,6 +6541,7 @@ the n-bit provable prime along with a primality certificate.  The certificate
 is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
+The number of bits must be between C<2> and C<4,294,967,295>.
 
 
 =head2 random_maurer_prime
@@ -6571,7 +6549,8 @@ any other software that understands MPU primality certificates.
   my $bigprime = random_maurer_prime(512);
 
 Construct an n-bit provable prime, using the FastPrime algorithm of
-Ueli Maurer (1995).  The number of bits must be C<2> or greater.
+Ueli Maurer (1995).
+The number of bits must be between C<2> and C<4,294,967,295>.
 This is the same algorithm used by L<Crypt::Primes>.
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.
@@ -6601,6 +6580,7 @@ the n-bit provable prime along with a primality certificate.  The certificate
 is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
+The number of bits must be between C<2> and C<4,294,967,295>.
 The proof construction consists of a single chain of C<BLS3> types.
 
 
@@ -6609,7 +6589,8 @@ The proof construction consists of a single chain of C<BLS3> types.
   my $bigprime = random_shawe_taylor_prime(8192);
 
 Construct an n-bit provable prime, using the Shawe-Taylor algorithm in
-section C.6 of FIPS 186-4.  The number of bits must be C<2> or greater.
+section C.6 of FIPS 186-4.
+The number of bits must be between C<2> and C<4,294,967,295>.
 This uses 512 bits of randomness and SHA-256 as the hash.  This is a
 slightly simpler and older (1986) method than Maurer's 1995 construction.
 It is a bit faster than Maurer's method, and uses less system entropy for
@@ -6636,6 +6617,7 @@ containing the n-bit provable prime along with a primality certificate.
 The certificate is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
+The number of bits must be between C<2> and C<4,294,967,295>.
 The proof construction consists of a single chain of C<Pocklington> types.
 
 
@@ -6643,7 +6625,7 @@ The proof construction consists of a single chain of C<Pocklington> types.
 
 Takes a positive integer number of bits C<bits>, returns a
 random semiprime of exactly C<bits> bits.
-C<bits> must be C<4> or greater.
+The number of bits must be between C<4> and C<4,294,967,295>.
 The result has exactly two prime factors (hence semiprime).
 
 The factors will be approximately equal size, which is typical
@@ -6659,7 +6641,7 @@ If odd, then the sizes will differ by one bit.
 
 Takes a positive integer number of bits C<bits>, returns a
 random semiprime of exactly C<bits> bits.
-C<bits> must be C<3> or greater.
+The number of bits must be between C<3> and C<4,294,967,295>.
 The result has exactly two prime factors (hence semiprime).
 
 Some effort is taken to select uniformly from the universe of

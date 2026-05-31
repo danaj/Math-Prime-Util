@@ -33,6 +33,7 @@ my @A001615 = (1,3,4,6,6,12,8,12,12,18,12,24,14,24,24,24,18,36,20,36,32,36,24,48
 plan tests => scalar(keys %jordan_totients)
               + 2  # Dedekind psi calculated two ways
               + 2  # Calculate J5 two different ways
+              + 1  # Native k, bigint result
               + 2 * $use64 # Jordan totient example
               ;
 
@@ -60,6 +61,9 @@ while (my($k, $tref) = each (%jordan_totients)) {
   my @J5_moebius = map { my $n = $_; divisor_sum($n, sub { my $d=shift; $d**5 * moebius($n/$d); }) } 1 .. scalar @$J5;
   is_deeply( \@J5_moebius, $J5, "Jordan totient 5, using divisor sum" );
 }
+
+is( "".jordan_totient(70, 3), "2503155504993241601315571986085848",
+    "Jordan totient native k with bigint result" );
 
 if ($use64) {
   is( jordan_totient(4, 12345), 22902026746060800, "J_4(12345)" );

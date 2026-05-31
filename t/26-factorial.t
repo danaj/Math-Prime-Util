@@ -71,6 +71,8 @@ subtest 'multifactorial', sub {
 
   # k > n: only one term
   is( "".multifactorial(7, 10), 7, "multifactorial(n,k) = n when k >= n" );
+  is( "".multifactorial("1000000000000000000000000000000", "1000000000000000000000000000001"),
+      "1000000000000000000000000000000", "multifactorial(n,k) = n for large k > n" );
 
   # bigint overflow
   is( "".multifactorial(35,2), "221643095476699771875",

@@ -205,7 +205,7 @@ static const gmp_info_t gmp_info[] = {
   {             "is_powerfree", 53, 1, R_BOOL },
   {                "is_smooth", 53, 1, R_BOOL },
   {                 "is_rough", 53, 1, R_BOOL },
-  {          "is_almost_prime", 53, 1, R_BOOL },
+  {          "is_almost_prime", 54, 1, R_BOOL }, /* 53 with UV k */
   {             "is_divisible", 53, 1, R_BOOL },
   {             "is_congruent", 53, 1, R_BOOL },
   {              "is_powerful", 53, 1, R_BOOL },
@@ -275,7 +275,7 @@ static const gmp_info_t gmp_info[] = {
   {                "lucasvmod", 53, 1, R_BIGINT },
   {                  "lucasuv", 53, 2, R_BIGINT },
   {               "lucasuvmod", 53, 2, R_BIGINT },
-  {           "lucas_sequence", 54, 3, R_BIGINT }, /* v0.13 if P and Q are IVs */
+  {           "lucas_sequence", 54, 3, R_BIGINT }, /* v0.13 with IV P,Q */
   {            "pisano_period", 53, 1, R_BIGINT },
   {                 "powersum", 53, 1, R_BIGINT },
   {               "fromdigits", 54, 1, R_BIGINT },
@@ -313,7 +313,7 @@ static const gmp_info_t gmp_info[] = {
   {       "next_perfect_power", 53, 1, R_BIGINT },
   {       "prev_perfect_power", 53, 1, R_BIGINT },
 
-  {                 "is_power", 42, 1, R_NATIVE },  /* no root return */
+  {                 "is_power", 54, 1, R_NATIVE },  /* no root return, v0.42 UV k */
   {           "is_prime_power", 40, 1, R_NATIVE },  /* no root return */
   {             "is_polygonal", 47, 1, R_BOOL },    /* no root return */
 
@@ -3304,8 +3304,14 @@ void next_chen_prime(IN SV* svn)
     }
     DISPATCHPP_RETURN();
 
-void urandomb(IN UV bits)
+void urandomb(IN SV* svbits)
+  PREINIT:
+    UV bits;
+    int bstatus;
   PPCODE:
+    bstatus = _validate_and_set(&bits, aTHX_ svbits, IFLAG_NONNEG);
+    if (bstatus != 1 || bits > MAX_RANDOM_BITS)
+      croak("%s: bits must be between 0 and %"UVuf, SUBNAME, MAX_RANDOM_BITS);
     if (bits <= BITS_PER_WORD) {
       dMY_CXT;
       XSRETURN_UV( urandomb(MY_CXT.randcxt, bits) );
@@ -3336,22 +3342,23 @@ void random_nbit_prime(IN SV* svbits)
     random_semiprime = 6
     random_unrestricted_semiprime = 7
   PREINIT:
-    UV bits, minarg, res;
+    UV bits, res;
+    static const unsigned int minbits[] = { 2, 2, 2, 2, 128, 3, 4, 3 };
+    int bstatus;
   PPCODE:
-    if (_validate_and_set(&bits, aTHX_ svbits, IFLAG_POS)) {
-      minarg = ix==7 ? 3 : ix==6 ? 4 : ix==5 ? 3 : ix==4 ? 128 : 2;
-      if (bits < minarg) croak("%s: input '%d' must be >= %d", SUBNAME, (int)bits, (int)minarg);
-      if (bits <= BITS_PER_WORD) {
-        dMY_CXT;
-        void *cs = MY_CXT.randcxt;
-        switch (ix) {
-          case 5:  res = random_safe_prime(cs,bits); break;
-          case 6:  res = random_semiprime(cs,bits); break;
-          case 7:  res = random_unrestricted_semiprime(cs,bits); break;
-          default: res = random_nbit_prime(cs,bits); break;
-        }
-        if (res) XSRETURN_UV(res);
+    bstatus = _validate_and_set(&bits, aTHX_ svbits, IFLAG_POS);
+    if (bstatus != 1 || bits < minbits[ix] || bits > MAX_RANDOM_BITS)
+      croak("%s: bits must be between %u and %"UVuf, SUBNAME, minbits[ix], MAX_RANDOM_BITS);
+    if (bits <= BITS_PER_WORD) {
+      dMY_CXT;
+      void *cs = MY_CXT.randcxt;
+      switch (ix) {
+        case 5:  res = random_safe_prime(cs,bits); break;
+        case 6:  res = random_semiprime(cs,bits); break;
+        case 7:  res = random_unrestricted_semiprime(cs,bits); break;
+        default: res = random_nbit_prime(cs,bits); break;
       }
+      if (res) XSRETURN_UV(res);
     }
     DISPATCHPP_RETURN();
 
@@ -4137,14 +4144,44 @@ void prime_signature(IN SV* svn)
     DISPATCHPP_RETURN();
 
 
+void jordan_totient(IN SV* svk, IN SV* svn)
+  PREINIT:
+    int kstatus, nstatus;
+    UV k, n;
+  PPCODE:
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    if (kstatus != 1)
+      croak("jordan_totient: k must fit in a UV");
+    if (nstatus == 1) {
+      UV ret = jordan_totient(k, n);
+      if (ret != UV_MAX)
+        XSRETURN_UV(ret);
+    }
+    DISPATCHPP_RETURN();
+
+void powersum(IN SV* svn, IN SV* svk)
+  PREINIT:
+    int kstatus, nstatus;
+    UV k, n;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1)
+      croak("powersum: k must fit in a UV");
+    if (nstatus == 1) {
+      UV ret = powersum(n, k);
+      if (ret != UV_MAX)
+        XSRETURN_UV(ret);
+    }
+    DISPATCHPP_RETURN();
+
 void
-jordan_totient(IN SV* sva, IN SV* svn)
+ramanujan_sum(IN SV* sva, IN SV* svn)
   ALIAS:
-    powersum = 1
-    ramanujan_sum = 2
-    legendre_phi = 3
-    smooth_count = 4
-    rough_count = 5
+    legendre_phi = 1
+    smooth_count = 2
+    rough_count = 3
   PREINIT:
     int astatus, nstatus;
     UV a, n, ret;
@@ -4153,15 +4190,7 @@ jordan_totient(IN SV* sva, IN SV* svn)
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (astatus != 0 && nstatus != 0) {
       switch (ix) {
-        case 0:  ret = jordan_totient(a, n);
-                 if (ret == 0 && n > 1)
-                   goto overflow;
-                 break;
-        case 1:  ret = powersum(a, n);
-                 if (ret == 0 && a > 0)
-                   goto overflow;
-                 break;
-        case 2:  if (a < 1 || n < 1) XSRETURN_IV(0);
+        case 0:  if (a < 1 || n < 1) XSRETURN_IV(0);
                  {
                    UV g = a / gcd_ui(a,n);
                    int m = moebius(g);
@@ -4169,14 +4198,13 @@ jordan_totient(IN SV* sva, IN SV* svn)
                    XSRETURN_IV( m * (totient(a) / totient(g)) );
                  }
                  break;
-        case 3:  ret = legendre_phi(a, n); break;
-        case 4:  ret = debruijn_psi(a, n); break;
-        case 5:
+        case 1:  ret = legendre_phi(a, n); break;
+        case 2:  ret = debruijn_psi(a, n); break;
+        case 3:
         default: ret = buchstab_phi(a, n); break;
       }
       XSRETURN_UV(ret);
     }
-    overflow:
     DISPATCHPP_RETURN();
 
 void almost_prime_count(IN SV* svk, IN SV* svn)

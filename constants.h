@@ -34,7 +34,10 @@
  #define MPU_MAX_LUCKY_IDX      UVCONST(395236168661920929)  /* Not correct */
 #endif
 
+/* A hard limit for the random byte generation */
 #define MAX_RANDOM_BYTES        UVCONST(2147483646)
+/* Our chosen maximum for random prime / bits generation */
+#define MAX_RANDOM_BITS         UVCONST(4294967295)
 
 
 /* Small table of primes; 0,2,3,5,7,...   primes_small[n] is the nth prime.
