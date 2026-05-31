@@ -5235,6 +5235,9 @@ sub powint {
     return Mmulint($a,$a);
   }
 
+  return maybetobigint(Math::Prime::Util::GMP::powint($a,$b))
+    if $Math::Prime::Util::_GMPfunc{"powint"} && !ref($b);
+
   if (!ref($a) && !ref($b) && $b < MPU_MAXBITS) {
     if ($b == 3) {
       return int($a*$a*$a) if $a <= 99999 && $a >= -99999;

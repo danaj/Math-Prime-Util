@@ -156,7 +156,7 @@ static const gmp_info_t gmp_info[] = {
   {                   "mulint", 52, 1, R_BIGINT },
   {                   "divint", 52, 1, R_BIGINT },
   {                   "modint", 52, 1, R_BIGINT },
-  {                   "powint", 52, 1, R_BIGINT },
+  {                   "powint", 54, 1, R_BIGINT }, /* 52 with UV exponent */
   {                   "absint", 52, 1, R_BIGINT },
   {                   "negint", 52, 1, R_BIGINT },
   {                  "cdivint", 53, 1, R_BIGINT },
@@ -468,6 +468,27 @@ static int addint_try_native_result(pTHX_ int opix, SV* sva, SV* svb, const char
   if (astatus_out) *astatus_out = astatus;
   if (bstatus_out) *bstatus_out = bstatus;
 
+  if (opix == 7 && astatus != 0 && bstatus == 0) {
+    if (astatus > 0 && (a == 0 || a == 1)) {
+      *is_uv_out = 1;
+      *uv_out = a;
+      return 1;
+    }
+    if (astatus < 0 && neg_iv(a) == 1) {
+      STRLEN lenb;
+      const char *sb = SvPV_nomg(svb, lenb);
+      int odd = (lenb > 0 && isDIGIT(sb[lenb-1]) && ((sb[lenb-1] - '0') & 1));
+      if (odd) {
+        *is_uv_out = 0;
+        *iv_out = -1;
+      } else {
+        *is_uv_out = 1;
+        *uv_out = 1;
+      }
+      return 1;
+    }
+  }
+
   if (astatus == 0 || bstatus == 0)
     return 0;
 
@@ -615,6 +636,8 @@ static SV* addint_try_slow_result(pTHX_ int opix, SV* sva, SV* svb, int astatus,
       }
     }
   }
+  if (opix == 7 && bstatus == 0)
+    croak("%s: exponent too large", opname);
 
   return NULL;
 }
@@ -855,7 +878,7 @@ static OP* pp_mulint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 2, "mu
 static OP* pp_divint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 3, "divint", 52); }
 static OP* pp_modint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 4, "modint", 52); }
 static OP* pp_cdivint_custom(pTHX) { return pp_addint_custom_common(aTHX_ 5, "cdivint", 53); }
-static OP* pp_powint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 7, "powint", 52); }
+static OP* pp_powint_custom(pTHX)  { return pp_addint_custom_common(aTHX_ 7, "powint", 54); }
 
 static OP* pp_add1int_custom_common(pTHX_ int opix, const char *opname) {
   dSP;

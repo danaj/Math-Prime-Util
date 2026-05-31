@@ -80,6 +80,9 @@ Revision history for Perl module Math::Prime::Util
       truncate or reject large arguments, while using GMP 0.54+ where it
       supports the larger API.
 
+    - powint handles 0, 1, and -1 with very large exponents correctly.
+      Only calls older GMP backends with native-sized exponents.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+
