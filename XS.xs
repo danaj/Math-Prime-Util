@@ -4864,41 +4864,57 @@ void cmpint(IN SV* sva, IN SV* svb)
     }
     RETURN_NPARITY(ret);
 
-void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
-  ALIAS:
-    rootint = 1
+void logint(IN SV* svn, IN SV* svb, IN SV* svret = 0)
   PREINIT:
-    UV n, root;
+    UV n, b;
+    int nstatus, bstatus;
   PPCODE:
-    if (ix == 0 && k <= 1)  croak("logint: base must be > 1");
-    if (ix == 1 && k <= 0)  croak("rootint: k must be > 0");
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_POS);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_POS);
+    if (bstatus != 0 && b < 2) croak("logint: base must be > 1");
     if (items >= 3 && !xs_is_sv_scalar_ref(svret))
-      croak("%s: third argument not a scalar reference",SUBNAME);
-    if (_validate_and_set(&n, aTHX_ svn, ix == 0 ? IFLAG_POS : IFLAG_NONNEG)) {
-      root = (ix == 0) ? logint(n, k) : rootint(n, k);
-      if (svret) sv_setuv(SvRV(svret), ix == 0 ? ipow(k,root) : ipow(root,k));
-      XSRETURN_UV(root);
+      croak("logint: third argument not a scalar reference");
+    if (nstatus != 0 && bstatus != 0) {
+      UV ilog = logint(n, b);
+      if (svret) sv_setuv(SvRV(svret), ipow(b,ilog));
+      XSRETURN_UV(ilog);
     }
     /* GMP backend is fast.  PP not so fast even with Math::GMPz. */
-    /* Fast path: strint_logint for bigint n, base k already UV */
-    if (ix == 0 && _XS_get_callgmp() < 47) {
+    /* Fast path: strint_logint for bigint n and UV base */
+    if (bstatus == 1 && _XS_get_callgmp() < 47) {
       STRLEN lenn;
       const char* sn = SvPV_nomg(svn, lenn);
-      UV result = strint_logint(sn, lenn, k);
+      UV result = strint_logint(sn, lenn, b);
       if (result != UV_MAX) {
         if (svret) {
-          STRLEN klen;
-          const char* kstr = SvPV_nomg(sv_2mortal(newSVuv(k)), klen);
+          STRLEN blen;
+          const char* bstr = SvPV_nomg(sv_2mortal(newSVuv(b)), blen);
           SV* vtmp = sv_2mortal(newSV(lenn + 2));
-          STRLEN vlen = strint_pow(SvPVX(vtmp), kstr, klen, result, lenn + 2);
+          STRLEN vlen = strint_pow(SvPVX(vtmp), bstr, blen, result, lenn+2);
           SvCUR_set(vtmp, vlen);  SvPOK_on(vtmp);  *SvEND(vtmp) = '\0';
           sv_setsv(SvRV(svret), xs_to_canonical(aTHX_ vtmp));
         }
         XSRETURN_UV(result);
       }
     }
-    /* Fast path: strint_rootint for bigint n, k already UV */
-    if (ix == 1 && _XS_get_callgmp() < 40) {
+    DISPATCHPP_RETURN_GMPIF(svret == 0 && (bstatus || _XS_get_callgmp() >= 54));
+
+void rootint(IN SV* svn, IN SV* svk, IN SV* svret = 0)
+  PREINIT:
+    UV n, k;
+    int nstatus, kstatus;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    if (items >= 3 && !xs_is_sv_scalar_ref(svret))
+      croak("rootint: third argument not a scalar reference");
+    if (nstatus != 0 && kstatus != 0) {
+      UV iroot = rootint(n, k);
+      if (svret) sv_setuv(SvRV(svret), ipow(iroot,k));
+      XSRETURN_UV(iroot);
+    }
+    /* Fast path: strint_rootint for bigint n, UV k */
+    if (kstatus == 1 && _XS_get_callgmp() < 40) {
       STRLEN lenn;
       const char* sn = SvPV_nomg(svn, lenn);
       SV* tmp = sv_2mortal(newSV(lenn + 2));
@@ -4913,7 +4929,7 @@ void logint(IN SV* svn, IN UV k, IN SV* svret = 0)
         RETURN_STRING_BIGINT(tmp, rlen);
       }
     }
-    DISPATCHPP_RETURN_GMPIF(svret == 0);
+    DISPATCHPP_RETURN_GMPIF(svret == 0 && (kstatus || _XS_get_callgmp() >= 54));
 
 void divrem(IN SV* sva, IN SV* svb)
   ALIAS:

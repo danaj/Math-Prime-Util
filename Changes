@@ -76,9 +76,9 @@ Revision history for Perl module Math::Prime::Util
       random_ndigit_prime honors it even when GMP dispatch is available.
 
     - Better GMP dispatch with big inputs.  is_power, lucas_sequence,
-      is_almost_prime, and multifactorial avoid older GMP paths that could
-      truncate or reject large arguments, while using GMP 0.54+ where it
-      supports the larger API.
+      is_almost_prime, and multifactorial, logint, and rootint avoid older
+      GMP paths that could truncate or reject large arguments, while using
+      GMP 0.54+ where it supports the larger API.
 
     - powint handles 0, 1, and -1 with very large exponents correctly.
       Only calls older GMP backends with native-sized exponents.

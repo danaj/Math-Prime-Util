@@ -53,7 +53,7 @@ my @rootints = (
   ["18446744039349813264", 39, 3],
 );
 
-plan tests => 2 + 3 + 3 + 2 + 2;
+plan tests => 2 + 3 + 3 + 2 + 4 + 2;
 
 ok(!defined eval { rootint(377,0);  }, "rootint(n,0) gives error");
 ok(!defined eval { rootint(-377,2); }, "rootint(-n,k) gives error");
@@ -91,6 +91,14 @@ is(rootint("266667176579895999",3), 643659, "integer third root of 2666671765798
     push @got, map{"$_"} rootint($n,$k);
   }
   is_deeply( \@got, \@expected, "rootint on selected 64-bit values" );
+}
+{
+  my $huge_k = "18446744073709551617";
+  my $rk;
+  is(rootint(0, 2), 0, "rootint(0,2) = 0");
+  is(rootint(16, $huge_k), 1, "rootint with huge k returns 1 without power reference");
+  is(rootint(16, $huge_k, \$rk), 1, "rootint with huge k returns 1 with power reference");
+  is($rk, 1, "rootint huge k power reference is 1");
 }
 
 # These make LibTomMath's mp_root_n misbehave badly.

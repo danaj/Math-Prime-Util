@@ -50,5 +50,6 @@ plan tests => scalar(@mult_orders);
 foreach my $moarg (@mult_orders) {
   my ($a, $n, $exp) = @$moarg;
   my $zn = znorder($a, $n);
-  is( $zn, $exp, "znorder($a, $n) = " . ((defined $exp) ? $exp : "<undef>") );
+  if (defined $exp) { is("$zn", "$exp", "znorder($a, $n) = $exp"); }
+  else              { is($zn, undef, "znorder($a, $n) = <undef>"); }
 }

@@ -7755,8 +7755,16 @@ sub rootint {
     return $R;
   }
 
-  # It's unclear whether we should add GMPfunc here.  We want it in logint
-  # because it's slow or not included in Perl bigint classes.
+  if ($Math::Prime::Util::_GMPfunc{"rootint"} && !ref($k)) {
+    my $R = Math::Prime::Util::GMP::rootint($n, $k);
+    if (defined $refp) {
+      # logint in 0.47, powmod in 0.36, powint in 0.52
+      my $e = Math::Prime::Util::GMP::powmod($R, $k, $n);
+      $e = $n if $e == 0;
+      $$refp = maybetobigint($e);
+    }
+    return maybetobigint($R);
+  }
 
   my $refn = ref($n);
   my $R;
