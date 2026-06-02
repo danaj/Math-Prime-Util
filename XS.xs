@@ -5758,7 +5758,7 @@ void setinsert(IN SV* sva, ...)
   PROTOTYPE: $@
   PREINIT:
     AV *ava;
-    Size_t alen, blen, i;
+    Size_t alen, blen, i, j;
     UV *rb;
     int btype, bstatus;
   PPCODE:
@@ -5805,8 +5805,10 @@ void setinsert(IN SV* sva, ...)
       _sc_clear_cache(&svcache);
       /* Get hi and lo values of set. */
       if (_sc_set_lohi(aTHX_ AvARRAY(ava), &svcache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
-        if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0)
+        if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0) {
+          Safefree(rb);
           croak("%s: expected numerically ascending sorted input", SUBNAME);
+        }
         /* Both lo/hi are not bigint, so there are no bigints in the set. */
         nbeg = nend = nmid = 0;
         /* 1. Find out how many elements go in front. */
@@ -5824,8 +5826,14 @@ void setinsert(IN SV* sva, ...)
           New(0, insert_sv,  nmidcheck, SV*);
           for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
             int index = insert_index_in_set(aTHX_ ava,&svcache,bstatus,rb[i]);
-            if (index < 0)
+            if (index < 0) {
+              for (j = 0; j < nmid; j++)
+                SvREFCNT_dec(insert_sv[j]);
+              Safefree(insert_idx);
+              Safefree(insert_sv);
+              Safefree(rb);
               croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
+            }
             if (index > 0) {
               insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
               insert_idx[nmid] = index-1;                /* Where to insert */
@@ -5918,8 +5926,11 @@ void setremove(IN SV* sva, ...)
         New(0, del_idx, blen, Size_t);
         for (i = 0; i < blen; i++) {
           int index = index_in_set(aTHX_ ava, &svcache, bstatus, rb[i]);
-          if (index < 0)
+          if (index < 0) {
+            Safefree(del_idx);
+            Safefree(rb);
             croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
+          }
           if (index > 0)
             del_idx[ndel++] = index-1;
         }
