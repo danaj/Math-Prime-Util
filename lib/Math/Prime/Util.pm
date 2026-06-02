@@ -500,24 +500,6 @@ sub _csrand_p {
 #############################################################################
 
 
-#############################################################################
-# Random primes.  Code lives in PP with dispatch to MPU::RandomPrimes.
-
-sub random_maurer_prime_with_cert {
-  require Math::Prime::Util::PP;
-  Math::Prime::Util::PP::random_maurer_prime_with_cert(@_);
-}
-sub random_shawe_taylor_prime_with_cert {
-  require Math::Prime::Util::PP;
-  Math::Prime::Util::PP::random_shawe_taylor_prime_with_cert(@_);
-}
-sub random_proven_prime_with_cert {
-  require Math::Prime::Util::PP;
-  Math::Prime::Util::PP::random_proven_prime_with_cert(@_);
-}
-
-#############################################################################
-
 sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   require Math::Prime::Util::PP;
   Math::Prime::Util::PP::formultiperm(@_);
@@ -572,66 +554,26 @@ sub prime_iterator_object {
 
 #############################################################################
 
-# Return just the cert portion.
-sub prime_certificate {
-  my($n) = @_;
-  my ($is_prime, $cert) = is_provable_prime_with_cert($n);
-  return $cert;
+sub random_maurer_prime_with_cert {
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::random_maurer_prime_with_cert(@_);
 }
-
+sub random_shawe_taylor_prime_with_cert {
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::random_shawe_taylor_prime_with_cert(@_);
+}
+sub random_proven_prime_with_cert {
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::random_proven_prime_with_cert(@_);
+}
 
 sub is_provable_prime_with_cert {
-  my($n) = @_;
-  _validate_integer($n);
-  return 0 if $n < 2;
-  my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
-
-  if ($n <= $_XS_MAXVAL) {
-    my $isp = is_prime($n);
-    return ($isp, '') unless $isp == 2;
-    return (2, $header . "Type Small\nN $n\n");
-  }
-
-  if ($_HAVE_GMP && defined &Math::Prime::Util::GMP::is_provable_prime_with_cert) {
-    my ($isp, $cert) = Math::Prime::Util::GMP::is_provable_prime_with_cert($n);
-    # New version that returns string format.
-    #return ($isp, $cert) if ref($cert) ne 'ARRAY';
-    if (ref($cert) ne 'ARRAY') {
-      # Fix silly 0.13 mistake (TODO: deprecate this)
-      $cert =~ s/^Type Small\n(\d+)/Type Small\nN $1/smg;
-      return ($isp, $cert);
-    }
-    # Old version.  Convert.
-    require Math::Prime::Util::PrimalityProving;
-    return ($isp, Math::Prime::Util::PrimalityProving::convert_array_cert_to_string($cert));
-  }
-
-  {
-    my $isp = is_prob_prime($n);
-    return ($isp, '') if $isp == 0;
-    return (2, $header . "Type Small\nN $n\n") if $isp == 2;
-  }
-
-  # Choice of methods for proof:
-  #   ECPP         needs a fair bit of programming work
-  #   APRCL        needs a lot of programming work
-  #   BLS75 combo  Corollary 11 of BLS75.  Trial factor n-1 and n+1 to B, find
-  #                factors F1 of n-1 and F2 of n+1.  Quit when:
-  #                B > (N/(F1*F1*(F2/2)))^1/3 or B > (N/((F1/2)*F2*F2))^1/3
-  #   BLS75 n+1    Requires factoring n+1 to (n/2)^1/3 (theorem 19)
-  #   BLS75 n-1    Requires factoring n-1 to (n/2)^1/3 (theorem 5 or 7)
-  #   Pocklington  Requires factoring n-1 to n^1/2 (BLS75 theorem 4)
-  #   Lucas        Easy, requires factoring of n-1 (BLS75 theorem 1)
-  #   AKS          horribly slow
-  # See http://primes.utm.edu/prove/merged.html or other sources.
-
-  require Math::Prime::Util::PrimalityProving;
-  #my ($isp, $pref) = Math::Prime::Util::PrimalityProving::primality_proof_lucas($n);
-  my ($isp, $pref) = Math::Prime::Util::PrimalityProving::primality_proof_bls75($n);
-  carp "proved $n is not prime\n" if !$isp;
-  return ($isp, $pref);
+  require Math::Prime::Util::PP;
+  Math::Prime::Util::PP::is_provable_prime_with_cert(@_);
 }
-
+sub prime_certificate {
+  return (is_provable_prime_with_cert($_[0]))[1];  # Just the certificate
+}
 
 sub verify_prime {
   require Math::Prime::Util::PrimalityProving;

@@ -640,14 +640,6 @@ sub is_bpsw_prime {
   return _is_bpsw_prime($n);
 }
 
-sub is_provable_prime {
-  my($n) = @_;
-  validate_integer($n);
-  return _is_bpsw_prime($n) if $n <= 18446744073709551615;
-  my($is_prime, $cert) = Math::Prime::Util::is_provable_prime_with_cert($n);
-  $is_prime;
-}
-
 # Possible sieve storage:
 #   1) vec with mod-30 wheel:   8 bits  / 30
 #   2) vec with mod-2 wheel :  15 bits  / 30
@@ -13286,6 +13278,8 @@ sub urandomr {
   Maddint($lo, Murandomm(Madd1int(Msubint($hi, $lo))));
 }
 
+################################################################################
+
 sub random_prime {
   my($low, $high) = @_;
   if (scalar(@_) == 1) { ($low,$high) = (2,$low);       }
@@ -13333,6 +13327,48 @@ sub random_strong_prime {
   return Math::Prime::Util::RandomPrimes::random_strong_prime($bits);
 }
 
+sub is_provable_prime {
+  my($n) = @_;
+  validate_integer($n);
+
+  return _is_bpsw_prime($n) ? 2 : 0
+    if Mcmpint($n,"18446744073709551615") <= 0;
+
+  my($is_prime, $cert) = Math::Prime::Util::is_provable_prime_with_cert($n);
+  $is_prime;
+}
+
+sub is_provable_prime_with_cert {
+  my($n) = @_;
+  validate_integer($n);
+  my $header = "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN $n\n\n";
+
+  return _is_bpsw_prime($n) ? (2, $header . "Type Small\nN $n\n") : (0, '')
+    if Mcmpint($n,"18446744073709551615") <= 0;
+
+  return Math::Prime::Util::GMP::is_provable_prime_with_cert($n)
+    if $Math::Prime::Util::_GMPfunc{"is_provable_prime_with_cert"}
+       && $Math::Prime::Util::GMP::VERSION >= 0.14;
+
+  # Use extra-strong BPSW to reject composites before the proof step.
+  return (0, '') if Mis_prob_prime($n) == 0;
+
+  # Choice of methods for proof:
+  #   ECPP         needs a fair bit of programming work
+  #   APRCL        needs a lot of programming work
+  #   BLS75 combo  Corollary 11 of BLS75.  Trial factor n-1 and n+1 to B, find
+  #                factors F1 of n-1 and F2 of n+1.  Quit when:
+  #                B > (N/(F1*F1*(F2/2)))^1/3 or B > (N/((F1/2)*F2*F2))^1/3
+  #   BLS75 n+1    Requires factoring n+1 to (n/2)^1/3 (theorem 19)
+  #   BLS75 n-1    Requires factoring n-1 to (n/2)^1/3 (theorem 5 or 7)
+  #   Pocklington  Requires factoring n-1 to n^1/2 (BLS75 theorem 4)
+  #   Lucas        Easy, requires factoring of n-1 (BLS75 theorem 1)
+  #   AKS          horribly slow
+  # See http://primes.utm.edu/prove/merged.html or other sources.
+
+  require Math::Prime::Util::PrimalityProving;
+  return Math::Prime::Util::PrimalityProving::primality_proof_bls75($n);
+}
 
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
