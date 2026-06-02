@@ -3457,28 +3457,6 @@ void toint(IN SV* svn)
     RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
 
 
-void pisano_period(IN SV* svn)
-  ALIAS:
-    partitions = 1
-    partitionsq = 2
-    consecutive_integer_lcm = 3
-  PREINIT:
-    UV n, r = 0;
-  PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
-      switch (ix) {
-        case  0: r = pisano_period(n); break;
-        case  1: r = npartitions(n); break;
-        case  2: r = npartitionsq(n); break;
-        case  3: r = consecutive_integer_lcm(n); break;
-        default: break;
-      }
-      /* Returns 0 if n=0 or result overflows */
-      if (r != 0 || n == 0)
-        XSRETURN_UV(r);
-    }
-    DISPATCHPP_RETURN();
-
 void random_factored_integer(IN SV* svn)
   PREINIT:
     UV n;
@@ -5218,6 +5196,17 @@ void prime_omega(IN SV* svn)
     }
     DISPATCHPP_RETURN();
 
+void pisano_period(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
+      UV r = pisano_period(n);
+      if (r != UV_MAX)
+        XSRETURN_UV(r);
+    }
+    DISPATCHPP_RETURN();
+
 void factorial(IN SV* svn)
   ALIAS:
     subfactorial = 1
@@ -5226,23 +5215,29 @@ void factorial(IN SV* svn)
     primorial = 4
     pn_primorial = 5
     catalan_number = 6
+    partitions = 7
+    partitionsq = 8
+    consecutive_integer_lcm = 9
   PREINIT:
-    UV n, r;
+    UV n, r = 0;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
-      r = 0;
-      switch(ix) {
-        case 0:  r = factorial(n);      break;
-        case 1:  r = subfactorial(n);   break;
-        case 2:  r = bell_number(n);    break;
-        case 3:  r = fubini(n);         break;
-        case 4:  r = primorial(n);      break;
-        case 5:  r = pn_primorial(n);   break;
-        case 6:  r = catalan_number(n); break;
-        default: break;
-      }
-      if (n == 0 || r > 0) XSRETURN_UV(r);
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) != 1)
+      croak("%s: n must fit in native unsigned integer", SUBNAME);
+    switch(ix) {
+      case 0:  r = factorial(n);      break;
+      case 1:  r = subfactorial(n);   break;
+      case 2:  r = bell_number(n);    break;
+      case 3:  r = fubini(n);         break;
+      case 4:  r = primorial(n);      break;
+      case 5:  r = pn_primorial(n);   break;
+      case 6:  r = catalan_number(n); break;
+      case 7:  r = npartitions(n);    break;
+      case 8:  r = npartitionsq(n);   break;
+      case 9:  r = consecutive_integer_lcm(n); break;
+      default: break;
     }
+    if (n == 0 || r > 0)
+      XSRETURN_UV(r);
     DISPATCHPP_RETURN();
 
 void integer_complexity(IN SV* svn)

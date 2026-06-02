@@ -14,9 +14,16 @@ Revision history for Perl module Math::Prime::Util
 
     - urandomb and functions that produce n-bit random primes or semiprimes
       are limited to 2^32-1 bits.
+ 
+    - random_ndigit_prime is limited to 2^32-1 digits.
 
     - jordan_totient(k,n) and powersum(n,k) now require exponent k to fit
       in an unsigned native integer.
+
+    - factorial, subfactorial, bell_number, fubini, primorial, pn_primorial,
+      catalan_number, partitions, partitionsq, and consecutive_integer_lcm
+      will reject inputs that exceed implementation limits (input limited to
+      unsigned native for XS and GMP, signed native for PP).
 
     [ADDED]
 

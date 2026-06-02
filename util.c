@@ -1768,7 +1768,7 @@ UV pisano_period(UV n)
   nf = factorint(n);
   for (i = 0, k = 1; i < nf.nfactors; i++) {
     k = lcmsafe(k, _pisano_prime_power(nf.f[i], nf.e[i]));
-    if (k == 0) return 0;
+    if (k == 0) return UV_MAX;
   }
 
   /* Do this carefully to avoid overflow */
@@ -1780,7 +1780,7 @@ UV pisano_period(UV n)
       return r;
   } while (r <= (lim-k));
 
-  return 0;
+  return UV_MAX;
 }
 
 /******************************************************************************/

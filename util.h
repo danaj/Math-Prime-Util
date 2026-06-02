@@ -73,6 +73,7 @@ extern UV modinverse(UV a, UV p) ISCONSTFUNC;  /* Returns 1/a mod p */
 extern UV divmod(UV a, UV b, UV n) ISCONSTFUNC;/* Returns a/b mod n */
 extern UV gcddivmod(UV a, UV b, UV n) ISCONSTFUNC; /* divmod(a/gcd,b/gcd,n) */
 
+/* UV_MAX overflow */
 extern UV pisano_period(UV n);
 
 /* 0 overflow, -1 no inverse, 1 ok */

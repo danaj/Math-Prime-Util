@@ -1452,6 +1452,8 @@ sub goldbach_pairs {
 
 sub primorial {
   my($n) = @_;
+  validate_integer_nonneg($n);
+  croak "primorial: n must fit in native signed integer" if $n > SINTMAX;
 
   my @plist = @{Mprimes($n)};
   my $max = (MPU_32BIT) ? 29 : (OLD_PERL_VERSION) ? 43 : 53;
@@ -1475,6 +1477,8 @@ sub primorial {
 
 sub pn_primorial {
   my($n) = @_;
+  validate_integer_nonneg($n);
+  croak "pn_primorial: n must fit in native signed integer" if $n > SINTMAX;
   return (1,2,6,30,210,2310,30030,510510,9699690,223092870)[$n] if $n < 10;
   Mprimorial(nth_prime($n));
 }
@@ -1482,6 +1486,7 @@ sub pn_primorial {
 sub consecutive_integer_lcm {
   my($n) = @_;
   validate_integer_nonneg($n);
+  croak "consecutive_integer_lcm: n must fit in native signed integer" if $n > SINTMAX;
 
   return (1,1,2)[$n] if $n <= 2;
   my @powers;
@@ -8415,7 +8420,7 @@ sub factorial {
   validate_integer_nonneg($n);
   return (1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600)[$n]
     if $n <= 12;
-  croak "factorial: input too large" if ref($n);
+  croak "factorial: n must fit in native unsigned integer" if ref($n);
 
   my $r = tobigint(1);   # make sure $_BIGINT is loaded.
 
@@ -8497,6 +8502,7 @@ sub subfactorial {
 sub catalan_number {
   my($n) = @_;
   validate_integer_nonneg($n);
+  croak "catalan_number: n must fit in native signed integer" if $n > SINTMAX;
   return 1 if $n <= 1;
   # C(n) = binomial(2n,n) / (n+1)
   Mdivint(Mbinomial(Mmulint(2,$n), $n), Madd1int($n));
