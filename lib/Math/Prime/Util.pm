@@ -6440,15 +6440,15 @@ well as being much faster.
 
 Selects a random n-digit prime, where the input is an integer number of
 digits.  One of the primes within that range (e.g. 1000 - 9999 for
-4-digits) will be uniformly selected.  The number of digits must be C<1>
-or greater.
+4-digits) will be uniformly selected.
+The number of digits must be between C<1> and C<4,294,967,295>.
 
-If the number of digits is greater than or equal to the maximum native type,
-then the result will be returned as a BigInt.  However, if the C<nobigint>
-configuration option is on, then output will be restricted to native size
-numbers, and requests for more digits than natively supported will result
-in an error.
-For better performance with large bit sizes, install L<Math::Prime::Util::GMP>.
+If the resulting prime is larger than the maximum native integer, then 
+the result will be returned as a BigInt.  However, if the C<nobigint>
+configuration option is on, then output will be restricted to native-size
+numbers, and requests for digit counts that cannot produce a native-size
+prime will result in an error.
+For better performance with large digit counts, install L<Math::Prime::Util::GMP>.
 
 
 =head2 random_nbit_prime

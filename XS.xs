@@ -3347,7 +3347,9 @@ void random_ndigit_prime(IN SV* svdigits)
     UV digits;
   PPCODE:
     dstatus = _validate_and_set(&digits, aTHX_ svdigits, IFLAG_POS);
-    if (dstatus == 1 && digits <= uvmax_maxlen) {
+    if (dstatus != 1 || digits < 1 || digits > MAX_RANDOM_DIGITS)
+      croak("%s: digits must be between 1 and %"UVuf, SUBNAME, MAX_RANDOM_DIGITS);
+    if (digits <= uvmax_maxlen) {
       dMY_CXT;
       UV res = random_ndigit_prime(MY_CXT.randcxt, digits);
       if (res != 0) XSRETURN_UV(res);

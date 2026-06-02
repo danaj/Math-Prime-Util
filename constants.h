@@ -38,6 +38,8 @@
 #define MAX_RANDOM_BYTES        UVCONST(2147483646)
 /* Our chosen maximum for random prime / bits generation */
 #define MAX_RANDOM_BITS         UVCONST(4294967295)
+/* Maximum is identical for simplicity */
+#define MAX_RANDOM_DIGITS       MAX_RANDOM_BITS
 
 
 /* Small table of primes; 0,2,3,5,7,...   primes_small[n] is the nth prime.

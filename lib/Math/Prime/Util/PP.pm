@@ -43,6 +43,7 @@ BEGIN {
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
   use constant MAX_RANDOM_BITS => 4294967295;
+  use constant MAX_RANDOM_DIGITS => 4294967295;
 }
 
 # TODO: Change this whole file to use this / tobigint
@@ -13292,8 +13293,7 @@ sub random_prime {
 sub random_ndigit_prime {
   my($digits) = @_;
   validate_integer_nonneg($digits);
-  croak "random_ndigit_prime: digits must be >= 1" unless $digits >= 1;
-  croak "random_ndigit_prime: digits must fit in native signed integer" if $digits > SINTMAX;
+  croak "random_ndigit_prime: digits must be between 1 and ",MAX_RANDOM_DIGITS if $digits < 1 || $digits > MAX_RANDOM_DIGITS;
 
   return maybetobigint(Math::Prime::Util::GMP::random_ndigit_prime($digits))
     if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"}
