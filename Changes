@@ -90,6 +90,9 @@ Revision history for Perl module Math::Prime::Util
     - powint handles 0, 1, and -1 with very large exponents correctly.
       Only calls older GMP backends with native-sized exponents.
 
+    - Work around older GMP backends returning empty certificates for 32-bit
+      and smaller random Maurer/Shawe-Taylor primes.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

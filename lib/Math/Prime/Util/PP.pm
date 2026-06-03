@@ -13370,12 +13370,23 @@ sub is_provable_prime_with_cert {
   return Math::Prime::Util::PrimalityProving::primality_proof_bls75($n);
 }
 
+
+# random_proven_prime* uses Maurer's method.  Policy decision.
+
+sub random_proven_prime {
+  random_maurer_prime(@_);
+}
+sub random_proven_prime_with_cert {
+  random_maurer_prime_with_cert(@_);
+}
+
+
 sub random_maurer_prime_with_cert {
   my($bits) = @_;
   validate_integer_nonneg($bits);
   croak "random_maurer_prime_with_cert: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
 
-  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
+  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"} && $bits > 32) {
     my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
     return (maybetobigint($n), $cert);
   }
@@ -13389,32 +13400,13 @@ sub random_shawe_taylor_prime_with_cert {
   validate_integer_nonneg($bits);
   croak "random_shawe_taylor_prime_with_cert: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
 
-  if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"}) {
-    my($n,$cert) =Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
+  if ($Math::Prime::Util::_GMPfunc{"random_shawe_taylor_prime_with_cert"} && $bits > 32) {
+    my($n,$cert) = Math::Prime::Util::GMP::random_shawe_taylor_prime_with_cert($bits);
     return (maybetobigint($n), $cert);
   }
 
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_shawe_taylor_prime_with_cert($bits);
-}
-
-sub random_proven_prime_with_cert {
-  my($bits) = @_;
-  validate_integer_nonneg($bits);
-  croak "random_proven_prime_with_cert: bits must be between 2 and ",MAX_RANDOM_BITS if $bits < 2 || $bits > MAX_RANDOM_BITS;
-
-  # Go to Maurer with GMP
-  if ($Math::Prime::Util::_GMPfunc{"random_maurer_prime_with_cert"}) {
-    my($n,$cert) = Math::Prime::Util::GMP::random_maurer_prime_with_cert($bits);
-    return (maybetobigint($n), $cert);
-  }
-
-  require Math::Prime::Util::RandomPrimes;
-  return Math::Prime::Util::RandomPrimes::random_proven_prime_with_cert($bits);
-}
-
-sub random_proven_prime {
-  random_maurer_prime(@_);
 }
 
 sub random_maurer_prime {
