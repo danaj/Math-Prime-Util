@@ -62,7 +62,8 @@ my @partial_factor = Math::Prime::Util::PP::prho_factor(100199294509778143137521
 # in the XS subroutine callback code.  Perl 5.8.x [x < 8] will get lost
 # and just exit with no message.
 SKIP: {
-  skip "No MPU::GMP, skipping callback test",1 unless prime_get_config->{'gmp'};
+  skip "No XS/MPU::GMP, skipping callback test", 1
+    unless prime_get_config->{'xs'} && prime_get_config->{'gmp'};
   my $n = 10**1200+5226;
   my $expect = $n+1;
   is(next_prime($n), $expect, "next_prime(10^1200+5226) = 10^1200+5227");
