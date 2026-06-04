@@ -4,7 +4,7 @@ use warnings;
 use Carp qw/carp croak confess/;
 use Math::Prime::Util qw/is_prob_prime is_strong_pseudoprime
                          is_provable_prime_with_cert
-                         lucasvmod kronecker is_power
+                         lucasvmod kronecker is_power cmpint
                          factor
                          prime_get_config
                         /;
@@ -21,6 +21,7 @@ BEGIN {
 
 my $_smallval = Math::BigInt->new("18446744073709551615");
 my $_maxint = Math::BigInt->new( (~0 > 4294967296 && $] < 5.008) ? "562949953421312" : ''.~0 );
+my $_cached_xs_factor_limit;
 
 
 ###############################################################################
@@ -41,6 +42,15 @@ my @_fsublist = (
   sub { Math::Prime::Util::PP::ecm_factor    (shift, 1_000_000, 1_000_000, 20)},
   sub { Math::Prime::Util::PP::pminus1_factor(shift, 100_000_000, 500_000_000)},
 );
+
+sub _get_xs_factor_limit {
+  return $_cached_xs_factor_limit if defined $_cached_xs_factor_limit;
+
+  my $xsbits = prime_get_config->{'xs'} ? prime_get_config->{'xs_factor_bits'} : 0;
+  return ($_cached_xs_factor_limit = 0) unless $xsbits;
+
+  $_cached_xs_factor_limit = Math::BigInt->new(1)->blsft($xsbits)->bdec;
+}
 
 sub _small_cert {
   my $n = shift;
@@ -169,9 +179,15 @@ sub primality_proof_bls75 {
     $m = int($m->bstr) if ref($m) eq 'Math::BigInt' && $m <= $_maxint;
     # Try to find factors of m, using the default set of factor subs.
     my @ftry;
-    foreach my $sub (@_fsublist) {
-      @ftry = $sub->($m);
-      last if scalar @ftry >= 2;
+    my $xslimit = _get_xs_factor_limit();
+    if ($xslimit && cmpint($m, $xslimit) <= 0) {
+      # If m is small enough for us to completely factor in XS, that will be faster.
+      @ftry = factor("$m");
+    } else {
+      foreach my $sub (@_fsublist) {
+        @ftry = $sub->($m);
+        last if scalar @ftry >= 2;
+      }
     }
     # If we couldn't find a factor, skip it.
     next unless scalar @ftry > 1;
