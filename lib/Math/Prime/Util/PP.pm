@@ -7210,7 +7210,7 @@ sub is_polygonal {
   return 0 if $n < 0;
   if ($n <= 1) { $$refp = $n if defined $refp; return 1; }
 
-  if ($Math::Prime::Util::_GMPfunc{"polygonal_nth"}) {
+  if ($Math::Prime::Util::_GMPfunc{"polygonal_nth"} && !ref($k)) {
     my $nth = Math::Prime::Util::GMP::polygonal_nth($n, $k);
     return 0 unless $nth;
     $$refp = maybetobigint($nth) if defined $refp;
@@ -11050,22 +11050,11 @@ sub fermat_factor {
 
 sub _factor_ecm {
   my($n, $B1, $B2, $ncurves) = @_;
+  croak "_factor_ecm internal error: parameter not defined"
+    unless defined $n && defined $B1 && defined $B2 && defined $ncurves;
 
   $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
 
-  $ncurves = 10 unless defined $ncurves;
-
-  if (!defined $B1) {
-    for my $mul (1, 10, 100, 1000, 10_000, 100_000, 1_000_000) {
-      $B1 = 100 * $mul;
-      $B2 = 10*$B1;
-      my @nf = _factor_ecm($n, $B1, $B2, $ncurves);
-      return @nf if @nf > 1;
-    }
-    return ($n);
-  }
-
-  $B2 = 10*$B1 unless defined $B2 && $B2 > 0;
   croak "ecm_factor: B1 must fit in native signed integer" if $B1 > SINTMAX;
   croak "ecm_factor: B2 must fit in native signed integer" if $B2 > SINTMAX;
   croak "ecm_factor: ncurves must fit in native signed integer" if $ncurves > SINTMAX;
@@ -11229,12 +11218,15 @@ sub ecm_factor {
   validate_integer_nonneg($B1) if defined $B1;
   validate_integer_nonneg($B2) if defined $B2;
   validate_integer_nonneg($ncurves) if defined $ncurves;
+  croak "ecm_factor: B1 must be specified if B2 is specified"
+    if !defined $B1 && defined $B2;
+
   canonicalize_integers(\$n);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
 
-  if ($Math::Prime::Util::_GMPfunc{"ecm_factor"}) {
+  if ($Math::Prime::Util::_GMPfunc{"ecm_factor"} && !ref($B1) && !ref($ncurves)) {
     $B1 = 0 if !defined $B1;
     $ncurves = 0 if !defined $ncurves;
     my @ef = Math::Prime::Util::GMP::ecm_factor($n, $B1, $ncurves);
@@ -11249,6 +11241,20 @@ sub ecm_factor {
     }
     return (@f, $n);
   }
+
+  $ncurves = 10 unless defined $ncurves;
+
+  if (!defined $B1) {
+    for my $mul (1, 10, 100, 1000, 10_000, 100_000, 1_000_000) {
+      my $try_b1 = 100 * $mul;
+      my $try_b2 = 10 * $try_b1;
+      my @factors = _factor_ecm($n, $try_b1, $try_b2, $ncurves);
+      return (@f,@factors) if @factors > 1;
+    }
+    return (@f, $n);
+  }
+
+  $B2 = 10*$B1 unless defined $B2 && $B2 > 0;
   (@f, _factor_ecm($n, $B1, $B2, $ncurves));
 }
 

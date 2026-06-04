@@ -3973,6 +3973,8 @@ trial_factor(IN SV* svn, ...)
        {0,     64000000, 8000000, 4000000, 1,   4000000, 0,    200, 4000000, 1000000, 4000};
      /* Trial, Fermat,   Holf,    SQUFOF,  Lmn, PRHO,    Cheb, P+1, Brent,    P-1,    ECM64 */
   PPCODE:
+    if (ix == 10 && items > 2 && !SvOK(ST(1)) && SvOK(ST(2)))
+      croak("ecm_factor: B1 must be specified if B2 is specified");
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     if (items > 1) a1status=_validate_and_set(&arg1, aTHX_ ST(1), IFLAG_NONNEG);
     else           { a1status = 1; arg1 = default_arg1[ix]; }
