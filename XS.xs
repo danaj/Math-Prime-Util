@@ -299,9 +299,6 @@ static const gmp_info_t gmp_info[] = {
 
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },
-#if 0
-  {                   "primes",  4, 1, R_AREF }, /* objectify ARREF */
-#endif
 
   {           "powerful_count", 53, 1, R_BIGINT },
   {          "powerfree_count", 53, 1, R_BIGINT },
@@ -319,6 +316,9 @@ static const gmp_info_t gmp_info[] = {
 
   {                 "bernfrac", 24, 2, R_BIGINT },
   {                 "harmfrac", 30, 2, R_BIGINT },
+
+  {                   "primes", 54, 1, R_AREF },
+  {              "twin_primes", 54, 1, R_AREF },
 
   /* if the input is already a bigint type, we want to use that */
   /* {                "factorial", 24, 1, R_BIGINT }, */
@@ -442,6 +442,7 @@ static void forsetproduct_guard_cleanup(pTHX_ void *arg) {
 static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask);
 static SV* xs_to_bigint(pTHX_ SV* r);
 static SV* xs_to_canonical(pTHX_ SV* sv);
+static void xs_aref_to_canonical(pTHX_ SV* aref, const char* name);
 
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
@@ -1111,10 +1112,16 @@ static NOINLINE int dispatch_external(pTHX_ const CV* thiscv, I32 ax,
   nret = _vcallsubn(aTHX_ context, callflags, name, nitems, ver, &used);
 
   /* PP handles its own return policy.  Normalize GMP bigint returns here. */
-  if (used == VCALL_USED_GMP && ginfoi >= 0 && gmp_info[ginfoi].rettype == R_BIGINT) {
-    for (i = 0; i < nret; i++) {
-      SV* out = xs_to_canonical(aTHX_ PL_stack_base[ax + i]);
-      PL_stack_base[ax + i] = out;
+  if (used == VCALL_USED_GMP && ginfoi >= 0) {
+    if (gmp_info[ginfoi].rettype == R_BIGINT) {
+      for (i = 0; i < nret; i++) {
+        SV* out = xs_to_canonical(aTHX_ PL_stack_base[ax + i]);
+        PL_stack_base[ax + i] = out;
+      }
+    } else if (gmp_info[ginfoi].rettype == R_AREF) {
+      if (nret != 1)
+        croak("internal error: %s returned %d values, expected 1 array reference", name, nret);
+      xs_aref_to_canonical(aTHX_ PL_stack_base[ax], name);
     }
   }
 
@@ -1263,6 +1270,20 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
   /* We can't understand the input.  Return it unchanged. */
   croak("Invalid bigint result");
   return sv;
+}
+
+static void xs_aref_to_canonical(pTHX_ SV* aref, const char* name) {
+  SV *elem, *out;
+  Size_t i;
+  DECL_ARREF(input);
+
+  USE_ARREF(input, aref, name, AR_WRITE);
+  for (i = 0; i < len_input; i++) {
+    elem = FETCH_ARREF(input,i);
+    out = xs_to_canonical(aTHX_ elem);
+    if (out != elem)
+      sv_setsv(elem, out);
+  }
 }
 
 static SV* xs_to_bigint(pTHX_ SV* r) {
@@ -1769,28 +1790,13 @@ void _canonicalized_integer(SV* svn)
 
 void _canonicalize_integers(SV* svr)
   PREINIT:
-    SV *target, *elem, *out;
-    Size_t i;
-    DECL_ARREF(input);
+    SV *target, *out;
   PPCODE:
     if (!SvROK(svr))
       croak("_canonicalize_integers: expected scalar or array reference");
     target = SvRV(svr);
     if (SvTYPE(target) == SVt_PVAV) {
-      USE_ARREF(input, svr, "_canonicalize_integers", AR_WRITE);
-      for (i = 0; i < len_input; i++) {
-        if (svarr_input) {
-          if (!svarr_input[i]) continue;
-          elem = svarr_input[i];
-        } else {
-          SV** svp = av_fetch(avp_input, (SSize_t)i, 0);
-          if (!svp || !*svp) continue;
-          elem = *svp;
-        }
-        out = xs_to_canonical(aTHX_ elem);
-        if (out != elem)
-          sv_setsv(elem, out);
-      }
+      xs_aref_to_canonical(aTHX_ svr, "_canonicalize_integers");
     } else if (xs_is_sv_scalar_ref(svr)) {
       out = xs_to_canonical(aTHX_ target);
       if (out != target)
@@ -2043,9 +2049,18 @@ void primes(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     AV* av;
     UV lo = 0, hi, i;
+    int lostatus = 1, histatus = 0;
+    bool native_ok = FALSE;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
-        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
+    if (items == 1) {
+      histatus = _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG);
+      native_ok = histatus != 0;
+    } else if (items == 2) {
+      lostatus = _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG);
+      histatus = _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG);
+      native_ok = lostatus != 0 && histatus != 0;
+    }
+    if (native_ok) {
       CREATE_RETURN_AV(av);
       if ((lo <= 2) && (hi >= 2)) av_push(av, newSVuv( 2 ));
       if ((lo <= 3) && (hi >= 3)) av_push(av, newSVuv( 3 ));

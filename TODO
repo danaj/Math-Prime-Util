@@ -31,6 +31,10 @@
 
 - Rewrite 23-primality-proofs.t for new format (keep some of the old tests?).
 
+- Research: create random proven prime method using ECPP blocks.
+
+- Use BLS5 in PrimalityProving.pm for random_maurer_prime
+
 - Consider using Test::Number::Delta for many tests
 
 - More tweaking of LMO prime count.
@@ -91,6 +95,8 @@
 - surround_primes
 
 - More Montgomery: znlog, catalan
+
+- Generic 64-bit montgomery
 
 - polymul, polyadd, polydiv, polyneg, polyeval, polyorder, polygcd, polylcm, polyroots, ...
   A lot of our ops do these mod n, we could make ..mod versions of each.
@@ -174,8 +180,6 @@
 
 - In theory IFLAG_ABS in _validate_and_set should allow up to neg(~0).
   Looks a bit messy but possible.
-
-- euler_phi should do XS -> GMP directly.  Maybe make totient in PP for uniform name.
 
 - Make prime_omega, prime_bigomega, and liouville take a range like moebius.
 
@@ -393,18 +397,6 @@ OEIS lucky numbers:
   See about moving more GMP related things to that file.
   If/when the GMP backend finally does objects, remove it all.
 
-- Expand the GMP inputs so we can dispach these:
-  - is_frobenius_pseudoprime: GMP only if P,Q validated native.
-  - lucas_sequence: same P,Q native restriction.
-  - is_power, is_prime_power, is_polygonal: GMP only when no root/reference.
-  - random_ndigit_prime: GMP only for non-native digit or max-native edge cases.
-  - urandomr: GMP only for non-negative bounds.
-  - factorialmod: GMP only for native non-negative a.
-  - logint: GMP only when no third return-ref is requested.
-  - stirling: GMP only for native n,m.
-  - binomial, multifactorial: GMP only for argument shapes GMP can handle.
-  - fromdigits: currently explicitly blocks GMP, GMP needs full support.
-
 - faster next_prime_power / prev_prime_power?
 - PP next_prime_power, prev_prime_power: skip evens.
 
@@ -443,7 +435,7 @@ OEIS lucky numbers:
   https://arxiv.org/pdf/1806.06250.pdf
   https://www.researchgate.net/publication/367529395_Primes_knots_and_periodic_orbits
   (p,q,r), each 1 mod 4, (p|q)=(p|r)=(q|r)=1, [p,q,r]=-1
-  Really not clear how we would do this.
+  See misc/borromean-primes.pl
 
 - cornacchia negative d?
 
@@ -680,23 +672,16 @@ OEIS lucky numbers:
 
 - is_semiprime using 128-bit factoring.  Other things that could?
 
-- GMP dispatch missing:
-    Pi
-    primes
-
-- PP.pm, iterators in for... need eval wrapping so _end_for_loop always happens.
-
 - Move some set op logic from XS.xs to xs_set.c
 
 - srand should perhaps do better input parsing.
 
 - put the secure_bzero somewhere to export.  We use it in 3 files.
 
-- ensure we Safefree before croaks in XS.
+- Destructors for XS iterators, to cleanup before croak.
 
 - permtonum better algorithm (maybe for GMP).
 - numtoperm performance.  Maybe split native/all-bigint.
-- GMP fromdigits needs to accept negatives and croak on array holes
 
 - vecuniq XS should use SVNUMTEST instead of validate.  Optimistically use the
   iset.  If we failed that, fall through to the generic hash code.
@@ -718,4 +703,21 @@ OEIS lucky numbers:
 - floor_sum:
   sum_{i=0..n-1} floor((a*i+b)/m)
 
-- binomial should dispatch 0.53+ (older only positive 32-bit args)
+- factor_light(n) [rethink the name], where it's like factor but some
+  values might be composite.  The idea is to spend a very little time
+  to find small factors.  Maybe we want a difficulty setting but I wouldn't
+  go too far there.  Perhaps just "very light", "light", "mild" or even just
+  "very light" and "mild" as the choices.  I don't think we can safely do it
+  in this code, but we could imagine a "time limit" argument.
+
+- GMP using ChaCha20.  See misc/gmp-using-chacha-plan.txt.
+
+- Widen GMP's sieve_range for dispatch.
+
+- Adjust logic in XS sieve_range.  Move to SV's.
+
+- dispatch_external R_FLOAT support:  add R_FLOAT type, dispatch_external
+  calls xs_to_float to do _update_to_float on result.
+  = Pi, bernreal, harmreal, li, ei, riemannr, lambertw
+  RiemannZeta cannot be directly done
+  Naming conversions will be an issue

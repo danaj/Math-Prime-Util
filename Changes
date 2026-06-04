@@ -146,6 +146,9 @@ Revision history for Perl module Math::Prime::Util
 
     - znorder(a, p^e) is much faster for large prime powers p^e.
 
+    - primes() and twin_primes() can directly dispatch from XS to GMP with
+      the GMP 0.54 back end.  This can give a modest speedup.
+
 
 0.74 2026-03-13
 
