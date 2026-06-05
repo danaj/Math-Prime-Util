@@ -2915,17 +2915,18 @@ bool is_rough(UV n, UV k) {
   /* True if no prime factors of n are smaller than k. */
 
   if (n == 0) return (k == 0);
-  if (n == 1) return 1;
-  /* n >= 2 */
-  if (k <= 1) return 1;
-  if (k == 2) return (n >= 1);
-  if (k == 3) return (n > 1 && (n&1));
+  if (n == 1 || k <= 1) return 1;
+  if (k > n)  return 0;
+  if (k == 2) return 1;
+  if (k == 3) return n & 1;
   /* k >= 4 */
 
   if (!(n&1)) return 0;
   if (!(n%3)) return 0;
   if (k <= 5) return 1;
   if (!(n%5)) return 0;
+
+  if (k > isqrt(n)) return is_prime(n);
 
   if (k <= 2500) {
     nfac = trial_factor(n, fac, 7, k);
