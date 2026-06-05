@@ -93,6 +93,9 @@ Revision history for Perl module Math::Prime::Util
     - Work around older GMP backends returning empty certificates for 32-bit
       and smaller random Maurer/Shawe-Taylor primes.
 
+    - sieve_range width and depth are validated as native unsigned integers,
+      and the depth 0/1 behavior of omitting 0 and 1 is now documented.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

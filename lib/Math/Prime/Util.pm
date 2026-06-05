@@ -1769,9 +1769,10 @@ A fast upper limit on the count of Ramanujan primes under C<n>.
 
   my @candidates = sieve_range(2**1000, 10000, 40000);
 
-Given a start value C<n>, and native unsigned integers C<width> and C<depth>,
-a sieve of maximum depth C<depth> is done for the C<width> consecutive
-numbers beginning with C<n>.  An array of offsets from the start is returned.
+Given a non-negative start value C<n>, and native unsigned integers C<width>
+and C<depth>, a sieve of maximum depth C<depth> is done for the C<width>
+consecutive numbers beginning with C<n>.  An array of offsets from the start
+is returned.  C<width> and C<depth> must fit in a native unsigned integer.
 
 The returned list contains those offsets in the range C<n> to C<n+width-1>
 where C<n + offset> has no prime factors smaller than itself and
@@ -1779,6 +1780,8 @@ less than or equal to C<depth>.  Hence a depth of 2 will remove all even
 numbers (other than 2 itself if it is in the range).
 A depth of 3 will remove all numbers divisible by 2 or 3 other than those
 primes themselves.
+Offsets for values 0 and 1 are never returned.  Hence with a depth of 0 or 1,
+no divisibility sieving is done, but values below 2 are still omitted.
 
 
 =head2 sieve_prime_cluster

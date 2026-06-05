@@ -848,6 +848,9 @@ sub sieve_range {
   validate_integer_nonneg($n);
   validate_integer_nonneg($width);
   validate_integer_nonneg($depth);
+  croak "sieve_range: width must fit in native unsigned integer" if ref($width);
+  croak "sieve_range: depth must fit in native unsigned integer" if ref($depth);
+  return if $width == 0;
 
   my @candidates;
   my $start = $n;

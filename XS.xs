@@ -2233,25 +2233,34 @@ void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
     }
     DISPATCHPP_RETURN();
 
-void
-sieve_range(IN SV* svn, IN UV width, IN UV depth)
+void sieve_range(IN SV* svn, IN SV* svwidth, IN SV* svdepth)
   PREINIT:
     int status;
-    UV i, n;
+    UV n, width, depth, i, lo, hi;
   PPCODE:
     /* Return index of every n unless it is a composite with factor > depth */
+    if (_validate_and_set(&width, aTHX_ svwidth, IFLAG_NONNEG) != 1)
+      croak("sieve_range: width must fit in native unsigned integer");
+    if (_validate_and_set(&depth, aTHX_ svdepth, IFLAG_NONNEG) != 1)
+      croak("sieve_range: depth must fit in native unsigned integer");
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
-    if (status == 1) {
-      if ((n+width) < n) {
-        status = 0;   /* range will overflow */
-      } else { /* TODO: actually sieve */
-        for (i = (n<2)?2-n:0; i < width; i++)
-          if (is_rough(n+i, (depth+1) >= (n+i) ? n+i : depth+1))
-            XPUSHs(sv_2mortal(newSVuv( i )));
-      }
-    }
-    if (status != 1) {
+    if (width == 0) XSRETURN_EMPTY;
+    if (status != 1 || n > UV_MAX-(width-1))
       DISPATCHPP_RETURN();
+    lo = (n<2) ? 2 : n;
+    hi = n + width - 1;
+    if (depth >= isqrt(hi)) {
+      UV *P;
+      UV np = range_prime_sieve(&P, lo, hi);
+      for (i = 0; i < np; i++)
+        XPUSHs(sv_2mortal(newSVuv(P[i] - n)));
+      Safefree(P);
+    } else {
+      for (i = lo; i <= hi; i++) {
+        if (is_rough(i, depth >= i ? i : depth+1))
+          XPUSHs(sv_2mortal(newSVuv( i - n )));
+        if (i == hi) break;
+      }
     }
 
 void
