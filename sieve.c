@@ -12,6 +12,7 @@
 #include "primality.h"
 #include "montmath.h"
 #include "prime_counts.h"
+#include "legendre_phi.h"
 
 /* Is it better to do a partial sieve + primality tests vs. full sieve? */
 static bool do_partial_sieve(UV startp, UV endp) {
@@ -154,6 +155,16 @@ static UV sieve_prefill(unsigned char* mem, UV startd, UV endd)
   return vnext_prime;
 }
 
+/* This preps the sieve but doesn't pre-sieve anything */
+static UV sieve_clrfill(unsigned char* mem, UV startd, UV endd)
+{
+  UV nbytes = endd - startd + 1;
+  memset(mem, 0, nbytes);
+  if (startd == 0) mem[0] = 0x01; /* remove 1 */
+  return 7;
+}
+
+
 /* Marking primes is done the same way we used to do with tables, but
  * now uses heavily unrolled code based on Kim Walisch's mod-30 sieve.
  */
@@ -268,11 +279,14 @@ static void _primality_test_sieve(unsigned char* mem, UV startp, UV endp) {
 }
 static void _sieve_range(unsigned char* mem, const unsigned char* sieve, UV startd, UV endd, UV limit) {
   UV startp = 30*startd;
-  UV start_base_prime = sieve_prefill(mem, startd, endd);
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, start_base_prime, limit) { /* Sieve */
-    wheel_t w = create_wheel(startp, p);
-    mark_primes(mem, endd-startd+1, &w);
-  } END_DO_FOR_EACH_SIEVE_PRIME;
+  UV start_base_prime = limit >= 13 ? sieve_prefill(mem, startd, endd)
+                                    : sieve_clrfill(mem, startd, endd);
+  if (start_base_prime <= limit) {
+    START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, start_base_prime, limit) {
+      wheel_t w = create_wheel(startp, p);
+      mark_primes(mem, endd-startd+1, &w);
+    } END_DO_FOR_EACH_SIEVE_PRIME;
+  }
 }
 
 bool sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth)
@@ -280,7 +294,7 @@ bool sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth)
   const unsigned char* sieve;
   UV startp = 30*startd,  endp = (endd >= (UV_MAX/30)) ? UV_MAX-2 : 30*endd+29;
   UV limit = isqrt(endp);
-  MPUassert(mem != 0 && endd >= startd && endp >= startp && depth >= 13,
+  MPUassert(mem != 0 && endd >= startd && endp >= startp && depth >= 5,
             "sieve_segment_partial bad arguments");
   /* limit = min( sqrt(end), max-64-bit-prime, requested depth ) */
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
@@ -560,4 +574,50 @@ uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset)
   while (P[i-1] > n)  i--;  /* Truncate the count if necesssary. */
   *list = P;
   return i-offset;          /* Returns number of primes, excluding offset */
+}
+
+UV range_partial_sieve(UV** list, UV lo, UV hi, UV depth)
+{
+  UV *P, i = 0, j, n, count, dlo, dhi, base, k;
+  unsigned char *mem;
+
+  if (hi < lo || hi < 2) { *list = 0; return 0; }
+  if (lo < 2) lo = 2;
+
+  /* At this depth, all surviving candidates are primes. */
+  if (depth >= isqrt(hi) || depth >= max_sieve_prime)
+    return range_prime_sieve(list, lo, hi);
+
+  k = prime_count(depth > 47 ? 47 : depth);
+  count = legendre_phi(hi,k) - legendre_phi(lo-1,k) + k;
+  New(0, P, count, UV);
+
+  if (depth >= 2 && lo <= 2 && hi >= 2) { P[i++] = 2; lo = 3; }
+  if (depth >= 3 && lo <= 3 && hi >= 3) { P[i++] = 3; lo = 5; }
+  if (depth >= 5 && lo <= 5 && hi >= 5) { P[i++] = 5; lo = 7; }
+
+  if (depth < 2) {
+    for (j = 0; j <= hi-lo; j++)
+      P[i++] = lo+j;
+  } else if (depth < 5) {
+    for (n = lo | 1; n <= hi; n += 2) {
+      if (depth == 2 || (n % 3))  P[i++] = n;
+      if (hi-n < 2) break;
+    }
+  } else {
+    dlo = lo / 30;
+    dhi = hi / 30;
+    base = 30 * dlo;
+    /* Make sure the last word is zeroed.  Overkill here. */
+    Newz(0, mem, dhi - dlo + 1 + sizeof(UV), unsigned char);
+
+    sieve_segment_partial(mem, dlo, dhi, depth);
+    START_DO_FOR_EACH_SIEVE_PRIME(mem, base, lo, hi)
+      P[i++] = p;
+    END_DO_FOR_EACH_SIEVE_PRIME
+    Safefree(mem);
+  }
+
+  *list = P;
+  return i;
 }

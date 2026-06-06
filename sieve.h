@@ -14,6 +14,10 @@ extern void end_segment_primes(void* vctx);
 
 /* Generate primes P[0] = 2, P[1] = 3, P[2] = 5, .... */
 extern UV range_prime_sieve(UV** list, UV lo, UV hi);
+/* Generate sorted candidates in [lo,hi] that survive sieving to depth.
+ * Caller owns the returned list and must Safefree it.
+ */
+extern UV range_partial_sieve(UV** list, UV lo, UV hi, UV depth);
 
 /* Generate 32-bit primes up to n.
  * The first <offset> entries will be zero, followed by 2, 3, 5, 7, 11, ...
