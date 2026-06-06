@@ -113,6 +113,9 @@ Revision history for Perl module Math::Prime::Util
 
     - urandomm is up to 5x faster without GMP.
 
+    - sieve_range in XS uses a partial sieve.  It can be 10x or more faster
+      for large native ranges and moderate depths.
+
     - Tightened prime count bounds (upper/lower) using Dusart 2018 and
       Axler 2022.  Thanks to Pierre Dusart for sending me a copy of his paper.
 

@@ -2236,7 +2236,7 @@ void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
 void sieve_range(IN SV* svn, IN SV* svwidth, IN SV* svdepth)
   PREINIT:
     int status;
-    UV n, width, depth, i, lo, hi;
+    UV n, width, depth, lo, hi, *P, np, i;
   PPCODE:
     /* Return index of every n unless it is a composite with factor > depth */
     if (_validate_and_set(&width, aTHX_ svwidth, IFLAG_NONNEG) != 1)
@@ -2249,19 +2249,11 @@ void sieve_range(IN SV* svn, IN SV* svwidth, IN SV* svdepth)
       DISPATCHPP_RETURN();
     lo = (n<2) ? 2 : n;
     hi = n + width - 1;
-    if (depth >= isqrt(hi)) {
-      UV *P;
-      UV np = range_prime_sieve(&P, lo, hi);
-      for (i = 0; i < np; i++)
-        XPUSHs(sv_2mortal(newSVuv(P[i] - n)));
-      Safefree(P);
-    } else {
-      for (i = lo; i <= hi; i++) {
-        if (is_rough(i, depth >= i ? i : depth+1))
-          XPUSHs(sv_2mortal(newSVuv( i - n )));
-        if (i == hi) break;
-      }
-    }
+    np = range_partial_sieve(&P, lo, hi, depth);
+    EXTEND(SP, (EXTEND_TYPE)np);
+    for (i = 0; i < np; i++)
+      PUSHs(sv_2mortal(newSVuv(P[i] - n)));
+    Safefree(P);
 
 void
 sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
