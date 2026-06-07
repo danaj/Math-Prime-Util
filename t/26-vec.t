@@ -314,10 +314,14 @@ subtest 'vecuniq', sub {
 
   is_deeply([vecuniq()], [], "vecuniq with empty input returns empty");
   is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
+  is_deeply([vecuniq("2","02","2","02")], ["2","02"], "vecuniq preserves string semantics");
+  is(2, scalar(vecuniq("2","02","2","02")), "vecuniq scalar count preserves string semantics");
   is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
   is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
   eval { vecuniq(undef,1,2) };
   like($@, qr/defined/, "vecuniq rejects undef");
+  eval { vecuniq("a",undef) };
+  like($@, qr/defined/, "vecuniq rejects undef after generic value");
 
   is_deeply([vecuniq(~0,-1)],[~0,-1],"vecuniq with UV_MAX and -1");
 };

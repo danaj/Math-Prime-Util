@@ -127,8 +127,6 @@
   also see:
   https://github.com/int128-libraries/curtint128/blob/master/include/cuda_uint128.h
 
-- sieve_range does trial division
-
 - srand with no args should be calling GMP's srand with the selected seed
   value.  This is all a hacky artifact of having the two codebases.
 
@@ -683,10 +681,6 @@ OEIS lucky numbers:
 - permtonum better algorithm (maybe for GMP).
 - numtoperm performance.  Maybe split native/all-bigint.
 
-- vecuniq XS should use SVNUMTEST instead of validate.  Optimistically use the
-  iset.  If we failed that, fall through to the generic hash code.
-  Modify the docs to indicate we are generic.
-
 - PP.pm uses 'defined $x' for optional variables, while it really should be
   looking at scalar(@_) instead.  Right now we take undef = default.
 
@@ -711,10 +705,6 @@ OEIS lucky numbers:
   in this code, but we could imagine a "time limit" argument.
 
 - GMP using ChaCha20.  See misc/gmp-using-chacha-plan.txt.
-
-- Widen GMP's sieve_range for dispatch.
-
-- Adjust logic in XS sieve_range.  Move to SV's.
 
 - dispatch_external R_FLOAT support:  add R_FLOAT type, dispatch_external
   calls xs_to_float to do _update_to_float on result.

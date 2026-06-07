@@ -7856,70 +7856,74 @@ PPCODE:
 void vecuniq(...)
   PROTOTYPE: @
   PREINIT:
-    iset_t s;
-    int addret, status, retvals;
+    int typemask, retvals;
     SSize_t j;
-    UV n;
-    unsigned long sz, nret;
   PPCODE:
     retvals = (GIMME_V != G_SCALAR && GIMME_V != G_VOID);
-    s = iset_create((size_t)items);
-    for (status = 1, nret = 0, j = 0; status != 0 && j < items; j++) {
-      status = _validate_and_set(&n, aTHX_ ST(j), IFLAG_ANY);
-      if (status == 0) break;
-      addret = iset_add(&s, n, status);
-      if (iset_sign(s) == 0)
-        status = 0;
-      if (addret && retvals) {
-        PUSHs(sv_2mortal(NEWSVINT(status,n)));
-        nret++;
-      }
+
+    /* Check all inputs to see if we can quickly process as an iset. */
+    for (j = 0, typemask = 0; j < items; j++) {
+      SV *sv = ST(j);
+      SvGETMAGIC(sv);
+      if (!SvOK(sv) || !SVNUMTEST(sv))
+        break;
+      if ((UV)SvIVX(sv) > (UV)IV_MAX)
+        typemask |= (SvIsUV(sv) ? ISET_TYPE_UV : ISET_TYPE_IV);
+      if (typemask == ISET_TYPE_INVALID)
+        break;
     }
-    sz = iset_size(s);
-    iset_destroy(&s);
-    if (status != 0 && retvals) {
-      if (nret != sz)croak("vecuniq: iset %lu items, pushed %lu items",sz,nret);
+
+    /* 2. Use an iset if possible. */
+    if (j >= items) {
+      iset_t s = iset_create((size_t)items);
+      size_t sz, nret = 0;
+      for (j = 0, nret = 0; j < items; j++) {
+        SV *sv = ST(j);
+        UV n = (UV)SvIVX(sv);
+        int nsign = (SvIsUV(sv) || SvIVX(sv) >= 0)  ?  1  :  -1;
+        if (iset_add(&s, n, nsign) && retvals) {
+          PUSHs(ST(j));
+          nret++;
+        }
+      }
+      if (iset_sign(s) == 0) {
+        iset_destroy(&s);
+        croak("vecuniq: iset failure");
+      }
+      sz = iset_size(s);
+      iset_destroy(&s);
+      if (!retvals)
+        XSRETURN_UV(sz);
+      if (nret != sz)
+        croak("vecuniq: iset %lu items, pushed %lu items", (unsigned long)sz, (unsigned long)nret);
       XSRETURN(nret);
-    } else if (status != 0) {
-      ST(0) = sv_2mortal(newSVuv(sz));
-      XSRETURN(1);
-    } else {
-      /* This is 100% from List::MoreUtils::XS by Parseval and Rehsack */
-      I32 i;
-      IV count = 0, seen_undef = 0;
+    }
+    /* 3. The generic Perl hash method */
+    {
+      /* Based on List::MoreUtils::XS by Parseval and Rehsack */
+      UV count = 0;
       HV *hv = newHV();
       SV **args = &PL_stack_base[ax];
       SV *tmp = sv_newmortal();
       sv_2mortal(newRV_noinc((SV*)hv));
 
-      if (GIMME_V == G_SCALAR) { /* don't build return list if not needed */
-        for (i = 0; i < items; i++) {
-          SvGETMAGIC(args[i]);
-          if (SvOK(args[i])) {
-            sv_setsv_nomg(tmp, args[i]);
-            if (!hv_exists_ent(hv, tmp, 0)) {
-              ++count;
-              hv_store_ent(hv, tmp, &PL_sv_yes, 0);
-            }
-          } else if (0 == seen_undef++)
-            ++count;
+      for (j = 0; j < items; j++) {
+        SvGETMAGIC(args[j]);
+        if (!SvOK(args[j]))
+          croak("vecuniq: all values must be defined");
+
+        if (retvals) SvSetSV_nosteal(tmp, args[j]);
+        else         sv_setsv_nomg(tmp, args[j]);
+
+        if (!hv_exists_ent(hv, tmp, 0)) {
+          if (retvals) args[count] = args[j];
+          count++;
+          hv_store_ent(hv, tmp, &PL_sv_yes, 0);
         }
-        ST(0) = sv_2mortal(newSVuv(count));
-        XSRETURN(1);
       }
-      /* list context: populate SP with mortal copies */
-      for (i = 0; i < items; i++) {
-        SvGETMAGIC(args[i]);
-        if (SvOK(args[i])) {
-          SvSetSV_nosteal(tmp, args[i]);
-          if (!hv_exists_ent(hv, tmp, 0)) {
-            args[count++] = args[i];
-            hv_store_ent(hv, tmp, &PL_sv_yes, 0);
-          }
-        } else if (0 == seen_undef++)
-          args[count++] = args[i];
-      }
-      XSRETURN(count);
+      if (retvals)
+        XSRETURN(count);
+      XSRETURN_UV(count);
     }
 
 void vecfreq(...)

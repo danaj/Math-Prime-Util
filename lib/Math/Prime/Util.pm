@@ -3471,17 +3471,13 @@ These are equivalent:
 
   my @vec = vecuniq(1,2,3,2,-10,-100,1);  # returns (1,2,3,-10,-100)
 
-Given an array of integers, returns an array with all duplicate entries
+Given a list of defined values, returns a list with duplicate entries
 removed.  The original ordering is preserved.  All values B<must> be defined.
 
-This is similar to L<List::Util::uniqint> (the integer comparison version
-of L<List::Util::uniq>).
-Unlike the more generic L<List::Util::uniq> and L<List::MoreUtils::XS::uniq>,
-all inputs must be integers.
-With native integers, our function is 2-10x faster.
-
-Currently the Pure Perl code does not require integer input.
-A later release might relax the integer requirement.
+Values are compared using Perl string/hash semantics, similar to
+L<List::Util::uniq> and L<List::MoreUtils::XS::uniq>.  For example,
+C<"2"> and C<"02"> are distinct values.
+Native integer inputs use a fast path that can be up to 10x faster.
 
 =head2 vecfreq
 
