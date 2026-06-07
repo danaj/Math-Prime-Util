@@ -277,6 +277,7 @@ static void _primality_test_sieve(unsigned char* mem, UV startp, UV endp) {
       mem[p/30] |= masktab30[p%30];  /* mark the sieve location.       */
   } END_DO_FOR_EACH_SIEVE_PRIME;
 }
+
 static void _sieve_range(unsigned char* mem, const unsigned char* sieve, UV startd, UV endd, UV limit) {
   UV startp = 30*startd;
   UV start_base_prime = limit >= 13 ? sieve_prefill(mem, startd, endd)
@@ -289,20 +290,19 @@ static void _sieve_range(unsigned char* mem, const unsigned char* sieve, UV star
   }
 }
 
-bool sieve_segment_partial(unsigned char* mem, UV startd, UV endd, UV depth)
+static void _sieve_partial(unsigned char* mem, UV startd, UV endd, UV depth)
 {
   const unsigned char* sieve;
   UV startp = 30*startd,  endp = (endd >= (UV_MAX/30)) ? UV_MAX-2 : 30*endd+29;
   UV limit = isqrt(endp);
   MPUassert(mem != 0 && endd >= startd && endp >= startp && depth >= 5,
-            "sieve_segment_partial bad arguments");
+            "_sieve_partial bad arguments");
   /* limit = min( sqrt(end), max-64-bit-prime, requested depth ) */
   if (limit > max_sieve_prime)  limit = max_sieve_prime;
   if (limit > depth)  limit = depth;
-  get_prime_cache(limit, &sieve);                      /* Get sieving primes  */
+  get_prime_cache(limit, &sieve);                /* Get sieving primes  */
   _sieve_range(mem, sieve, startd, endd, limit);
   release_prime_cache(sieve);
-  return 1;
 }
 
 /* Segmented mod-30 wheel sieve */
@@ -311,37 +311,27 @@ bool sieve_segment(unsigned char* mem, UV startd, UV endd)
   const unsigned char* sieve;
   UV startp = 30*startd,  endp = (endd >= (UV_MAX/30)) ? UV_MAX-2 : 30*endd+29;
   UV sieve_size,  limit = isqrt(endp);
-  int do_partial = do_partial_sieve(startp, endp);
+
   MPUassert(mem != 0 && endd >= startd && endp >= startp,
             "sieve_segment bad arguments");
 
-  sieve_size = get_prime_cache(0, &sieve);
+  sieve_size = get_prime_cache(0, 0);          /* Quick primary size probe */
 
   if (sieve_size >= endp) {
 
-    /* We can just use the primary cache */
-    memcpy(mem, sieve+startd, endd-startd+1);
-    release_prime_cache(sieve);
+    get_prime_cache(endp, &sieve);             /* Get the actual cache */
+    memcpy(mem, sieve+startd, endd-startd+1);  /* Fast copy */
+    release_prime_cache(sieve);                /* Release the cache */
 
-  } else if (!do_partial && sieve_size >= limit) {
+  } else if (do_partial_sieve(startp, endp)) {
 
-    /* Full sieve and we have all sieving primes in hand */
-    _sieve_range(mem, sieve, startd, endd, limit);
-    release_prime_cache(sieve);
+    limit >>= ((startp < (UV)1e16) ? 8 : 10);  /* Reduce size */
+    _sieve_partial(mem, startd, endd, limit);  /* Partial sieve */
+    _primality_test_sieve(mem, startp, endp);  /* BPSW each candidate */
 
   } else {
 
-    release_prime_cache(sieve);
-    if (do_partial)
-      limit >>= ((startp < (UV)1e16) ? 8 : 10);
-
-    /* sieve_segment_partial(mem, startd, endd, limit); */
-    get_prime_cache(limit, &sieve);
-    _sieve_range(mem, sieve, startd, endd, limit);
-    release_prime_cache(sieve);
-
-    if (do_partial)
-      _primality_test_sieve(mem, startp, endp);
+    _sieve_partial(mem, startd, endd, limit);  /* Sieve to full depth */
 
   }
   return 1;
@@ -611,7 +601,7 @@ UV range_partial_sieve(UV** list, UV lo, UV hi, UV depth)
     /* Make sure the last word is zeroed.  Overkill here. */
     Newz(0, mem, dhi - dlo + 1 + sizeof(UV), unsigned char);
 
-    sieve_segment_partial(mem, dlo, dhi, depth);
+    _sieve_partial(mem, dlo, dhi, depth);
     START_DO_FOR_EACH_SIEVE_PRIME(mem, base, lo, hi)
       P[i++] = p;
     END_DO_FOR_EACH_SIEVE_PRIME
