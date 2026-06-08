@@ -768,35 +768,40 @@ static void _frob_params_to_d(IV P, IV Q, IV *D, UV *Du) {
   *Du = *D >= 0  ?  (UV)*D :  (UV)(-*D);
 }
 
-bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
+bool is_frobenius_pseudoprime(UV n)
 {
-  UV U, V, t, Vcomp;
-  int k = 0;
-  IV D;
-  UV Du, Pu, Qu;
+  UV Du;
+  IV D, P = -1, Q = 2;
+  int k;
 
-  if (n < 7) return (n == 2 || n == 3 || n == 5);
+  if (n < 11) return (n == 2 || n == 3 || n == 5 || n == 7);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
-  if (P == 0 && Q == 0) {
-    P = -1; Q = 2;
-    if (n == 7) P = 1;  /* So we don't test kronecker(-7,7) */
-    do {
-      P += 2;
-      if (P == 3) P = 5;  /* P=3,Q=2 -> D=9-8=1 => k=1, so skip */
-      _frob_params_to_d(P, Q, &D, &Du);
-      k = kronecker_su(D, n);
-      if (P == 10001 && is_perfect_square(n)) return 0;
-    } while (k == 1);
-    if (k == 0) return 0;
-    /* D=P^2-8 will not be a perfect square */
-    MPUverbose(1, "%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
-    Vcomp = 4;
-  } else {
+  do {
+    P += 2;
+    if (P == 3) P = 5;  /* P=3,Q=2 -> D=9-8=1 => k=1, so skip */
     _frob_params_to_d(P, Q, &D, &Du);
-    if (D != 5 && is_perfect_square(Du))
-      croak("is_frobenius_pseudoprime: invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
-  }
+    k = kronecker_su(D, n);
+    if (P == 10001 && is_perfect_square(n)) return 0;
+  } while (k == 1);
+  if (k == 0) return 0;
+  /* D=P^2-8 will not be a perfect square */
+  MPUverbose(1, "%"UVuf" Frobenius (%"IVdf",%"IVdf") : x^2 - %"IVdf"x + %"IVdf"\n", n, P, Q, P, Q);
+  return is_frobenius_pseudoprime_pq(n, P, Q);
+}
+
+bool is_frobenius_pseudoprime_pq(UV n, IV P, IV Q)
+{
+  UV U, V, t, Du, Pu, Qu, Vcomp;
+  IV D;
+  int k;
+
+  if (n < 4) return (n == 2 || n == 3);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
+
+  _frob_params_to_d(P, Q, &D, &Du);
+  if (D != 5 && is_perfect_square(Du))
+    croak("is_frobenius_pseudoprime: invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
   Pu = ivmod(P,n);
   Qu = ivmod(Q,n);
 
@@ -804,11 +809,9 @@ bool is_frobenius_pseudoprime(UV n, IV P, IV Q)
   t = gcd_ui(n, Qu);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
   t = gcd_ui(n, Du);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
 
-  if (k == 0) {
-    k = kronecker_su(D, n);
-    if (k == 0) return 0;
-    Vcomp = (k == 1)  ?  2  :  addmod(Qu,Qu,n);
-  }
+  k = kronecker_su(D, n);
+  if (k == 0) return 0;
+  Vcomp = (k == 1)  ?  2  :  addmod(Qu,Qu,n);
 
   lucasuvmod(&U, &V, Pu, Qu, n-k, n);
   /* MPUverbose(1, "%"UVuf" Frobenius U = %"UVuf" V = %"UVuf"\n", n, U, V); */

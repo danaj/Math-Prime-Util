@@ -9977,21 +9977,20 @@ sub is_catalan_pseudoprime {
 
 sub is_frobenius_pseudoprime {
   my($n, $P, $Q) = @_;
-  croak "is_frobenius_pseudoprime: expected 1 or 3 arguments" if @_ == 2;
+  croak "is_frobenius_pseudoprime: expected 1 or 3 arguments"
+    unless @_ == 1 || @_ == 3;
   validate_integer($n);
   if (@_ >= 3) {
     validate_integer($P);
     validate_integer($Q);
-  } else {
-    ($P,$Q) = (0,0);
   }
-  return 0+($n >= 2) if $n < 4;
 
-  $n = tobigint($n);
+  return 0+($n >= 2) if $n < 4;
   return 0 if Mis_even($n);
 
   my($k, $Vcomp, $D, $Du) = (0, 4);
-  if ($P == 0 && $Q == 0) {
+
+  if (@_ == 1) {
     ($P,$Q) = (-1,2);
     while ($k != -1) {
       $P += 2;

@@ -2408,22 +2408,22 @@ is_frobenius_pseudoprime(IN SV* svn, IN SV* svp = 0, IN SV* svq = 0)
     UV n;
     IV P, Q, maxparam;
   PPCODE:
-    if (items != 1 && items != 3)
-      croak("is_frobenius_pseudoprime: expected 1 or 3 arguments");
     if (items == 1) {
-      pstatus = 1;  P = 0;
-      qstatus = 1;  Q = 0;
-    } else {
+      nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+      if (nstatus == -1) RETURN_NPARITY(0);
+      if (nstatus == 1)  RETURN_NPARITY(is_frobenius_pseudoprime(n));
+    } else if (items == 3) {
+      nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
       pstatus = _validate_and_set((UV*)&P, aTHX_ svp, IFLAG_IV);
       qstatus = _validate_and_set((UV*)&Q, aTHX_ svq, IFLAG_IV);
-    }
-    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (nstatus == -1) RETURN_NPARITY(0);
-    /* If |P| and |Q| are less than this, then D=P*P-4*Q cannot overflow IV */
-    maxparam = (BITS_PER_WORD == 64)  ?  (IV)UVCONST(3037000497)  :  46338L;
-    if (nstatus != 0 && pstatus != 0 && qstatus != 0 &&
-        P <= maxparam && P >= -maxparam && Q <= maxparam && Q >= -maxparam)
-      RETURN_NPARITY(is_frobenius_pseudoprime(n, P, Q));
+      if (nstatus == -1) RETURN_NPARITY(0);
+      /* If |P| and |Q| are less than this, then D=P*P-4*Q cannot overflow IV */
+      maxparam = (BITS_PER_WORD == 64)  ?  (IV)UVCONST(3037000497)  :  46338L;
+      if (nstatus != 0 && pstatus != 0 && qstatus != 0 &&
+          P <= maxparam && P >= -maxparam && Q <= maxparam && Q >= -maxparam)
+        RETURN_NPARITY(is_frobenius_pseudoprime_pq(n, P, Q));
+    } else
+      croak("is_frobenius_pseudoprime: expected 1 or 3 arguments");
     DISPATCHPP_RETURN();
 
 void

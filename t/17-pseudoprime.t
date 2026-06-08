@@ -304,7 +304,9 @@ subtest 'Frobenius type pseudoprimes', sub {
      "Two-argument Frobenius call rejected");
   ok(!eval { is_frobenius_pseudoprime(91, undef, 2); 1; }, "Undefined P rejected");
 
+  ok(!eval { is_frobenius_pseudoprime(91, 0, 0); 1; }, "Explicit zero P,Q rejected");
   ok(!eval { is_frobenius_pseudoprime(91, 3, 2); 1; }, "Square discriminant P,Q rejected");
+  is( is_frobenius_pseudoprime(-5, 0, 0), 0, "Negative n with explicit P,Q returns false");
 
   for my $case (
     [101,  46339,  1, 1],
