@@ -292,6 +292,8 @@ sub entropy_bytes {
 *ramanujan_sum = \&Math::Prime::Util::PP::ramanujan_sum;
 *mertens = \&Math::Prime::Util::PP::mertens;
 *valuation = \&Math::Prime::Util::PP::valuation;
+*remove_factors = \&Math::Prime::Util::PP::remove_factors;
+*remove_factors_exp = \&Math::Prime::Util::PP::remove_factors_exp;
 *hammingweight = \&Math::Prime::Util::PP::hammingweight;
 *chinese = \&Math::Prime::Util::PP::chinese;
 *chinese2 = \&Math::Prime::Util::PP::chinese2;

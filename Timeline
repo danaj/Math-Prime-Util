@@ -2,6 +2,7 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.75
+2026-06-08  remove_factors(n,k) remove_factors_exp(n,k)
 2026-04-07  integer_complexity(n)
 2026-03-31  vecwindow {...} $step,$size,@L
 2026-03-22  toint(n)

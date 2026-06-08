@@ -279,6 +279,8 @@ static const gmp_info_t gmp_info[] = {
   {            "pisano_period", 53, 1, R_BIGINT },
   {                 "powersum", 53, 1, R_BIGINT },
   {               "fromdigits", 54, 1, R_BIGINT },
+  {           "remove_factors", 54, 1, R_BIGINT },
+  {       "remove_factors_exp", 54, 2, R_BIGINT },
 
   {                 "urandomb", 43, 1, R_BIGINT },
   {                 "urandomr", 54, 1, R_BIGINT }, /* v0.43 with non-neg */
@@ -4649,6 +4651,30 @@ void valuation(IN SV* svn, IN SV* svk)
       RETURN_NPARITY(valuation(n, k));
     }
     DISPATCHPP_RETURN();
+
+void remove_factors(IN SV* svn, IN SV* svk)
+  ALIAS:
+    remove_factors_exp = 1
+  PREINIT:
+    UV n, k, e;
+    int nstatus, kstatus;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (nstatus != 0 && kstatus != 0) {
+      if (k <= 1)  croak("%s: k must be > 1", SUBNAME);
+      if (n == 0) {
+        XPUSHs(&PL_sv_undef);
+        if (ix == 1) XPUSHs(&PL_sv_undef);
+      } else {
+        if (nstatus == -1) n = (UV)neg_iv(n);
+        e = valuation_remainder(n, k, &n);
+        XPUSHs(sv_2mortal( nstatus == 1 ? newSVuv(n) : newSViv(neg_iv(n)) ));
+        if (ix == 1) XPUSHs(sv_2mortal(newSVuv(e)));
+      }
+    } else {
+      DISPATCHPP_RETURN();
+    }
 
 void is_powerful(IN SV* svn, IN SV* svk = 0);
   ALIAS:

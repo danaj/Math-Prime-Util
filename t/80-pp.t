@@ -1081,6 +1081,8 @@ subtest 'misc number theory functions', sub {
 
   is( valuation(1879048192,2), 28, "valuation(1879048192,2)");
   is( valuation(96552,6), 3, "valuation(96552,6)");
+  is( remove_factors(72,6), 2, "remove_factors(72,6)");
+  is_deeply( [remove_factors_exp(72,6)], [2,2], "remove_factors_exp(72,6)");
 
   cmp_closeto( chebyshev_theta(7001), 6929.27483821865062, 0.006929, "chebyshev_theta(7001) =~ 6929.2748");
   cmp_closeto( chebyshev_psi(6588), 6597.07452996633704, 0.006597, "chebyshev_psi(6588) =~ 6597.07453");

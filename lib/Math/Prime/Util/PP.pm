@@ -7417,16 +7417,30 @@ sub is_perfect_number {
   Mcmpint($n,Msubint(Mdivisor_sum($n),$n)) == 0;
 }
 
+sub _remove_factors {   # No validation.  REQUIRES k > 1.
+  my($n,$k) = @_;
+  my($neg, $e) = ($n <= 0, 0);
+  if ($neg) {
+    return (undef,undef) if $n == 0;
+    $n = Mnegint($n);
+  }
+  if ($n <= 562949953421312) {  # 2^49 safe arithmetic
+    while (!($n % $k)) { $n /= $k; $e++; }
+  } else {
+    while (Mis_divisible($n,$k)) { $n = Mdivint($n,$k); $e++; }
+  }
+  $n = Mnegint($n) if $neg;
+  ($n,$e);
+}
+
 sub valuation {
   my($n, $k) = @_;
   # The validation in PP is 2x more time than our actual work.
   validate_integer_abs($n);
-  validate_integer_positive($k);
+  validate_integer_nonneg($k);
   croak "valuation: k must be > 1" if $k <= 1;
-
-  return if $k < 2;
   return (undef,0)[$n] if $n <= 1;
-  my $v = 0;
+
   if ($k == 2) { # Accelerate power of 2
     my $s;
     if (!ref($n)) {
@@ -7443,12 +7457,23 @@ sub valuation {
     }
     return length($s) - rindex($s,'1') - 1;
   }
-  if ($n <= 562949953421312) {  # 2^49 safe arithmetic
-    while (!($n % $k)) { $n /= $k; $v++; }
-  } else {
-    while (!($n % $k)) { $n = Mdivint($n,$k); $v++; }
-  }
-  $v;
+
+  (_remove_factors($n,$k))[1];
+}
+
+sub remove_factors_exp {
+  my($n,$k) = @_;
+  validate_integer($n);
+  validate_integer_nonneg($k);
+  croak "remove_factors_exp: k must be > 1" if $k <= 1;
+  _remove_factors($n,$k);
+}
+sub remove_factors {
+  my($n,$k) = @_;
+  validate_integer($n);
+  validate_integer_nonneg($k);
+  croak "remove_factors: k must be > 1" if $k <= 1;
+  (_remove_factors($n,$k))[0];
 }
 
 sub hammingweight {

@@ -53,7 +53,8 @@ Revision history for Perl module Math::Prime::Util
     - urandomr(lo,hi)                 random integer in [lo,hi] inclusive
     - vecprefixsum(@list)             prefix sum / cumulative sum of list
     - vecwindow { } $step,$size,@list calls block with windows of size objects
-
+    - remove_factors(n,k)             returns r: n with all factors of k removed
+    - remove_factors_exp(n,k)         as above, returns (r,e) e = times removed
 
     [FIXES]
 

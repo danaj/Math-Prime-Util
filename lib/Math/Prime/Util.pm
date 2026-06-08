@@ -96,6 +96,7 @@ our @EXPORT_OK =
       random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
       gcd lcm factor factor_exp divisors valuation hammingweight
+      remove_factors remove_factors_exp
       frobenius_number
       todigits fromdigits todigitstring sumdigits
       tozeckendorf fromzeckendorf
@@ -4187,6 +4188,23 @@ C<k> must be greater than 1.
 C<|n|> is used, C<|n| = 0> returns undef, and C<|n| = 1> returns zero.
 
 This corresponds to Pari and SAGE's C<valuation> function.
+
+=head2 remove_factors
+
+  say "$n with all factors of 10 removed is ", remove_factors($n,10);
+
+Given integer C<n> and integer C<k> greater than 1, returns C<n> with all
+repeated exact factors of C<k> removed.  Equivalently, the return value is
+C<r> such that C<n = r * k^e> and C<k> no longer divides C<r>.
+
+If C<n = 0>, returns undef.
+
+=head2 remove_factors_exp
+
+  my($r, $e) = remove_factors_exp($n,10);
+
+As L</remove_factors>, but returns C<(r,e)> where C<e> is the number of
+times C<k> was removed.  If C<n = 0>, returns C<(undef,undef)>.
 
 =head2 hammingweight
 

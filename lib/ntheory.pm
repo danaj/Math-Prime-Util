@@ -356,6 +356,8 @@ Tags:
   partitions(n)                       number of integer partitions
   partitionsq(n)                      number of partitions into distinct parts
   valuation(n,k)                      number of times n is divisible by k
+  remove_factors(n,k)                 returns r: n with factors of k removed
+  remove_factors_exp(n,k)             as above, returns (r,e) e = times removed
   hammingweight(n)                    population count (# of binary 1s)
   kronecker(a,b)                      Kronecker (Jacobi) symbol
   negmod(a,n)                         -a mod n
