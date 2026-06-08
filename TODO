@@ -483,8 +483,6 @@ OEIS lucky numbers:
 
 - we should have an extra debug mode for asserts.
 
-- contfrac with negative inputs in XS
-
 - C99 designated initializers
 
 - consider inversions, see 22 Apr 2025 email
@@ -530,22 +528,6 @@ OEIS lucky numbers:
   Also test it using a sliding window so we generate monolithic
   see how that performs vs. range_moebius or windowed range_moebius
 
-- objectify based on gmp_info
-- array of bigints:
-  - sieve_range
-  - sieve_cluster
-  - factor
-- special
-  - factorial
-
-- find_gmp_info replace linear scan with hash?
-
-- use amagic_call for simple addint etc.  See List::Util::XS
-  save/XS.xs-amagic1
-  consider using before DISPATCH_PP, so things like Math::GMPz will be fast.
-  big issue is the bigint->int transition point
-  even unary ops could become a native result
-
 - consider my_svuv redefined, like in validate_int.  Call sv_2uv if needed.
   See https://github.com/Perl/perl5/issues/22653
   We avoid this most of the time already.
@@ -557,10 +539,6 @@ OEIS lucky numbers:
 - revisit PP factorial
 
 - t/81-bignum should try different bigint classes
-
-- ecm: tinyecm128 -> tinyecm64 (uint64_t)  [do this soon]
-  = Should this be uint64_t or UV?
-  = where?  factor.c?  ecm64?  ecm with ecm128?
 
 - waring_goldbach(n,k,t)  {p1}^k + {p2}^k + ... + {pt}^k
 
@@ -636,8 +614,6 @@ OEIS lucky numbers:
 
 - trialf128.  Maybe live in factor128.
 
-- where we are using sv_to_bigint, would xs_to_canonical be better?
-
 - string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
 
 - nth_lucky bounds:  https://arxiv.org/pdf/2604.07142
@@ -654,8 +630,6 @@ OEIS lucky numbers:
 - redo t/32-iterators as subtests.
 
 - more of the is_...prime PPFE functions should be aliased.
-
-- is_frobenius_pseudoprime, careful with P/Q using 0 to mean something.
 
 - xops in priority:
   urandomm urandomr

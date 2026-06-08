@@ -3496,21 +3496,38 @@ void random_factored_integer(IN SV* svn)
 
 void contfrac(IN SV* svnum, IN SV* svden)
   PREINIT:
-    UV num, den;
-    int nstatus;
+    UV num, den, *cf, rem;
+    int nstatus, dstatus, i, steps;
   PPCODE:
     nstatus = _validate_and_set(&num, aTHX_ svnum, IFLAG_ANY);
-    /* TODO: handle negative numerator */
-    if (nstatus == 1 && _validate_and_set(&den, aTHX_ svden, IFLAG_POS)) {
-      UV *cf, rem;
-      int i, steps = contfrac(&cf, &rem, num, den);
+    dstatus = _validate_and_set(&den, aTHX_ svden, IFLAG_POS);
+    if (nstatus == 0 || dstatus == 0)
+      DISPATCHPP_RETURN();
+    if (nstatus == -1) num = neg_iv(num);
+    steps = contfrac(&cf, &rem, num, den);
+    if (nstatus == 1) {
       EXTEND(SP, (EXTEND_TYPE)steps);
       for (i = 0; i < steps; i++)
         PUSHs(sv_2mortal(newSVuv( cf[i] )));
-      Safefree(cf);
     } else {
-      DISPATCHPP_RETURN();
+      IV negc0 = neg_iv(cf[0]);
+      EXTEND(SP, (EXTEND_TYPE)(steps + 1));
+      if (steps == 1) {
+        PUSHs(sv_2mortal(newSViv(negc0)));
+      } else if (cf[1] == 1) {
+        PUSHs(sv_2mortal(newSViv(negc0 - 1)));
+        PUSHs(sv_2mortal(newSVuv(cf[2] + 1)));
+        for (i = 3; i < steps; i++)
+          PUSHs(sv_2mortal(newSVuv( cf[i] )));
+      } else {
+        PUSHs(sv_2mortal(newSViv(negc0 - 1)));
+        PUSHs(sv_2mortal(newSVuv(1)));
+        PUSHs(sv_2mortal(newSVuv(cf[1] - 1)));
+        for (i = 2; i < steps; i++)
+          PUSHs(sv_2mortal(newSVuv( cf[i] )));
+      }
     }
+    Safefree(cf);
 
 void from_contfrac(...)
   PROTOTYPE: @
