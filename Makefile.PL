@@ -80,6 +80,7 @@ WriteMakefile1(
                     'random_prime.o ' .
                     'entropy.o',
     LIBS         => ['-lm'],
+    depend       => { 'XS.o' => 'xs_xop.inc' },
 
     EXE_FILES    => ['bin/primes.pl', 'bin/factor.pl'],
 
