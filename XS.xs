@@ -5385,6 +5385,22 @@ void falling_factorial(IN SV* svn, IN SV* svk)
     }
     DISPATCHPP_RETURN();
 
+void floor_sum(IN SV* svn, IN SV* svm, IN SV* sva, IN SV* svb)
+  PREINIT:
+    int nstatus, mstatus, astatus, bstatus;
+    UV n, m, a, b;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    mstatus = _validate_and_set(&m, aTHX_ svm, IFLAG_POS);
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_NONNEG);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_NONNEG);
+    if (nstatus == 1 && mstatus == 1 && astatus == 1 && bstatus == 1) {
+      UV sum = floor_sum(n,m,a,b);
+      if (sum != UV_MAX)
+        XSRETURN_UV(sum);
+    }
+    DISPATCHPP_RETURN();
+
 void mertens(IN SV* svn)
   ALIAS:
     liouville = 1

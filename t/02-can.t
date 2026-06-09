@@ -89,7 +89,7 @@ my @functions =  qw(
       random_semiprime random_unrestricted_semiprime
       random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
-      gcd lcm factor factor_exp divisors valuation hammingweight
+      gcd lcm factor factor_exp divisors valuation floor_sum hammingweight
       remove_factors remove_factors_exp
       frobenius_number
       todigits fromdigits todigitstring sumdigits

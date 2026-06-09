@@ -1078,6 +1078,7 @@ subtest 'misc number theory functions', sub {
   cmp_closeto(harmreal(18),3.49510807819631349,1e-5,"harmreal");
 
   is_deeply( [gcdext(23948236,3498248)], [2263, -15492, 52], "gcdext(23948236,3498248)" );
+  is( floor_sum(5,7,3,4), 5, "floor_sum(5,7,3,4)");
 
   is( valuation(1879048192,2), 28, "valuation(1879048192,2)");
   is( valuation(96552,6), 3, "valuation(96552,6)");

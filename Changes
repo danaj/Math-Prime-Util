@@ -55,6 +55,7 @@ Revision history for Perl module Math::Prime::Util
     - vecwindow { } $step,$size,@list calls block with windows of size objects
     - remove_factors(n,k)             returns r: n with all factors of k removed
     - remove_factors_exp(n,k)         as above, returns (r,e) e = times removed
+    - floor_sum(n,m,a,b)              sum floor((a*i+b)/m) for i=0..n-1
 
     [FIXES]
 

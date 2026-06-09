@@ -1783,6 +1783,43 @@ UV pisano_period(UV n)
   return UV_MAX;
 }
 
+#if BITS_PER_WORD == 32
+#define MAX_NNM1D2 UVCONST(92682)
+#else
+#define MAX_NNM1D2 UVCONST(6074001000)
+#endif
+
+UV floor_sum(UV n, UV m, UV a, UV b)
+{
+  UV sum = 0;
+  if (m == 0) croak("floor_sum: divide by zero");
+  if (n == 0) return 0;
+  while (1) {
+    UV Y, W, ymax;
+    if (a >= m) {
+      Y = (n/2) * ((n-1)|1);  /* (n*(n-1))/2, overflow checked below. */
+      W = a / m;
+      a = a % m;
+      if (n > MAX_NNM1D2 || Y > (UV_MAX-sum)/W) return UV_MAX;
+      sum += Y * W;
+    }
+    if (b >= m) {
+      Y = n;
+      W = b / m;
+      b = b % m;
+      if (Y > (UV_MAX-sum)/W) return UV_MAX;
+      sum += Y * W;
+    }
+    if (a > (UV_MAX-b)/n) return UV_MAX;
+    ymax = a * n + b;
+    if (ymax < m) break;
+    n = (ymax / m);
+    b = (ymax % m);
+    { UV t = m; m = a; a = t; }
+  }
+  return sum;
+}
+
 /******************************************************************************/
 /*                                   HAPPY                                    */
 /******************************************************************************/

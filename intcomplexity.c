@@ -36,7 +36,7 @@ UV integer_complexity(UV n) { /* A005425 based on Martin N. Fuller's solution */
     for (j = 6; j <= G[k]; j++)
       if (A[j]+A[i-j] < A[i])
         A[i] = A[j] + A[i-j];
-    
+
     /* Multiplications */
     for (j = 2, ij = 2*i;  j <= i && ij <= n;  j++, ij+=i)
       if (A[i]+A[j] < A[ij])
@@ -96,7 +96,7 @@ void expand_ic(UV to) {
     for (j = 6; j <= G[k]; j++)
       if (A[j]+A[i-j] < A[i])
         A[i] = A[j] + A[i-j];
-    
+
     /* Multiplications */
     for (j = 2, ij = 2*i;  j <= i && ij <= to;  j++, ij+=i)
       if (A[i]+A[j] < A[ij])

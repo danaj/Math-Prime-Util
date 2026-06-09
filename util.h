@@ -75,6 +75,7 @@ extern UV gcddivmod(UV a, UV b, UV n) ISCONSTFUNC; /* divmod(a/gcd,b/gcd,n) */
 
 /* UV_MAX overflow */
 extern UV pisano_period(UV n);
+extern UV floor_sum(UV n, UV m, UV a, UV b);
 
 /* 0 overflow, -1 no inverse, 1 ok */
 /* The a/n arrays will be sorted by descending n. */

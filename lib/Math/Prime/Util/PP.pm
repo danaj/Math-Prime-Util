@@ -8935,6 +8935,15 @@ sub _floor_sum {
   $sum;
 }
 
+sub floor_sum {
+  my($n, $m, $a, $b) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_positive($m);
+  validate_integer_nonneg($a);
+  validate_integer_nonneg($b);
+  canonicalized_integer(_floor_sum($n, $m, $a, $b));
+}
+
 sub farey_rank {
   my($n,$frac) = @_;
   validate_integer_positive($n);

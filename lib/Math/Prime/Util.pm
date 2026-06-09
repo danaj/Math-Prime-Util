@@ -95,7 +95,7 @@ our @EXPORT_OK =
       random_semiprime random_unrestricted_semiprime
       random_factored_integer
       primorial pn_primorial consecutive_integer_lcm gcdext chinese chinese2
-      gcd lcm factor factor_exp divisors valuation hammingweight
+      gcd lcm factor factor_exp divisors valuation floor_sum hammingweight
       remove_factors remove_factors_exp
       frobenius_number
       todigits fromdigits todigitstring sumdigits
@@ -4206,6 +4206,18 @@ If C<n = 0>, returns undef.
 As L</remove_factors>, but returns C<(r,e)> where C<e> is the number of
 times C<k> was removed.  If C<n = 0>, returns C<(undef,undef)>.
 
+=head2 floor_sum
+
+  say floor_sum($n, $m, $a, $b);
+
+Returns the sum
+
+  sum_{i=0}^{n-1} floor((a*i + b) / m)
+
+The values C<n>, C<a>, and C<b> must be non-negative integers, and C<m>
+must be a positive integer.  The implementation uses the Euclidean floor-sum
+reduction, so it runs in logarithmic time.
+
 =head2 hammingweight
 
 Given an integer C<n>, returns the binary Hamming weight of C<abs(n)>.  This
@@ -6402,7 +6414,7 @@ digits.  One of the primes within that range (e.g. 1000 - 9999 for
 4-digits) will be uniformly selected.
 The number of digits must be between C<1> and C<4,294,967,295>.
 
-If the resulting prime is larger than the maximum native integer, then 
+If the resulting prime is larger than the maximum native integer, then
 the result will be returned as a BigInt.  However, if the C<nobigint>
 configuration option is on, then output will be restricted to native-size
 numbers, and requests for digit counts that cannot produce a native-size

@@ -40,7 +40,7 @@
     if (multicall_needs_scope_)    \
       LEAVE;                       \
   } STMT_END
-  
+
 #define SC_POP_MULTICALL  POP_MULTICALL
 
 

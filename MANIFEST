@@ -228,6 +228,7 @@ t/18-91-edge.t
 t/19-chebyshev.t
 t/19-chinese.t
 t/19-divisorsum.t
+t/19-floor_sum.t
 t/19-gcd.t
 t/19-kronecker.t
 t/19-legendrephi.t

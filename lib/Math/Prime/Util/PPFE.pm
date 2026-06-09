@@ -294,6 +294,7 @@ sub entropy_bytes {
 *valuation = \&Math::Prime::Util::PP::valuation;
 *remove_factors = \&Math::Prime::Util::PP::remove_factors;
 *remove_factors_exp = \&Math::Prime::Util::PP::remove_factors_exp;
+*floor_sum = \&Math::Prime::Util::PP::floor_sum;
 *hammingweight = \&Math::Prime::Util::PP::hammingweight;
 *chinese = \&Math::Prime::Util::PP::chinese;
 *chinese2 = \&Math::Prime::Util::PP::chinese2;
