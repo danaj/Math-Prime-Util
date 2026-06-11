@@ -174,6 +174,7 @@ static const gmp_info_t gmp_info[] = {
 
   {                   "invmod", 20, 1, R_BIGINT },
   {                  "znorder", 22, 1, R_BIGINT },
+  {                    "znlog", 54, 1, R_BIGINT },
   {               "znprimroot", 22, 1, R_BIGINT },
   {                   "negmod", 53, 1, R_BIGINT },
   {                   "addmod", 53, 1, R_BIGINT }, /* 36 with n > 0 */
