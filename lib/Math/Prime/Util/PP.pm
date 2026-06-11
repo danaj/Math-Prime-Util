@@ -8376,11 +8376,16 @@ sub binomialmod {
   # XS should have dispatched directly to GMP binomialmod if it was available.
   # Considering it didn't, we have the unenviable task of doing this ourselves.
   #
-  # Just in case we have an older GMP, try it so we avoid slow bigint creation.
+  # Use the GMP binomialmod path directly if it has the improved implementation.
+  # For older GMP, try binomial+mod so we avoid slow bigint creation here.
   #
-  if ($Math::Prime::Util::_GMPfunc{"binomial"} && $Math::Prime::Util::_GMPfunc{"modint"} && !ref($k)) {
-    if ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296)) {
-      return maybetobigint(Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
+  if (!ref($k)) {
+    return maybetobigint(Math::Prime::Util::GMP::binomialmod($n,$k,$m))
+      if $Math::Prime::Util::_GMPfunc{"binomialmod"} && $Math::Prime::Util::GMP::VERSION >= 0.54;
+    if ($Math::Prime::Util::_GMPfunc{"binomial"} && $Math::Prime::Util::_GMPfunc{"modint"}) {
+      if ($Math::Prime::Util::GMP::VERSION >= 0.53 || ($n >= 0 && $k >= 0 && $n < 4294967296 && $k < 4294967296)) {
+        return maybetobigint(Math::Prime::Util::GMP::modint(Math::Prime::Util::GMP::binomial($n,$k),$m));
+      }
     }
   }
 

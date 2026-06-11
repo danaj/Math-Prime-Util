@@ -7,7 +7,8 @@ use Math::Prime::Util qw/binomialmod/;
 #use Math::Prime::Util qw/binomial modint/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $usexs  = Math::Prime::Util::prime_get_config->{'xs'};
+my $config = Math::Prime::Util::prime_get_config;
+my $usexs  = $config->{'xs'};
 
 my @tests = (
   [0,0,7, 1],
@@ -32,6 +33,8 @@ my @tests = (
 
   [-5,-1,11, 0],
   [189,-34,877, 0],
+
+  ["36893488147419103231",73,"18446744073709551629", "4061473865233210084"],
 );
 
 if ($usexs) {

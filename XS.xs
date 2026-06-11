@@ -184,7 +184,7 @@ static const gmp_info_t gmp_info[] = {
   {                "muladdmod", 53, 1, R_BIGINT },
   {                "mulsubmod", 53, 1, R_BIGINT },
   {             "factorialmod", 54, 1, R_BIGINT }, /* 47 with m > 0 */
-  {              "binomialmod", 53, 1, R_BIGINT },
+  {              "binomialmod", 54, 1, R_BIGINT },
   {                  "sqrtmod", 53, 1, R_BIGINT }, /* 53 for composites */
   {                   "divrem", 52, 2, R_BIGINT },
   {                  "tdivrem", 52, 2, R_BIGINT },

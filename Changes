@@ -160,6 +160,9 @@ Revision history for Perl module Math::Prime::Util
     - primes() and twin_primes() can directly dispatch from XS to GMP with
       the GMP 0.54 back end.  This can give a modest speedup.
 
+    - binomialmod can directly dispatch to the GMP 0.54 back end, avoiding
+      construction of huge intermediate binomial values in more cases.
+
 
 0.74 2026-03-13
 
