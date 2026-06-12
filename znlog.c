@@ -9,6 +9,7 @@
 #include "mulmod.h"
 #include "primality.h"
 #include "montmath.h"
+#include "znlog.h"
 
 /* TODO: test the montmath code.  Until fully tested, disable it */
 #undef USE_MONTMATH

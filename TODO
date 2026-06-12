@@ -63,10 +63,7 @@
 
 - More Pari:  parforprime
 
-- znlog:
-    = GMP BSGS for znlog.
-    = Clean up znlog (PH, BSGS, Rho).
-    = Experiment with Wang/Zhang 2012 Rho cycle finding
+- znlog rho: Wang/Zhang 2012, Teske/r-adding, or negation-map rho
 
 - consider using Ramanujan Li for PP code.
 
@@ -94,7 +91,9 @@
 
 - surround_primes
 
-- More Montgomery: znlog, catalan
+- More Montgomery:
+   - catalan
+   - test znlog code
 
 - Generic 64-bit montgomery
 
@@ -601,8 +600,6 @@ OEIS lucky numbers:
   = OBJECTIFY_RESULT(input_sv) — revamped objectify_result.
     Normalizes PL_stack_sp before calling out to Perl
 
-- factor.c znlog needs improvements from the recent PP rewrite.
-
 - PP znlog needs pollard rho
   tmmpu 'prime_set_config(bigint=>Math::GMPz,verbose=>2); say znlog(13, 17, "10000000000000000000000000117")'
 
@@ -668,9 +665,6 @@ OEIS lucky numbers:
 - @v = intrange($a, $b)
   use in allrootmod, some other places
 
-- floor_sum:
-  sum_{i=0..n-1} floor((a*i+b)/m)
-
 - factor_light(n) [rethink the name], where it's like factor but some
   values might be composite.  The idea is to spend a very little time
   to find small factors.  Maybe we want a difficulty setting but I wouldn't
@@ -685,3 +679,11 @@ OEIS lucky numbers:
   = Pi, bernreal, harmreal, li, ei, riemannr, lambertw
   RiemannZeta cannot be directly done
   Naming conversions will be an issue
+
+- inverse_sigma0 in PP should have a generator method. e.g. (5040,1<<40)
+- inverse_sigma0.c, full_factor_sieve() should be tuned.
+
+- tstbit(n,k) (bitget, bit_test).
+- scan1(n,start) / scan0(n,start)
+
+- strint_divmod isn't getting used

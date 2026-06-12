@@ -109,6 +109,7 @@ my @functions =  qw(
       partitions partitionsq bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
+      inverse_sigma0 inverse_sigma0_count
       prime_signature sopf sopfr abundance
       digital_root mult_digital_root
       kronecker is_qr qnr

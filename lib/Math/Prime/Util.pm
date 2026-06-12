@@ -116,6 +116,7 @@ our @EXPORT_OK =
       partitions partitionsq bernfrac bernreal harmfrac harmreal
       chebyshev_theta chebyshev_psi
       divisor_sum aliquot_sum carmichael_lambda hclassno inverse_totient
+      inverse_sigma0 inverse_sigma0_count
       prime_signature sopf sopfr abundance
       digital_root mult_digital_root
       kronecker is_qr qnr
@@ -4910,6 +4911,25 @@ though we have a function L</jordan_totient> which is more efficient.
 For numeric second arguments (sigma computations), the result will be a bigint
 if necessary.  For the code reference case, the user must take care to return
 bigints if overflow will be a concern.
+
+=head2 inverse_sigma0
+
+  my $values = inverse_sigma0(48, 1, 10000);
+  say inverse_sigma0_count(48, 1, 10000);   # 45
+
+Returns an array reference containing all positive integers C<n> in the range
+where C<divisor_sum(n,0) == k>.  This is the inverse image of the divisor-count
+function C<sigma0(n)>, also commonly called C<tau(n)>.
+
+With two arguments C<inverse_sigma0(k, hi)>, the range is C<1..hi>.
+With three arguments C<inverse_sigma0(k, lo, hi)>, the range is C<lo..hi>.
+
+=head2 inverse_sigma0_count
+
+  say inverse_sigma0_count(48, 1, 10000);   # 45
+
+Uses the same arguments as L</inverse_sigma0> but returns only the count.
+This is faster and uses less memory than generating the full list.
 
 
 =head2 aliquot_sum

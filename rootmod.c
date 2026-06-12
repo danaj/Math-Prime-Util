@@ -15,6 +15,7 @@
 #include "mulmod.h"
 #include "factor.h"
 #include "rootmod.h"
+#include "znlog.h"
 
 /* Pick one or both */
 #define USE_ROOTMOD_SPLITK 1    /* enables rootmod_composite1 */

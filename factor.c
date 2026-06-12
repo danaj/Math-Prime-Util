@@ -1716,6 +1716,9 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
 }
 
 
+/******************************************************************************/
+/******************************************************************************/
+
 
 static const uint32_t _fr_chunk = 256*1024;
 
@@ -1866,6 +1869,7 @@ void factor_range_destroy(factor_range_context_t *ctx) {
   if (ctx->_nfactors != 0) Safefree(ctx->_nfactors);
   ctx->_farray = ctx->_nfactors = ctx->factors = 0;
 }
+
 
 /******************************************************************************/
 /* Find number of factors for all values in a range */

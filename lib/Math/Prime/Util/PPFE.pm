@@ -289,6 +289,8 @@ sub entropy_bytes {
 *aliquot_sum = \&Math::Prime::Util::PP::aliquot_sum;
 *sumtotient = \&Math::Prime::Util::PP::sumtotient;
 *jordan_totient = \&Math::Prime::Util::PP::jordan_totient;
+*inverse_sigma0 = \&Math::Prime::Util::PP::inverse_sigma0;
+*inverse_sigma0_count = \&Math::Prime::Util::PP::inverse_sigma0_count;
 *ramanujan_sum = \&Math::Prime::Util::PP::ramanujan_sum;
 *mertens = \&Math::Prime::Util::PP::mertens;
 *valuation = \&Math::Prime::Util::PP::valuation;

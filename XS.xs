@@ -35,6 +35,8 @@
 #include "lucas_seq.h"
 #include "factor.h"
 #include "factor128.h"
+#include "inverse_sigma0.h"
+#include "znlog.h"
 #include "totients.h"
 #include "moebius.h"
 #include "factmod.h"
@@ -3567,6 +3569,35 @@ void inverse_totient(IN SV* svn)
           XSRETURN(ntotients);
         }
       }
+    }
+    DISPATCHPP_RETURN();
+
+void inverse_sigma0(IN SV* svk, IN SV* svlo, IN SV* svhi = 0)
+  ALIAS:
+    inverse_sigma0_count = 1
+  PREINIT:
+    AV* av;
+    UV k, lo = 1, hi, i, count, *list;
+    int kstatus, lostatus, histatus;
+  PPCODE:
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (items == 2) {
+      histatus = _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG);
+      lostatus = 1;
+    } else {
+      lostatus = _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG);
+      histatus = _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG);
+    }
+    if (kstatus && lostatus && histatus) {
+      if (ix == 1)
+        XSRETURN_UV( inverse_sigma0_count(lo, hi, k) );
+
+      CREATE_RETURN_AV(av);
+      list = inverse_sigma0_list(&count, lo, hi, k);
+      for (i = 0; i < count; i++)
+        av_push(av, newSVuv(list[i]));
+      if (list != 0) Safefree(list);
+      XSRETURN(1);
     }
     DISPATCHPP_RETURN();
 

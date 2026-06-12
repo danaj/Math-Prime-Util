@@ -783,6 +783,7 @@ subtest 'factoring', sub {
 
   is(join(" ",divisors(252)),"1 2 3 4 6 7 9 12 14 18 21 28 36 42 63 84 126 252","divisors");
   is(divisor_sum(252),728,"divisor_sum(252)");
+  is_deeply(inverse_sigma0(4,10),[6,8,10],"inverse_sigma0");
   is(join(" ",map{divisor_sum(1254,$_)}(0..7)),"16 2880 2208200 2302655040 2659995565256 3210983462174400 3954705863524605800 4916556716966553418560","divisor_sum(1254, {0..7})");
   is(znlog(5678, 5, 10007), 8620, "znlog(5678, 5, 10007)");
 

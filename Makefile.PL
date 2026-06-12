@@ -38,6 +38,7 @@ WriteMakefile1(
                     'util.o '         .
                     'factor128.o '    .
                     'factor.o '       .
+                    'inverse_sigma0.o ' .
                     'znlog.o '        .
                     'rootmod.o '      .
                     'strops.o '       .

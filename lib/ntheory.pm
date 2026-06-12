@@ -147,6 +147,8 @@ Tags:
   divisor_sum(n)                      sum of divisors
   divisor_sum(n,k)                    sum of k-th power of divisors
   divisor_sum(n,sub{...})             sum of code run for each divisor
+  inverse_sigma0(k, [lo,] hi)         array ref of n where sigma0(n) = k
+  inverse_sigma0_count(k, [lo,] hi)   count of n where sigma0(n) = k
   aliquot_sum(n)                      sum of proper divisors
   prime_signature(n)                  reverse sorted list of factor exponents
   sopfr(n)                            sum of prime factors

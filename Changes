@@ -56,6 +56,8 @@ Revision history for Perl module Math::Prime::Util
     - remove_factors(n,k)             returns r: n with all factors of k removed
     - remove_factors_exp(n,k)         as above, returns (r,e) e = times removed
     - floor_sum(n,m,a,b)              sum floor((a*i+b)/m) for i=0..n-1
+    - inverse_sigma0(k,[lo,]hi)       array ref of n where sigma0(n) = k
+    - inverse_sigma0_count(k,[lo,]hi) count of n where sigma0(n) = k
 
     [FIXES]
 

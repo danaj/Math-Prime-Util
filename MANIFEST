@@ -53,6 +53,9 @@ factmod.h
 factmod.c
 factor.h
 factor.c
+inverse_sigma0.h
+inverse_sigma0.c
+znlog.h
 znlog.c
 factor128.h
 factor128.c

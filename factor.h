@@ -88,16 +88,6 @@ extern factor_range_context_t factor_range_init(UV lo, UV hi, bool square_free);
 extern int factor_range_next(factor_range_context_t *ctx);
 extern void factor_range_destroy(factor_range_context_t *ctx);
 
-/*
-extern UV dlp_trial(UV a, UV g, UV p, UV maxrounds);
-extern UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds);
-extern UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent);
-*/
-/* Generic znlog returns k that solves a = g^k mod p */
-extern UV znlog(UV a, UV g, UV p);
-/* znlog given prime gorder = znorder(g,p) */
-extern UV znlog_solve(UV a, UV g, UV p, UV gorder);
-
 extern UV sopfr(UV n);
 extern UV sopf(UV n);
 

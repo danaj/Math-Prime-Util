@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/abundance aliquot_sum divisor_sum/;
+use Math::Prime::Util qw/abundance aliquot_sum divisor_sum
+                         inverse_sigma0 inverse_sigma0_count/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -28,6 +29,7 @@ plan tests => 1     # aliquot_sum(n)
             + 1     # divisor_sum(n)
             + 1     # divisor_sum(n,k)
             + 1     # divisor_sum(n,sub{})
+            + 1     # inverse_sigma0
             + 1     # tau
             + 1;    # overflow
 
@@ -92,6 +94,30 @@ subtest 'divisor_sum(n,sub{})', sub {
     my @slist = map {divisor_sum($_,sub{int($_[0])**$k})} 1..scalar @$sigmaref;
     is_deeply( \@slist, $sigmaref, "Sum of divisors to the ${k}th power: Sigma_$k" );
   }
+};
+
+subtest 'inverse_sigma0' => sub {
+  my @sigma0_48_to_10000 = qw/
+    2520 3360 3780 3960 4200 4320 4620 4680 5280 5400 5460 5544
+    5760 5880 5940 6048 6120 6240 6552 6600 6840 6930 7020 7140
+    7392 7800 7980 8064 8160 8190 8280 8316 8568 8580 8736 9000
+    9120 9180 9450 9504 9576 9600 9660 9720 9828
+  /;
+
+  is_deeply( inverse_sigma0(1, 0, 10), [1], "inverse_sigma0(1,0,10)" );
+  is_deeply( inverse_sigma0(2, 10), [2,3,5,7], "inverse_sigma0(2,10)" );
+  is_deeply( inverse_sigma0(4, 10), [6,8,10], "inverse_sigma0(4,10)" );
+  is_deeply( inverse_sigma0(0, 1, 10), [], "inverse_sigma0(0,1,10)" );
+  is( inverse_sigma0_count(1, 0, 10), 1,
+      "inverse_sigma0_count(1,0,10)" );
+  is( inverse_sigma0_count(2, 10), 4,
+      "inverse_sigma0_count(2,10)" );
+  is_deeply( inverse_sigma0(48, 1, 10000), \@sigma0_48_to_10000,
+             "inverse_sigma0(48,1,10000)" );
+  is( inverse_sigma0_count(48, 1, 10000), 45,
+      "inverse_sigma0_count(48,1,10000)" );
+  is( inverse_sigma0_count(48, 10000), 45,
+      "inverse_sigma0_count(48,10000)" );
 };
 
 subtest 'tau using divisor_sum', sub {

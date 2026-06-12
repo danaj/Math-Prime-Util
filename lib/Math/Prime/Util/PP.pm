@@ -3472,6 +3472,72 @@ sub abundance {
   Msubint(aliquot_sum($n),$n);
 }
 
+sub _sigma0_from_factor_list {
+  return 1 unless @_;
+  my($tau, $e, $last) = (1, 0, undef);
+  for my $f (@_) {
+    if (defined $last && $f == $last) {
+      $e++;
+    } else {
+      $tau *= $e+1 if defined $last;
+      ($last, $e) = ($f, 1);
+    }
+  }
+  $tau * ($e+1);
+}
+
+sub _sigma0_possible_from_nfactors {
+  my($nf, $k) = @_;
+  return $k == 1 if $nf == 0;
+  return 0 if $k < $nf+1;
+  return 1 if $nf >= 30;
+  $k <= (1 << $nf);
+}
+
+sub inverse_sigma0_count {
+  my($k, $low, $high) = @_;
+  validate_integer_nonneg($k);
+  if (defined $high) { validate_integer_nonneg($low); }
+  else               { ($low,$high) = (1, $low);      }
+  validate_integer_nonneg($high);
+
+  return 0 if $k == 0 || $high < 1;
+  return ($low <= 1 && $high >= 1) ? 1 : 0 if $k == 1;
+  return Mprime_count($low,$high) if $k == 2;
+  $low = 1 if $low < 1;
+  return 0 if $low > $high;
+
+  my $count = 0;
+  Math::Prime::Util::forfactored(sub {
+    my $nf = @_;
+    $count++ if _sigma0_possible_from_nfactors($nf, $k)
+             && _sigma0_from_factor_list(@_) == $k;
+  }, $low, $high);
+  $count;
+}
+
+sub inverse_sigma0 {
+  my($k, $low, $high) = @_;
+  validate_integer_nonneg($k);
+  if (defined $high) { validate_integer_nonneg($low); }
+  else               { ($low,$high) = (1, $low);      }
+  validate_integer_nonneg($high);
+
+  return [] if $k == 0 || $high < 1;
+  return ($low <= 1 && $high >= 1) ? [1] : [] if $k == 1;
+  return Mprimes($low,$high) if $k == 2;
+  $low = 1 if $low < 1;
+  return [] if $low > $high;
+
+  my @result;
+  Math::Prime::Util::forfactored(sub {
+    my $nf = @_;
+    push @result, $_ if _sigma0_possible_from_nfactors($nf, $k)
+                     && _sigma0_from_factor_list(@_) == $k;
+  }, $low, $high);
+  \@result;
+}
+
 sub prime_signature {
   my($n) = @_;
   validate_integer_nonneg($n);
