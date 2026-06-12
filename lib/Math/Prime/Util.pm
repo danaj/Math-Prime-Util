@@ -6085,7 +6085,8 @@ Shanks' BSGS, and Pollard's DLP Rho.
 
 We will solve even when C<p> is not prime.
 This is reasonable if C<g> and C<p> are coprime.
-If not, the function can be B<very> slow.
+If not, a reduction is attempted before falling back to the remaining
+discrete log problem.
 
 The PP implementation is less sophisticated, with only a memory-heavy BSGS
 being used.

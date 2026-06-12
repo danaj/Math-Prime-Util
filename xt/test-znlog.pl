@@ -10,7 +10,8 @@ use Math::Prime::Util qw/random_nbit_prime znprimroot znlog powmod
 # Our znlog will handle non-primes, so another interesting test would
 # be using random integer p values.
 my $ebits = 64;
-#csrand(3);
+csrand(3);
+#Math::Prime::Util::prime_set_config(verbose=>1);
 
 print "1..",$ebits-3,"\n";
 for my $bits (4 .. $ebits) {
@@ -24,11 +25,15 @@ for my $bits (4 .. $ebits) {
     #print "   znlog($b,$root,$p) ...";
     my $d = znlog($b, $root, $p);
     #print "   DONE\n";
-    my $res = powmod($root, $d, $p);
-    next if $res == $b;
+    if (defined $d) {
+      my $res = powmod($root, $d, $p);
+      next if $res == $b;
+      warn "FAIL $bits:  $root ^ $d mod $p = $res, not $b\n";
+    } else {
+      warn "FAIL $bits:  znlog($b, $root, $p) failed\n";
+    }
     $ok = "not ok";
-    warn "FAIL $bits:  $root ^ $d mod $p = $res, not $b\n";
-    print "PASS $bits: $root ^ $d mod $p = $res\n";
+    #print "PASS $bits: $root ^ $d mod $p = $res\n";
   }
   print "$ok ",$bits-3," - znlog with $bits bits\n";
 }

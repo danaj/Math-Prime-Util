@@ -53,6 +53,7 @@ factmod.h
 factmod.c
 factor.h
 factor.c
+znlog.c
 factor128.h
 factor128.c
 goldbach.h

@@ -139,7 +139,8 @@ Revision history for Perl module Math::Prime::Util
 
     - vecsum and vecprod 100x faster if GMP not available (vs Calc).
 
-    - znlog faster, PP znlog much faster.
+    - znlog faster, especially PP, native prime-power subgroups, and
+      large-order rho cases.
 
     - forsetproduct no longer aliases the input arrays.
 
