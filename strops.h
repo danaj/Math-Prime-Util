@@ -72,11 +72,11 @@ extern STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k);
  * qout needs alen+1 bytes; rout needs blen bytes.
  * Remainder carries the sign of b (floor convention).
  * Returns false if b = 0, true otherwise. */
-extern bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
+extern bool strint_fdivrem(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
                           const char* a, STRLEN alen,
                           const char* b, STRLEN blen);
 
-/* Three division helpers, all using strint_divmod but more convenient. */
+/* Three division helpers, all using strint_fdivrem but more convenient. */
 
 /* out needs alen+1 bytes.  Returns 0 on failure. */
 extern STRLEN strint_divint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);

@@ -1116,7 +1116,7 @@ STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit)
  * qout needs alen+1 bytes; rout needs blen bytes.
  * Remainder has the sign of b (floor convention).
  * Returns false if b = 0, true otherwise. */
-bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
+bool strint_fdivrem(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
                    const char* a, STRLEN alen,
                    const char* b, STRLEN blen)
 {
@@ -1135,7 +1135,7 @@ bool strint_divmod(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
 STRLEN strint_divint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
   STRLEN len = 0;
-  if (!strint_divmod(out, &len, 0, 0, a,alen, b,blen)) return 0;
+  if (!strint_fdivrem(out, &len, 0, 0, a,alen, b,blen)) return 0;
   return len;
 }
 
@@ -1158,7 +1158,7 @@ STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRL
 STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen)
 {
   STRLEN len = 0;
-  if (!strint_divmod(0, 0, out, &len, a,alen, b,blen)) return 0;
+  if (!strint_fdivrem(0, 0, out, &len, a,alen, b,blen)) return 0;
   return len;
 }
 
