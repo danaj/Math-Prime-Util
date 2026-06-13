@@ -686,4 +686,6 @@ OEIS lucky numbers:
 - tstbit(n,k) (bitget, bit_test).
 - scan1(n,start) / scan0(n,start)
 
-- strint_divmod isn't getting used
+- GMP allsqrtmod
+- GMP rootmod
+- GMP allrootmod

@@ -117,10 +117,32 @@ my @rootmods = (
  [198,-1,519, undef],
 );
 
+my @allsqrt_context_tests = (
+ [ [1,0], [], 0, "n=0 empty" ],
+ [ [2,1], [0], 1, "n=1 one root" ],
+ [ [3,9], [], 0, "main path no roots" ],
+ [ [1,8], [1,3,5,7], 4, "main path roots" ],
+);
+
+my @allroot_context_tests = (
+ [ [2,1,0], [], 0, "n=0 empty" ],
+ [ [2,-1,1], [0], 1, "n=1 before negative k" ],
+ [ [1,0,7], [0,1,2,3,4,5,6], 7, "k=0 all residues" ],
+ [ [2,0,7], [], 0, "k=0 no roots" ],
+ [ [0,-2,7], [], 0, "negative k with zero base" ],
+ [ [2,-1,4], [], 0, "negative k with no inverse" ],
+ [ [0,1,7], [0], 1, "k=1 zero root" ],
+ [ [2,1,7], [2], 1, "k=1 one root" ],
+ [ [2,3,7], [], 0, "main path no roots" ],
+ [ [1,2,8], [1,3,5,7], 4, "main path roots" ],
+);
+
 plan tests => 0
             + scalar(@sqrtmods)*2    # sqrtmod / allsqrtmod
+            + scalar(@allsqrt_context_tests)*2
             + 5                      # rootmod
             + scalar(@rootmods)*2    # allrootmod
+            + scalar(@allroot_context_tests)*2
             + 1                      # more rootmod
             + 0;
 
@@ -143,6 +165,15 @@ foreach my $r (@sqrtmods) {
     }
     is_deeply([map{"$_"}allsqrtmod($a,$n)], $exp, "allsqrtmod($a,$n) = (@$exp)");
   }
+}
+
+foreach my $t (@allsqrt_context_tests) {
+  my($args, $exp, $count, $desc) = @$t;
+  my($a,$n) = @$args;
+  is_deeply([map{"$_"}allsqrtmod($a,$n)], [map{"$_"}@$exp],
+            "allsqrtmod($a,$n) list context: $desc");
+  is(scalar allsqrtmod($a,$n), $count,
+     "allsqrtmod($a,$n) scalar context count: $desc");
 }
 
 ###### rootmod
@@ -184,6 +215,15 @@ foreach my $r (@rootmods) {
     ok( is_one_of($val, @$exp), "rootmod($a,$k,$n) = $val, roots [@$exp]" );
     is_deeply([map{"$_"}allrootmod($a,$k,$n)], $exp, "allrootmod($a,$k,$n) = (@$exp)");
   }
+}
+
+foreach my $t (@allroot_context_tests) {
+  my($args, $exp, $count, $desc) = @$t;
+  my($a,$k,$n) = @$args;
+  is_deeply([map{"$_"}allrootmod($a,$k,$n)], [map{"$_"}@$exp],
+            "allrootmod($a,$k,$n) list context: $desc");
+  is(scalar allrootmod($a,$k,$n), $count,
+     "allrootmod($a,$k,$n) scalar context count: $desc");
 }
 
 # is(powmod(rootmod(12,41,1147),41,1147), 12, "41st root of 12 mod 1147 is correct");

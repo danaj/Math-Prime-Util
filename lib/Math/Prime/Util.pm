@@ -5969,6 +5969,8 @@ Some inputs will return very many roots.
 For example, C<a = p^4, n = 24 * p^4> for prime p, has many roots,
 and C<sqrtmod(89**8, 24*89**8)> has over 500 million.
 
+In scalar context, this returns the count of roots.
+
 =head2 rootmod
 
 Given three integers C<a>, C<k>, and C<n>, returns a C<k>-th root of
@@ -5989,6 +5991,8 @@ If no root exists, an empty list is returned.
 
 Similar to L</allsqrtmod>, some inputs have millions or billions of roots,
 so it might not be able to successfully return them all.
+
+In scalar context, this returns the count of roots.
 
 =head2 invmod
 

@@ -6297,7 +6297,8 @@ sub allsqrtmod {
   my($A,$n) = @_;
   validate_integer($A);
   validate_integer_abs($n);
-  return $n ? (0) : () if $n <= 1;
+  return wantarray ? ()  : 0 if $n == 0;
+  return wantarray ? (0) : 1 if $n == 1;
   $A = Mmodint($A,$n);
   my @R = Mis_prime($n) ? _allsqrtmodpk($A,$n,1)
                         : _allsqrtmodfact($A, $n, [Mfactor_exp($n)]);
@@ -6779,19 +6780,33 @@ sub allrootmod {
   validate_integer($k);
   validate_integer_abs($n);
 
-  return () if $n == 0;
-  $A = Mmodint($A,$n);
-
-  return ($A) if $n == 1;
-  if ($k == 0) {
-    return ($A == 1) ? (0..$n-1) : ();
-  } elsif ($k < 0) {
-    return () if $A == 0;
-    $A = Minvmod($A, $n);
-    return () unless defined $A && $A > 0;
-    $k = -$k;
+  if (wantarray) {    # LIST RETURN
+    return () if $n == 0;
+    $A = Mmodint($A,$n);
+    return ($A) if $n == 1;
+    if ($k == 0) {
+      return $A == 1 ? (0..$n-1) : ();
+    } elsif ($k < 0) {
+      return () if $A == 0;
+      $A = Minvmod($A, $n);
+      return () unless defined $A && $A > 0;
+      $k = -$k;
+    }
+    return ($A) if $n == 2 || $k == 1;
+  } else {            # COUNT RETURN
+    return 0 if $n == 0;
+    $A = Mmodint($A,$n);
+    return 1 if $n == 1;
+    if ($k == 0) {
+      return $A == 1 ? $n : 0;
+    } elsif ($k < 0) {
+      return 0 if $A == 0;
+      $A = Minvmod($A, $n);
+      return 0 unless defined $A && $A > 0;
+      $k = -$k;
+    }
+    return 1 if $n == 2 || $k == 1;
   }
-  return ($A) if $n == 2 || $k == 1;
 
   my @roots;
   my @nf = Mis_prime($n) ? ([$n,1]) : Mfactor_exp($n);

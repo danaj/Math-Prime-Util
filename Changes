@@ -103,6 +103,9 @@ Revision history for Perl module Math::Prime::Util
     - vecuniq now accepts generic defined inputs using List::Util-like
       string/hash semantics, while retaining a fast native-integer path.
 
+    - allsqrtmod and allrootmod now consistently return the count in scalar
+      context.  Add documentation and testing.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

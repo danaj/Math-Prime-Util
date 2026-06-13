@@ -188,11 +188,14 @@ static const gmp_info_t gmp_info[] = {
   {                "mulsubmod", 53, 1, R_BIGINT },
   {             "factorialmod", 54, 1, R_BIGINT }, /* 47 with m > 0 */
   {              "binomialmod", 54, 1, R_BIGINT },
-  {                  "sqrtmod", 53, 1, R_BIGINT }, /* 53 for composites */
   {                   "divrem", 52, 2, R_BIGINT },
   {                  "tdivrem", 52, 2, R_BIGINT },
   {                  "fdivrem", 53, 2, R_BIGINT },
   {                  "cdivrem", 53, 2, R_BIGINT },
+  {                  "sqrtmod", 53, 1, R_BIGINT }, /* 53 for composites */
+  {                  "rootmod", 54, 1, R_BIGINT },
+  {               "allsqrtmod", 54, 0xFF, R_BIGINT },
+  {               "allrootmod", 54, 0xFF, R_BIGINT },
 
   {        "is_primitive_root", 36, 1, R_BOOL },
   {             "is_semiprime", 42, 1, R_BOOL },
@@ -4228,7 +4231,10 @@ void allsqrtmod(IN SV* sva, IN SV* svn)
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     if (astatus != 0 && nstatus != 0) {
-      if (n == 0) XSRETURN_EMPTY;
+      if (n == 0) {
+        if (GIMME_V != G_ARRAY) XSRETURN_UV(0);
+        XSRETURN_EMPTY;
+      }
       _mod_with(&a, astatus, n);
       roots = allsqrtmod(&numr, a, n);
       if (roots != 0) {
@@ -4240,6 +4246,8 @@ void allsqrtmod(IN SV* sva, IN SV* svn)
             PUSHs(sv_2mortal(newSVuv(roots[i])));
         }
         Safefree(roots);
+      } else if (GIMME_V != G_ARRAY) {
+        PUSHs(sv_2mortal(newSVuv(0)));
       }
     } else {
       DISPATCHPP_RETURN();
@@ -4254,9 +4262,16 @@ void allrootmod(IN SV* sva, IN SV* svg, IN SV* svn)
     gstatus = _validate_and_set(&g, aTHX_ svg, IFLAG_ANY);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     if (astatus != 0 && gstatus != 0 && nstatus != 0) {
-      if (n == 0) XSRETURN_EMPTY;
+      if (n == 0) {
+        if (GIMME_V != G_ARRAY) XSRETURN_UV(0);
+        XSRETURN_EMPTY;
+      }
+      if (n == 1) XSRETURN_UV(GIMME_V == G_ARRAY ? 0 : 1);
       _mod_with(&a, astatus, n);
-      if (!prep_pow_inv(&a,&g,gstatus,n)) XSRETURN_EMPTY;
+      if (!prep_pow_inv(&a,&g,gstatus,n)) {
+        if (GIMME_V != G_ARRAY) XSRETURN_UV(0);
+        XSRETURN_EMPTY;
+      }
       roots = allrootmod(&numr, a, g, n);
       if (roots != 0) {
         if (GIMME_V != G_ARRAY) {
@@ -4267,6 +4282,8 @@ void allrootmod(IN SV* sva, IN SV* svg, IN SV* svn)
             PUSHs(sv_2mortal(newSVuv(roots[i])));
         }
         Safefree(roots);
+      } else if (GIMME_V != G_ARRAY) {
+        PUSHs(sv_2mortal(newSVuv(0)));
       }
     } else {
       DISPATCHPP_RETURN();
