@@ -14,7 +14,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 plan tests => 4          # small is_smooth / is_rough
             + 4+3        # special case is_smooth / is_rough
             + 4+4        # is_smooth large
-            + 4+2;       # smooth_count / rough_count
+            + 4+4;       # smooth_count / rough_count
 
 ###### is_smooth / is_rough
 
@@ -84,6 +84,10 @@ SKIP: {
   is_deeply( \@got, \@exp, "rough_count(0..5, 0..5)" );
 }
 is(rough_count(3700621409,15), 709809501, "rough_count(3700621409,15)");
+is("".rough_count("10000000000000000000000000000",13), "2077922077922077922077922077",
+   "rough_count(10^28,13) bigint result");
+is("".rough_count("10000000000000000000000000000",19), "1805253569959452312393488861",
+   "rough_count(10^28,19) bigint result");
 
 
 ###### ---- helper functions ----

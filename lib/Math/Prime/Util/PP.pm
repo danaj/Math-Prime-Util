@@ -3573,8 +3573,30 @@ sub sopf {
 my(@_s3,@_s4);
 my @_pred5 = (1,0,1,2,3,4,5,0,1,2,3,0,1,0,1,2,3,0,1,0,1,2,3,0,1,2,3,4,5,0);
 
+sub _tablephi_big {
+  my($x, $a) = @_;
+  if    ($a == 0) { return $x; }
+  elsif ($a == 1) { return Msubint($x, Mdivint($x,2)); }
+  elsif ($a == 2) { return Maddint(Msubint(Msubint($x, Mdivint($x,2)), Mdivint($x,3)), Mdivint($x,6)); }
+  elsif ($a == 3) { return Maddint(Mmulint(8, Mdivint($x,30)), $_s3[0+Mmodint($x,30)]); }
+
+  my $x4 = Maddint(Mmulint(48, Mdivint($x,210)), $_s4[0+Mmodint($x,210)]);
+  if ($a == 4) { return $x4; }
+
+  my $xp = Mdivint($x,11);
+  my $xp4 = Maddint(Mmulint(48,Mdivint($xp,210)), $_s4[0+Mmodint($xp,210)]);
+  if ($a == 5) { return Msubint($x4, $xp4); }
+
+  my $xq = Mdivint($x,13);
+  my $xq4 = Maddint(Mmulint(48,Mdivint($xq,210)), $_s4[0+Mmodint($xq,210)]);
+  my $xqp = Mdivint($xq,11);
+  my $xqp4= Maddint(Mmulint(48,Mdivint($xqp,210)), $_s4[0+Mmodint($xqp,210)]);
+  return Maddint(Msubint(Msubint($x4, $xp4), $xq4), $xqp4);
+}
+
 sub _tablephi {
   my($x, $a) = @_;
+  return _tablephi_big($x,$a) if ref($x) || $x > 562949953421312;
   if ($a == 0) { return $x; }
   elsif ($a == 1) { return $x-int($x/2); }
   elsif ($a == 2) { return $x-int($x/2) - int($x/3) + int($x/6); }
@@ -3605,13 +3627,20 @@ sub legendre_phi {
   return ($x > 0 ? 1 : 0) if $x < $primes->[$a];
 
   my $sum = 0;
+  my $bigx = ref($x) || $x > 562949953421312;
   my %vals = ( $x => 1 );
   while ($a > 6) {
     my $primea = $primes->[$a-1];
     my %newvals;
     while (my($v,$c) = each %vals) {
-      my $sval = int($v / $primea);
-      $sval -= $_pred5[$sval % 30];   # Reduce sval to one with same phi.
+      my $sval;
+      if ($bigx) {
+        $sval = Mdivint($v, $primea);
+        $sval = Msubint($sval, $_pred5[0+Mmodint($sval,30)]);
+      } else {
+        $sval = int($v / $primea);
+        $sval = $sval - $_pred5[$sval % 30]; # Reduce sval to one with same phi.
+      }
       if ($sval < $primea) {
         $sum -= $c;
       } else {
@@ -3625,10 +3654,13 @@ sub legendre_phi {
     }
     $a--;
   }
+  my @T;
   while (my($v,$c) = each %vals) {
-    $sum += $c * _tablephi($v, $a);
+    my $term = _tablephi($v, $a);
+    $term = Mmulint($c, $term) if $c != 1;
+    push @T, $term;
   }
-  return $sum;
+  Mvecsum(@T);
 }
 
 sub _sieve_prime_count {
