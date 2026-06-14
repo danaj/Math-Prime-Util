@@ -337,6 +337,7 @@ Tags:
   sqrtint(n)                          integer square root
   rootint(n,k)                        integer k-th root
   rootint(n,k,\$rk)                   as above but also set $rk to r^k
+  crootint(n,k)                       ceiling integer k-th root
   logint(n,b)                         integer logarithm
   logint(n,b,\$be)                    as above but also set $be to b^e
   gcd(@list)                          greatest common divisor

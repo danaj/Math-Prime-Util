@@ -36,7 +36,7 @@ our @EXPORT_OK =
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime
-      sqrtint rootint logint lshiftint rshiftint rashiftint absint negint toint
+      sqrtint rootint crootint logint lshiftint rshiftint rashiftint absint negint toint
       signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
@@ -2887,6 +2887,13 @@ equal to C<sign(n) * |rootint(abs(n),k)>.  It was decided to follow the
 behavior of Pari/GP and Math::BigInt and disallow negative C<n>.
 
 This corresponds to Pari/GP's C<sqrtnint> function.
+
+
+=head2 crootint
+
+Given a non-negative integer C<n> and positive exponent C<k>, return the
+ceiling integer k-th root of C<n>.  This is the smallest integer C<r> such
+that C<< r^k >= n >>.
 
 
 =head2 logint

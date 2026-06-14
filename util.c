@@ -466,6 +466,15 @@ UV rootint(UV n, uint32_t k)
   }
 }
 
+UV crootint(UV n, uint32_t k)
+{
+  UV r;
+  if (k == 0) return 0;
+  if (n <= 1 || k == 1) return n;
+  r = rootint(n, k);
+  return r + (ipowsafe(r, k) < n);
+}
+
 /* Like ipow but returns UV_MAX if overflow */
 UV ipowsafe(UV n, UV k) {
   UV p = 1;

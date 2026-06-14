@@ -133,6 +133,7 @@ subtest 'arithmetic ops', sub {
 
   is(sqrtint(677),26,"sqrtint");
   is(rootint(677,3),8,"rootint");
+  is(crootint(677,3),9,"crootint");
   is(logint(677,2),9,"logint");
 
   is(negmod(24,9),3,"negmod");

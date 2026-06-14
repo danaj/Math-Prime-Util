@@ -4720,6 +4720,17 @@ void rootint(IN SV* svn, IN SV* svk, IN SV* svret = 0)
     }
     DISPATCHPP_RETURN_GMPIF(svret == 0 && (kstatus || _XS_get_callgmp() >= 54));
 
+void crootint(IN SV* svn, IN SV* svk)
+  PREINIT:
+    UV n, k;
+    int nstatus, kstatus;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_POS);
+    if (nstatus != 0 && kstatus != 0)
+      XSRETURN_UV(crootint(n, k));
+    DISPATCHPP_RETURN();
+
 void divrem(IN SV* sva, IN SV* svb)
   ALIAS:
     fdivrem = 1

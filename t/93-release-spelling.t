@@ -46,7 +46,7 @@ add_stopwords(qw/-th
                  vecsample vecfreq vecsingleton vecslide vecwindow vecprefixsum
                  vecsort vecsorti heapsort quicksort
                  toint
-                 sqrtint logint rootint powint addint subint mulint divint
+                 sqrtint logint rootint crootint powint addint subint mulint divint
                  cdivint modint negint absint divrem tdivrem fdivrem cdivrem
                  muladdint mulsubint
                  qnr cornacchia

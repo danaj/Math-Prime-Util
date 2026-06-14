@@ -7890,6 +7890,20 @@ sub rootint {
   $R;
 }
 
+sub crootint {
+  my ($n, $k) = @_;
+  validate_integer_nonneg($n);
+  validate_integer_positive($k);
+
+  return canonicalized_integer($n) if $k == 1;
+  return 0 if $n == 0;
+
+  my $rk;
+  my $r = rootint($n, $k, \$rk);
+  return $r if $rk == $n;
+  Madd1int($r);
+}
+
 sub _logint {
   my($n,$b) = @_;
   return 0 if $n < $b;

@@ -379,6 +379,7 @@ sub entropy_bytes {
 *cmpint = \&Math::Prime::Util::PP::cmpint;
 *sqrtint = \&Math::Prime::Util::PP::sqrtint;
 *rootint = \&Math::Prime::Util::PP::rootint;
+*crootint = \&Math::Prime::Util::PP::crootint;
 *logint = \&Math::Prime::Util::PP::logint;
 
 *negmod = \&Math::Prime::Util::PP::negmod;

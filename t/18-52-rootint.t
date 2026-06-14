@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/rootint/;
+use Math::Prime::Util qw/rootint crootint/;
 
 my @roots = (
   [25,  3, 15625],
@@ -53,14 +53,23 @@ my @rootints = (
   ["18446744039349813264", 39, 3],
 );
 
-plan tests => 2 + 3 + 3 + 2 + 4 + 2;
+plan tests => 2 + 2 + 3 + 5 + 3 + 2 + 4 + 3 + 4;
 
 ok(!defined eval { rootint(377,0);  }, "rootint(n,0) gives error");
 ok(!defined eval { rootint(-377,2); }, "rootint(-n,k) gives error");
 
+ok(!defined eval { crootint(377,0);  }, "crootint(n,0) gives error");
+ok(!defined eval { crootint(-377,2); }, "crootint(-n,k) gives error");
+
 is(rootint(928342398,1), 928342398, "rootint(928342398,1) returns 928342398");
 is(rootint(88875,3), 44, "rootint(88875,3) returns 44");
 is(rootint("266667176579895999",3), 643659, "integer third root of 266667176579895999 is 643659");
+
+is(crootint(928342398,1), 928342398, "crootint(928342398,1) returns 928342398");
+is(crootint(0,2), 0, "crootint(0,2) = 0");
+is(crootint(88875,3), 45, "ceiling third root of 88875 is 45");
+is(crootint(15625,3), 25, "ceiling third root of perfect cube 15625 is 25");
+is(crootint("266667176579896000",3), 643660, "ceiling third root of 266667176579896000 is 643660");
 {
   eval { rootint(16, 2, undef); 1 };
   like($@, qr/scalar reference/i, "rootint rejects undef power reference");
@@ -100,9 +109,17 @@ is(rootint("266667176579895999",3), 643659, "integer third root of 2666671765798
   is(rootint(16, $huge_k, \$rk), 1, "rootint with huge k returns 1 with power reference");
   is($rk, 1, "rootint huge k power reference is 1");
 }
+{
+  my $huge_k = "18446744073709551617";
+  is(crootint(1, $huge_k), 1, "crootint with huge k returns 1 for n=1");
+  is(crootint(2, $huge_k), 2, "crootint with huge k returns 2 for n=2");
+  is(crootint(16, $huge_k), 2, "crootint with huge k returns 2 for n=16");
+}
 
 # These make LibTomMath's mp_root_n misbehave badly.
 #is( rootint("43091031920942300256108314560009772304748698124094750326895058640841523270081624169128280918534127523222564290447104831706207227117677890695945149868732770531628297914633063561406978145215542597509491443634033203125",23), 2147483645, "integer 23rd root of a large 23rd power" );
 #is( rootint("43091031920942300256108314560009772304748698124094750326895058640841523270081624169128280918534127523222564290447104831706207227117677890695945149868732770531628297914633063561406978145215542597509491443634033203124",23), 2147483644, "integer 23rd root of almost a large 23rd power" );
 is( rootint("210624581277440375104075455121440552596840260401487569333688203125",7), 2147483645, "integer 7th root of a large 7th power" );
 is( rootint("210624581277440375104075455121440552596840260401487569333688203124",7), 2147483644, "integer 7th root of almost a large 7th power" );
+is( crootint("210624581277440375104075455121440552596840260401487569333688203125",7), 2147483645, "ceiling 7th root of a large 7th power" );
+is( crootint("210624581277440375104075455121440552596840260401487569333688203124",7), 2147483645, "ceiling 7th root of almost a large 7th power" );

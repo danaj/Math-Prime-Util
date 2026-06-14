@@ -238,14 +238,6 @@ static UV ceil_div_uv(UV n, UV d)
   return n / d + ((n % d) != 0);
 }
 
-static UV ceil_root_uv(UV n, uint32_t k)
-{
-  UV r;
-  if (n <= 1 || k <= 1) return n;
-  r = rootint(n, k);
-  return r + (ipowsafe(r, k) < n);
-}
-
 static UV mul_pow_limit(UV m, UV p, UV e, UV limit)
 {
   while (e-- > 0) {
@@ -502,7 +494,7 @@ static void recurse(invsig0_ctx_t *ctx, uint16_t idx, UV n, UV *used)
   if (idx == ctx->nexps - 1) {
     minpow = (n >= ctx->lo) ? 1 : ceil_div_uv(ctx->lo, n);
     maxpow = ctx->hi / n;
-    pl = (e == 1) ? minpow : ceil_root_uv(minpow, e);
+    pl = (e == 1) ? minpow : crootint(minpow, e);
     ph = (e == 1) ? maxpow : rootint(maxpow, e);
     if (pl < 2) pl = 2;
     if (idx > 0 && e == ctx->exps[idx - 1] && pl <= used[idx - 1])
