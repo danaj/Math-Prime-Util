@@ -19,7 +19,19 @@
  * Given a range [lo,hi] and a k value, returns or counts all the values
  * in the range that have a divisor count equal to k.
  *
- * 1) SIEVE
+ * The simplest way would be to loop over the range computing divisor_sum(n,0)
+ * [same as scalar(divisors(n))].  This is fine for a few values but very slow
+ * for larger ranges.  We don't do this anywhere.
+ *
+ * We also have a ranged factor sieve, which mitigates a lot of the factoring
+ * cost in large ranges.  The Perl code uses this simple method using the
+ * 'forfactored' loop construct.  The sieve method below is a trimmed version
+ * of the same concept.  This is good for small ranges but not large ones,
+ * where the generator method can be much better.
+ *
+ * This code instead uses these methods:
+ *
+ * 1) SIEVE  :  for count and list with small ranges
  *    A lightweight segmented sieve.  It tracks only the divisor count and
  *    residual value for each integer in the segment, not the full factor list.
  *    When sieving to sqrt(hi) is cheap, residual values are prime.  Otherwise
@@ -27,14 +39,17 @@
  *    prime factors, so classifying it as 1, prime, prime square, or semiprime
  *    is enough.
  *
- * 2) GENERATE
+ * 2) GENERATE LIST  :  for list with large ranges
+ *    Rather than sieving the range, we generate values in the range that have
+ *    the desired divisor count.  Can be very efficient for large ranges, but
+ *    can also spend too long for some narrow range / k combinations.  We use
+ *    this for generating values when the range is large enough.
+ *
+ * 3) ENUMERATE SIGNATURES  :  for counting with large ranges
  *    We enumerate all prime signatures: sorted-descending exponent lists
  *    (e0 >= e1 >= ... >= er) with (e0+1)*(e1+1)*...*(er+1) == k, factors
  *    drawn from divisors of k.  For each signature we count or list all
  *    integers in the target range with that multiplicative structure.
- *
- *    The counting recursion is a direct translation of the Perl function
- *    count_prime_signature_numbers() including all its optimizations:
  *
  *    - rem_sum bound: hi = rootint(n/m, rem_sum) where rem_sum is the sum
  *      of ALL remaining exponents.  Every subsequent prime is also >= p,
@@ -50,9 +65,6 @@
  *        k==1 base: count += prime_count(hi) - j
  *        k==2 base: count += prime_count(u) - (++local_j) for each outer p
  *        general:   recurse with j = ++local_j (= prime_count(p))
- *
- *    The list path retains the original positional recursion which was
- *    already correct.
  */
 
 #ifndef INVERSE_SIGMA0_TAU_MAX_WIDTH
@@ -70,22 +82,22 @@
 #endif
 
 /******************************************************************************/
-/* Sieve path (unchanged from original)                                        */
+/* Sieve path                                                                 */
 /******************************************************************************/
 
 static bool full_factor_sieve(UV sqrtn, UV range)
 {
-  if (sqrtn <    1000000U) return (range > 200000);
-  if (sqrtn <   10000000U) return (range > 300000);
-  if (sqrtn <   35000000U) return (range > 350000);
-  if (sqrtn <  100000000U) return (range > 500000);
-  if (sqrtn <  350000000U) return (range > 750000);
-  if (sqrtn < 1000000000U) return (range > 1000000);
-  if (sqrtn < 3500000000U) return (range > 1500000);
+  if (sqrtn <    1000000U) return (range > 200000);  /* Below 10^12 */
+  if (sqrtn <   10000000U) return (range > 300000);  /* Below 10^14 */
+  if (sqrtn <   32000000U) return (range > 350000);  /* Below 10^15 */
+  if (sqrtn <  100000000U) return (range > 500000);  /* Below 10^16 */
+  if (sqrtn <  320000000U) return (range > 750000);  /* Below 10^17 */
+  if (sqrtn < 1000000000U) return (range > 1000000); /* Below 10^18 */
+  if (sqrtn < 3200000000U) return (range > 1500000); /* Below 10^19 */
   return (range > 2000000);
 }
 
-static int first_multiple_in_range(UV *A, UV lo, UV hi, UV p)
+static bool first_multiple_in_range(UV *A, UV lo, UV hi, UV p)
 {
   UV a = (lo / p) * p;
   if (a < lo) {
@@ -218,7 +230,7 @@ static bool use_tau_sieve(UV lo, UV hi, UV k)
 }
 
 /******************************************************************************/
-/* Shared helpers                                                              */
+/* Shared helpers                                                             */
 /******************************************************************************/
 
 static UV ceil_div_uv(UV n, UV d)
@@ -244,39 +256,39 @@ static UV mul_pow_limit(UV m, UV p, UV e, UV limit)
 }
 
 /******************************************************************************/
-/* Partition enumeration (tau_partitions)                                      */
-/*                                                                             */
-/* Direct translation of tau_partitions() from the Perl scripts.              */
+/* Partition enumeration (tau_partitions)                                     */
+/*                                                                            */
+/* Direct translation of tau_partitions() from Trizen's Perl scripts.         */
 /* Factors k as a product of its own divisors >= 2, in non-decreasing order,  */
-/* then reverses to get descending exponents.                                  */
-/*                                                                             */
+/* then reverses to get descending exponents.                                 */
+/*                                                                            */
 /* Key: the loop is  for d in divs while d <= target  (not d <= sqrt(target)) */
 /* so d == target is naturally handled as the "last factor" case.             */
 /******************************************************************************/
 
 #define MAX_SIG_LEN MPU_MAX_FACTORS
 
-typedef void (*sig_cb_t)(void *data, const UV *sig, int nsig);
+typedef void (*sig_cb_t)(void *data, const UV *sig, uint16_t nsig);
 
 typedef struct {
   UV       max_sum_e;
   UV      *divs;        /* divisors of k >= 2, ascending */
-  int      ndivs;
+  UV       ndivs;
   UV       path[MAX_SIG_LEN];
-  int      pathlen;
+  uint16_t pathlen;
   sig_cb_t callback;
   void    *cb_data;
 } part_ctx_t;
 
-static void partition_recurse(part_ctx_t *ctx, UV target, int min_idx,
+static void partition_recurse(part_ctx_t *ctx, UV target, UV min_idx,
                               UV curr_sum_e)
 {
-  int i;
+  UV i;
 
   if (target == 1) {
     /* Reverse path[] to get descending exponents */
     UV sig[MAX_SIG_LEN];
-    int len = ctx->pathlen;
+    uint16_t len = ctx->pathlen;
     for (i = 0; i < len; i++) sig[i] = ctx->path[len - 1 - i];
     ctx->callback(ctx->cb_data, sig, len);
     return;
@@ -309,10 +321,11 @@ static void enumerate_signatures(UV k, UV max_sum_e,
   all_divs = divisor_list(k, &ndivs_all, k);
   skip = 0;
   while (skip < ndivs_all && all_divs[skip] < 2) skip++;
+  MPUassert(ndivs_all >= skip, "enumerate_signatures error: ndivs_all < skip");
 
   ctx.max_sum_e = max_sum_e;
   ctx.divs      = all_divs + skip;
-  ctx.ndivs     = (int)(ndivs_all - skip);
+  ctx.ndivs     = ndivs_all - skip;
   ctx.pathlen   = 0;
   ctx.callback  = callback;
   ctx.cb_data   = cb_data;
@@ -322,24 +335,23 @@ static void enumerate_signatures(UV k, UV max_sum_e,
 }
 
 /******************************************************************************/
-/* Count path                                                                  */
-/*                                                                             */
+/* Count path                                                                 */
+/*                                                                            */
 /* count_sig(n, m, lo, sig, nsig, j):                                         */
-/*   Count x <= n of the form  x = m * p0^s0 * p1^s1 * ...                   */
+/*   Count x <= n of the form  x = m * p0^s0 * p1^s1 * ...                    */
 /*   with p0 < p1 < ... all primes >= lo.                                     */
 /*   j = prime_count(lo - 1)  [invariant maintained by all callers]           */
 /******************************************************************************/
 
-static UV count_sig(UV n, UV m, UV lo, const UV *sig, int nsig, UV j);
-
-static UV count_sig(UV n, UV m, UV lo, const UV *sig, int nsig, UV j)
+static UV count_sig(UV n, UV m, UV lo, const UV *sig, uint16_t nsig, UV j)
 {
-  UV rem_sum, hi, count, i;
+  UV rem_sum, hi, count;
+  uint16_t i;
 
   if (nsig <= 0 || m == 0) return 0;
 
   rem_sum = 0;
-  for (i = 0; i < (UV)nsig; i++) rem_sum += sig[i];
+  for (i = 0; i < nsig; i++) rem_sum += sig[i];
   if (rem_sum == 0) return 0;
   if (n < m) return 0;
   hi = rootint(n / m, rem_sum);
@@ -348,16 +360,16 @@ static UV count_sig(UV n, UV m, UV lo, const UV *sig, int nsig, UV j)
 
   count = 0;
 
-  for (i = 0; i < (UV)nsig; i++) {
+  for (i = 0; i < nsig; i++) {
     UV e = sig[i];
     UV p, new_sig[MAX_SIG_LEN];
-    int nk, ni;
+    uint16_t nk, ni;
 
     if (i > 0 && sig[i] == sig[i - 1]) continue;
 
     nk = 0;
     for (ni = 0; ni < nsig; ni++)
-      if (ni != (int)i) new_sig[nk++] = sig[ni];
+      if (ni != i) new_sig[nk++] = sig[ni];
 
     if (nsig == 1) {
       UV pc_hi = prime_count(hi);
@@ -367,10 +379,10 @@ static UV count_sig(UV n, UV m, UV lo, const UV *sig, int nsig, UV j)
       UV e2 = new_sig[0];
       UV local_j = j;
       for (p = lo; p <= hi; p = next_prime(p)) {
-        UV t = mul_pow_limit(m, p, e, n);
-        UV u, pc_u;
+        UV u, pc_u, t = mul_pow_limit(m, p, e, n);
         if (t == 0) break;
         u    = (e2 == 1) ? n / t : rootint(n / t, e2);
+        if (u <= p) break;
         pc_u = prime_count(u);
         ++local_j;
         if (pc_u > local_j) count += pc_u - local_j;
@@ -379,8 +391,7 @@ static UV count_sig(UV n, UV m, UV lo, const UV *sig, int nsig, UV j)
     } else {
       UV local_j = j;
       for (p = lo; p <= hi;) {
-        UV t = mul_pow_limit(m, p, e, n);
-        UV r;
+        UV r, t = mul_pow_limit(m, p, e, n);
         if (t == 0) break;
         r = next_prime(p);
         ++local_j;
@@ -402,15 +413,16 @@ typedef struct {
   UV count;
 } count_cb_t;
 
-static void count_callback(void *data, const UV *sig, int nsig)
+static void count_callback(void *data, const UV *sig, uint16_t nsig)
 {
   count_cb_t *d = (count_cb_t *)data;
-  UV sum_e, i;
+  UV sum_e;
+  uint16_t i;
 
   if (nsig == 0) { if (d->n >= 1) d->count++; return; }
 
   sum_e = 0;
-  for (i = 0; i < (UV)nsig; i++) sum_e += sig[i];
+  for (i = 0; i < nsig; i++) sum_e += sig[i];
   if (sum_e == 0 || sum_e > log2floor(d->n)) return;
 
   /* Initial call: m=1, lo=2, j=prime_count(1)=0 */
@@ -418,33 +430,33 @@ static void count_callback(void *data, const UV *sig, int nsig)
 }
 
 /******************************************************************************/
-/* List path                                                                   */
+/* List path                                                                  */
 /******************************************************************************/
 
 typedef struct {
-  UV      lo;
-  UV      hi;
-  UV      count;
-  UV      alloc;
-  UV     *list;
-  UV     *divs;
-  UV      ndivs;
-  int     nexps;
-  uint8_t exps[MPU_MAX_FACTORS];
+  UV       lo;
+  UV       hi;
+  UV       count;
+  UV       alloc;
+  UV      *list;
+  UV      *divs;
+  UV       ndivs;
+  uint16_t nexps;
+  uint8_t  exps[MPU_MAX_FACTORS];
 } invsig0_ctx_t;
 
-static int uv_in_list(UV v, const UV *list, int len)
+static int uv_in_list(UV v, const UV *list, uint16_t len)
 {
-  int i;
+  UV i;
   for (i = 0; i < len; i++)
     if (list[i] == v) return 1;
   return 0;
 }
 
-static int min_signature_le_hi(const uint8_t *exps, int nexps, UV hi)
+static int min_signature_le_hi(const uint8_t *exps, uint16_t nexps, UV hi)
 {
   UV n = 1, p = 0;
-  int i;
+  uint16_t i;
   for (i = 0; i < nexps; i++) {
     p = (i + 1 < NPRIMES_SMALL) ? primes_small[i + 1] : next_prime(p);
     n = mul_pow_limit(n, p, exps[i], hi);
@@ -482,7 +494,7 @@ static void record(invsig0_ctx_t *ctx, UV n)
   ctx->list[ctx->count++] = n;
 }
 
-static void recurse(invsig0_ctx_t *ctx, int idx, UV n, UV *used)
+static void recurse(invsig0_ctx_t *ctx, uint16_t idx, UV n, UV *used)
 {
   UV minpow, maxpow, pl, ph, *P, pcnt, i;
   uint8_t e = ctx->exps[idx];
@@ -534,11 +546,11 @@ static void recurse(invsig0_ctx_t *ctx, int idx, UV n, UV *used)
   Safefree(P);
 }
 
-static void process_signature(invsig0_ctx_t *ctx, UV *parts, int len)
+static void process_signature(invsig0_ctx_t *ctx, UV *parts, uint16_t len)
 {
   UV used[MPU_MAX_FACTORS];
   UV maxexp = log2floor(ctx->hi);
-  int i;
+  uint16_t i;
 
   if (len > MPU_MAX_FACTORS) return;
   for (i = 0; i < len; i++) {
@@ -552,7 +564,7 @@ static void process_signature(invsig0_ctx_t *ctx, UV *parts, int len)
 }
 
 static void partitions(invsig0_ctx_t *ctx, UV rem, UV min_d,
-                       UV *parts, int len)
+                       UV *parts, uint16_t len)
 {
   UV i;
   if (len >= MPU_MAX_FACTORS) return;
