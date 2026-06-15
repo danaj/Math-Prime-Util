@@ -6323,11 +6323,25 @@ void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
     if (base == 10 && tlen < 0) {
       STRLEN len;
       char *str = SvPV(svn, len);
+      if (len > 0 && (*str == '-' || *str == '+')) {
+        str++;
+        len--;
+      }
+      while (len > 1 && *str == '0') {
+        str++;
+        len--;
+      }
+      if (len == 1 && str[0] == '0') {
+        if (ix == 1) {
+          XPUSHs(sv_2mortal(newSVpvn("", 0)));
+          XSRETURN(1);
+        }
+        XSRETURN(0);
+      }
       if (ix == 1) {
         XPUSHs(sv_2mortal(newSVpv(str, len)));
         XSRETURN(1);
       }
-      if (len == 1 && str[0] == '0') XSRETURN(0);
       EXTEND(SP, (EXTEND_TYPE)len);
       for (i = 0; i < (int)len; i++)
         PUSH_NPARITY(str[i]-'0');

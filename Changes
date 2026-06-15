@@ -107,6 +107,8 @@ Revision history for Perl module Math::Prime::Util
     - allsqrtmod and allrootmod now consistently return the count in scalar
       context.  Add documentation and testing.
 
+    - todigitstring with negative bigint in base 10 included the sign.  Fixed.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

@@ -343,7 +343,7 @@ sub _validate_integer_abs {
   if (ref($_[0])) {
     $_[0] = -$_[0] if $_[0] < 0;
   } else {
-    $_[0] =~ s/^-// if "$_[0]" < 0;
+    $_[0] =~ s/^-// if defined $_[0] && $_[0] =~ /^-/;
   }
   _validate_integer($_[0]);
 }
@@ -6863,29 +6863,22 @@ sub allrootmod {
 ################################################################################
 ################################################################################
 
+# n must be a native integer > 1.  a is a valid integer of some sort.
 sub _modabsint {
   my($a, $n) = @_;
-  if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-    return (undef,0)[$n] if $n <= 1;
-  }
-  if ($n < INTMAX && $a < INTMAX && $a > INTMIN) {
-    $a = $n - ((-$a) % $n) if $a < 0;
-    $a %= $n if $a >= $n;
-  } else {
-    $a = tobigint($a) % $n;
-    $a = _bigint_to_int($a) if $a <= INTMAX;
-  }
+  return _bigint_to_int(tobigint($a) % $n) if ref($a) || $a == INTMIN;
+  $a = $n - ((-$a) % $n) if $a < 0;
+  $a %= $n if $a >= $n;
   $a;
 }
 
 sub addmod {
   my($a, $b, $n) = @_;
-  if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-    return (undef,0)[$n] if $n <= 1;
-  }
-  if ($n <= INTMAX && $a <= INTMAX && $b <= INTMAX && $a >= INTMIN && $b >= INTMIN) {
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
+  if (!ref($n) && !ref($a) && !ref($b)) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     $a %= $n if $a >= $n;
@@ -6909,11 +6902,11 @@ sub addmod {
 }
 sub submod {
   my($a, $b, $n) = @_;
-  if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-    return (undef,0)[$n] if $n <= 1;
-  }
-  if ($n <= INTMAX && $a <= INTMAX && $b <= INTMAX && $a >= INTMIN && $b >= INTMIN) {
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
+  if (!ref($n) && !ref($a) && !ref($b)) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     $a %= $n if $a >= $n;
@@ -6931,22 +6924,16 @@ sub submod {
 
 sub mulmod {
   my($a, $b, $n) = @_;
-  #if ($n <= 1) { # ABS(n) and handle mod 0 | mod 1.
-  #  if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-  #  return (undef,0)[$n] if $n <= 1;
-  #}
-  if ($n <= 1) {
-    return (undef,0)[$n] if $n >= 0;
-    $n = tobigint($n) if $n <= INTMIN && !ref($n);
-    $n = -$n;
-    return 0 if $n == 1;
-  }
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
 
   # If n is a native int, we can reduce a and b then do everything native
-  if ($n < INTMAX) {
-    if ($a >= INTMAX || $a < 0 || $b >= INTMAX || $b < 0) {
-      $a = _bigint_to_int(tobigint($a) % $n) if $a >= INTMAX || $a < 0;
-      $b = _bigint_to_int(tobigint($b) % $n) if $b >= INTMAX || $b < 0;
+  if (!ref($n)) {
+    if (ref($a) || $a < 0 || ref($b) || $b < 0) {
+      $a = _bigint_to_int(tobigint($a) % $n) if ref($a) || $a < 0;
+      $b = _bigint_to_int(tobigint($b) % $n) if ref($b) || $b < 0;
     }
     return _mulmod($a,$b,$n);
   }
@@ -6992,10 +6979,10 @@ sub _bi_powmod {
 
 sub powmod {
   my($a, $b, $n) = @_;
-  if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-    return (undef,0)[$n] if $n <= 1;
-  }
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
   return $b < 0 ? undef : $b > 0 ? 0 : 1 if $a == 0;
 
   # If the exponent is negative: a=1/a ; b=-b
@@ -7008,7 +6995,7 @@ sub powmod {
 
   if ($b <= 8) {
     return 1 if $b == 0;
-    return _modabsint($a,$n) if $b == 1;
+    return !ref($n) ? _modabsint($a,$n) : Mmodint($a,$n) if $b == 1;
     return Mmulmod($a,$a,$n) if $b == 2;
     # For exponents 3-8, this can be 20x faster for native n
     if (!ref($n) && $a <= 31622776 && $a >= -31622776) {
@@ -7029,14 +7016,13 @@ sub powmod {
 
 sub muladdmod {
   my($a, $b, $c, $n) = @_;
-  if ($n <= 1) {
-    $n = Mnegint($n) if $n < 0;
-    return (undef,0)[$n] if $n <= 1;
-  }
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer($c);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
 
-  if (!ref($n) && $n <= INTMAX
-               && $a <= INTMAX && $b <= INTMAX && $c <= INTMAX
-               && $a >= INTMIN && $b >= INTMIN && $c >= INTMIN) {
+  if (!ref($n) && !ref($a) && !ref($b) && !ref($c)) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     $c = $n - ((-$c) % $n) if $c < 0;
@@ -7057,14 +7043,13 @@ sub muladdmod {
 }
 sub mulsubmod {
   my($a, $b, $c, $n) = @_;
-  if ($n <= 1) {
-    $n = Mnegint($n) if $n < 0;
-    return (undef,0)[$n] if $n <= 1;
-  }
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer($c);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
 
-  if (!ref($n) && $n <= INTMAX
-               && $a <= INTMAX && $b <= INTMAX && $c <= INTMAX
-               && $a >= INTMIN && $b >= INTMIN && $c >= INTMIN) {
+  if (!ref($n) && !ref($a) && !ref($b) && !ref($c)) {
     $a = $n - ((-$a) % $n) if $a < 0;
     $b = $n - ((-$b) % $n) if $b < 0;
     $c = $n - ((-$c) % $n) if $c < 0;
@@ -7088,13 +7073,12 @@ sub mulsubmod {
 
 sub invmod {
   my($a,$n) = @_;
-  if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-    return (undef,0)[$n] if $n <= 1;
-  }
+  validate_integer($a);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
   return if $a == 0;
 
-  if ($n < INTMAX) {  # Fast all native math
+  if (!ref($n)) {  # Fast all native math
     my($t,$nt,$r,$nr) = (0, 1, $n, _modabsint($a,$n));
     while ($nr != 0) {
       # Use mod before divide to force correct behavior with high bit set
@@ -7134,10 +7118,10 @@ sub invmod {
 
 sub divmod {
   my($a, $b, $n) = @_;
-  if ($n <= 1) {
-    if ($n < 0) { $n = tobigint($n) if $n <= INTMIN && !ref($n);  $n = -$n; }
-    return (undef,0)[$n] if $n <= 1;
-  }
+  validate_integer($a);
+  validate_integer($b);
+  validate_integer_abs($n);
+  return (undef,0)[$n] if $n <= 1;
 
   my $invb = Minvmod($b,$n);
   return undef unless defined $invb;
@@ -7632,9 +7616,8 @@ sub todigits {
 
 sub _tobinarystring {
   my($n) = @_;
-  $n =~ s/^-//;
   return "" if $n == 0;
-  return sprintf("%b",$n) if $n < INTMAX;
+  return sprintf("%b",$n) if !ref($n);
   $n = tobigint($n) unless ref($n);
   my $refn = ref($n);
   return Math::GMPz::Rmpz_get_str($n,2) if $refn eq 'Math::GMPz';
@@ -7648,16 +7631,15 @@ sub _tobinarystring {
 
 sub todigitstring {
   my($n,$base,$len) = @_;
-  validate_integer($n);
+  validate_integer_abs($n);
   if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
   croak "todigitstring: invalid base: $base" if $base < 2 || $base > 36;
   return _tobinarystring($n) if $base == 2 && !defined $len;
   validate_integer_nonneg($len) if defined $len;
-  $n =~ s/^-//;
 
   return "" if $n == 0 || (defined $len && $len == 0);
 
-  if ($n < INTMAX) {
+  if (!ref($n)) {
     if ($base != 2 && $base != 8 && $base != 16) {
       return join "", _splitdigits($n, $base, $len)  if $base <= 10;
       return join "", map { $_digitmap[$_] } _splitdigits($n, $base, $len);
@@ -7673,7 +7655,6 @@ sub todigitstring {
     return $s;
   }
 
-  $n = tobigint($n) unless ref($n);
   my $refn = ref($n);
   my $s;
 

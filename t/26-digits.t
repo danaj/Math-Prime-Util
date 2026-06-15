@@ -63,6 +63,11 @@ subtest 'todigits', sub {
   is(vecsum(todigits("293852387239761276234029385230912847923872323")), 201, "vecsum of todigits of bigint");
 
   is_deeply([todigits(-143)], [1,4,3], "todigits ignores negative sign");
+  my $big = "18446744073709551616";
+  my @bigdigits = map { 0+$_ } split(//,$big);
+  is_deeply([todigits("-$big")], \@bigdigits, "todigits ignores negative sign for bigint string");
+  is_deeply([todigits("+$big")], \@bigdigits, "todigits ignores positive sign for bigint string");
+  is_deeply([todigits("000000000000000000000$big")], \@bigdigits, "todigits ignores leading zeroes for bigint string");
 };
 
 subtest 'sumdigits', sub {
@@ -88,6 +93,10 @@ subtest 'todigitstring', sub {
   is(todigitstring("9" x 27, 11), "92586630a001888a8112250349", "todigitstring base 11");
   is(todigitstring(-143,16), "8f", "todigitstring ignores negative sign");
   is(todigitstring(12345,8,10), "0000030071", "todigitstring will 0 pad");
+  my $big = "18446744073709551616";
+  is(todigitstring("-$big"), $big, "todigitstring ignores negative sign for bigint string");
+  is(todigitstring("+$big"), $big, "todigitstring ignores positive sign for bigint string");
+  is(todigitstring("000000000000000000000$big"), $big, "todigitstring ignores leading zeroes for bigint string");
 };
 
 subtest 'is_palindrome', sub {

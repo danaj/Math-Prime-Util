@@ -355,58 +355,66 @@ sub entropy_bytes {
 *farey_rank = \&Math::Prime::Util::PP::farey_rank;
 
 
-*addint = \&Math::Prime::Util::PP::addint;
-*subint = \&Math::Prime::Util::PP::subint;
-*add1int = \&Math::Prime::Util::PP::add1int;
-*sub1int = \&Math::Prime::Util::PP::sub1int;
-*lshiftint = \&Math::Prime::Util::PP::lshiftint;
-*rshiftint = \&Math::Prime::Util::PP::rshiftint;
+*addint     = \&Math::Prime::Util::PP::addint;
+*subint     = \&Math::Prime::Util::PP::subint;
+*add1int    = \&Math::Prime::Util::PP::add1int;
+*sub1int    = \&Math::Prime::Util::PP::sub1int;
+*lshiftint  = \&Math::Prime::Util::PP::lshiftint;
+*rshiftint  = \&Math::Prime::Util::PP::rshiftint;
 *rashiftint = \&Math::Prime::Util::PP::rashiftint;
-*mulint = \&Math::Prime::Util::PP::mulint;
-*powint = \&Math::Prime::Util::PP::powint;
-*divint = \&Math::Prime::Util::PP::divint;
-*modint = \&Math::Prime::Util::PP::modint;
-*cdivint = \&Math::Prime::Util::PP::cdivint;
-*divrem = \&Math::Prime::Util::PP::divrem;
-*tdivrem = \&Math::Prime::Util::PP::tdivrem;
-*fdivrem = \&Math::Prime::Util::PP::fdivrem;
-*cdivrem = \&Math::Prime::Util::PP::cdivrem;
-*muladdint = \&Math::Prime::Util::PP::muladdint;
-*mulsubint = \&Math::Prime::Util::PP::mulsubint;
-*absint = \&Math::Prime::Util::PP::absint;
-*negint = \&Math::Prime::Util::PP::negint;
-*signint = \&Math::Prime::Util::PP::signint;
-*cmpint = \&Math::Prime::Util::PP::cmpint;
-*sqrtint = \&Math::Prime::Util::PP::sqrtint;
-*rootint = \&Math::Prime::Util::PP::rootint;
-*crootint = \&Math::Prime::Util::PP::crootint;
-*logint = \&Math::Prime::Util::PP::logint;
+*mulint     = \&Math::Prime::Util::PP::mulint;
+*powint     = \&Math::Prime::Util::PP::powint;
+*divint     = \&Math::Prime::Util::PP::divint;
+*modint     = \&Math::Prime::Util::PP::modint;
+*cdivint    = \&Math::Prime::Util::PP::cdivint;
+*divrem     = \&Math::Prime::Util::PP::divrem;
+*tdivrem    = \&Math::Prime::Util::PP::tdivrem;
+*fdivrem    = \&Math::Prime::Util::PP::fdivrem;
+*cdivrem    = \&Math::Prime::Util::PP::cdivrem;
+*muladdint  = \&Math::Prime::Util::PP::muladdint;
+*mulsubint  = \&Math::Prime::Util::PP::mulsubint;
+*absint     = \&Math::Prime::Util::PP::absint;
+*negint     = \&Math::Prime::Util::PP::negint;
+*signint    = \&Math::Prime::Util::PP::signint;
+*cmpint     = \&Math::Prime::Util::PP::cmpint;
+*sqrtint    = \&Math::Prime::Util::PP::sqrtint;
+*rootint    = \&Math::Prime::Util::PP::rootint;
+*crootint   = \&Math::Prime::Util::PP::crootint;
+*logint     = \&Math::Prime::Util::PP::logint;
 
-*negmod = \&Math::Prime::Util::PP::negmod;
-*sqrtmod = \&Math::Prime::Util::PP::sqrtmod;
+*addmod     = \&Math::Prime::Util::PP::addmod;
+*submod     = \&Math::Prime::Util::PP::submod;
+*mulmod     = \&Math::Prime::Util::PP::mulmod;
+*divmod     = \&Math::Prime::Util::PP::divmod;
+*powmod     = \&Math::Prime::Util::PP::powmod;
+*invmod     = \&Math::Prime::Util::PP::invmod;
+*muladdmod  = \&Math::Prime::Util::PP::muladdmod;
+*mulsubmod  = \&Math::Prime::Util::PP::mulsubmod;
+*negmod     = \&Math::Prime::Util::PP::negmod;
+*sqrtmod    = \&Math::Prime::Util::PP::sqrtmod;
 *allsqrtmod = \&Math::Prime::Util::PP::allsqrtmod;
-*rootmod = \&Math::Prime::Util::PP::rootmod;
+*rootmod    = \&Math::Prime::Util::PP::rootmod;
 *allrootmod = \&Math::Prime::Util::PP::allrootmod;
-*factorialmod = \&Math::Prime::Util::PP::factorialmod;
-*binomialmod = \&Math::Prime::Util::PP::binomialmod;
-*lucas_sequence = \&Math::Prime::Util::PP::lucas_sequence;
-*lucasu = \&Math::Prime::Util::PP::lucasu;
-*lucasv = \&Math::Prime::Util::PP::lucasv;
-*lucasuv = \&Math::Prime::Util::PP::lucasuv;
-*lucasumod = \&Math::Prime::Util::PP::lucasumod;
-*lucasvmod = \&Math::Prime::Util::PP::lucasvmod;
-*lucasuvmod = \&Math::Prime::Util::PP::lucasuvmod;
-*fibonacci = \&Math::Prime::Util::PP::fibonacci;
-*lucas_number = \&Math::Prime::Util::PP::lucas_number;
-*pisano_period = \&Math::Prime::Util::PP::pisano_period;
-*znlog = \&Math::Prime::Util::PP::znlog;
-*znorder = \&Math::Prime::Util::PP::znorder;
-*znprimroot = \&Math::Prime::Util::PP::znprimroot;
-*is_primitive_root = \&Math::Prime::Util::PP::is_primitive_root;
-*qnr = \&Math::Prime::Util::PP::qnr;
-*is_qr = \&Math::Prime::Util::PP::is_qr;
-*kronecker = \&Math::Prime::Util::PP::kronecker;
 
+*factorialmod   = \&Math::Prime::Util::PP::factorialmod;
+*binomialmod    = \&Math::Prime::Util::PP::binomialmod;
+*lucas_sequence = \&Math::Prime::Util::PP::lucas_sequence;
+*lucasu         = \&Math::Prime::Util::PP::lucasu;
+*lucasv         = \&Math::Prime::Util::PP::lucasv;
+*lucasuv        = \&Math::Prime::Util::PP::lucasuv;
+*lucasumod      = \&Math::Prime::Util::PP::lucasumod;
+*lucasvmod      = \&Math::Prime::Util::PP::lucasvmod;
+*lucasuvmod     = \&Math::Prime::Util::PP::lucasuvmod;
+*fibonacci      = \&Math::Prime::Util::PP::fibonacci;
+*lucas_number   = \&Math::Prime::Util::PP::lucas_number;
+*pisano_period  = \&Math::Prime::Util::PP::pisano_period;
+*znlog          = \&Math::Prime::Util::PP::znlog;
+*znorder        = \&Math::Prime::Util::PP::znorder;
+*znprimroot     = \&Math::Prime::Util::PP::znprimroot;
+*qnr            = \&Math::Prime::Util::PP::qnr;
+*is_qr          = \&Math::Prime::Util::PP::is_qr;
+*kronecker      = \&Math::Prime::Util::PP::kronecker;
+*is_primitive_root = \&Math::Prime::Util::PP::is_primitive_root;
 
 *vecequal = \&Math::Prime::Util::PP::vecequal;
 *vecuniq = \&Math::Prime::Util::PP::vecuniq;
@@ -554,47 +562,6 @@ sub vecmax {
   my(@v) = @_;
   _validate_integer($_) for @v;
   return Math::Prime::Util::PP::vecmax(@v);
-}
-sub invmod {
-  my ($a, $n) = @_;
-  _validate_integer($a);
-  _validate_integer($n);
-  return Math::Prime::Util::PP::invmod($a,$n);
-}
-sub addmod {
-  my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($n);
-  return Math::Prime::Util::PP::addmod($a,$b, $n);
-}
-sub submod {
-  my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($n);
-  return Math::Prime::Util::PP::submod($a,$b, $n);
-}
-sub mulmod {
-  my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($n);
-  return Math::Prime::Util::PP::mulmod($a,$b, $n);
-}
-sub divmod {
-  my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($n);
-  return Math::Prime::Util::PP::divmod($a,$b, $n);
-}
-sub powmod {
-  my ($a, $b, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($n);
-  return Math::Prime::Util::PP::powmod($a,$b, $n);
-}
-sub muladdmod {
-  my ($a, $b, $c, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($c); _validate_integer($n);
-  return Math::Prime::Util::PP::muladdmod($a,$b,$c, $n);
-}
-sub mulsubmod {
-  my ($a, $b, $c, $n) = @_;
-  _validate_integer($a); _validate_integer($b); _validate_integer($c); _validate_integer($n);
-  return Math::Prime::Util::PP::mulsubmod($a,$b,$c, $n);
 }
 
 #############################################################################
