@@ -153,6 +153,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mlucasumod = \&Math::Prime::Util::lucasumod;
 *Mznorder = \&Math::Prime::Util::znorder;
 *Mhclassno = \&Math::Prime::Util::hclassno;
+*Mlegendre_phi = \&Math::Prime::Util::legendre_phi;
 
 *Mvecall = \&Math::Prime::Util::vecall;
 *Mvecany = \&Math::Prime::Util::vecany;
@@ -2772,7 +2773,7 @@ sub rough_count {
   validate_integer_nonneg($k);
   return canonicalized_integer($n) if $k <= 2;
   return Msubint($n,Mrshiftint($n)) if $k == 3;
-  Math::Prime::Util::legendre_phi($n, Mprime_count($k-1));
+  Mlegendre_phi($n, Mprime_count($k-1));
 }
 
 
@@ -3654,7 +3655,7 @@ sub legendre_phi {
     }
     $a--;
   }
-  my @T;
+  my @T = ($sum);
   while (my($v,$c) = each %vals) {
     my $term = _tablephi($v, $a);
     $term = Mmulint($c, $term) if $c != 1;

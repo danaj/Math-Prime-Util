@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/legendre_phi prime_count/;
 
-#my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -32,6 +32,8 @@ my @legendre_sums = (
   [800000, 213, 63739],
   [4000,255,296],
 );
+push @legendre_sums, ["18446744073709551616", 18, "2427358202919104547"]
+  if $extra;
 
 plan tests => scalar(@legendre_sums);
 

@@ -269,6 +269,7 @@ static const gmp_info_t gmp_info[] = {
   {                  "chinese", 32, 1, R_BIGINT },
   {                 "chinese2", 53, 2, R_BIGINT },
   {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
+  {             "legendre_phi", 54, 1, R_BIGINT },
   {                   "gcdext", 35, 3, R_BIGINT },
   {                "primorial", 37, 1, R_BIGINT },
   {             "pn_primorial", 37, 1, R_BIGINT },
