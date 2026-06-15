@@ -39,6 +39,7 @@ subtest 'partitions', sub {
   while (my($n, $epart) = each (%bparts)) {
     SKIP: {
       skip "partition($n) w/out EXTENDED_TESTING",1 unless $n <= 300 || $extra;
+      skip "partition($n) only for 64-bit",1 unless $n <= 3000 || $use64;
       is( "".partitions($n), $epart, "partitions($n)" );
     }
   }

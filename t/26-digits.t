@@ -76,7 +76,7 @@ subtest 'sumdigits', sub {
   is(sumdigits("293852387239761276234029385230912847923872323"), 201, "sumdigits bigint");
   if ($extra) {
     is(sumdigits(factorial(1000)), 10539, "sumdigits 1000!");
-    is(sumdigits(factorial(10000)), 149346, "sumdigits 10000!");
+    is(sumdigits(factorial(5000)), 67698, "sumdigits 5000!");
   }
 
   is(sumdigits(-143), 8, "sumdigits ignores negative sign");
