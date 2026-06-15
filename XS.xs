@@ -216,6 +216,7 @@ static const gmp_info_t gmp_info[] = {
   {             "is_congruent", 53, 1, R_BOOL },
   {              "is_powerful", 53, 1, R_BOOL },
   {                    "is_qr", 53, 1, R_BOOL },
+  {            "is_safe_prime", 54, 1, R_BOOL },
 
   {                 "is_prime",  1, 1, R_BOOL },
   {            "is_prob_prime",  1, 1, R_BOOL },
@@ -270,6 +271,11 @@ static const gmp_info_t gmp_info[] = {
   {                 "chinese2", 53, 2, R_BIGINT },
   {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
   {             "legendre_phi", 54, 1, R_BIGINT },
+  {             "dedekind_psi", 54, 1, R_BIGINT },
+  {              "aliquot_sum", 54, 1, R_BIGINT },
+  {                "abundance", 54, 1, R_BIGINT },
+  {                     "sopf", 54, 1, R_BIGINT },
+  {                    "sopfr", 54, 1, R_BIGINT },
   {                   "gcdext", 35, 3, R_BIGINT },
   {                "primorial", 37, 1, R_BIGINT },
   {             "pn_primorial", 37, 1, R_BIGINT },
@@ -305,6 +311,7 @@ static const gmp_info_t gmp_info[] = {
   {                 "divisors", 53, 0xFF, R_BIGINT },
   {                   "factor", 41, 0xFF, R_BIGINT },
   {                "euler_phi", 54, 0xFF, R_BIGINT },
+  {          "prime_signature", 54, 0xFF, R_BIGINT },
 
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },

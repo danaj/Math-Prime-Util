@@ -169,6 +169,9 @@ Revision history for Perl module Math::Prime::Util
     - primes() and twin_primes() can directly dispatch from XS to GMP with
       the GMP 0.54 back end.  This can give a modest speedup.
 
+    - sopf, sopfr, prime_signature, dedekind_psi, aliquot_sum, abundance,
+      and is_safe_prime can directly dispatch from XS to GMP with GMP 0.54.
+
     - binomialmod can directly dispatch to the GMP 0.54 back end, avoiding
       construction of huge intermediate binomial values in more cases.
 
