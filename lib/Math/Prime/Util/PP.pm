@@ -759,14 +759,37 @@ sub _sieve_segment {
   \$sieve;
 }
 
-sub trial_primes {
-  my($low,$high) = @_;
-  if (!defined $high) {
-    $high = $low;
-    $low = 2;
+sub _parse_k_args {   # caller must validate n after
+  my $name = shift;
+  my $defk = shift;
+  croak "$name: expected (n) or (n,k)" if @_ != 1 && @_ != 2;
+  my($n, $k) = @_;
+  if (@_ == 1) {
+    $k = $defk;
+  } else {
+    validate_integer_nonneg($k);
   }
-  validate_integer_nonneg($low);
-  validate_integer_nonneg($high);
+  ($n, $k);
+}
+
+sub _parse_range_args {
+  my $name = shift;
+  my $defbeg = shift;
+  croak "$name: expected hi or lo,hi" if @_ != 1 && @_ != 2;
+  my($beg, $end) = @_;
+  if (@_ == 1) {
+    ($beg,$end) = ($defbeg, $beg);
+  } else {
+    validate_integer_nonneg($beg);
+    $beg = $defbeg if $beg < $defbeg;
+  }
+  validate_integer_nonneg($end);
+  ($beg, $end);
+}
+
+
+sub trial_primes {
+  my($low,$high) = _parse_range_args("trial_primes",2,@_);
   return if $low > $high;
   my @primes;
 
@@ -798,14 +821,7 @@ sub trial_primes {
 }
 
 sub primes {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    validate_integer_nonneg($low);
-    $low = 2 if $low < 2;
-  } else {
-    ($low,$high) = (2, $low);
-  }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("primes",2,@_);
   my $sref = [];
   return $sref if ($low > $high) || ($high < 2);
   return [grep { $_ >= $low && $_ <= $high } @_primes_small]
@@ -1010,14 +1026,7 @@ sub sieve_prime_cluster {
 }
 
 sub prime_powers {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    validate_integer_nonneg($low);
-    $low = 2 if $low < 2;
-  } else {
-    ($low,$high) = (2, $low);
-  }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("prime_powers",2,@_);
 
   if ($high > 1e18 || ($high-$low) < 10) {
     my $sref = [];
@@ -1049,14 +1058,7 @@ sub prime_powers {
 }
 
 sub twin_primes {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    validate_integer_nonneg($low);
-    $low = 2 if $low < 2;
-  } else {
-    ($low,$high) = (2, $low);
-  }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("twin_primes",2,@_);
   my @tp;
   if ($Math::Prime::Util::_GMPfunc{"sieve_twin_primes"}) {
     @tp = Math::Prime::Util::GMP::sieve_twin_primes($low, $high);
@@ -1067,14 +1069,7 @@ sub twin_primes {
 }
 
 sub semi_primes {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    validate_integer_nonneg($low);
-    $low = 4 if $low < 4;
-  } else {
-    ($low,$high) = (4, $low);
-  }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("semi_primes",4,@_);
   my @sp;
   Math::Prime::Util::forsemiprimes(sub { push @sp,$_; }, $low, $high);
   \@sp;
@@ -1101,14 +1096,7 @@ sub _n_ramanujan_primes {
 }
 
 sub ramanujan_primes {
-  my($low,$high) = @_;
-  if (scalar @_ > 1) {
-    validate_integer_nonneg($low);
-    $low = 2 if $low < 2;
-  } else {
-    ($low,$high) = (2, $low);
-  }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("ramanujan_primes",2,@_);
   return [] if ($low > $high) || ($high < 2);
   my $nn = Math::Prime::Util::prime_count_upper($high) >> 1;
   my $L = _n_ramanujan_primes($nn);
@@ -1903,12 +1891,10 @@ sub is_rough {
   return (Mvecnone(sub { $_ < $k }, Mfactor($n))) ? 1 : 0;
 }
 sub is_powerful {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("is_powerful", 2, @_);
   validate_integer($n);
-  if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
-
-  return 0 if $n < 1;
-  return 1 if $n == 1 || $k <= 1;
+  return 0+($n==1) if $n <= 1;
+  return 1 if $k <= 1;
 
   # First quick checks for inadmissibility.
   if ($k == 2) {
@@ -2001,11 +1987,10 @@ sub _powerful_count_recurse {
 }
 
 sub powerful_count {
-  my($n, $k) = @_;
-  validate_integer($n);   $n = 0 if $n < 0;
-  if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
-
-  return canonicalized_integer($n) if $k <= 1 || $n <= 1;
+  my($n, $k) = _parse_k_args("powerful_count", 2, @_);
+  validate_integer($n);
+  return 0+($n==1) if $n <= 1;
+  return canonicalized_integer($n) if $k <= 1;
 
   if ($k == 2) {
     my $sum = 0;
@@ -2030,9 +2015,8 @@ sub powerful_count {
 }
 
 sub nth_powerful {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("nth_powerful", 2, @_);
   validate_integer_nonneg($n);
-  if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
 
   return undef if $n == 0;
   return canonicalized_integer($n) if $k <= 1 || $n <= 1;
@@ -2117,11 +2101,9 @@ sub _sumpowerful2 {
 }
 
 sub sumpowerful {
-  my($n, $k) = @_;
-  validate_integer($n);   $n = 0 if $n < 0;
-  if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
-
-  return $n if $n <= 1;
+  my($n, $k) = _parse_k_args("sumpowerful", 2, @_);
+  validate_integer($n);
+  return 0+($n==1) if $n <= 1;
   return Mrshiftint(Mmulint($n,Madd1int($n))) if $k <= 1;
 
   return _sumpowerful2($n) if $k == 2;
@@ -2159,14 +2141,15 @@ sub _pcg {
   }
 }
 sub powerful_numbers {
-  my($lo, $hi, $k) = @_;
-  if (defined $k) { validate_integer_nonneg($k); } else { $k = 2; }
-  if (defined $hi) {
-    validate_integer_nonneg($lo);
-  } else {
-    ($lo, $hi) = (1, $lo);
-  }
+  my($lo, $hi, $k) = (1,undef,2);
+  if    (@_ == 1) { ($hi)        = @_; }
+  elsif (@_ == 2) { ($lo,$hi)    = @_; }
+  elsif (@_ == 3) { ($lo,$hi,$k) = @_; }
+  else { croak "powerful_numbers: expected (hi), (lo,hi), or (lo,hi,k)"; }
+  validate_integer_nonneg($lo);
   validate_integer_nonneg($hi);
+  validate_integer_nonneg($k);
+
   return [] if $hi < $lo;
   return [$lo .. $hi] if $k <= 1 && Mcmpint($hi, SINTMAX) <= 0;
 
@@ -2183,10 +2166,8 @@ sub powerful_numbers {
 }
 
 sub is_powerfree {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("is_powerfree", 2, @_);
   validate_integer_abs($n);
-  if (defined $k) { validate_integer_nonneg($k); }
-  else            { $k = 2; }
 
   return (($n == 1) ? 1 : 0)  if $k < 2 || $n <= 1;
   #return 1 if $n < Mpowint(2,$k);
@@ -2208,12 +2189,10 @@ sub is_powerfree {
 }
 
 sub powerfree_count {
-  my($n, $k) = @_;
-  validate_integer($n);   $n = 0 if $n < 0;
-  if (defined $k) { validate_integer_nonneg($k); }
-  else            { $k = 2; }
-
-  return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+  my($n, $k) = _parse_k_args("powerfree_count", 2, @_);
+  validate_integer($n);
+  return 0+($n==1) if $n <= 1;
+  return (($n >= 1) ? 1 : 0)  if $k < 2;
 
   my $count = 0;
   my $nk = Mrootint($n, $k);
@@ -2280,10 +2259,8 @@ sub powerfree_count {
 }
 
 sub nth_powerfree {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("nth_powerfree", 2, @_);
   validate_integer_nonneg($n);
-  if (defined $k) { validate_integer_nonneg($k); }
-  else            { $k = 2; }
 
   return undef if $n == 0 || $k < 2;
   return $n if $n < 4;
@@ -2334,12 +2311,10 @@ sub nth_powerfree {
 }
 
 sub powerfree_sum {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("powerfree_sum", 2, @_);
   validate_integer_nonneg($n);
-  if (defined $k) { validate_integer_nonneg($k); }
-  else            { $k = 2; }
-
-  return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+  return 0+($n==1) if $n <= 1;
+  return (($n >= 1) ? 1 : 0)  if $k < 2;
 
   my $sum = 0;
   my($ik, $nik, $T);
@@ -2357,12 +2332,13 @@ sub powerfree_sum {
 }
 
 sub powerfree_part {
-  my($n, $k) = @_;
-  my $negmul = ($n < 0) ? -1 : 1;
-  validate_integer_abs($n);
-  if (defined $k) { validate_integer_nonneg($k); }
-  else            { $k = 2; }
-
+  my($n, $k) = _parse_k_args("powerfree_part", 2, @_);
+  validate_integer($n);
+  my $negmul = 1;
+  if ($n < 0) {
+    $negmul = -1;
+    $n = Mnegint($n);
+  }
   return $negmul if $n == 1;
   return 0 if $k < 2 || $n == 0;
 
@@ -2388,12 +2364,10 @@ sub _fprod {
 }
 
 sub powerfree_part_sum {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("powerfree_part_sum", 2, @_);
   validate_integer_abs($n);
-  if (defined $k) { validate_integer_nonneg($k); }
-  else            { $k = 2; }
-
-  return (($n >= 1) ? 1 : 0)  if $k < 2 || $n <= 1;
+  return 0+($n==1) if $n <= 1;
+  return (($n >= 1) ? 1 : 0)  if $k < 2;
 
   my @A = (_T($n));
   for my $i (2 .. Mrootint($n,$k)) {
@@ -2803,11 +2777,10 @@ sub _generate_almost_primes {
 
 
 sub almost_primes {
-  my($k, $low, $high) = @_;
+  croak "almost_primes: expected k and 1 or 2 integers" if @_ != 2 && @_ != 3;
+  my $k = shift;
   validate_integer_nonneg($k);
-  if (defined $high) { validate_integer_nonneg($low); }
-  else               { ($low,$high) = (1, $low);      }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("almost_primes",1,@_);
 
   if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
   if ($k == 1) { return Mprimes($low,$high); }
@@ -2848,11 +2821,10 @@ sub _rec_omega_primes {
 }
 
 sub omega_primes {
-  my($k, $low, $high) = @_;
+  croak "omega_primes: expected k and 1 or 2 integers" if @_ != 2 && @_ != 3;
+  my $k = shift;
   validate_integer_nonneg($k);
-  if (defined $high) { validate_integer_nonneg($low); }
-  else               { ($low,$high) = (1, $low);      }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("omega_primes",1,@_);
 
   if ($k == 0) { return ($low <= 1 && $high >= 1) ? [1] : [] }
   if ($k == 1) { return Math::Prime::Util::prime_powers($low,$high); }
@@ -3496,11 +3468,10 @@ sub _sigma0_possible_from_nfactors {
 }
 
 sub inverse_sigma0_count {
-  my($k, $low, $high) = @_;
+  croak "inverse_sigma0_count: expected k and 1 or 2 integers" if @_ != 2 && @_ != 3;
+  my $k = shift;
   validate_integer_nonneg($k);
-  if (defined $high) { validate_integer_nonneg($low); }
-  else               { ($low,$high) = (1, $low);      }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("inverse_sigma0_count",1,@_);
 
   return 0 if $k == 0 || $high < 1;
   return ($low <= 1 && $high >= 1) ? 1 : 0 if $k == 1;
@@ -3518,11 +3489,10 @@ sub inverse_sigma0_count {
 }
 
 sub inverse_sigma0 {
-  my($k, $low, $high) = @_;
+  croak "inverse_sigma0: expected k and 1 or 2 integers" if @_ != 2 && @_ != 3;
+  my $k = shift;
   validate_integer_nonneg($k);
-  if (defined $high) { validate_integer_nonneg($low); }
-  else               { ($low,$high) = (1, $low);      }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("inverse_sigma0",1,@_);
 
   return [] if $k == 0 || $high < 1;
   return ($low <= 1 && $high >= 1) ? [1] : [] if $k == 1;
@@ -5165,10 +5135,7 @@ sub _sum_primes_n {
   $S[$r2];
 }
 sub sum_primes {
-  my($low,$high) = @_;
-  if (defined $high) { validate_integer_nonneg($low); }
-  else               { ($low,$high) = (2, $low);      }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("sum_primes",2,@_);
   my $sum = 0;
 
   return $sum if $high < $low;
@@ -5634,9 +5601,10 @@ sub cmpint {
 }
 
 sub lshiftint {
-  my($n, $k) = @_;
+  croak "lshiftint: expected (n) or (n,k)" if @_ != 1 && @_ != 2;
+  my($n,$k) = @_;
   validate_integer($n);
-  if (!defined $k) { $k = 1; } else { validate_integer($k); }
+  if (@_ == 1) { $k = 1; } else { validate_integer($k); }
 
   return rshiftint($n, Mnegint($k)) if $k < 0;
   return Mnegint(lshiftint(Mnegint($n),$k)) if $n < 0;
@@ -5652,9 +5620,10 @@ sub lshiftint {
   #Mmulint($n, $k2);
 }
 sub rshiftint {
-  my($n, $k) = @_;
+  croak "rshiftint: expected (n) or (n,k)" if @_ != 1 && @_ != 2;
+  my($n,$k) = @_;
   validate_integer($n);
-  if (!defined $k) { $k = 1; } else { validate_integer($k); }
+  if (@_ == 1) { $k = 1; } else { validate_integer($k); }
 
   return lshiftint($n, Mnegint($k)) if $k < 0;
   return Mnegint(rshiftint(Mnegint($n),$k)) if $n < 0;
@@ -5672,9 +5641,10 @@ sub rshiftint {
 }
 
 sub rashiftint {
-  my($n, $k) = @_;
+  croak "rashiftint: expected (n) or (n,k)" if @_ != 1 && @_ != 2;
+  my($n,$k) = @_;
   validate_integer($n);
-  if (!defined $k) { $k = 1; } else { validate_integer($k); }
+  if (@_ == 1) { $k = 1; } else { validate_integer($k); }
   return lshiftint($n, Mnegint($k)) if $k < 0;
   my $k2 = $k < MPU_MAXBITS ? (1<<$k) : Mpowint(2,$k);
   Mdivint($n, $k2);
@@ -7345,10 +7315,8 @@ sub is_polygonal {
 }
 
 sub is_sum_of_squares {
-  my($n, $k) = @_;
+  my($n, $k) = _parse_k_args("is_sum_of_squares", 2, @_);
   validate_integer_abs($n);
-  if (@_ < 2) { $k = 2; } else { validate_integer_nonneg($k); }
-
   return ($n == 0) ? 1 : 0 if $k == 0;
   return 1 if $k > 3;
   return _is_perfect_square($n) if $k == 1;
@@ -8023,7 +7991,7 @@ sub stirling {
   my($n, $m, $type) = @_;
   validate_integer_nonneg($n);
   validate_integer_nonneg($m);
-  if (!defined $type) {
+  if (@_ < 3) {
     $type = 1;
   } else {
     validate_integer_nonneg($type);
@@ -12604,9 +12572,8 @@ sub permtonum {
 }
 
 sub randperm {
-  my($n,$k) = @_;
+  my($n, $k) = _parse_k_args("randperm", undef, @_);
   validate_integer_nonneg($n);
-  validate_integer_nonneg($k) if @_ > 1;
   $k = $n if !defined($k) || $k > $n;
   croak "randperm: k must fit in native signed integer" if $k > SINTMAX;
 
@@ -13442,10 +13409,7 @@ sub urandomr {
 ################################################################################
 
 sub random_prime {
-  my($low, $high) = @_;
-  if (scalar(@_) == 1) { ($low,$high) = (2,$low);       }
-  else                 { validate_integer_nonneg($low); }
-  validate_integer_nonneg($high);
+  my($low,$high) = _parse_range_args("random_prime",2,@_);
 
   require Math::Prime::Util::RandomPrimes;
   return Math::Prime::Util::RandomPrimes::random_prime($low,$high);
