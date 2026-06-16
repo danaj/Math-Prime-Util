@@ -137,20 +137,6 @@ sub entropy_bytes {
 }
 
 
-# These functions all do input validation within the PP code.
-# Therefore we can send user input straight to them.
-
-# The advantage is simplicity and speed for a single user call.
-#
-# The disadvantage is that we're doing very expensive PP validation
-# for each function call within the PP code itself.
-
-# Rules of thumb:
-#   if a function is expensive, no harm in validation
-#   if a function is cheap and often called, consider validation here.
-
-# TODO: revisit decision for all of these
-
 *urandomb = \&Math::Prime::Util::PP::urandomb;
 *urandomm = \&Math::Prime::Util::PP::urandomm;
 *urandomr = \&Math::Prime::Util::PP::urandomr;
@@ -416,41 +402,42 @@ sub entropy_bytes {
 *kronecker      = \&Math::Prime::Util::PP::kronecker;
 *is_primitive_root = \&Math::Prime::Util::PP::is_primitive_root;
 
-*vecequal = \&Math::Prime::Util::PP::vecequal;
-*vecuniq = \&Math::Prime::Util::PP::vecuniq;
-*vecfreq = \&Math::Prime::Util::PP::vecfreq;
-*vecsingleton = \&Math::Prime::Util::PP::vecsingleton;
-*vecprefixsum = \&Math::Prime::Util::PP::vecprefixsum;
-*vecwindow = \&Math::Prime::Util::PP::vecwindow;
-*vecsample = \&Math::Prime::Util::PP::vecsample;
-*vecsort = \&Math::Prime::Util::PP::vecsort;
-*vecsorti = \&Math::Prime::Util::PP::vecsorti;
-*vecmex = \&Math::Prime::Util::PP::vecmex;
-*vecpmex = \&Math::Prime::Util::PP::vecpmex;
-*vecextract = \&Math::Prime::Util::PP::vecextract;
-*setbinop = \&Math::Prime::Util::PP::setbinop;
-*sumset = \&Math::Prime::Util::PP::sumset;
-*setunion = \&Math::Prime::Util::PP::setunion;
-*setintersect = \&Math::Prime::Util::PP::setintersect;
-*setminus = \&Math::Prime::Util::PP::setminus;
-*setdelta = \&Math::Prime::Util::PP::setdelta;
-*setinsert = \&Math::Prime::Util::PP::setinsert;
-*setremove = \&Math::Prime::Util::PP::setremove;
-*setinvert = \&Math::Prime::Util::PP::setinvert;
-*setcontains = \&Math::Prime::Util::PP::setcontains;
+*vecequal       = \&Math::Prime::Util::PP::vecequal;
+*vecuniq        = \&Math::Prime::Util::PP::vecuniq;
+*vecfreq        = \&Math::Prime::Util::PP::vecfreq;
+*vecsingleton   = \&Math::Prime::Util::PP::vecsingleton;
+*vecprefixsum   = \&Math::Prime::Util::PP::vecprefixsum;
+*vecwindow      = \&Math::Prime::Util::PP::vecwindow;
+*vecsample      = \&Math::Prime::Util::PP::vecsample;
+*vecsort        = \&Math::Prime::Util::PP::vecsort;
+*vecsorti       = \&Math::Prime::Util::PP::vecsorti;
+*vecmex         = \&Math::Prime::Util::PP::vecmex;
+*vecpmex        = \&Math::Prime::Util::PP::vecpmex;
+*vecextract     = \&Math::Prime::Util::PP::vecextract;
+
+*setbinop       = \&Math::Prime::Util::PP::setbinop;
+*sumset         = \&Math::Prime::Util::PP::sumset;
+*setunion       = \&Math::Prime::Util::PP::setunion;
+*setintersect   = \&Math::Prime::Util::PP::setintersect;
+*setminus       = \&Math::Prime::Util::PP::setminus;
+*setdelta       = \&Math::Prime::Util::PP::setdelta;
+*setinsert      = \&Math::Prime::Util::PP::setinsert;
+*setremove      = \&Math::Prime::Util::PP::setremove;
+*setinvert      = \&Math::Prime::Util::PP::setinvert;
+*setcontains    = \&Math::Prime::Util::PP::setcontains;
 *setcontainsany = \&Math::Prime::Util::PP::setcontainsany;
-*toset = \&Math::Prime::Util::PP::toset;
-*is_sidon_set = \&Math::Prime::Util::PP::is_sidon_set;
+*toset          = \&Math::Prime::Util::PP::toset;
+*is_sidon_set   = \&Math::Prime::Util::PP::is_sidon_set;
 *is_sumfree_set = \&Math::Prime::Util::PP::is_sumfree_set;
-*set_is_disjoint = \&Math::Prime::Util::PP::set_is_disjoint;
-*set_is_equal = \&Math::Prime::Util::PP::set_is_equal;
-*set_is_subset = \&Math::Prime::Util::PP::set_is_subset;
-*set_is_proper_subset = \&Math::Prime::Util::PP::set_is_proper_subset;
-*set_is_superset = \&Math::Prime::Util::PP::set_is_superset;
-*set_is_proper_superset = \&Math::Prime::Util::PP::set_is_proper_superset;
+*set_is_disjoint= \&Math::Prime::Util::PP::set_is_disjoint;
+*set_is_equal   = \&Math::Prime::Util::PP::set_is_equal;
+*set_is_subset  = \&Math::Prime::Util::PP::set_is_subset;
+*set_is_proper_subset       = \&Math::Prime::Util::PP::set_is_proper_subset;
+*set_is_superset            = \&Math::Prime::Util::PP::set_is_superset;
+*set_is_proper_superset     = \&Math::Prime::Util::PP::set_is_proper_superset;
 *set_is_proper_intersection = \&Math::Prime::Util::PP::set_is_proper_intersection;
 
-*tozeckendorf = \&Math::Prime::Util::PP::tozeckendorf;
+*tozeckendorf   = \&Math::Prime::Util::PP::tozeckendorf;
 *fromzeckendorf = \&Math::Prime::Util::PP::fromzeckendorf;
 
 *goldbach_pairs = \&Math::Prime::Util::PP::goldbach_pairs;
@@ -511,27 +498,27 @@ sub entropy_bytes {
 *nth_ramanujan_prime_upper =\&Math::Prime::Util::PP::nth_ramanujan_prime_upper;
 *nth_ramanujan_prime_approx=\&Math::Prime::Util::PP::nth_ramanujan_prime_approx;
 
-*factor = \&Math::Prime::Util::PP::factor;
-*factor_exp = \&Math::Prime::Util::PP::factor_exp;
-*trial_factor = \&Math::Prime::Util::PP::trial_factor;
-*prho_factor = \&Math::Prime::Util::PP::prho_factor;
-*pbrent_factor = \&Math::Prime::Util::PP::pbrent_factor;
-*ecm_factor = \&Math::Prime::Util::PP::ecm_factor;
-*fermat_factor = \&Math::Prime::Util::PP::fermat_factor;
-*holf_factor = \&Math::Prime::Util::PP::holf_factor;
-*squfof_factor = \&Math::Prime::Util::PP::squfof_factor;
-*lehman_factor = \&Math::Prime::Util::PP::lehman_factor;
+*factor         = \&Math::Prime::Util::PP::factor;
+*factor_exp     = \&Math::Prime::Util::PP::factor_exp;
+*trial_factor   = \&Math::Prime::Util::PP::trial_factor;
+*prho_factor    = \&Math::Prime::Util::PP::prho_factor;
+*pbrent_factor  = \&Math::Prime::Util::PP::pbrent_factor;
+*ecm_factor     = \&Math::Prime::Util::PP::ecm_factor;
+*fermat_factor  = \&Math::Prime::Util::PP::fermat_factor;
+*holf_factor    = \&Math::Prime::Util::PP::holf_factor;
+*squfof_factor  = \&Math::Prime::Util::PP::squfof_factor;
+*lehman_factor  = \&Math::Prime::Util::PP::lehman_factor;
 *pminus1_factor = \&Math::Prime::Util::PP::pminus1_factor;
-*pplus1_factor = \&Math::Prime::Util::PP::pplus1_factor;
-*cheb_factor = \&Math::Prime::Util::PP::cheb_factor;
+*pplus1_factor  = \&Math::Prime::Util::PP::pplus1_factor;
+*cheb_factor    = \&Math::Prime::Util::PP::cheb_factor;
 
-*primes = \&Math::Prime::Util::PP::primes;
-*prime_powers = \&Math::Prime::Util::PP::prime_powers;
-*twin_primes = \&Math::Prime::Util::PP::twin_primes;
-*semi_primes = \&Math::Prime::Util::PP::semi_primes;
+*primes           = \&Math::Prime::Util::PP::primes;
+*prime_powers     = \&Math::Prime::Util::PP::prime_powers;
+*twin_primes      = \&Math::Prime::Util::PP::twin_primes;
+*semi_primes      = \&Math::Prime::Util::PP::semi_primes;
 *ramanujan_primes = \&Math::Prime::Util::PP::ramanujan_primes;
-*almost_primes = \&Math::Prime::Util::PP::almost_primes;
-*omega_primes = \&Math::Prime::Util::PP::omega_primes;
+*almost_primes    = \&Math::Prime::Util::PP::almost_primes;
+*omega_primes     = \&Math::Prime::Util::PP::omega_primes;
 
 *Pi = \&Math::Prime::Util::PP::Pi;
 
@@ -574,52 +561,23 @@ sub _start_for_loop { $_forcount++; my $old = $_exitloop; $_exitloop = 0; $old; 
 sub _end_for_loop { $_forcount--; $_exitloop = shift; }
 
 no warnings 'prototype';
-sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forprimes(@_);
-}
-sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forcomposites(@_);
-}
-sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::foroddcomposites(@_);
-}
-sub forsemiprimes(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forsemiprimes(@_);
-}
-sub foralmostprimes(&$$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::foralmostprimes(@_);
-}
-sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forfactored(@_);
-}
-sub forsquarefree(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forsquarefree(@_);
-}
-sub forsquarefreeint(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forsquarefreeint(@_);
-}
-sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::fordivisors(@_);
-}
-sub forpart (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forpart(@_);
-}
-sub forcomp (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forcomp(@_);
-}
-sub forcomb (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forcomb(@_);
-}
-sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forperm(@_);
-}
-sub forderange (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forderange(@_);
-}
 
-sub forsetproduct (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  Math::Prime::Util::PP::forsetproduct(@_);
-}
+*forprimes        = \&Math::Prime::Util::PP::forprimes;
+*forcomposites    = \&Math::Prime::Util::PP::forcomposites;
+*foroddcomposites = \&Math::Prime::Util::PP::foroddcomposites;
+*forsemiprimes    = \&Math::Prime::Util::PP::forsemiprimes;
+*foralmostprimes  = \&Math::Prime::Util::PP::foralmostprimes;
+*forfactored      = \&Math::Prime::Util::PP::forfactored;
+*forsquarefree    = \&Math::Prime::Util::PP::forsquarefree;
+*forsquarefreeint = \&Math::Prime::Util::PP::forsquarefreeint;
+*forsetproduct    = \&Math::Prime::Util::PP::forsetproduct;
+
+*fordivisors = \&Math::Prime::Util::PP::fordivisors;
+*forpart     = \&Math::Prime::Util::PP::forpart;
+*forcomp     = \&Math::Prime::Util::PP::forcomp;
+*forcomb     = \&Math::Prime::Util::PP::forcomb;
+*forperm     = \&Math::Prime::Util::PP::forperm;
+*forderange  = \&Math::Prime::Util::PP::forderange;
 
 sub vecreduce (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, @v) = @_;

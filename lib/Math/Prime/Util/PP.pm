@@ -12179,12 +12179,24 @@ sub _run_for_loop (&) {   ## no critic qw(ProhibitSubroutinePrototypes)
   die $err unless $ok;
 }
 
-sub forprimes {
+sub _parse_forargs {
+  my $name = shift;
+  my $defbeg = shift;
+  croak "$name: expected sub and 1 or 2 integers" if @_ != 2 && @_ != 3;
   my($sub, $beg, $end) = @_;
-  if (@_ >= 3) { validate_integer_nonneg($beg); }
-  else         { ($beg,$end) = (2, $beg);        }
+  croak 'Not a subroutine reference' unless _is_cref($sub);
+  if (@_ == 2) {
+    ($beg,$end) = ($defbeg, $beg);
+  } else {
+    validate_integer_nonneg($beg);
+    $beg = $defbeg if $beg < $defbeg;
+  }
   validate_integer_nonneg($end);
-  $beg = 2 if $beg < 2;
+  ($sub, $beg, $end);
+}
+
+sub forprimes (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $beg, $end) = _parse_forargs("forprimes", 2, @_);
 
   _run_for_loop {
     my $pp;
@@ -12197,20 +12209,13 @@ sub forprimes {
   };
 }
 
-
 sub _forcomp_sub {
   my($what, $sub, $beg, $end) = @_;
-  if (defined $end) { validate_integer_nonneg($beg); }
-  else              { ($beg,$end) = (0, $beg);        }
-  validate_integer_nonneg($end);
 
   my $cinc = 1;
   if ($what eq 'oddcomposites') {
-    $beg = 9 if $beg < 9;
     $beg++ unless $beg % 2 == 1;
     $cinc = 2;
-  } else {
-    $beg = 4 if $beg < 4;
   }
 
   if (ref($end)) { $end = canonicalized_integer($end); }
@@ -12232,22 +12237,15 @@ sub _forcomp_sub {
     }
   };
 }
-sub forcomposites {
-  _forcomp_sub('composites', @_);
+sub forcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  _forcomp_sub('composites',    _parse_forargs("forcomposites",4,@_));
 }
-sub foroddcomposites {
-  _forcomp_sub('oddcomposites', @_);
-}
-sub forsemiprimes {
-  foralmostprimes($_[0], 2, $_[1], $_[2]);
+sub foroddcomposites(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  _forcomp_sub('oddcomposites', _parse_forargs("foroddcomposites",9,@_));
 }
 
 sub _forfac_sub {
   my($sf, $sub, $beg, $end) = @_;
-  if (defined $end) { validate_integer_nonneg($beg); }
-  else              { ($beg,$end) = (1, $beg);        }
-  validate_integer_nonneg($end);
-  $beg = 1 if $beg < 1;
 
   if (ref($end)) { $end = canonicalized_integer($end); }
   else           { $end = tobigint(~0) if $end == ~0;  }
@@ -12272,17 +12270,17 @@ sub _forfac_sub {
     }
   };
 }
-sub forfactored {
-  _forfac_sub(0, @_);
+sub forfactored(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  _forfac_sub(0, _parse_forargs("forfactored",1,@_));
 }
-sub forsquarefree {
-  _forfac_sub(1, @_);
+sub forsquarefree(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  _forfac_sub(1, _parse_forargs("forsquarefree",1,@_));
 }
-sub forsquarefreeint {
-  _forfac_sub(2, @_);
+sub forsquarefreeint(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  _forfac_sub(2, _parse_forargs("forsquarefreeint",1,@_));
 }
 
-sub fordivisors {
+sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n) = @_;
   validate_integer_nonneg($n);
   my @divisors = Mdivisors($n);
@@ -12297,11 +12295,11 @@ sub fordivisors {
   };
 }
 
-sub forpart {
+sub forpart (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n, $rhash) = @_;
   _forcompositions(1, $sub, $n, $rhash, "forpart");
 }
-sub forcomp {
+sub forcomp (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n, $rhash) = @_;
   _forcompositions(0, $sub, $n, $rhash, "forcomp");
 }
@@ -12387,7 +12385,8 @@ sub _forcompositions {
     }
   };
 }
-sub forcomb {
+
+sub forcomb (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n, $k) = @_;
   validate_integer_nonneg($n);
   croak "forcomb: n must fit in native signed integer" if $n > SINTMAX;
@@ -12464,14 +12463,14 @@ sub _forperm {
     }
   };
 }
-sub forperm {
+sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n, $k) = @_;
   validate_integer_nonneg($n);
   croak "forperm: n must fit in native signed integer" if $n > SINTMAX;
   croak "Too many arguments for forperm" if defined $k;
   _forperm($sub, $n, 1);
 }
-sub forderange {
+sub forderange (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, $n, $k) = @_;
   validate_integer_nonneg($n);
   croak "forderange: n must fit in native signed integer" if $n > SINTMAX;
@@ -12480,7 +12479,7 @@ sub forderange {
   _forperm($sub, $n, 0);
 }
 
-sub forsetproduct {
+sub forsetproduct (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   my($sub, @v) = @_;
   croak 'Not a subroutine reference' unless _is_cref($sub);
   croak 'Not an array reference' if grep { !_is_aref($_) } @v;
@@ -13342,15 +13341,9 @@ sub is_sumfree_set {
 
 ###############################################################################
 
-sub foralmostprimes {
-  my($sub, $k, $lo, $hi) = @_;
-  validate_integer_nonneg($k);
-  return if $k == 0;
-  if (defined $hi) { validate_integer_nonneg($lo); }
-  else             { ($lo,$hi) = (1, $lo);         }
-  validate_integer_nonneg($hi);
-
-  return if $k > Mlogint($hi, 2);
+sub _foralmostprimes {
+  my($k, $sub, $lo, $hi) = @_;
+  return if $k == 0 || $k > Mlogint($hi, 2);
   $lo = Mvecmax($lo, Mpowint(2, $k));
   return if $lo > $hi;
 
@@ -13384,6 +13377,18 @@ sub foralmostprimes {
   };
 }
 
+sub forsemiprimes(&$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $beg, $end) = _parse_forargs("forsemiprimes", 4, @_);
+  _foralmostprimes(2, $sub, $beg, $end);
+}
+sub foralmostprimes(&$$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
+  croak "foralmostprimes: expected sub, k, and 1 or 2 integers"
+    if @_ != 3 && @_ != 4;
+  my $k = splice(@_, 1, 1);
+  validate_integer_nonneg($k);
+  my ($sub, $beg, $end) = _parse_forargs("foralmostprimes", 1, @_);
+  _foralmostprimes($k, $sub, $beg, $end);
+}
 
 
 ###############################################################################
