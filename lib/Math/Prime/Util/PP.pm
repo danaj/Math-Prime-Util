@@ -772,6 +772,20 @@ sub _parse_k_args {   # caller must validate n after
   ($n, $k);
 }
 
+sub _parse_base_args {   # caller must validate n after
+  my $name = shift;
+  my $maxb = shift;
+  croak "$name: expected (n) or (n,base)" if @_ != 1 && @_ != 2;
+  my($n, $b) = @_;
+  if (@_ == 1) {
+    $b = 10;
+  } else {
+    validate_integer_nonneg($b);
+    croak "$name: invalid base: $b" if $b < 2 || ($maxb && $b > $maxb);
+  }
+  ($n, $b);
+}
+
 sub _parse_range_args {
   my $name = shift;
   my $defbeg = shift;
@@ -2950,14 +2964,8 @@ sub is_practical {
 }
 
 sub is_delicate_prime {
-  my($n, $b) = @_;
+  my($n, $b) = _parse_base_args("is_delicate_prime", SINTMAX, @_);
   validate_integer_nonneg($n);
-  if (defined $b) {
-    validate_integer_nonneg($b);
-    croak "is_delicate_prime: invalid base: $b" if $b < 2 || $b > SINTMAX;
-  } else {
-    $b = 10;
-  }
 
   return 0 if $b == 10 && $n < 100;   # Easy shown.
   return 1 if $b ==  3 && $n == 2;
@@ -3356,20 +3364,20 @@ sub is_fundamental {
 }
 
 sub divisor_sum {
+  croak "divisor_sum: expected (n), (n,k), or (n,sub)" if @_ < 1 || @_ > 2;
   my($n, $k) = @_;
   validate_integer_nonneg($n);
-  return 0 if $n == 0;
-
-  if (_is_cref($k)) {
+  if (@_ == 1) {
+    $k = 1;
+  } elsif (_is_cref($k)) {
     my $sum = 0;
     Mfordivisors(sub { $sum += $k->($_); }, $n);
     return $sum;
+  } else {
+    validate_integer_nonneg($k);
   }
+  return 0 if $n == 0;
   return 1 if $n == 1;
-
-  croak "Second argument must be a code ref or number"
-    unless !defined $k || validate_integer_nonneg($k);
-  $k = 1 if !defined $k;
 
   return maybetobigint(Math::Prime::Util::GMP::sigma($n, $k))
     if $Math::Prime::Util::_GMPfunc{"sigma"} && !ref($k);
@@ -6013,16 +6021,12 @@ sub vecpmex {
 }
 
 sub sumdigits {
-  my($n,$base) = @_;
+  my($n, $base) = _parse_base_args("sumdigits", 36, @_);
   croak "Parameter must be defined" if !defined $n;
-
-  if (defined $base) {
-    validate_integer_nonneg($base);
-    croak "sumdigits: invalid base: $base" if $base < 2 || $base > 36;
-  } else {
+  # If base wasn't given, check prefix on n
+  if (@_ == 1) {
     if    ($n =~ s/^0b//) { $base = 2; }
     elsif ($n =~ s/^0x//) { $base = 16; }
-    else                  { $base = 10; }
   }
 
   my $sum = 0;
@@ -6040,56 +6044,38 @@ sub sumdigits {
 }
 
 sub digital_root {
-  my($n,$base) = @_;
+  my($n, $base) = _parse_base_args("digital_root", 0, @_);
   validate_integer_nonneg($n);
-  if (@_ > 1) {
-    validate_integer_nonneg($base);
-    croak "digital_root: invalid base: $base" if $base < 2;
-  } else {
-     $base = 10;
-  }
   return 0 if $n == 0;
   1 + Mmodint($n-1,$base-1);
 }
 sub mult_digital_root {
-  my($n,$base) = @_;
+  my($n, $base) = _parse_base_args("mult_digital_root", 0, @_);
   validate_integer_nonneg($n);
-  if (@_ > 1) {
-    validate_integer_nonneg($base);
-    croak "mult_digital_root: invalid base: $base" if $base < 2;
-  } else {
-     $base = 10;
-  }
   my $dr = $n;
   $dr = Mvecprod(Mtodigits($dr,$base))  while $dr >= $base;
   canonicalized_integer($dr);
 }
 
 sub is_happy {
-  my($n, $base, $k) = @_;
+  croak "is_happy: expected (n), (n,base), or (n,base,k)" if @_ < 1 || @_ > 3;
+  my $k = 2;
+  if (@_ == 3) {
+    $k = pop;
+    validate_integer_nonneg($k);
+    croak "is_happy: invalid exponent $k" if $k > 10;
+  }
+  my($n, $base) = _parse_base_args("is_happy", 36, @_);
   validate_integer_nonneg($n);
 
   my $h = 1;
 
-  if (!defined $base && !defined $k) {   # default base 10 exponent 2
+  if ($base == 10 && $k == 2) {  # defaults
     while ($n > 1 && $n != 4) {
       $n = Mvecsum( map { $_*$_ } split(//,$n) );
       $h++;
     }
     return ($n == 1) ? $h : 0;
-  }
-
-  if (defined $base) {
-    validate_integer_nonneg($base);
-    croak "is_happy: invalid base: $base" if $base < 2 || $base > 36;
-  } else {
-    $base = 10;
-  }
-  if (defined $k) {
-    validate_integer_nonneg($k);
-    croak "is_happy: invalid exponent $k" if $k > 10;
-  } else {
-    $k = 2;
   }
 
   my %seen;
@@ -6102,7 +6088,6 @@ sub is_happy {
       while ($n >= 1) {
         my $rem = $n % $base;
         push @d, ($k <= 6) ? int($rem ** $k) : Mpowint($rem,$k);
-        #push @d, Mpowint($rem,$k);
         $n = Mdivint($n-$rem,$base);    # Always an exact division
       }
     }
@@ -7161,12 +7146,16 @@ sub _powerof_ret {
 }
 
 sub is_power {
-  my ($n, $a, $refp) = @_;
+  croak "is_power: expected (n), (n,k), or (n,k,\\root)" if @_ < 1 || @_ > 3;
+  my($n, $a, $refp) = @_;
   validate_integer($n);
-  if (!defined $a) { $a = 0; } else { validate_integer_nonneg($a); }
-  croak "is_power third argument not a scalar reference"
-    if @_ >= 3 && !_is_sref($refp);
-  return 0 if abs($n) <= 3 && !$a;
+  if (@_ == 3) {
+    croak "is_power third argument not a scalar reference" if !_is_sref($refp);
+  }
+  if (@_ < 2 || !defined $a)  { $a = 0; }
+  else                        { validate_integer_nonneg($a); }
+
+  return 0 if !$a && !ref($n) && abs($n) <= 3;
 
   if ($Math::Prime::Util::_GMPfunc{"is_power"} &&
       $Math::Prime::Util::GMP::VERSION >= 0.42 && !ref($a)) {
@@ -7243,10 +7232,11 @@ sub is_square {
 }
 
 sub is_prime_power {
+  croak "is_prime_power: expected (n) or (n,\\root)" if @_ < 1 || @_ > 2;
   my ($n, $refp) = @_;
   validate_integer($n);
   croak "is_prime_power second argument not a scalar reference"
-    if @_ >= 2 && !_is_sref($refp);
+    if @_ == 2 && !_is_sref($refp);
   return 0 if $n <= 1;
 
   if (Mis_prime($n)) {
@@ -7272,12 +7262,14 @@ sub is_gaussian_prime {
 }
 
 sub is_polygonal {
+  croak "is_polygonal: expected (n,k), or (n,k,\\root)" if @_ < 2 || @_ > 3;
   my ($n, $k, $refp) = @_;
   validate_integer($n);
   validate_integer_nonneg($k);
   croak "is_polygonal third argument not a scalar reference"
-    if @_ >= 3 && !_is_sref($refp);
+    if @_ == 3 && !_is_sref($refp);
   croak("is_polygonal: k must be >= 3") if $k < 3;
+
   return 0 if $n < 0;
   if ($n <= 1) { $$refp = $n if defined $refp; return 1; }
 
@@ -7572,12 +7564,25 @@ sub _splitdigits {
   @d;
 }
 
-sub todigits {
-  my($n,$base,$len) = @_;
+sub _parse_todig_args {
+  my $name = shift;
+  my $maxb = shift;
+  croak "$name: expected (n) or (n,base) or (n,base,len)" if @_ < 1 || @_ > 3;
+  my($n, $b, $len) = @_;
   validate_integer_abs($n);
-  if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
-  croak "todigits: invalid base: $base" if $base < 2;  # large bases are ok
-  validate_integer_nonneg($len) if defined $len;
+  if (@_ == 1) {
+    $b = 10;
+  } else {
+    validate_integer_nonneg($b);
+    croak "$name: invalid base: $b" if $b < 2 || ($maxb && $b > $maxb);
+  }
+  validate_integer_nonneg($len) if @_ == 3;
+  ($n, $b, $len);
+}
+
+
+sub todigits {
+  my($n,$base,$len) = _parse_todig_args("todigits", 0, @_);
   return () if $n == 0 || (defined $len && $len == 0);
   _splitdigits($n, $base, $len);
 }
@@ -7598,13 +7603,8 @@ sub _tobinarystring {
 }
 
 sub todigitstring {
-  my($n,$base,$len) = @_;
-  validate_integer_abs($n);
-  if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
-  croak "todigitstring: invalid base: $base" if $base < 2 || $base > 36;
+  my($n,$base,$len) = _parse_todig_args("todigitstring", 36, @_);
   return _tobinarystring($n) if $base == 2 && !defined $len;
-  validate_integer_nonneg($len) if defined $len;
-
   return "" if $n == 0 || (defined $len && $len == 0);
 
   if (!ref($n)) {
@@ -7670,10 +7670,8 @@ sub _FastIntegerInput {
 }
 
 sub fromdigits {
-  my($r, $base) = @_;
+  my($r, $base) = _parse_base_args("fromdigits", 0, @_);
   croak "Parameter must be defined" if !defined $r;
-  if (defined $base) { validate_integer_nonneg($base); } else { $base = 10; }
-  croak "fromdigits: invalid base: $base" if $base < 2;  # large bases are ok
   my $refr = ref($r);
 
   return _FastIntegerInput($r,$base) if _is_aref($r);
@@ -7706,28 +7704,16 @@ sub fromdigits {
 }
 
 sub is_harshad {
-  my($n,$base) = @_;
+  my($n, $base) = _parse_base_args("is_harshad", 0, @_);
   validate_integer($n);
-  if (defined $base) {
-    validate_integer_nonneg($base);
-    croak "is_harshad: invalid base: $base" if $base < 2;
-  } else {
-     $base = 10;
-  }
   return 0 if $n <= 0;
   my $sum = Mvecsum(Mtodigits($n,$base));
   Mis_divisible($n,$sum);
 }
 
 sub is_palindrome {
-  my($n,$base) = @_;
+  my($n, $base) = _parse_base_args("is_palindrome", 0, @_);
   validate_integer_nonneg($n);
-  if (defined $base) {
-    validate_integer_nonneg($base);
-    croak "is_palindrome: invalid base: $base" if $base < 2;
-  } else {
-     $base = 10;
-  }
   my @dig = Mtodigits($n,$base);
   my @rdig = reverse @dig;
   vecequal(\@dig,\@rdig);
@@ -7803,11 +7789,12 @@ sub sqrtint {
 }
 
 sub rootint {
+  croak "rootint: expected (n,k), or (n,k,\\rk)" if @_ < 2 || @_ > 3;
   my ($n, $k, $refp) = @_;
   validate_integer_nonneg($n);
   validate_integer_positive($k);
   croak "rootint: third argument not a scalar reference"
-    if @_ >= 3 && !_is_sref($refp);
+    if @_ == 3 && !_is_sref($refp);
 
   if ($k == 1) {
     canonicalize_integers(\$n);
@@ -7926,12 +7913,13 @@ sub _logint {
 }
 
 sub logint {
+  croak "logint: expected (n,b), or (n,b,\\be)" if @_ < 2 || @_ > 3;
   my ($n, $b, $refp) = @_;
   validate_integer_positive($n);
   validate_integer_nonneg($b);
+  croak "logint: third argument not a scalar reference"
+    if @_ == 3 && !_is_sref($refp);
   croak "logint: base must be > 1" if $b <= 1;
-  croak "logint third argument not a scalar reference"
-    if @_ >= 3 && !_is_sref($refp);
 
   if ($Math::Prime::Util::_GMPfunc{"logint"} && !ref($b)) {
     my $e = Math::Prime::Util::GMP::logint($n, $b);
@@ -9869,15 +9857,17 @@ sub is_extra_strong_lucas_pseudoprime {
 }
 
 sub is_almost_extra_strong_lucas_pseudoprime {
+  croak "is_almost_extra_strong_lucas_pseudoprime: expected (n) or (n,incr)"
+    if @_ < 1 || @_ > 2;
   my($n, $incr) = @_;
   validate_integer($n);
-  if (defined $incr) {
-    validate_integer_nonneg($incr);
-    croak "is_almost_extra_strong_lucas_pseudoprime: invalid increment: $incr" if $incr<1 || $incr>256;
-  } else {
+  if (@_ == 1) {
     $incr = 1;
+  } else {
+    validate_integer_nonneg($incr);
+    croak "is_almost_extra_strong_lucas_pseudoprime: invalid increment: $incr"
+      if $incr<1 || $incr>256;
   }
-
   return 0+($n >= 2) if $n < 4;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
 
@@ -10017,10 +10007,8 @@ sub _perrin_signature {
 }
 
 sub is_perrin_pseudoprime {
-  my($n, $restrict) = @_;
+  my($n, $restrict) = _parse_k_args("is_perrin_pseudoprime", 0, @_);
   validate_integer($n);
-  if (defined $restrict) { validate_integer_nonneg($restrict); }
-  else                   { $restrict = 0; }
   return 0+($n >= 2) if $n < 4;
   return 0 if $restrict > 2 && ($n % 2) == 0;
 
@@ -11379,14 +11367,9 @@ sub ecm_factor {
 
 
 sub divisors {
-  my($n,$k) = @_;
+  my($n, $k) = _parse_k_args("divisors", undef, @_);
   validate_integer_nonneg($n);
-  if (defined $k) {
-    validate_integer_nonneg($k);
-    $k = $n if $k > $n;
-  } else {
-    $k = $n;
-  }
+  $k = $n if !defined($k) || $k > $n;
 
   if (!wantarray) {
     # In scalar context, returns sigma_0(n).  Very fast.
