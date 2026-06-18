@@ -88,10 +88,12 @@ subtest 'selected examples', sub {
     my($aref, $exp) = @$arg;
     my ($a, $g, $p) = @$aref;
     my $k = znlog($a,$g,$p);
-    if (defined $exp && ref($exp)) {
+    if (!defined $exp) {
+      is($k, undef, "znlog($a,$g,$p) = <undef>");
+    } elsif (ref($exp)) {
       ok(is_one_of($k, @$exp), "znlog($a,$g,$p) = $k [@$exp]");
     } else {
-      is($k, $exp, "znlog($a,$g,$p) = " . (defined $exp ? $exp : "<undef>"));
+      is("$k", $exp, "znlog($a,$g,$p) = $exp");
     }
   }
 };

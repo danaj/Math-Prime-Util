@@ -11,6 +11,7 @@ lib/Math/Prime/Util/PPFE.pm
 lib/Math/Prime/Util/ZetaBigFloat.pm
 lib/Math/Prime/Util/ECAffinePoint.pm
 lib/Math/Prime/Util/ECProjectivePoint.pm
+lib/Math/Prime/Util/ECM.pm
 lib/Math/Prime/Util/PrimalityProving.pm
 lib/Math/Prime/Util/RandomPrimes.pm
 lib/Math/Prime/Util/ChaCha.pm

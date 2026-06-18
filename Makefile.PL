@@ -146,7 +146,7 @@ WriteMakefile1(
                     version => '0.75', file => 'lib/Math/Prime/Util/ChaCha.pm',
                  },
                  # Skip: PPFE, PrimalityProving, RandomPrimes, ZetaBigFloat,
-                 #       ECAffinePoint, ECProjectivePoint
+                 #       ECAffinePoint, ECProjectivePoint, ECM
                },
                prereqs => {
                  runtime => {

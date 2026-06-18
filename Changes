@@ -175,6 +175,8 @@ Revision history for Perl module Math::Prime::Util
     - binomialmod can directly dispatch to the GMP 0.54 back end, avoiding
       construction of huge intermediate binomial values in more cases.
 
+    - PP ECM now uses the new two-stage implementation based on tinyecm128.
+
 
 0.74 2026-03-13
 

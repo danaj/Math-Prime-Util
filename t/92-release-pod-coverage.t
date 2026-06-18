@@ -34,6 +34,8 @@ foreach my $m (@modules) {
     if $m eq 'Math::Prime::Util::PP';
   $param->{trustme} = [qw/maybetobigint tobigint/]
     if $m eq 'Math::Prime::Util::RandomPrimes';
+  $param->{trustme} = [qw/tobigint getconfig Mdivint Mmulint Minvmod Mgcd Mis_prime Mprimes Msqrtint/]
+    if $m eq 'Math::Prime::Util::ECM';
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), qw/rand srand/]
     if $m eq 'ntheory';
   pod_coverage_ok( $m, $param );
@@ -189,7 +191,7 @@ sub mpu_PPM_regex {
       Mnext_prime Mprev_prime Mprime_count Mnth_prime_upper
       Mprimorial Mpn_primorial Mprime_omega
       MLi Mpowersum
-      Murandomb Murandomm Mvaluation
+      Murandomb Murandomm Mvaluation Mlegendre_phi
       Mprimes
       Mis_power Mis_prime Mis_prob_prime Mis_prime_power Mis_odd Mis_even
       Mdivisor_sum Mis_congruent Mis_divisible

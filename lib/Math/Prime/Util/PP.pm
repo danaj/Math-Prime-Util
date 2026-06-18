@@ -10582,26 +10582,29 @@ sub trial_factor {
   @factors;
 }
 
+sub _factor_ecm {
+  require Math::Prime::Util::ECM;
+  Math::Prime::Util::ECM::ecm_factor_pp(@_);
+}
+
 my $_holf_r;
 my @_fsublist = (
   [ "power",       sub { _factor_power  (shift) } ],
-
-  [ "pbrent 8k",   sub { _factor_pbrent (shift,    8*1024, 1) } ],
-  [ "p-1 16k",     sub { _factor_pminus1(shift,    16_384, 16_384) } ],
-  [ "ECM 500",     sub { _factor_ecm    (shift,       500, 10_000, 10) } ],
-  [ "ECM 4k",      sub { _factor_ecm    (shift,     4_000, 20_000, 20) } ],
-
+  [ "pbrent 8k",   sub { _factor_pbrent (shift,      8192, 1) } ],
+  [ "p-1 8k",      sub { _factor_pminus1(shift,      8192, 8192) } ],
+  [ "ECM 500",     sub { _factor_ecm    (shift,       500, 0, 20,  0) } ],
+  [ "ECM 2k",      sub { _factor_ecm    (shift,     2_000, 0, 20, 20) } ],
+  [ "ECM 8k",      sub { _factor_ecm    (shift,     8_000, 0, 20, 40) } ],
   [ "pbrent 512k", sub { _factor_pbrent (shift,  512*1024, 7) } ],
   [ "p-1 4M",      sub { _factor_pminus1(shift, 4_000_000, undef) } ],
-  [ "ECM 10k",     sub { _factor_ecm    (shift,    10_000,  50_000, 10) } ],
   [ "pbrent 512k", sub { _factor_pbrent (shift,  512*1024, 11) } ],
   [ "HOLF 256k",   sub { _factor_holf   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; } ],
   [ "p-1 20M",     sub { _factor_pminus1(shift, 20_000_000) } ],
-  [ "ECM 100k",    sub { _factor_ecm    (shift,   100_000, 800_000, 10) } ],
+  [ "ECM 100k",    sub { _factor_ecm    (shift,   100_000, 0, 20, 60) } ],
   [ "HOLF 512k",   sub { _factor_holf   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; } ],
   [ "pbrent 2M",   sub { _factor_pbrent (shift, 2048*1024, 13) } ],
   [ "HOLF 2M",     sub { _factor_holf   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; } ],
-  [ "ECM 1M",      sub { _factor_ecm    (shift, 1_000_000, 1_000_000, 10) } ],
+  [ "ECM 1M",      sub { _factor_ecm    (shift, 1_000_000, 0, 20, 80) } ],
   [ "p-1 100M",    sub { _factor_pminus1(shift, 100_000_000, 500_000_000) } ],
 );
 
@@ -11154,170 +11157,6 @@ sub fermat_factor {
 }
 
 
-sub _factor_ecm {
-  my($n, $B1, $B2, $ncurves) = @_;
-  croak "_factor_ecm internal error: parameter not defined"
-    unless defined $n && defined $B1 && defined $B2 && defined $ncurves;
-
-  $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
-
-  croak "ecm_factor: B1 must fit in native signed integer" if $B1 > SINTMAX;
-  croak "ecm_factor: B2 must fit in native signed integer" if $B2 > SINTMAX;
-  croak "ecm_factor: ncurves must fit in native signed integer" if $ncurves > SINTMAX;
-  my $sqrt_b1 = int(sqrt($B1)+1);
-
-  # Affine code.  About 3x slower than the projective, and no stage 2.
-  #
-  #if (!defined $Math::Prime::Util::ECAffinePoint::VERSION) {
-  #  eval { require Math::Prime::Util::ECAffinePoint; 1; }
-  #  or do { croak "Cannot load Math::Prime::Util::ECAffinePoint"; };
-  #}
-  #my @bprimes = @{ primes(2, $B1) };
-  #my $irandf = Math::Prime::Util::_get_rand_func();
-  #foreach my $curve (1 .. $ncurves) {
-  #  my $a = $irandf->($n-1);
-  #  my $b = 1;
-  #  my $ECP = Math::Prime::Util::ECAffinePoint->new($a, $b, $n, 0, 1);
-  #  foreach my $q (@bprimes) {
-  #    my $k = $q;
-  #    if ($k < $sqrt_b1) {
-  #      my $kmin = int($B1 / $q);
-  #      while ($k <= $kmin) { $k *= $q; }
-  #    }
-  #    $ECP->mul($k);
-  #    my $f = $ECP->f;
-  #    if ($f != 1) {
-  #      last if $f == $n;
-  #      warn "ECM found factors with B1 = $B1 in curve $curve\n";
-  #      return _found_factor($f, $n, "ECM B1=$B1 curve $curve", @factors);
-  #    }
-  #    last if $ECP->is_infinity;
-  #  }
-  #}
-
-  require Math::Prime::Util::ECProjectivePoint;
-  require Math::Prime::Util::RandomPrimes;
-
-  # With multiple curves, it's better to get all the primes at once.
-  # The downside is this can kill memory with a very large B1.
-  my @bprimes = @{ Mprimes(3, $B1) };
-  foreach my $q (@bprimes) {
-    last if $q > $sqrt_b1;
-    my($k,$kmin) = ($q, int($B1/$q));
-    while ($k <= $kmin) { $k *= $q; }
-    $q = $k;
-  }
-  my @b2primes = ($B2 > $B1) ? @{Mprimes($B1+1, $B2)} : ();
-
-  foreach my $curve (1 .. $ncurves) {
-    my $sigma = tobigint(Murandomm($n-6)) + 6;
-
-    my ($u, $v) = ( ($sigma*$sigma - 5) % $n, (4 * $sigma) % $n );
-    my ($x, $z) = ( ($u*$u*$u) % $n,  ($v*$v*$v) % $n );
-    my $cb = (4 * $x * $v) % $n;
-    my $ca = ( (($v-$u)**3) * (3*$u + $v) ) % $n;
-
-    my $f = Mgcd( $cb, $n );
-    $f = Mgcd( $z, $n ) if $f == 1;
-    next if $f == $n;
-    return _found_factor($f,$n, "ECM B1=$B1 curve $curve") if $f != 1;
-    $u = Minvmod($cb,$n);
-    $ca = (($ca*$u) - 2) % $n;
-
-    my $ECP = Math::Prime::Util::ECProjectivePoint->new($ca, $n, $x, $z);
-    my $fm = $n-$n+1;
-    my $i = 15;
-
-    for (my $q = 2; $q < $B1; $q *= 2) { $ECP->double(); }
-    foreach my $k (@bprimes) {
-      $ECP->mul($k);
-      $fm = ($fm * $ECP->x() ) % $n;
-      if ($i++ % 32 == 0) {
-        $f = Mgcd($fm, $n);
-        last if $f != 1;
-      }
-    }
-    $f = Mgcd($fm, $n);
-    next if $f == $n;
-
-    if ($f == 1 && $B2 > $B1) { # BEGIN STAGE 2
-      my $D = Msqrtint($B2 >> 1);  $D++ if $D % 2;
-      my $one = $n - $n + 1;
-      my $g = $one;
-
-      my $S2P = $ECP->copy->normalize;
-      $f = $S2P->f;
-      if ($f != 1) {
-        next if $f == $n;
-        #warn "ECM S2 normalize f=$f\n" if $f != 1;
-        return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve");
-      }
-      my $S2x = $S2P->x;
-      my $S2d = $S2P->d;
-      my @nqx = ($n-$n, $S2x);
-
-      foreach my $i (2 .. 2*$D) {
-        my($x2, $z2);
-        if ($i % 2) {
-          ($x2, $z2) = Math::Prime::Util::ECProjectivePoint::_addx($nqx[($i-1)/2], $nqx[($i+1)/2], $S2x, $n);
-        } else {
-          ($x2, $z2) = Math::Prime::Util::ECProjectivePoint::_double($nqx[$i/2], $one, $n, $S2d);
-        }
-        $nqx[$i] = $x2;
-        #($f, $u, undef) = _extended_gcd($z2, $n);
-        $f = Mgcd( $z2, $n );
-        last if $f != 1;
-        $u = Minvmod($z2,$n);
-        $nqx[$i] = ($x2 * $u) % $n;
-      }
-      if ($f != 1) {
-        next if $f == $n;
-        #warn "ECM S2 1: B1 $B1 B2 $B2 curve $curve f=$f\n";
-        return _found_factor($f, $n, "ECM S2 B1=$B1 curve $curve");
-      }
-
-      $x = $nqx[2*$D-1];
-      my $m = 1;
-      while ($m < ($B2+$D)) {
-        if ($m != 1) {
-          my $oldx = $S2x;
-          my ($x1, $z1) = Math::Prime::Util::ECProjectivePoint::_addx($nqx[2*$D], $S2x, $x, $n);
-          $f = Mgcd( $z1, $n );
-          last if $f != 1;
-          $u = $z1->copy->bmodinv($n);
-          $S2x = ($x1 * $u) % $n;
-          $x = $oldx;
-          last if $f != 1;
-        }
-        if ($m+$D > $B1) {
-          my @p = grep { $_ >= $m-$D && $_ <= $m+$D } @b2primes;
-          foreach my $i (@p) {
-            last if $i >= $m;
-            $g = ($g * ($S2x - $nqx[$m+$D-$i])) % $n;
-          }
-          foreach my $i (@p) {
-            next unless $i > $m;
-            next if $i > ($m+$m) || is_prime($m+$m-$i);
-            $g = ($g * ($S2x - $nqx[$i-$m])) % $n;
-          }
-          $f = Mgcd($g, $n);
-          #warn "ECM S2 3: found $f in stage 2\n" if $f != 1;
-          last if $f != 1;
-        }
-        $m += 2*$D;
-      }
-    } # END STAGE 2
-
-    next if $f == $n;
-    if ($f != 1) {
-      #warn "ECM found factors with B1 = $B1 in curve $curve\n";
-      return _found_factor($f, $n, "ECM B1=$B1 curve $curve");
-    }
-    # end of curve loop
-  }
-  ($n);
-}
-
 sub ecm_factor {
   my($n, $B1, $B2, $ncurves) = @_;
   validate_integer_nonneg($n);
@@ -11348,20 +11187,8 @@ sub ecm_factor {
     return (@f, $n);
   }
 
-  $ncurves = 10 unless defined $ncurves;
-
-  if (!defined $B1) {
-    for my $mul (1, 10, 100, 1000, 10_000, 100_000, 1_000_000) {
-      my $try_b1 = 100 * $mul;
-      my $try_b2 = 10 * $try_b1;
-      my @factors = _factor_ecm($n, $try_b1, $try_b2, $ncurves);
-      return (@f,@factors) if @factors > 1;
-    }
-    return (@f, $n);
-  }
-
-  $B2 = 10*$B1 unless defined $B2 && $B2 > 0;
-  (@f, _factor_ecm($n, $B1, $B2, $ncurves));
+  require Math::Prime::Util::ECM;
+  (@f, Math::Prime::Util::ECM::ecm_factor_pp($n, $B1, $B2, $ncurves));
 }
 
 
