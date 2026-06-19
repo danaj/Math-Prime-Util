@@ -7091,12 +7091,10 @@ forpart (SV* block, IN SV* svn, IN SV* svh = 0)
 
 void
 forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
-  ALIAS:
-    forperm = 1
-    forderange = 2
   PROTOTYPE: &$;$
   PREINIT:
     UV i, n, k, begk, endk;
+    int nstatus, kstatus;
     CV *subcv;
     SV** svals;
     UV*  cm;
@@ -7104,21 +7102,22 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
     dMY_CXT;
   PPCODE:
     SETSUBREF(subcv, block);
-    if (ix > 0 && svk != 0)
-      croak("%s: too many arguments", SUBNAME);
 
-    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG) ||
-        (svk && !_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG)))
-      DISPATCHPP_RETURN_VOID();
-
-    if (svk == 0) {
-      begk = (ix == 0) ? 0 : n;
-      endk = n;
-    } else {
-      begk = endk = k;
-      if (begk > n)
-        XSRETURN(0);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    kstatus = 1;
+    if (nstatus != 0) {
+      if (items == 2) {
+        begk = 0;  endk = n;
+      } else if (_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG)) {
+        begk = endk = k;
+        if (begk > n)
+          XSRETURN(0);
+      } else {
+        kstatus = 0;
+      }
     }
+    if (nstatus == 0 || kstatus == 0)
+      DISPATCHPP_RETURN_VOID();
 
     New(0, svals, n, SV*);
     for (i = 0; i < n; i++) {
@@ -7136,18 +7135,16 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
       AvREAL_off(av);
       SC_PUSH_MULTICALL(subcv);
       for (k = begk; k <= endk; k++) {
-        _comb_init(cm, k, ix == 2);
+        _comb_init(cm, k, 0);
         while (1) {
-          if (ix < 2 || k != 1) {
-            IV j;
-            av_extend(av, k-1);
-            av_fill(av, k-1);
-            for (j = k-1; j >= 0; j--)
-              AvARRAY(av)[j] = svals[ cm[k-j-1]-1 ];
-            SC_MULTICALL;
-          }
+          IV j;
+          av_extend(av, k-1);
+          av_fill(av, k-1);
+          for (j = k-1; j >= 0; j--)
+            AvARRAY(av)[j] = svals[ cm[k-j-1]-1 ];
+          SC_MULTICALL;
           CHECK_FORCOUNT;
-          if (_comb_iterate(cm, k, n, ix)) break;
+          if (_comb_iterate(cm, k, n, 0)) break;
         }
         CHECK_FORCOUNT;
       }
@@ -7157,17 +7154,90 @@ forcomb (SV* block, IN SV* svn, IN SV* svk = 0)
 #endif
     {
       for (k = begk; k <= endk; k++) {
-        _comb_init(cm, k, ix == 2);
+        _comb_init(cm, k, 0);
         while (1) {
-          if (ix < 2 || k != 1) {
-            PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)k);
-            for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
-            PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
-          }
+          PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)k);
+          for (i = 0; i < k; i++) { PUSHs(svals[ cm[k-i-1]-1 ]); }
+          PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
           CHECK_FORCOUNT;
-          if (_comb_iterate(cm, k, n, ix)) break;
+          if (_comb_iterate(cm, k, n, 0)) break;
         }
         CHECK_FORCOUNT;
+      }
+    }
+
+    Safefree(cm);
+    for (i = 0; i < n; i++)
+      SvREFCNT_dec(svals[i]);
+    Safefree(svals);
+    END_FORCOUNT;
+
+void forperm (SV* block, IN SV* svn)
+  ALIAS:
+    forderange = 1
+  PROTOTYPE: &$
+  PREINIT:
+    UV i, n;
+    CV *subcv;
+    SV** svals;
+    UV*  cm;
+    DECL_FORCOUNT;
+    dMY_CXT;
+  PPCODE:
+    SETSUBREF(subcv, block);
+
+    if (!_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG))
+      DISPATCHPP_RETURN_VOID();
+
+    if (n <= 1) {
+      if (!(ix == 1 && n == 1)) {
+        START_FORCOUNT;
+        PUSHMARK(SP); EXTEND(SP, 1);
+        if (n == 1) PUSH_NPARITY(0);
+        PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
+        END_FORCOUNT;
+      }
+      XSRETURN(0);
+    }
+
+    New(0, svals, n, SV*);
+    for (i = 0; i < n; i++) {
+      svals[i] = newSVuv(i);
+      SvREADONLY_on(svals[i]);
+    }
+    New(0, cm, n+1, UV);
+
+    START_FORCOUNT;
+#if USE_MULTICALL
+    if (!CvISXSUB(subcv)) {
+      SC_dMULTICALL;
+      I32 gimme = G_VOID;
+      AV *av = save_ary(PL_defgv);
+      AvREAL_off(av);
+      SC_PUSH_MULTICALL(subcv);
+      _comb_init(cm, n, ix == 1);
+      while (1) {
+        IV j;
+        av_extend(av, n-1);
+        av_fill(av, n-1);
+        for (j = n-1; j >= 0; j--)
+          AvARRAY(av)[j] = svals[ cm[n-j-1]-1 ];
+        SC_MULTICALL;
+        CHECK_FORCOUNT;
+        if (_comb_iterate(cm, n, n, 1+ix)) break;
+      }
+      FIX_MULTICALL_REFCOUNT;
+      SC_POP_MULTICALL;
+    } else
+#endif
+    {
+      _comb_init(cm, n, ix == 1);
+      while (1) {
+        PUSHMARK(SP); EXTEND(SP, (EXTEND_TYPE)n);
+        for (i = 0; i < n; i++) { PUSHs(svals[ cm[n-i-1]-1 ]); }
+        PUTBACK; call_sv((SV*)subcv, G_VOID|G_DISCARD); SPAGAIN;
+        CHECK_FORCOUNT;
+        if (_comb_iterate(cm, n, n, 1+ix)) break;
       }
     }
 

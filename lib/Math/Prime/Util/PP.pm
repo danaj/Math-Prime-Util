@@ -801,6 +801,18 @@ sub _parse_range_args {
   ($beg, $end);
 }
 
+sub _parse_factor_args {
+  my $name = shift;
+  my $noptargs = shift;
+  croak "$name: expected n and up to $noptargs optional arguments"
+    if @_ < 1 || @_ > 1+$noptargs;
+  my $n = shift;
+  validate_integer_nonneg($n);
+  my (@A) = @_;
+  validate_integer_nonneg($_) for @A;
+  return (canonicalized_integer($n),@A);
+}
+
 
 sub trial_primes {
   my($low,$high) = _parse_range_args("trial_primes",2,@_);
@@ -5186,19 +5198,22 @@ sub sum_primes {
 }
 
 sub print_primes {
-  my($low,$high,$fd) = @_;
-  if (defined $high) { validate_integer_nonneg($low); }
-  else               { ($low,$high) = (2, $low);      }
-  validate_integer_nonneg($high);
+  my($lo, $hi, $fd) = (2,undef,fileno(STDOUT));
+  if    (@_ == 1) { ($hi)         = @_; }
+  elsif (@_ == 2) { ($lo,$hi)     = @_; }
+  elsif (@_ == 3) { ($lo,$hi,$fd) = @_; }
+  else { croak "print_primes: expected (hi), (lo,hi), or (lo,hi,fd)"; }
+  validate_integer_nonneg($lo);
+  validate_integer_nonneg($hi);
+  validate_integer_nonneg($fd);
 
-  $fd = fileno(STDOUT) unless defined $fd;
   open(my $fh, ">>&=", $fd) or croak "print_primes: open fd $fd failed: $!";
 
-  if ($high >= $low) {
-    my $p1 = $low;
-    while ($p1 <= $high) {
+  if ($hi >= $lo) {
+    my $p1 = $lo;
+    while ($p1 <= $hi) {
       my $p2 = $p1 + 15_000_000 - 1;
-      $p2 = $high if $p2 > $high;
+      $p2 = $hi if $p2 > $hi;
       if ($Math::Prime::Util::_GMPfunc{"sieve_primes"}) {
         print $fh "$_\n" for Math::Prime::Util::GMP::sieve_primes($p1,$p2,0);
       } else {
@@ -10386,10 +10401,7 @@ sub _remove_factor {
   $n;
 }
 sub trial_factor {
-  my($n, $limit) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($limit) if defined $limit;
-  canonicalize_integers(\$n);
+  my($n, $limit) = _parse_factor_args("trial_factor", 1, @_);
 
   return ($n==1) ? () : ($n)  if $n < 4;
 
@@ -10690,11 +10702,8 @@ sub _found_factor {
 ################################################################################
 
 sub _stub_factor {
-  my($n, $rounds) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($rounds) if defined $rounds;
-  canonicalize_integers(\$n);
-
+  my $name = shift;
+  my($n, $rounds) = _parse_factor_args($name, 1, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -10704,9 +10713,9 @@ sub _stub_factor {
 }
 
 # No implementations of these here, but make the calls still exist.
-sub squfof_factor { _stub_factor(@_); }
-sub lehman_factor { _stub_factor(@_); }
-sub pplus1_factor { _stub_factor(@_); }
+sub squfof_factor { _stub_factor("squfof_factor", @_); }
+sub lehman_factor { _stub_factor("lehman_factor", @_); }
+sub pplus1_factor { _stub_factor("pplus1_factor", @_); }
 
 sub _factor_power {
   my $r;
@@ -10788,11 +10797,7 @@ sub _factor_prho {
 }
 
 sub prho_factor {
-  my($n, $rounds, $pa) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($rounds) if defined $rounds;
-  validate_integer_nonneg($pa) if defined $pa;
-  canonicalize_integers(\$n);
+  my($n, $rounds, $pa) = _parse_factor_args("prho_factor", 2, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -10863,11 +10868,7 @@ sub _factor_pbrent {
 }
 
 sub pbrent_factor {
-  my($n, $rounds, $pa) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($rounds) if defined $rounds;
-  validate_integer_nonneg($pa) if defined $pa;
-  canonicalize_integers(\$n);
+  my($n, $rounds, $pa) = _parse_factor_args("pbrent_factor", 2, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11005,11 +11006,7 @@ sub _factor_pminus1 {
 }
 
 sub pminus1_factor {
-  my($n, $B1, $B2) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($B1) if defined $B1;
-  validate_integer_nonneg($B2) if defined $B2;
-  canonicalize_integers(\$n);
+  my($n, $B1, $B2) = _parse_factor_args("pminus1_factor", 2, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11042,11 +11039,7 @@ sub _factor_cheb {
 }
 
 sub cheb_factor {
-  my($n, $B1, $initx) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($B1) if defined $B1;
-  validate_integer_nonneg($initx) if defined $initx;
-  canonicalize_integers(\$n);
+  my($n, $B1, $initx) = _parse_factor_args("cheb_factor", 2, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11094,11 +11087,7 @@ sub _factor_holf {
 }
 
 sub holf_factor {
-  my($n, $rounds, $startrounds) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($rounds) if defined $rounds;
-  validate_integer_nonneg($startrounds) if defined $startrounds;
-  canonicalize_integers(\$n);
+  my($n, $rounds, $startrounds) = _parse_factor_args("holf_factor", 2, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11146,10 +11135,7 @@ sub _factor_fermat {
 }
 
 sub fermat_factor {
-  my($n, $rounds) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($rounds) if defined $rounds;
-  canonicalize_integers(\$n);
+  my($n, $rounds) = _parse_factor_args("fermat_factor", 1, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -11158,15 +11144,7 @@ sub fermat_factor {
 
 
 sub ecm_factor {
-  my($n, $B1, $B2, $ncurves) = @_;
-  validate_integer_nonneg($n);
-  validate_integer_nonneg($B1) if defined $B1;
-  validate_integer_nonneg($B2) if defined $B2;
-  validate_integer_nonneg($ncurves) if defined $ncurves;
-  croak "ecm_factor: B1 must be specified if B2 is specified"
-    if !defined $B1 && defined $B2;
-
-  canonicalize_integers(\$n);
+  my($n, $B1, $B2, $ncurves) = _parse_factor_args("ecm_factor", 3, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
@@ -12074,20 +12052,19 @@ sub fordivisors (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 }
 
 sub forpart (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $n, $rhash) = @_;
-  _forcompositions(1, $sub, $n, $rhash, "forpart");
+  _forcompositions("forpart", @_);
 }
 sub forcomp (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $n, $rhash) = @_;
-  _forcompositions(0, $sub, $n, $rhash, "forcomp");
+  _forcompositions("forcomp", @_);
 }
 sub _forcompositions {
-  my($ispart, $sub, $n, $rhash, $subname) = @_;
+  my($name, $sub, $n, $rhash) = @_;
+  croak "$name: expected (sub,n) or (sub,n,hashref)" if @_ < 3 || @_ > 4;
   validate_integer_nonneg($n);
-  croak "$subname: n must fit in native signed integer" if $n > SINTMAX;
+  croak "$name: n must fit in native signed integer" if $n > SINTMAX;
   my($mina, $maxa, $minn, $maxn, $primeq) = (1,$n,1,$n,-1);
-  if (defined $rhash) {
-    croak "$subname second argument must be a hash reference"
+  if (@_ == 4) {
+    croak "$name second argument must be a hash reference"
       unless _is_href($rhash);
     if (defined $rhash->{amin}) {
       $mina = $rhash->{amin};
@@ -12132,7 +12109,7 @@ sub _forcompositions {
         $x = $a[$k-1]+1;
         $y = $a[$k]-1;
         $k--;
-        $r = $ispart ? $x : 1;
+        $r = $name eq 'forpart' ? $x : 1;
         while ($r <= $y) {
           $a[$k] = $x;
           $x = $r;
@@ -12149,7 +12126,7 @@ sub _forcompositions {
         # Restrict values
         if ($mina > 1 || $maxa < $n) {
           last if $a[0] > $maxa;
-          if ($ispart) {
+          if ($name eq 'forpart') {
             next if $a[$k] > $maxa;
           } else {
             next if Mvecany(sub{ $_ < $mina || $_ > $maxa }, @a[0..$k]);
@@ -12165,18 +12142,16 @@ sub _forcompositions {
 }
 
 sub forcomb (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $n, $k) = @_;
+  my($sub, $n, $rk) = @_;
+  croak "forcomb: expected (sub,n) or (sub,n,k)" if @_ < 2 || @_ > 3;
+  croak 'Not a subroutine reference' unless _is_cref($sub);
   validate_integer_nonneg($n);
   croak "forcomb: n must fit in native signed integer" if $n > SINTMAX;
-
-  my($begk, $endk);
-  if (defined $k) {
-    validate_integer_nonneg($k);
-    return if $k > $n;
-    $begk = $endk = $k;
-  } else {
-    $begk = 0;
-    $endk = $n;
+  my($begk, $endk) = (0, $n);
+  if (@_ == 3) {
+    validate_integer_nonneg($rk);
+    return if $rk > $n;
+    $begk = $endk = $rk;
   }
 
   _run_for_loop {
@@ -12201,13 +12176,19 @@ sub forcomb (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   };
 }
 sub _forperm {
-  my($sub, $n, $all_perm) = @_;
+  my($name, $sub, $n) = @_;
+  croak 'Not a subroutine reference' unless _is_cref($sub);
+  validate_integer_nonneg($n);
+  croak "$name: n must fit in native signed integer" if $n > SINTMAX;
+
   if ($n <= 1) {
+    return if $name eq 'forderange' && $n == 1;
     _run_for_loop {
       if ($n == 0) { $sub->(); } else { $sub->(0); }
     };
     return;
   }
+  my $all_perm = $name eq 'forperm';
   my $k = $n;
   my @c = reverse 0 .. $k-1;
   my $inc = 0;
@@ -12241,20 +12222,11 @@ sub _forperm {
     }
   };
 }
-sub forperm (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $n, $k) = @_;
-  validate_integer_nonneg($n);
-  croak "forperm: n must fit in native signed integer" if $n > SINTMAX;
-  croak "Too many arguments for forperm" if defined $k;
-  _forperm($sub, $n, 1);
+sub forperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  _forperm("forperm", @_);
 }
-sub forderange (&$;$) {    ## no critic qw(ProhibitSubroutinePrototypes)
-  my($sub, $n, $k) = @_;
-  validate_integer_nonneg($n);
-  croak "forderange: n must fit in native signed integer" if $n > SINTMAX;
-  croak "Too many arguments for forderange" if defined $k;
-  return if $n == 1;
-  _forperm($sub, $n, 0);
+sub forderange (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  _forperm("forderange", @_);
 }
 
 sub forsetproduct (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
@@ -12538,7 +12510,7 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
   croak 'Not a subroutine reference' unless _is_cref($sub);
   croak 'Not an array reference' unless _is_aref($ra);
   $ra = Mtoset(@$ra);  # local copy, validated, set-form
-  if (defined $rb) {
+  if (@_ >= 3) {
     croak 'Not an array reference' unless _is_aref($rb);
     $rb = Mtoset(@$rb);  # local copy, validated, set-form
   } else {
@@ -12566,7 +12538,7 @@ sub setbinop (&$;$) {   ## no critic qw(ProhibitSubroutinePrototypes)
 sub sumset {
   my($ra,$rb) = @_;
   croak 'Not an array reference' unless _is_aref($ra);
-  if (defined $rb) {
+  if (@_ >= 2) {
     croak 'Not an array reference' unless _is_aref($rb);
   } else {
     $rb = $ra;

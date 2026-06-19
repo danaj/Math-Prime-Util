@@ -111,7 +111,7 @@ sub _tiny_stage1_plan {
   my $sqrt_b1 = int(sqrt($B1));
   my @bprimes = @{ Mprimes(2, $B1) };
   for my $p (@bprimes) {
-    next if $p > $sqrt_b1;
+    last if $p > $sqrt_b1;
     my($k, $pm) = ($p, int($B1 / $p));
     while ($k <= $pm) { $k *= $p; }
     $p = $k;
