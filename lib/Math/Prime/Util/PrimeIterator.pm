@@ -21,7 +21,7 @@ sub new {
   my ($class, $start) = @_;
   my $p = 2;
   my $self = bless \$p, $class;
-  $self->rewind($start) if defined $start;
+  $self->rewind($start) if @_ > 1;
   return $self;
 }
 

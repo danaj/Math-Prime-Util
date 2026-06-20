@@ -512,8 +512,7 @@ sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
 
 sub prime_iterator {
   my($start) = @_;
-  $start = 0 unless defined $start;
-  _validate_integer_nonneg($start);
+  if (@_ == 0) { $start = 0; } else { _validate_integer_nonneg($start); }
   my $p = ($start > 0) ? $start-1 : 0;
   # This works fine:
   #   return sub { $p = next_prime($p); return $p; };
@@ -542,8 +541,10 @@ sub prime_iterator {
 }
 
 sub prime_iterator_object {
-  my($start) = @_;
   require Math::Prime::Util::PrimeIterator;
+  return Math::Prime::Util::PrimeIterator->new() if @_ == 0;
+  my($start) = @_;
+  _validate_integer_nonneg($start);
   return Math::Prime::Util::PrimeIterator->new($start);
 }
 
@@ -651,11 +652,14 @@ sub LambertW {
 
 sub bernreal {
   my($n, $precision) = @_;
+  my $has_precision = @_ >= 2;
   _validate_integer_nonneg($n);
+  _validate_integer_nonneg($precision) if $has_precision;
+
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
 
   if ($Math::Prime::Util::_GMPfunc{"bernreal"}) {
-    return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n)) if !defined $precision;
+    return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n)) unless $has_precision;
     return Math::BigFloat->new(Math::Prime::Util::GMP::bernreal($n,$precision),$precision);
   }
 
@@ -666,17 +670,20 @@ sub bernreal {
 
 sub harmreal {
   my($n, $precision) = @_;
+  my $has_precision = @_ >= 2;
   _validate_integer_nonneg($n);
+  _validate_integer_nonneg($precision) if $has_precision;
+
   do { require Math::BigFloat; Math::BigFloat->import(); } unless defined $Math::BigFloat::VERSION;
   return Math::BigFloat->bzero if $n <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"harmreal"}) {
-    return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n)) if !defined $precision;
+    return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n)) unless $has_precision;
     return Math::BigFloat->new(Math::Prime::Util::GMP::harmreal($n,$precision),$precision);
   }
 
   # If low enough precision, use native floating point.  Fast.
-  if (defined $precision && $precision <= 13) {
+  if ($has_precision && $precision <= 13) {
     return Math::BigFloat->new(
       ($n < 80) ? do { my $h = 0; $h += 1/$_ for 1..$n; $h; }
                 : log($n) + 0.57721566490153286060651209 + 1/(2*$n) - 1/(12*$n*$n) + 1/(120*$n*$n*$n*$n)
