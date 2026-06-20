@@ -28,7 +28,8 @@ extern UV   prev_prime(UV x);
 /* Simple estimate for upper limit:  max_nprimes(n) >= prime_count(n) */
 extern UV   max_nprimes(UV n) ISCONSTFUNC;
 
-extern void print_primes(UV low, UV high, int fd);
+/* If failure is returned, errno should be set. */
+extern bool print_primes(UV low, UV high, int fd);
 
 /* Returns maximal k for c^k = n for k > 1, n > 1.  0 otherwise. */
 extern uint32_t powerof_ret(UV n, uint32_t *root);

@@ -319,6 +319,7 @@ t/51-randfactor.t
 t/51-znlog.t
 t/52-primearray.t
 t/53-realfunctions.t
+t/54-printprimes.t
 t/70-rt-bignum.t
 t/80-pp.t
 t/81-bigint.t

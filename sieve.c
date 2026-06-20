@@ -456,7 +456,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
       MPUverbose(4, "segment sieve %lu - %lu, primes to %lu (max %lu)\n", (unsigned long)low, (unsigned long)high, (unsigned long)limit, (unsigned long)nprimes);
       New(0, warray, nprimes, wheel_t);
       START_DO_FOR_EACH_PRIME(0,limit) {
-        if (wsize >= nprimes) croak("segment bad upper count");
+        MPUassert(wsize < nprimes, "start_segment_primes bad max_nprimes");
         w.prime = p;
         warray[wsize++] = w;
       } END_DO_FOR_EACH_PRIME;

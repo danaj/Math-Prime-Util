@@ -6,6 +6,7 @@
 
 #include <stdio.h>      /* For fileno and stdout */
 #include <stdlib.h>     /* For free */
+#include <errno.h>      /* For errno */
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -1674,19 +1675,40 @@ void random_prime(IN SV* svlo, IN SV* svhi = 0)
     }
     DISPATCHPP_RETURN();
 
-void print_primes(IN SV* svlo, IN SV* svhi = 0, IN int infd = -1)
+void print_primes(IN SV* svlo, IN SV* svhi = 0, IN SV* svfd = 0)
   PREINIT:
-    UV lo = 2, hi;
+    UV lo, hi, fd;
+    int status = 1, ifd, tfd, close_status, print_status = 1, saved_errno = 0;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
-        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
-      if (lo <= hi) {
-        int fd = (infd == -1) ? fileno(stdout) : infd;
-        print_primes(lo, hi, fd);
-      }
-      XSRETURN(0);
+    status &= _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG);
+    if (items > 1) status &= _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG);
+    if (items > 2) status &= _validate_and_set(&fd, aTHX_ svfd, IFLAG_NONNEG);
+
+    if (items == 1)
+      { hi = lo; lo = 2; }
+    if (status == 0)
+      DISPATCHPP_RETURN_VOID();
+    if (items == 3) {
+      if (fd > INT_MAX) croak("print_primes: fd out of range");
+      ifd = fd;
+    } else {
+      ifd = fileno(stdout);
     }
-    DISPATCHPP_RETURN_VOID();
+    tfd = PerlLIO_dup(ifd);
+    if (tfd < 0)
+      croak("print_primes: open fd %d failed: %s", ifd, Strerror(errno));
+
+    if (lo <= hi) {
+      print_status = print_primes(lo, hi, tfd);
+      if (!print_status) saved_errno = errno;
+    }
+
+    close_status = PerlLIO_close(tfd);
+    if (!print_status)
+      croak("print_primes write error: %s", Strerror(saved_errno));
+    if (close_status != 0)
+      croak("print_primes: close fd %d failed: %s", ifd, Strerror(errno));
+    XSRETURN(0);
 
 UV
 _LMO_pi(IN UV n)
