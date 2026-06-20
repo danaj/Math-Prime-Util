@@ -2697,59 +2697,98 @@ void squarefree_kernel(IN SV* svn)
       XSRETURN_UV( squarefree_kernel(n) );
     DISPATCHPP_RETURN();
 
-void is_powerfree(IN SV* svn, IN int k = 2)
-  ALIAS:
-    powerfree_sum = 1
-    powerfree_part = 2
-    powerfree_part_sum = 3
+void is_powerfree(IN SV* svn, IN SV* svk = 0)
   PREINIT:
-    int status;
-    UV n, res;
+    int nstatus, kstatus = 1;
+    UV n, k = 2;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == -1) {
-      n = neg_iv(n);
-      if (ix == 2)
-        XSRETURN_IV( neg_iv(powerfree_part(n,k)) );
-    }
-    if (status != 0) {
-      switch (ix) {
-        case 0:  res = is_powerfree(n,k);    break;
-        case 1:  res = powerfree_sum(n,k);   break;
-        case 2:  res = powerfree_part(n,k);  break;
-        case 3:
-        default: res = powerfree_part_sum(n,k);  break;
-      }
-      if (ix == 0)
-        RETURN_NPARITY(res);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (items >= 2) kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1 || k > UINT32_MAX) croak("%s: k must be <= 4294967295", SUBNAME);
+    if (nstatus != 0)
+      RETURN_NPARITY( is_powerfree(n,k) );
+    DISPATCHPP_RETURN();
+
+void powerfree_count(IN SV* svn, IN SV* svk = 0)
+  PREINIT:
+    int nstatus, kstatus = 1;
+    UV n, k = 2;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (items >= 2) kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1 || k > UINT32_MAX) croak("%s: k must be <= 4294967295", SUBNAME);
+    if (nstatus == -1)
+      XSRETURN_UV(0);
+    if (nstatus == 1)
+      XSRETURN_UV( powerfree_count(n,k) );
+    DISPATCHPP_RETURN();
+
+void powerfree_sum(IN SV* svn, IN SV* svk = 0)
+  PREINIT:
+    int nstatus, kstatus = 1;
+    UV n, k = 2, res;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (items >= 2) kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1 || k > UINT32_MAX) croak("%s: k must be <= 4294967295", SUBNAME);
+    if (nstatus == -1)
+      XSRETURN_UV(0);
+    if (nstatus == 1) {
+      res = powerfree_sum(n,k);
       if (res != 0 || n == 0)
         XSRETURN_UV(res);
       /* res is 0 and n > 0, so we overflowed.  Fall through to PP. */
     }
     DISPATCHPP_RETURN();
 
-void powerfree_count(IN SV* svn, IN int k = 2)
-  ALIAS:
-    nth_powerfree = 1
+void powerfree_part(IN SV* svn, IN SV* svk = 0)
   PREINIT:
-    int status;
-    UV n, res;
+    int nstatus, kstatus = 1;
+    UV n, k = 2;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix==0) ? IFLAG_ANY : IFLAG_NONNEG);
-    if (status != 0) {
-      if (status == -1)
-        XSRETURN_UV(0);
-      if (ix == 0) {
-        res = powerfree_count(n,k);
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (items >= 2) kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1 || k > UINT32_MAX) croak("%s: k must be <= 4294967295", SUBNAME);
+    if (nstatus != 0) {
+      if (nstatus == -1)
+        XSRETURN_IV( neg_iv(powerfree_part(neg_iv(n),k)) );
+      XSRETURN_UV( powerfree_part(n,k) );
+    }
+    DISPATCHPP_RETURN();
+
+void powerfree_part_sum(IN SV* svn, IN SV* svk = 0)
+  PREINIT:
+    int nstatus, kstatus = 1;
+    UV n, k = 2, res;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (items >= 2) kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1 || k > UINT32_MAX) croak("%s: k must be <= 4294967295", SUBNAME);
+    if (nstatus == -1)
+      XSRETURN_UV(0);
+    if (nstatus == 1) {
+      res = powerfree_part_sum(n,k);
+      if (res != 0 || n == 0)
         XSRETURN_UV(res);
-      } else {
-        if (n == 0 || k < 2)
-          XSRETURN_UNDEF;
-        res = nth_powerfree(n,k);
-        if (res != 0)
-          XSRETURN_UV(res);
-        /* if res = 0, overflow */
-      }
+      /* res is 0 and n > 0, so we overflowed.  Fall through to PP. */
+    }
+    DISPATCHPP_RETURN();
+
+void nth_powerfree(IN SV* svn, IN SV* svk = 0)
+  PREINIT:
+    int nstatus, kstatus = 1;
+    UV n, k = 2, res;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
+    if (items >= 2) kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus != 1 || k > UINT32_MAX) croak("%s: k must be <= 4294967295", SUBNAME);
+    if (nstatus == 1) {
+      if (n == 0 || k < 2)
+        XSRETURN_UNDEF;
+      res = nth_powerfree(n,k);
+      if (res != 0)
+        XSRETURN_UV(res);
+      /* if res = 0, overflow */
     }
     DISPATCHPP_RETURN();
 

@@ -2789,6 +2789,7 @@ Given an integer C<n> and an optional non-negative integer C<k>, returns
 This determines if C<|n|> has any k-th (or higher) powers in the prime
 factorization.
 C<k> defaults to 2.
+For the powerfree functions, C<k> must be at most C<2^32-1>.
 
 With C<k == 2> this produces the sequence of square-free integers
 L<OEIS A005117|http://oeis.org/A005117>.
@@ -2801,6 +2802,7 @@ L<OEIS A046100|http://oeis.org/A046100>.
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
 the number of k-powerfree positive integers less than or equal to C<n>.
+Returns 0 if C<n E<lt> 1>.
 C<k> defaults to 2.
 
 With C<k == 2> this produces the sequence
@@ -2824,6 +2826,7 @@ L<OEIS A004709|http://oeis.org/A004709>.
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
 the sum of k-powerfree positive integers less than or equal to C<n>.
+Returns 0 if C<n E<lt> 1>.
 C<k> defaults to 2.
 
 With C<k == 2> this produces the sequence
@@ -2836,6 +2839,8 @@ the k-powerfree part of C<n>.  This is done via removing "excess" powers,
 i.e. in the prime factorization of C<n>, we reduce any exponents C<E>
 from C<P^E> to C<P^(E % k)>.  Alternately we can say all k-th powers are
 divided out.
+For negative C<n>, the k-powerfree part of C<|n|> is computed and the
+original sign is restored.
 C<k> defaults to 2.
 
 When C<k == 2>, this is also sometimes called C<core(n)>.  It is the
@@ -2858,6 +2863,7 @@ is equivalent to
     vecsum(map { powerfree_part($_,$k) } 1..$n)
 
 but substantially faster.
+Returns 0 if C<n E<lt> 1>.
 
 With C<k == 2> this produces the sequence
 L<OEIS A069891|http://oeis.org/A069891>.

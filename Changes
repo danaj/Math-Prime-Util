@@ -109,6 +109,9 @@ Revision history for Perl module Math::Prime::Util
 
     - todigitstring with negative bigint in base 10 included the sign.  Fixed.
 
+    - Powerfree functions now consistently validate k (limited to 2^32-1)
+      and document negative-n behavior for count/sum/part variants.
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

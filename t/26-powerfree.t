@@ -15,6 +15,9 @@ my @simple = (0 .. 16,
 my @neg = map { -$_ } (1..32);
 
 plan tests => 3     # simple is square free
+            + 7     # negative n policy
+            + 6*2   # k validation
+            + 6*2   # oversized k validation
             + 11*2  # powerfree_count, powerfree_sum
             + 6+2   # ""
             + 7     # nth_powerfree
@@ -33,6 +36,42 @@ is_deeply( [map { is_powerfree($_)   } @simple, @neg],
 is_deeply( [map { is_powerfree($_,3) } @simple, @neg],
            [map { ipf($_,3)          } @simple, @neg],
            "is_powerfree(n,3) works for simple inputs" );
+
+##### negative n policy
+
+is(is_powerfree(-8,2), 0, "is_powerfree(-8,2) uses abs(n)");
+is(powerfree_count(-8,2), 0, "powerfree_count(-8,2) = 0");
+is(powerfree_sum(-8,2), 0, "powerfree_sum(-8,2) = 0");
+is(powerfree_part(-8,2), -2, "powerfree_part(-8,2) = -2");
+is(powerfree_part_sum(-8,2), 0, "powerfree_part_sum(-8,2) = 0");
+ok(!eval { nth_powerfree(-8,2); 1 }, "nth_powerfree rejects negative n");
+like($@, qr/non-negative integer/, "nth_powerfree negative n error");
+
+##### k validation
+
+for my $fname (qw/is_powerfree powerfree_count powerfree_sum
+                powerfree_part powerfree_part_sum nth_powerfree/) {
+  my $ok = eval {
+    no strict 'refs';
+    &{"Math::Prime::Util::$fname"}(8,-1);
+    1;
+  };
+  ok(!$ok, "$fname rejects negative k");
+  like($@, qr/non-negative integer/, "$fname negative k error");
+}
+
+##### oversized k validation
+
+for my $fname (qw/is_powerfree powerfree_count powerfree_sum
+                powerfree_part powerfree_part_sum nth_powerfree/) {
+  my $ok = eval {
+    no strict 'refs';
+    &{"Math::Prime::Util::$fname"}(8,"4294967296");
+    1;
+  };
+  ok(!$ok, "$fname rejects oversized k");
+  like($@, qr/k must be <= 4294967295/, "$fname oversized k error");
+}
 
 ##### powerfree_count and powerfree_sum
 

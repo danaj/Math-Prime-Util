@@ -771,6 +771,12 @@ sub _parse_k_args {   # caller must validate n after
   }
   ($n, $k);
 }
+sub _parse_powerfree_args {   # caller must validate n after
+  my $name = $_[0];
+  my($n, $k) = _parse_k_args(@_);
+  croak "$name: k must be <= 4294967295" if $k > 4294967295;
+  ($n, $k);
+}
 
 sub _parse_base_args {   # caller must validate n after
   my $name = shift;
@@ -2192,12 +2198,13 @@ sub powerful_numbers {
 }
 
 sub is_powerfree {
-  my($n, $k) = _parse_k_args("is_powerfree", 2, @_);
+  my($n, $k) = _parse_powerfree_args("is_powerfree", 2, @_);
   validate_integer_abs($n);
 
   return (($n == 1) ? 1 : 0)  if $k < 2 || $n <= 1;
   #return 1 if $n < Mpowint(2,$k);
   return 1 if $n < 4;
+  return 1 if $k > Mlogint($n,2);
 
   if ($k == 2) {
     return 0 if !($n % 4) || !($n % 9) || !($n % 25);
@@ -2215,10 +2222,11 @@ sub is_powerfree {
 }
 
 sub powerfree_count {
-  my($n, $k) = _parse_k_args("powerfree_count", 2, @_);
+  my($n, $k) = _parse_powerfree_args("powerfree_count", 2, @_);
   validate_integer($n);
   return 0+($n==1) if $n <= 1;
   return (($n >= 1) ? 1 : 0)  if $k < 2;
+  return $n if $k > Mlogint($n,2);
 
   my $count = 0;
   my $nk = Mrootint($n, $k);
@@ -2285,11 +2293,12 @@ sub powerfree_count {
 }
 
 sub nth_powerfree {
-  my($n, $k) = _parse_k_args("nth_powerfree", 2, @_);
+  my($n, $k) = _parse_powerfree_args("nth_powerfree", 2, @_);
   validate_integer_nonneg($n);
 
   return undef if $n == 0 || $k < 2;
   return $n if $n < 4;
+  return $n if $k > Mlogint($n,2);
 
   # 1. zm is the zeta multiplier (float), qk is the expected value (integer).
   my($zm, $qk);
@@ -2337,10 +2346,11 @@ sub nth_powerfree {
 }
 
 sub powerfree_sum {
-  my($n, $k) = _parse_k_args("powerfree_sum", 2, @_);
-  validate_integer_nonneg($n);
-  return 0+($n==1) if $n <= 1;
-  return (($n >= 1) ? 1 : 0)  if $k < 2;
+  my($n, $k) = _parse_powerfree_args("powerfree_sum", 2, @_);
+  validate_integer($n);
+  return 0 if $n < 1;
+  return 1 if $n == 1 || $k < 2;
+  return _T($n) if $k > Mlogint($n,2);
 
   my $sum = 0;
   my($ik, $nik, $T);
@@ -2358,7 +2368,7 @@ sub powerfree_sum {
 }
 
 sub powerfree_part {
-  my($n, $k) = _parse_k_args("powerfree_part", 2, @_);
+  my($n, $k) = _parse_powerfree_args("powerfree_part", 2, @_);
   validate_integer($n);
   my $negmul = 1;
   if ($n < 0) {
@@ -2367,6 +2377,7 @@ sub powerfree_part {
   }
   return $negmul if $n == 1;
   return 0 if $k < 2 || $n == 0;
+  return $negmul == 1 ? $n : Mnegint($n) if $k > Mlogint($n,2);
 
   #return Mvecprod(map { Mpowint($_->[0], $_->[1] % $k) } Mfactor_exp($n));
 
@@ -2390,10 +2401,11 @@ sub _fprod {
 }
 
 sub powerfree_part_sum {
-  my($n, $k) = _parse_k_args("powerfree_part_sum", 2, @_);
-  validate_integer_abs($n);
-  return 0+($n==1) if $n <= 1;
-  return (($n >= 1) ? 1 : 0)  if $k < 2;
+  my($n, $k) = _parse_powerfree_args("powerfree_part_sum", 2, @_);
+  validate_integer($n);
+  return 0 if $n < 1;
+  return 1 if $n == 1 || $k < 2;
+  return _T($n) if $k > Mlogint($n,2);
 
   my @A = (_T($n));
   for my $i (2 .. Mrootint($n,$k)) {
