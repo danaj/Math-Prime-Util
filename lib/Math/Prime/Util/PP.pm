@@ -183,6 +183,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *MLi = \&Math::Prime::Util::LogarithmicIntegral;
 *Mprime_omega = \&Math::Prime::Util::prime_omega;
 *Mnth_prime_upper = \&Math::Prime::Util::nth_prime_upper;
+*Mprime_power_count = \&Math::Prime::Util::prime_power_count;
 
 BEGIN {
 if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53) {
@@ -2732,10 +2733,40 @@ sub nth_prime_power {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,2,3,4,5,7,8,9)[$n] if $n < 8;
-  # TODO: This is a good candidte for the approx interpolation method
+
+  # The approximation is usually very close.
+  my $apn = Math::Prime::Util::nth_prime_power_approx($n);
+  my $guess = $apn;
+  my $count = Mprime_power_count($guess);
+  my $miss  = ($count >= $n) ? Msubint($count,$n) : Msubint($n,$count);
+  # Refine the guess.  This typically converges very quickly.
+  for (1 .. 10) {
+    last if $miss <= 800;
+    my $adjust = Msubint($apn, Math::Prime::Util::nth_prime_power_approx($count));
+    last if $adjust == 0;
+    my $newguess = Maddint($guess,$adjust);
+    last if $newguess == $guess || $newguess < 2;
+    $guess = $newguess;
+    $count = Mprime_power_count($guess);
+    $miss  = ($count >= $n) ? Msubint($count,$n) : Msubint($n,$count);
+  }
+  # Walk using prev/next.
+  if ($miss <= 10_000) {
+    my $steps = 0+$miss;
+    if ($count >= $n) {
+      $guess = Math::Prime::Util::prev_prime_power(Madd1int($guess));
+      $guess = Math::Prime::Util::prev_prime_power($guess) while $steps--;
+    } else {
+      $guess = Math::Prime::Util::next_prime_power($guess) while $steps--;
+    }
+    return $guess;
+  }
+
+  # Just in case we weren't able to get the approx method to converge.
+  # Keep the inverse interpolation here.  We don't expect it to be used.
   my($lo,$hi) = (_simple_nth_prime_power_lower($n), _simple_nth_prime_power_upper($n));
-  1+_binary_search($n, $lo, $hi,
-                   sub{Math::Prime::Util::prime_power_count(shift)});
+  _inverse_interpolate($lo, $hi, $n, 0,
+                       sub { Mprime_power_count($_[1]) });
 }
 
 
@@ -4398,7 +4429,7 @@ sub omega_prime_count {
   validate_integer_nonneg($n);
 
   return ($n >= 1) ? 1 : 0 if $k == 0;
-  return prime_power_count($n) if $k == 1;
+  return Mprime_power_count($n) if $k == 1;
   # find a simple formula for k=2.
 
   # Naive method

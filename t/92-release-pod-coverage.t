@@ -189,6 +189,7 @@ sub mpu_PPM_regex {
       Mfalling_factorial
       Mkronecker Mmoebius Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count Mnth_prime_upper
+      Mprime_power_count
       Mprimorial Mpn_primorial Mprime_omega
       MLi Mpowersum
       Murandomb Murandomm Mvaluation Mlegendre_phi
