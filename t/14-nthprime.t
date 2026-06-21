@@ -7,7 +7,8 @@ use Math::Prime::Util qw/primes nth_prime nth_twin_prime
                          nth_prime_lower nth_prime_upper
                          nth_prime_approx nth_twin_prime_approx
                          nth_semiprime is_semiprime
-                         inverse_li inverse_li_nv/;
+                         inverse_li inverse_li_nv
+                         vecsample/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
@@ -81,17 +82,17 @@ my %ntpcs = (
      500000000 =>         239211160649,
 );
 
-my %nthsemi = (
-          1234 =>          4497,
-         12345 =>         51019,
-        123456 =>        573355,
+my @nthsemi = (
+               [       1234,        4497],
+               [      12345,       51019],
+               [     123456,      573355],
 );
-$nthsemi{1234567}     =      6365389  if $usexs || $extra;
-$nthsemi{12345678}    =     69914722  if $usexs || $extra;
-$nthsemi{123456789}   =    760797011  if $usexs && $extra;
-$nthsemi{1234567890}  =   8214915893  if $usexs && $extra && $use64;
-$nthsemi{8589934592}  =  60662588879  if $usexs && $extra && $use64;
-$nthsemi{17179869184} = 123806899739  if $usexs && $extra && $use64;
+push @nthsemi, [    1234567,     6365389] if $usexs || $extra;
+push @nthsemi, [   12345678,    69914722] if $usexs || $extra;
+push @nthsemi, [  123456789,   760797011] if $usexs && $extra;
+push @nthsemi, [ 1234567890,  8214915893] if $usexs && $extra && $use64;
+push @nthsemi, [ 8589934592, 60662588879] if $usexs && $extra && $use64;
+push @nthsemi, [17179869184,123806899739] if $usexs && $extra && $use64;
 
 plan tests => 1   # nth_prime
             + 1   # nth_prime lower/upper/approx
@@ -165,16 +166,20 @@ subtest 'nth_twin_prime and approx', sub {
 
 ####################################
 subtest 'nth_semiprime', sub {
-
   is( nth_semiprime(0), undef, "nth_semiprime(0) = undef" );
 
   my $range = $extra ? 10000 : 500;
   my @semiprimes = grep { is_semiprime($_) } 0 .. $range;
-  my $nsmall = scalar(@semiprimes);
-  my @nth_semis = map { nth_semiprime($_) } 1 .. $nsmall;
-  is_deeply(\@nth_semis, \@semiprimes, "nth_semiprime(1 .. $nsmall)");
 
-  while (my($n, $nthsemi) = each (%nthsemi)) {
+  # If we wanted deterministic:
+  #    my @samples = map { ($_ * 29) % scalar(@semiprimes) } 0 .. 99;
+  my @samples = vecsample(100, 0 .. $#semiprimes);
+  my @nth_semis = map { nth_semiprime(1+$_) } @samples;
+  is_deeply(\@nth_semis, [@semiprimes[@samples]],
+            "nth_semiprime(1 .. ".scalar(@semiprimes).") (100 samples)");
+
+  foreach my $L (@nthsemi) {
+    my($n,$nthsemi) = @$L;
     is( nth_semiprime($n), $nthsemi, "nth_semiprime($n) = $nthsemi" );
   }
 };
