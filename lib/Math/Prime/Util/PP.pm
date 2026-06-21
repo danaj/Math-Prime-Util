@@ -473,7 +473,7 @@ sub _frombytes {
 ################################################################################
 ################################################################################
 
-my($_precalc_size, @_primes_small) = (2,undef,2);
+my($_precalc_size, @_primes_small, @_prime_count_small) = (2,undef,2);
 {
   my $_init_precalc_size = 5003;
   _register_free_sub(sub {
@@ -525,6 +525,22 @@ sub _tiny_prime_count {
     else                            { $j = $mid;   }
   }
   return $i-1;
+}
+sub _small_prime_count {
+  my($n) = @_;
+  return unless defined $n && !ref($n) && $n <= 16383;
+  if ($#_prime_count_small < 16383) {
+    _expand_prime_cache(16384);
+    my($pc, $pi) = (0, 1);
+    for my $i (0 .. 16383) {
+      if ($pi <= $#_primes_small && $_primes_small[$pi] == $i) {
+        $pc++;
+        $pi++;
+      }
+      $_prime_count_small[$i] = $pc;
+    }
+  }
+  $_prime_count_small[$n];
 }
 
 sub _is_prime7 {  # n must not be divisible by 2, 3, or 5
@@ -3773,6 +3789,11 @@ sub prime_count {
   validate_integer_nonneg($high);
 
   return 0 if $high < 2 || $low > $high;
+  if (!ref($low) && !ref($high) && $high <= 16383) {
+    my $hpc = _small_prime_count($high);
+    return $hpc if $low <= 2;
+    return $hpc - _small_prime_count($low-1);
+  }
 
   return maybetobigint(Math::Prime::Util::GMP::prime_count($low,$high))
     if $Math::Prime::Util::_GMPfunc{"prime_count"}
