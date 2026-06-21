@@ -184,6 +184,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mprime_omega = \&Math::Prime::Util::prime_omega;
 *Mnth_prime_upper = \&Math::Prime::Util::nth_prime_upper;
 *Mprime_power_count = \&Math::Prime::Util::prime_power_count;
+*Msemiprime_count = \&Math::Prime::Util::semiprime_count;
 
 BEGIN {
 if (defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53) {
@@ -4378,7 +4379,7 @@ sub almost_prime_count {
   # If we reduced parameters, try again if XS might be able to do it.
   return Math::Prime::Util::almost_prime_count($k,$n) if $ok != $k && !ref($n) && getconfig()->{'xs'};
   return Mprime_count($n) if $k == 1;
-  return Math::Prime::Util::semiprime_count($n) if $k == 2;
+  return Msemiprime_count($n) if $k == 2;
 
   _kapc_count($n, 1, 2, $k);
 }
@@ -4593,6 +4594,39 @@ sub nth_semiprime {
   my($n) = @_;
   validate_integer_nonneg($n);
   return (undef,4,6,9,10,14,15,21,22)[$n] if $n <= 8;
+
+  if ($n >= 10_000) {
+    my $asn = Math::Prime::Util::nth_semiprime_approx($n);
+    my $guess = $asn;
+    my $count = Msemiprime_count($guess);
+    my $miss  = ($count >= $n) ? Msubint($count,$n) : Msubint($n,$count);
+    for (1 .. 10) {
+      last if $miss <= 1_000;
+      my $adjust = Msubint($asn, Math::Prime::Util::nth_semiprime_approx($count));
+      last if $adjust == 0;
+      my $newguess = Maddint($guess,$adjust);
+      last if $newguess == $guess || $newguess < 4;
+      $guess = $newguess;
+      $count = Msemiprime_count($guess);
+      $miss  = ($count >= $n) ? Msubint($count,$n) : Msubint($n,$count);
+    }
+    if ($miss <= 10_000) {
+      if ($count >= $n) {
+        while ($count > $n) {
+          $count-- if Math::Prime::Util::is_semiprime($guess);
+          $guess = Msub1int($guess);
+        }
+        $guess = Msub1int($guess) until Math::Prime::Util::is_semiprime($guess);
+      } else {
+        while ($count < $n) {
+          $guess = Madd1int($guess);
+          $count++ if Math::Prime::Util::is_semiprime($guess);
+        }
+      }
+      return $guess;
+    }
+  }
+
   my $x = "$n" + 0.000000001; # Get rid of bigint so we can safely call log
   my $logx = log($x);
   my $loglogx = log($logx);
@@ -4600,7 +4634,7 @@ sub nth_semiprime {
   my $est = $a * $x * $logx / $loglogx;
   my $lo = ($n < 20000) ? int(0.97*$est)-1 : int(0.98*$est)-1;
   my $hi = ($n < 20000) ? int(1.07*$est)+1 : int(1.02*$est)+1;
-  1+_binary_search($n,$lo,$hi, sub{Math::Prime::Util::semiprime_count(shift)});
+  1+_binary_search($n,$lo,$hi, sub{Msemiprime_count(shift)});
 }
 
 sub nth_semiprime_approx {
