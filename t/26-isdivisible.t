@@ -6,6 +6,7 @@ use Test::More;
 use Math::Prime::Util qw/is_divisible is_congruent modint irand irand64/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
 # From GMP test suite
@@ -51,7 +52,10 @@ my @congt = (
 plan tests => 1 + 9*5 + scalar(@divt) + 2   # is_divisible
             + 5 + 2 + scalar(@congt);       # is_congruent
 
-my $ntests = $extra && $use64 ? 10000 : $extra ? 1000 : 100;
+my $ntests = $extra && $use64 && $usexs ? 10000
+           : $extra && $usexs           ?  1000
+           : $extra                     ?   250
+           :                                100;
 my @r32 = map { irand() } 0..$ntests;
 my @r64 = map { irand64() } 0..$ntests;
 @r64 = map { "$_" } @r64 if 18446744073709550592 == ~0;  # broken64
