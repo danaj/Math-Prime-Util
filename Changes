@@ -25,6 +25,9 @@ Revision history for Perl module Math::Prime::Util
       will reject inputs that exceed implementation limits (input limited to
       unsigned native for XS and GMP, signed native for PP).
 
+    - is_power($n,\$root) is now the preferred form for returning the maximal
+      exponent and root.  No need for a dummy second argument.
+
     [ADDED]
 
     - is_safe_prime(n)                returns 1 if odd pos n and (n-1)/2 prime

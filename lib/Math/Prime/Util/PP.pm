@@ -7259,10 +7259,12 @@ sub _powerof_ret {
 }
 
 sub is_power {
-  croak "is_power: expected (n), (n,k), or (n,k,\\root)" if @_ < 1 || @_ > 3;
+  croak "is_power: expected (n), (n,k), (n,\\root), or (n,k,\\root)" if @_ < 1 || @_ > 3;
   my($n, $a, $refp) = @_;
   validate_integer($n);
-  if (@_ == 3) {
+  if (@_ == 2 && _is_sref($a)) {
+    ($a, $refp) = (0, $a);
+  } elsif (@_ == 3) {
     croak "is_power third argument not a scalar reference" if !_is_sref($refp);
   }
   if (@_ < 2 || !defined $a)  { $a = 0; }

@@ -2800,6 +2800,10 @@ is_power(IN SV* svn, IN SV* svk = 0, IN SV* svroot = 0)
     uint32_t root;
   PPCODE:
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (items == 2 && xs_is_sv_scalar_ref(svk)) {
+      svroot = svk;
+      svk = 0;
+    }
     if (items < 2 || svk == 0 || !SvOK(svk)) {
       kstatus = 1;  k = 0;
     } else {
@@ -2826,7 +2830,7 @@ is_power(IN SV* svn, IN SV* svk = 0, IN SV* svroot = 0)
           if (ret) root = ipow(root,1U << v);
         }
       }
-      if (ret && items >= 3)
+      if (ret && svroot != 0)
         SETSVINT(SvRV(svroot), nstatus == 1,
                  k==1 ? n : root, k == 1 ? neg_iv(n) : -(IV)root);
       RETURN_NPARITY(ret);

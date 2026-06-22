@@ -75,7 +75,7 @@ plan tests => 0
             + 2*scalar(keys %powers) + scalar(@negpowers)
             + 4  # large explicit exponent
             + 13  # tests for 3,5,7 power
-            + 12 # is_power/is_prime_power interface
+            + 15 # is_power/is_prime_power interface
             + 3  # is_square
             + 7  # is_sum_of_squares
             + 0;
@@ -159,6 +159,15 @@ is( is_power(-1,5), 1, "-1 is a 5th power" );
 
 {
   my $root;
+  is_deeply( [is_power(16, \$root), $root],
+             [4, 2], "scalar reference requests largest power root return" );
+  $root = undef;
+  is_deeply( [is_power(-8, \$root), $root],
+             [3, -2], "scalar reference root return works for negative powers" );
+  $root = undef;
+  is_deeply( [is_power(17, \$root), $root],
+             [0, undef], "scalar reference root return leaves non-powers alone" );
+
   is( is_power(16, undef), 4, "undef exponent requests largest power" );
   is_deeply( [is_power(16, undef, \$root), $root],
              [4, 2], "undef exponent supports root return" );

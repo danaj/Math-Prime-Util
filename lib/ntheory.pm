@@ -278,6 +278,7 @@ Tags:
   is_qr(a,n)                          return 1 if a is quadratic residue mod n
   is_square(n)                        return 1 if n is a perfect square
   is_power(n)                         return k if n = c^k for integer c
+  is_power(n,\$root)                  as above but also set $root to c
   is_power(n,k)                       return 1 if n = c^k for integer c, k
   is_power(n,k,\$root)                as above but also set $root to c
   is_perfect_power(n)                 return 1 if n = c^k for c != 0, k > 1
