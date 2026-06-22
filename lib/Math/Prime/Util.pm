@@ -7123,7 +7123,7 @@ calculation is slower than Pari/GP.
   my $tau = 2 * Pi(40); # $tau = 6.283185307179586476925286766559005768394
 
 With no arguments, returns the value of Pi as an NV.  With a positive
-integer argument, returns the value of Pi with the requested number of
+integer argument, returns the value of Pi rounded to the requested number of
 digits (including the leading 3).  The return value will be an NV if the
 number of digits fits in an NV (typically 15 or less), or a L<Math::BigFloat>
 object otherwise.

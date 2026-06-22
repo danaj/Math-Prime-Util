@@ -11983,7 +11983,7 @@ sub Pi {
     }
     $an->badd($bn);
     $an->bmul($an,$digits)->bdiv(4*$tn, $digits-8);
-    return $an;
+    return _upgrade_to_float($an);
   }
 
   # Spigot method in C.  Low overhead but not good growth rate.
@@ -12017,7 +12017,7 @@ sub Pi {
 
   print "  using BigFloat for Pi($digits)\n" if $_verbose;
   _upgrade_to_float(0);
-  return Math::BigFloat::bpi($digits+10)->round($digits);
+  return _upgrade_to_float(Math::BigFloat::bpi($digits+10)->round($digits));
 }
 
 ################################################################################

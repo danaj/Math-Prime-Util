@@ -13,23 +13,34 @@ my $Pi = '3.14159265358979323846264338327950288419716939937510582097494459230781
 
 my $roundt = $usegmp;
 my $ninitial = 50;
+my @extra_lengths;
 if ($extra) {
   $roundt = 0;
-  $ninitial = $usexs || $usegmp ? 1000 : 400;
+  if ($usexs || $usegmp) {
+    $ninitial = 1000;
+  } else {
+    $ninitial = 100;
+    # Rounding-sensitive lengths: these round up after one or more 9s.
+    @extra_lengths = (200, 461, 768);
+  }
 }
 
-plan tests => 3 + ($roundt ? 11 : 0) + 1;
+plan tests => 4 + !!$roundt + scalar(@extra_lengths) + 1;
 
 is(Pi(0), 0+$Pi, "Pi(0) gives floating point pi");
 is(Pi(1), 3, "Pi(1) = 3");
 is_deeply( [map { stringPi($_) } 2 .. $ninitial],
            [map { roundpi($_) } 2 ..  $ninitial],
            "Pi(2 .. $ninitial)" );
+is( "".Pi(101), roundpi(101), "Pi(101) has normalized rounding" );
+for my $len (@extra_lengths) {
+  is( stringPi($len), roundpi($len), "Pi($len)" );
+}
 
 if ($roundt) {
-  for my $len (760 .. 770) {
-    is( stringPi($len), roundpi($len), "Pi($len)" );
-  }
+  is_deeply( [map { stringPi($_) } 760 .. 770],
+             [map {  roundpi($_) } 760 .. 770],
+             "Pi(760 .. 770)" );
 }
 
 # Force test of C code
@@ -47,6 +58,5 @@ sub roundpi {
 sub stringPi {
   my $n = shift;
   my $pi = Pi($n);
-  $pi =~ s/0*$//;
-  $pi;
+  "$pi";
 }
