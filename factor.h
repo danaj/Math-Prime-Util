@@ -59,7 +59,7 @@ extern int lehman_factor(UV n, UV *factors, bool dotrial);
 extern int cheb_factor(UV n, UV *factors, UV B, UV initx);
 #define HAS_ECM64  (BITS_PER_WORD == 64 && HAVE_UINT64)
 #if HAS_ECM64
-extern int tinyecm64_factor(UV n, UV *factors, UV B1, UV ncurves, UV sigma_offset);
+extern int tinyecm64_factor(UV n, UV *factors, UV B1, UV B2, UV ncurves, UV sigma_offset);
 #endif
 
 extern UV* divisor_list(UV n, UV *num_divisors, UV maxd);

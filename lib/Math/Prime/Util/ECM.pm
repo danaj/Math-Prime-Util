@@ -138,9 +138,12 @@ sub _tiny_stage2_plan {
         next if $p < $lo;
         last if $p > $hi;
         if ($p < $m) {
-          push @left, $m+$D-$p;
+          push @left, $m-$p;
         } elsif ($p > $m) {
-          next if $p > ($m+$m) || Mis_prime($m+$m-$p);
+          if ($p <= $m+$m) {
+            my $mirror = $m+$m-$p;
+            next if $mirror > $B1 && $mirror >= $lo && Mis_prime($mirror);
+          }
           push @right, $p-$m;
         }
       }

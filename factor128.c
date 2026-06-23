@@ -822,9 +822,141 @@ static const uint16_t ecm_sigmas[] = {
 };
 #define NECM128_SIGMAS ((int)(sizeof(ecm_sigmas)/sizeof(ecm_sigmas[0])))
 
+/* Convert a projective Montgomery point to an affine x-coordinate, still in
+ * Montgomery form.  Returns 1 on success.  On failure, *fout is either a
+ * non-trivial factor or 0 when this curve should be abandoned. */
+static int ecm_normalize_x128(uint128_t *xout, uint128_t *fout,
+                              const ecpt128_t *P, const mont128_t *ctx) {
+  uint128_t n = ctx->n;
+  uint128_t g = gcd128(P->Z, n);
+
+  if (g > 1) {
+    *fout = (g < n) ? g : 0;
+    return 0;
+  }
+  {
+    uint128_t z   = mont_exit128(P->Z, ctx);
+    uint128_t inv = modinv128(z, n);
+    if (inv == 0) {
+      *fout = 0;
+      return 0;
+    }
+    *xout = mont_mulmod128(P->X, mont_enter128(inv, ctx), ctx);
+  }
+  *fout = 0;
+  return 1;
+}
+
+/* Brent-Suyama style ECM stage 2.  Q is the stage-1 output point. */
+static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
+                                   const mont128_t *ctx, UV B1, UV B2) {
+  uint128_t n = ctx->n;
+  uint128_t R = mont_enter128(1, ctx);
+  uint128_t Qx, f;
+  uint128_t *nqx;
+  UV D, twoD, m, mend;
+
+  if (B2 <= B1) return 0;
+  D = (UV)sqrt((double)(B2 >> 1));
+  if (D & 1) D++;
+  if (D == 0 || D > (UV_MAX-1)/2) return 0;
+  twoD = 2*D;
+
+  if (!ecm_normalize_x128(&Qx, &f, Q, ctx)) return f;
+
+  New(0, nqx, twoD+1, uint128_t);
+  nqx[0] = 0;
+  nqx[1] = Qx;
+
+  for (UV i = 2; i <= twoD; i++) {
+    ecpt128_t A, B, Dp, T;
+    if (i & 1) {
+      A.X = nqx[(i-1)/2];  A.Z = R;
+      B.X = nqx[(i+1)/2];  B.Z = R;
+      Dp.X = Qx;           Dp.Z = R;
+      ecm_dadd128(&T, &A, &B, &Dp, ctx);
+    } else {
+      A.X = nqx[i/2];      A.Z = R;
+      ecm_double128(&T, &A, A24, ctx);
+    }
+    if (!ecm_normalize_x128(&nqx[i], &f, &T, ctx)) {
+      Safefree(nqx);
+      return f;
+    }
+  }
+
+  {
+    uint128_t Sx = Qx;             /* x(mQ), initially m=1 */
+    uint128_t Xm = nqx[twoD-1];    /* x((m-2D)Q), used as differential */
+    uint128_t gprod = R;
+
+    mend = (B2 > UV_MAX-D) ? UV_MAX : B2 + D;
+    for (m = 1; m < mend; ) {
+      UV hi = (m > UV_MAX-D) ? UV_MAX : m + D;
+      UV lo = (m > D) ? m - D : 0;
+
+      if (m != 1) {
+        ecpt128_t A, B, Dp, T;
+        uint128_t oldSx = Sx;
+        A.X = nqx[twoD];  A.Z = R;
+        B.X = Sx;         B.Z = R;
+        Dp.X = Xm;        Dp.Z = R;
+        ecm_dadd128(&T, &A, &B, &Dp, ctx);
+        if (!ecm_normalize_x128(&Sx, &f, &T, ctx)) {
+          Safefree(nqx);
+          return f;
+        }
+        Xm = oldSx;
+      }
+
+      if (hi > B2) hi = B2;
+      if (hi > B1) {
+        if (lo <= B1) lo = B1 + 1;
+        if (lo < 2) lo = 2;
+        if (lo <= hi) {
+          START_DO_FOR_EACH_PRIME(lo,hi) {
+            UV idx;
+            if (p < m) {
+              idx = m - p;
+            } else if (p > m) {
+              if (m <= UV_MAX/2) {
+                UV mm = 2*m;
+                if (p <= mm) {
+                  UV mirror = mm - p;
+                  if (mirror > B1 && mirror >= lo && is_prime(mirror))
+                    continue;
+                }
+              }
+              idx = p - m;
+            } else {
+              continue;
+            }
+            if (idx <= D) {
+              uint128_t diff = submod128(Sx, nqx[idx], n);
+              gprod = mont_mulmod128(gprod, diff, ctx);
+            }
+          } END_DO_FOR_EACH_PRIME
+          f = gcd128(mont_exit128(gprod, ctx), n);
+          if (f > 1) {
+            Safefree(nqx);
+            return (f < n) ? f : 0;
+          }
+        }
+      }
+      if (m > UV_MAX-twoD) break;
+      m += twoD;
+    }
+
+    f = gcd128(mont_exit128(gprod, ctx), n);
+    Safefree(nqx);
+    return (f > 1 && f < n) ? f : 0;
+  }
+}
+
 /* Returns a non-trivial factor of n, or 0.
- * ncurves curves, Suyama parameterization, stage-1 bound B1. */
-static uint128_t tinyecm128(uint128_t n, UV B1, int ncurves, int sigma_offset) {
+ * ncurves curves, Suyama parameterization, stage-1 bound B1, optional B2. */
+static uint128_t tinyecm128(uint128_t n, UV B1, UV B2,
+                            int ncurves, int sigma_offset) {
   mont128_t ctx;
   UV sqrtB1 = (UV)sqrt((double)B1);
 
@@ -873,6 +1005,11 @@ static uint128_t tinyecm128(uint128_t n, UV B1, int ncurves, int sigma_offset) {
     } END_DO_FOR_EACH_PRIME
     { uint128_t g = gcd128(P.Z, n);
       if (g > 1 && g < n) return g; }
+
+    if (B2 > B1) {
+      uint128_t g = tinyecm128_stage2(&P, mA24, &ctx, B1, B2);
+      if (g > 1 && g < n) return g;
+    }
 
 next_curve:;
   }
@@ -1032,22 +1169,24 @@ bool factorintp128(factored128_t *nf, uint128_t n) {
     }
 
     /* ECM */
-    if (!f) f = tinyecm128(t, 2000, 40, 0);
-    if (f && show) {show=0;printf("tinyecm128 2k found factor %s\n",u128_str(f));}
+    if (!f) f = tinyecm128(t, 2000, 40000, 40, 0);
+    if (f && show) {show=0;printf("tinyecm128 2k/40k found factor %s\n",u128_str(f));}
 
-    if (!f) f = tinyecm128(t, 10000, 40, 40);
-    if (f && show) {show=0;printf("tinyecm128 10k found factor %s\n",u128_str(f));}
+    if (!f) f = tinyecm128(t, 10000, 200000, 40, 40);
+    if (f && show) {show=0;printf("tinyecm128 10k/200k found factor %s\n",u128_str(f));}
 
-    if (!f) f = tinyecm128(t, 50000, 100, 80);
-    if (f && show) {show=0;printf("tinyecm128 50k found factor %s\n",u128_str(f));}
+    if (!f) f = tinyecm128(t, 40000, 800000, 20, 80);
+    if (f && show) {show=0;printf("tinyecm128 40k/800k found factor %s\n",u128_str(f));}
 
-    /* At this point the smallest factor is highly likely to be >= 54 bits */
-    if (!f) f = tinyecm128(t, 800000, 140, 180);
-    if (f && show) {show=0;printf("tinyecm128 800k found factor %s\n",u128_str(f));}
+    if (!f) f = tinyecm128(t, 80000, 1600000, 20, 100);
+    if (f && show) {show=0;printf("tinyecm128 80k/1600k found factor %s\n",u128_str(f));}
+
+    if (!f) f = tinyecm128(t, 120000, 2400000, 100, 120);
+    if (f && show) {show=0;printf("tinyecm128 120k/2400k found factor %s\n",u128_str(f));}
 
     /* It is unlikely a 128-bit semiprime will get here at all. */
-    if (!f) f = tinyecm128(t, 160000000, 4, 320);
-    if (f && show) {show=0;printf("tinyecm128 160M found factor %s\n",u128_str(f));}
+    if (!f) f = tinyecm128(t, 800000, 8000000, 40, 220);
+    if (f && show) {show=0;printf("tinyecm128 800k/8000k found factor %s\n",u128_str(f));}
 
 #if 0
     /* Pollard/Brent rho: fallback when others failed */

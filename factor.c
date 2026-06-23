@@ -202,13 +202,16 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
       if (nfactors > 1) return nfactors;
     }
 
-    nfactors = tinyecm64_factor(n, factors, 500, 30, 0);
+    nfactors = tinyecm64_factor(n, factors, 500, 5000, 20, 0);
     if (nfactors > 1) return nfactors;
-
-    nfactors = tinyecm64_factor(n, factors, 2000, 30, 30);
+    nfactors = tinyecm64_factor(n, factors, 1000, 10000, 20, 20);
     if (nfactors > 1) return nfactors;
-
-    nfactors = tinyecm64_factor(n, factors, 8000, 5, 60);
+    /* Essentially all 64-bit inputs have been found by this point. */
+    nfactors = tinyecm64_factor(n, factors, 2000, 20000, 40, 40);
+    if (nfactors > 1) return nfactors;
+    nfactors = tinyecm64_factor(n, factors, 4000, 40000, 20, 80);
+    if (nfactors > 1) return nfactors;
+    nfactors = tinyecm64_factor(n, factors, 8000, 80000, 10, 100);
     if (nfactors > 1) return nfactors;
 #else
     /* SQUFOF is useful in all cases before p-1 */
@@ -1150,7 +1153,180 @@ static const uint16_t ecm64_sigmas[] = {
 };
 #define NECM64_SIGMAS ((int)(sizeof(ecm64_sigmas)/sizeof(ecm64_sigmas[0])))
 
-static uint64_t tinyecm64(uint64_t n, UV B1, uint32_t ncurves, uint32_t sigma_offset)
+static int ecm_batch_normalize_x64(uint64_t *xout, uint64_t *fout,
+                                   const ecpt64_t *P, UV npoints,
+                                   const mont64_t *ctx)
+{
+  uint64_t n = ctx->n, acc = 1, inv, g;
+  uint64_t *zv, *prefix;
+  UV i;
+
+  if (npoints == 0) { *fout = 0; return 1; }
+
+  New(0, zv,     npoints, uint64_t);
+  New(0, prefix, npoints, uint64_t);
+
+  for (i = 0; i < npoints; i++) {
+    zv[i] = tecm64_mont_exit(P[i].Z, ctx);
+    g = tecm64_gcd(zv[i], n);
+    if (g > 1) {
+      *fout = (g < n) ? g : 0;
+      Safefree(prefix);
+      Safefree(zv);
+      return 0;
+    }
+    acc = tecm64_mulmod(acc, zv[i], n);
+    prefix[i] = acc;
+  }
+
+  g = tecm64_gcd(acc, n);
+  if (g > 1) {
+    *fout = (g < n) ? g : 0;
+    Safefree(prefix);
+    Safefree(zv);
+    return 0;
+  }
+
+  inv = tecm64_modinv(acc, n);
+  if (inv == 0) {
+    *fout = 0;
+    Safefree(prefix);
+    Safefree(zv);
+    return 0;
+  }
+
+  for (i = npoints; i > 0; i--) {
+    UV j = i - 1;
+    uint64_t prev = (j == 0) ? 1 : prefix[j-1];
+    uint64_t zinv = tecm64_mulmod(inv, prev, n);
+    inv = tecm64_mulmod(inv, zv[j], n);
+    xout[j] = tecm64_mont_mulmod(P[j].X, tecm64_mont_enter(zinv, ctx), ctx);
+  }
+
+  *fout = 0;
+  Safefree(prefix);
+  Safefree(zv);
+  return 1;
+}
+
+static uint64_t tinyecm64_stage2(const ecpt64_t *Q, uint64_t A24,
+                                 const mont64_t *ctx, UV B1, UV B2)
+{
+  uint64_t n = ctx->n, f, *nqx, *Sx;
+  ecpt64_t *nq, *S;
+  UV D, twoD, m, mend, nwindows, w, i;
+  uint64_t gprod;
+
+  if (B2 <= B1) return 0;
+  D = isqrt(B2 >> 1);
+  if (D & 1) D++;
+  if (D == 0 || D > (UV_MAX-1)/2) return 0;
+  twoD = 2*D;
+
+  mend = (B2 > UV_MAX-D) ? UV_MAX : B2 + D;
+  for (m = 1, nwindows = 0; m < mend; nwindows++) {
+    if (m > UV_MAX-twoD) break;
+    m += twoD;
+  }
+  if (nwindows == 0) return 0;
+
+  New(0, nq,  twoD+1, ecpt64_t);
+  New(0, nqx, D+1, uint64_t);
+
+  nq[1] = *Q;
+  for (i = 2; i <= twoD; i++) {
+    if (i & 1) {
+      ecm_dadd64(&nq[i], &nq[(i-1)/2], &nq[(i+1)/2], Q, ctx);
+    } else {
+      ecm_double64(&nq[i], &nq[i/2], A24, ctx);
+    }
+  }
+
+  nqx[0] = 0;
+  if (!ecm_batch_normalize_x64(nqx+1, &f, nq+1, D, ctx)) {
+    Safefree(nqx);
+    Safefree(nq);
+    return f;
+  }
+
+  New(0, S,  nwindows, ecpt64_t);
+  New(0, Sx, nwindows, uint64_t);
+
+  S[0] = *Q;
+  {
+    ecpt64_t Xm = nq[twoD-1];
+    for (w = 1; w < nwindows; w++) {
+      ecpt64_t oldS = S[w-1];
+      ecm_dadd64(&S[w], &nq[twoD], &S[w-1], &Xm, ctx);
+      Xm = oldS;
+    }
+  }
+
+  if (!ecm_batch_normalize_x64(Sx, &f, S, nwindows, ctx)) {
+    Safefree(Sx);
+    Safefree(S);
+    Safefree(nqx);
+    Safefree(nq);
+    return f;
+  }
+
+  gprod = tecm64_mont_enter(1, ctx);
+  m = 1;
+  for (w = 0; w < nwindows; w++) {
+    UV hi = (m > UV_MAX-D) ? UV_MAX : m + D;
+    UV lo = (m > D) ? m - D : 0;
+
+    if (hi > B2) hi = B2;
+    if (hi > B1) {
+      if (lo <= B1) lo = B1 + 1;
+      if (lo < 2) lo = 2;
+      if (lo <= hi) {
+        START_DO_FOR_EACH_PRIME(lo,hi) {
+          UV idx;
+          if (p < m) {
+            idx = m - p;
+          } else if (p > m) {
+            if (m <= UV_MAX/2) {
+              UV mm = 2*m;
+              if (p <= mm) {
+                UV mirror = mm - p;
+                if (mirror > B1 && mirror >= lo && is_prime(mirror))
+                  continue;
+              }
+            }
+            idx = p - m;
+          } else {
+            continue;
+          }
+          if (idx <= D) {
+            uint64_t diff = tecm64_submod(Sx[w], nqx[idx], n);
+            gprod = tecm64_mont_mulmod(gprod, diff, ctx);
+          }
+        } END_DO_FOR_EACH_PRIME
+        f = tecm64_gcd(tecm64_mont_exit(gprod, ctx), n);
+        if (f > 1) {
+          Safefree(Sx);
+          Safefree(S);
+          Safefree(nqx);
+          Safefree(nq);
+          return (f < n) ? f : 0;
+        }
+      }
+    }
+    if (m > UV_MAX-twoD) break;
+    m += twoD;
+  }
+
+  f = tecm64_gcd(tecm64_mont_exit(gprod, ctx), n);
+  Safefree(Sx);
+  Safefree(S);
+  Safefree(nqx);
+  Safefree(nq);
+  return (f > 1 && f < n) ? f : 0;
+}
+
+static uint64_t tinyecm64(uint64_t n, UV B1, UV B2,
+                          uint32_t ncurves, uint32_t sigma_offset)
 {
   mont64_t ctx;
   UV sqrtB1, j;
@@ -1206,17 +1382,23 @@ static uint64_t tinyecm64(uint64_t n, UV B1, uint32_t ncurves, uint32_t sigma_of
       if (g > 1 && g < n) return g;
     }
 
+    if (B2 > B1) {
+      uint64_t g = tinyecm64_stage2(&P, A24, &ctx, B1, B2);
+      if (g > 1 && g < n) return g;
+    }
+
 next_curve:;
   }
   return 0;
 }
 
-int tinyecm64_factor(UV n, UV *factors, UV B1, UV ncurves, UV sigma_offset)
+int tinyecm64_factor(UV n, UV *factors, UV B1, UV B2, UV ncurves, UV sigma_offset)
 {
   uint64_t f;
+  if (B2 == 0) B2 = (B1 > UV_MAX/20) ? UV_MAX : 20*B1;
   if (ncurves      > NECM64_SIGMAS) ncurves      = NECM64_SIGMAS;
   if (sigma_offset > NECM64_SIGMAS) sigma_offset = NECM64_SIGMAS;
-  f = tinyecm64((uint64_t)n, B1, ncurves, sigma_offset);
+  f = tinyecm64((uint64_t)n, B1, B2, ncurves, sigma_offset);
   return (f > 1 && f < n) ? found_factor(n, (UV)f, factors)
                           : no_factor(n, factors);
 }

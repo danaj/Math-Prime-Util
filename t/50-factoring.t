@@ -236,8 +236,10 @@ subtest 'specific cases for factoring code coverage', sub {
     is_deeply( [Math::Prime::Util::cheb_factor("2466600463243213733",1000)], [1552318819,1588978007], "cheb factor 1552318819 * 1588978007" );
   }
   SKIP: {
-    skip "tinyecm64 C path", 1 unless $use64 && $usexs && !$usegmp;
+    skip "tinyecm64 C path", 3 unless $use64 && $usexs && !$usegmp;
     is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,0,3)], [3289045043,4060989437], "tinyecm64 64-bit Montgomery reduction" );
+    is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,40000,3)], [3289045043,4060989437], "tinyecm64 explicit B2 path" );
+    is_deeply( [Math::Prime::Util::ecm_factor("2949544710425713",500,600,30)], [7051211,418303283], "tinyecm64 stage 2 path" );
   }
 };
 
@@ -250,7 +252,7 @@ subtest '128-bit factoring', sub {
    ["P-1",     qw/             36803912137803496523 4284736327 8589539549/],
    ["SQUFOF",  qw/             36832540935240707603 4293801221 8578073143/],
    ["ECM 2k",  qw/             36229885226416288369 4236334523 8552177603/],
-   ["ECM 10k", qw/            159148910892498789959 10239357517 15542861027/],
+   ["ECM 2k/40k S2", qw/      159148910892498789959 10239357517 15542861027/],
   );
   my @FE = (
    ["ECM 50k", qw/         159296141441228087346473 372491819179 427650040187/],

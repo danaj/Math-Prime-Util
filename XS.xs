@@ -3865,7 +3865,7 @@ trial_factor(IN SV* svn, ...)
     }
 
     if (nstatus==0 || a1status==0 || a2status==0 || a3status==0 ||
-        (ix==10 && (_XS_get_callgmp() || !HAS_ECM64 || (items > 2 && arg2 > arg1))))
+        (ix==10 && (_XS_get_callgmp() || !HAS_ECM64)))
       DISPATCHPP_RETURN();
 
     if (n == 0)  XSRETURN_UV(0);
@@ -3895,7 +3895,7 @@ trial_factor(IN SV* svn, ...)
         case 8:  nfactors = pbrent_factor   (n, factors, arg1, arg2);    break;
         case 9:  nfactors = pminus1_factor  (n, factors, arg1, arg2);    break;
 #if HAS_ECM64
-        case 10: nfactors = tinyecm64_factor(n, factors, arg1, arg3, 0); break;
+        case 10: nfactors = tinyecm64_factor(n, factors, arg1, arg2, arg3, 0); break;
 #endif
         default: break;
       }
