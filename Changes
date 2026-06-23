@@ -127,8 +127,9 @@ Revision history for Perl module Math::Prime::Util
       In turn this can speed up some other functions that require factoring.
       Installing the GMP backend is preferred.
 
-    - Added 64-bit ECM based on the 128-bit ECM above, faster factoring of
-      64-bit integers.  Semiprimes can be 2-3x faster.
+    - Added native C 64-bit and 128-bit ECM (tinyecm), for much faster
+      non-GMP factoring.  PP ECM now uses a deterministic two-stage
+      tinyecm-based implementation.
 
     - urandomm is up to 5x faster without GMP.
 
@@ -180,8 +181,6 @@ Revision history for Perl module Math::Prime::Util
 
     - binomialmod can directly dispatch to the GMP 0.54 back end, avoiding
       construction of huge intermediate binomial values in more cases.
-
-    - PP ECM now uses the new two-stage implementation based on tinyecm128.
 
 
 0.74 2026-03-13

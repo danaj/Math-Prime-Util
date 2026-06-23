@@ -822,39 +822,67 @@ static const uint16_t ecm_sigmas[] = {
 };
 #define NECM128_SIGMAS ((int)(sizeof(ecm_sigmas)/sizeof(ecm_sigmas[0])))
 
-/* Convert a projective Montgomery point to an affine x-coordinate, still in
- * Montgomery form.  Returns 1 on success.  On failure, *fout is either a
+/* Batch convert projective Montgomery points to affine x-coordinates, still
+ * in Montgomery form.  Returns 1 on success.  On failure, *fout is either a
  * non-trivial factor or 0 when this curve should be abandoned. */
-static int ecm_normalize_x128(uint128_t *xout, uint128_t *fout,
-                              const ecpt128_t *P, const mont128_t *ctx) {
-  uint128_t n = ctx->n;
-  uint128_t g = gcd128(P->Z, n);
+static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
+                                    const ecpt128_t *P, UV npoints,
+                                    const mont128_t *ctx) {
+  uint128_t n = ctx->n, R = mont_enter128(1, ctx);
+  uint128_t acc = R, inv, g;
+  uint128_t *prefix;
+  UV i;
 
-  if (g > 1) {
-    *fout = (g < n) ? g : 0;
-    return 0;
-  }
-  {
-    uint128_t z   = mont_exit128(P->Z, ctx);
-    uint128_t inv = modinv128(z, n);
-    if (inv == 0) {
-      *fout = 0;
+  if (npoints == 0) { *fout = 0; return 1; }
+
+  New(0, prefix, npoints, uint128_t);
+
+  for (i = 0; i < npoints; i++) {
+    g = gcd128(P[i].Z, n);
+    if (g > 1) {
+      *fout = (g < n) ? g : 0;
+      Safefree(prefix);
       return 0;
     }
-    *xout = mont_mulmod128(P->X, mont_enter128(inv, ctx), ctx);
+    acc = mont_mulmod128(acc, P[i].Z, ctx);
+    prefix[i] = acc;
   }
+
+  g = gcd128(acc, n);
+  if (g > 1) {
+    *fout = (g < n) ? g : 0;
+    Safefree(prefix);
+    return 0;
+  }
+
+  inv = modinv128(mont_exit128(acc, ctx), n);
+  if (inv == 0) {
+    *fout = 0;
+    Safefree(prefix);
+    return 0;
+  }
+  inv = mont_enter128(inv, ctx);
+
+  for (i = npoints; i > 0; i--) {
+    UV j = i - 1;
+    uint128_t prev = (j == 0) ? R : prefix[j-1];
+    uint128_t zinv = mont_mulmod128(inv, prev, ctx);
+    inv = mont_mulmod128(inv, P[j].Z, ctx);
+    xout[j] = mont_mulmod128(P[j].X, zinv, ctx);
+  }
+
   *fout = 0;
+  Safefree(prefix);
   return 1;
 }
 
 /* Brent-Suyama style ECM stage 2.  Q is the stage-1 output point. */
 static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
                                    const mont128_t *ctx, UV B1, UV B2) {
-  uint128_t n = ctx->n;
-  uint128_t R = mont_enter128(1, ctx);
-  uint128_t Qx, f;
-  uint128_t *nqx;
-  UV D, twoD, m, mend;
+  uint128_t n = ctx->n, f, *nqx, *Sx;
+  ecpt128_t *nq, *S;
+  UV D, twoD, m, mend, nwindows, w, i;
+  uint128_t gprod;
 
   if (B2 <= B1) return 0;
   D = (UV)sqrt((double)(B2 >> 1));
@@ -862,95 +890,106 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
   if (D == 0 || D > (UV_MAX-1)/2) return 0;
   twoD = 2*D;
 
-  if (!ecm_normalize_x128(&Qx, &f, Q, ctx)) return f;
+  mend = (B2 > UV_MAX-D) ? UV_MAX : B2 + D;
+  for (m = 1, nwindows = 0; m < mend; nwindows++) {
+    if (m > UV_MAX-twoD) break;
+    m += twoD;
+  }
+  if (nwindows == 0) return 0;
 
-  New(0, nqx, twoD+1, uint128_t);
-  nqx[0] = 0;
-  nqx[1] = Qx;
+  New(0, nq,  twoD+1, ecpt128_t);
+  New(0, nqx, D+1, uint128_t);
 
-  for (UV i = 2; i <= twoD; i++) {
-    ecpt128_t A, B, Dp, T;
+  nq[1] = *Q;
+  for (i = 2; i <= twoD; i++) {
     if (i & 1) {
-      A.X = nqx[(i-1)/2];  A.Z = R;
-      B.X = nqx[(i+1)/2];  B.Z = R;
-      Dp.X = Qx;           Dp.Z = R;
-      ecm_dadd128(&T, &A, &B, &Dp, ctx);
+      ecm_dadd128(&nq[i], &nq[(i-1)/2], &nq[(i+1)/2], Q, ctx);
     } else {
-      A.X = nqx[i/2];      A.Z = R;
-      ecm_double128(&T, &A, A24, ctx);
-    }
-    if (!ecm_normalize_x128(&nqx[i], &f, &T, ctx)) {
-      Safefree(nqx);
-      return f;
+      ecm_double128(&nq[i], &nq[i/2], A24, ctx);
     }
   }
 
-  {
-    uint128_t Sx = Qx;             /* x(mQ), initially m=1 */
-    uint128_t Xm = nqx[twoD-1];    /* x((m-2D)Q), used as differential */
-    uint128_t gprod = R;
-
-    mend = (B2 > UV_MAX-D) ? UV_MAX : B2 + D;
-    for (m = 1; m < mend; ) {
-      UV hi = (m > UV_MAX-D) ? UV_MAX : m + D;
-      UV lo = (m > D) ? m - D : 0;
-
-      if (m != 1) {
-        ecpt128_t A, B, Dp, T;
-        uint128_t oldSx = Sx;
-        A.X = nqx[twoD];  A.Z = R;
-        B.X = Sx;         B.Z = R;
-        Dp.X = Xm;        Dp.Z = R;
-        ecm_dadd128(&T, &A, &B, &Dp, ctx);
-        if (!ecm_normalize_x128(&Sx, &f, &T, ctx)) {
-          Safefree(nqx);
-          return f;
-        }
-        Xm = oldSx;
-      }
-
-      if (hi > B2) hi = B2;
-      if (hi > B1) {
-        if (lo <= B1) lo = B1 + 1;
-        if (lo < 2) lo = 2;
-        if (lo <= hi) {
-          START_DO_FOR_EACH_PRIME(lo,hi) {
-            UV idx;
-            if (p < m) {
-              idx = m - p;
-            } else if (p > m) {
-              if (m <= UV_MAX/2) {
-                UV mm = 2*m;
-                if (p <= mm) {
-                  UV mirror = mm - p;
-                  if (mirror > B1 && mirror >= lo && is_prime(mirror))
-                    continue;
-                }
-              }
-              idx = p - m;
-            } else {
-              continue;
-            }
-            if (idx <= D) {
-              uint128_t diff = submod128(Sx, nqx[idx], n);
-              gprod = mont_mulmod128(gprod, diff, ctx);
-            }
-          } END_DO_FOR_EACH_PRIME
-          f = gcd128(mont_exit128(gprod, ctx), n);
-          if (f > 1) {
-            Safefree(nqx);
-            return (f < n) ? f : 0;
-          }
-        }
-      }
-      if (m > UV_MAX-twoD) break;
-      m += twoD;
-    }
-
-    f = gcd128(mont_exit128(gprod, ctx), n);
+  nqx[0] = 0;
+  if (!ecm_batch_normalize_x128(nqx+1, &f, nq+1, D, ctx)) {
     Safefree(nqx);
-    return (f > 1 && f < n) ? f : 0;
+    Safefree(nq);
+    return f;
   }
+
+  New(0, S,  nwindows, ecpt128_t);
+  New(0, Sx, nwindows, uint128_t);
+
+  S[0] = *Q;
+  {
+    ecpt128_t Xm = nq[twoD-1];
+    for (w = 1; w < nwindows; w++) {
+      ecpt128_t oldS = S[w-1];
+      ecm_dadd128(&S[w], &nq[twoD], &S[w-1], &Xm, ctx);
+      Xm = oldS;
+    }
+  }
+
+  if (!ecm_batch_normalize_x128(Sx, &f, S, nwindows, ctx)) {
+    Safefree(Sx);
+    Safefree(S);
+    Safefree(nqx);
+    Safefree(nq);
+    return f;
+  }
+
+  gprod = mont_enter128(1, ctx);
+  m = 1;
+  for (w = 0; w < nwindows; w++) {
+    UV hi = (m > UV_MAX-D) ? UV_MAX : m + D;
+    UV lo = (m > D) ? m - D : 0;
+
+    if (hi > B2) hi = B2;
+    if (hi > B1) {
+      if (lo <= B1) lo = B1 + 1;
+      if (lo < 2) lo = 2;
+      if (lo <= hi) {
+        START_DO_FOR_EACH_PRIME(lo,hi) {
+          UV idx;
+          if (p < m) {
+            idx = m - p;
+          } else if (p > m) {
+            if (m <= UV_MAX/2) {
+              UV mm = 2*m;
+              if (p <= mm) {
+                UV mirror = mm - p;
+                if (mirror > B1 && mirror >= lo && is_prime(mirror))
+                  continue;
+              }
+            }
+            idx = p - m;
+          } else {
+            continue;
+          }
+          if (idx <= D) {
+            uint128_t diff = submod128(Sx[w], nqx[idx], n);
+            gprod = mont_mulmod128(gprod, diff, ctx);
+          }
+        } END_DO_FOR_EACH_PRIME
+        f = gcd128(mont_exit128(gprod, ctx), n);
+        if (f > 1) {
+          Safefree(Sx);
+          Safefree(S);
+          Safefree(nqx);
+          Safefree(nq);
+          return (f < n) ? f : 0;
+        }
+      }
+    }
+    if (m > UV_MAX-twoD) break;
+    m += twoD;
+  }
+
+  f = gcd128(mont_exit128(gprod, ctx), n);
+  Safefree(Sx);
+  Safefree(S);
+  Safefree(nqx);
+  Safefree(nq);
+  return (f > 1 && f < n) ? f : 0;
 }
 
 /* Returns a non-trivial factor of n, or 0.
