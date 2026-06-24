@@ -12695,14 +12695,16 @@ sub vecwindow (&$$@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   if (!wantarray) {
     my $count = 0;
     for (my $i = 0; $i + $size <= @_; $i += $step) {
-      my @r = $sub->(@_[$i .. $i+$size-1]);
+      my @window = map { my $v = $_; $v } @_[$i .. $i+$size-1];
+      my @r = $sub->(@window);
       $count += scalar(@r);
     }
     return $count;
   } else {
     my @result;
     for (my $i = 0; $i + $size <= @_; $i += $step) {
-      push @result, $sub->(@_[$i .. $i+$size-1]);
+      my @window = map { my $v = $_; $v } @_[$i .. $i+$size-1];
+      push @result, $sub->(@window);
     }
     return @result;
   }

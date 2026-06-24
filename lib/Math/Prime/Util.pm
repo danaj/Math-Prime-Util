@@ -36,8 +36,8 @@ our @EXPORT_OK =
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime
-      sqrtint rootint crootint logint lshiftint rshiftint rashiftint absint negint toint
-      signint cmpint addint subint add1int sub1int
+      sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
+      absint negint signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
@@ -104,7 +104,8 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecuniq vecsort vecsorti vecfreq vecsingleton vecslide vecwindow
+      vecuniq vecsort vecsorti vecfreq vecsingleton
+      vecslide vecpairwise vecwindow
       setbinop sumset toset
       setunion setintersect setminus setdelta
       setcontains setcontainsany setinsert setremove setinvert
@@ -3407,16 +3408,16 @@ and unintentional use of floats.
   my $checksum = vecreduce { $a ^ $b } @{twin_primes(1000000)};
 
 Does a reduce operation via left fold.  Takes a block and a list as arguments.
-The block uses the special local variables C<a> and C<b> representing the
+The block uses the special local variables C<$a> and C<$b> representing the
 accumulation and next element respectively, with the result of the block being
 used for the new accumulation.  No initial element is used, so C<undef>
 will be returned with an empty list.
 
-The interface is exactly the same as L<List::Util/reduce>.  This was done to
-increase portability and minimize confusion.  See chapter 7 of Higher Order
-Perl (or many other references) for a discussion of reduce with empty or
-singular-element lists.  It is often a good idea to give an identity element
-as the first list argument.
+The call interface is the same as L<List::Util/reduce>, but values supplied to
+the block are not aliases of the input values; assigning to them will not
+modify the input.  See chapter 7 of Higher Order Perl (or many other
+references) for a discussion of reduce with empty or singular-element lists.
+It is often a good idea to give an identity element as the first list argument.
 
 While operations like L</vecmin>, L</vecmax>, L</vecsum>, L</vecprod>, etc.
 can be fairly easily done with this function, it will not be as efficient.
@@ -3643,13 +3644,35 @@ C<vecpmex>(1,2,...,I<w>) = I<w>+1.
 
 Given a code block and a list, calls the code block for each pair
 in the list, setting the local C<$a> and C<$b> to the values in
-each pair.
+each pair.  Values supplied to the block are not aliases of the input
+values; assigning to them will not modify the input.
 In scalar context, returns the number of results.
 
 There is no restriction of what the list contains, as seen in the
 second example.
 
-This is identical to L<List::MoreUtils::slide>.
+This is similar to L<List::MoreUtils::slide>.
+
+
+=head2 vecpairwise
+
+  @pairsum = vecpairwise {$a+$b} \@A, \@B;
+
+  vecpairwise { say $a if $b } \@values, \@flags;
+
+Given a code block and two array references, calls the code block for
+each corresponding pair of elements, setting the local C<$a> and C<$b>
+to the values in each pair.  Values supplied to the block are not aliases
+of the input values; assigning to them will not modify the input arrays.
+All return values from each block call are collected and returned as a
+flat list (like C<map>), so the block may return zero, one, or multiple
+values.  If one input array is longer, trailing unpaired elements are
+ignored.
+In scalar context, returns the number of results.
+
+There is no restriction of what the arrays contain.
+
+This is similar to L<List::MoreUtils::pairwise>.
 
 
 =head2 vecwindow
@@ -3669,9 +3692,10 @@ This is identical to L<List::MoreUtils::slide>.
 Given a code block, a step size, a window size, and a list, calls the
 code block once for each window of C<size> consecutive elements, advancing
 by C<step> between calls.  The window elements are passed as C<@_> to the
-block.  All return values from each block call are collected and returned
-as a flat list (like C<map>).  Incomplete trailing windows are silently
-dropped.
+block.  Values supplied to the block are not aliases of the input values;
+assigning to them will not modify the input.  All return values from each
+block call are collected and returned as a flat list (like C<map>).
+Incomplete trailing windows are silently dropped.
 In scalar context, returns the number of results.
 
 Both C<step> and C<size> must be positive integers.

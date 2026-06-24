@@ -603,6 +603,40 @@ sub vecslide (&@) {    ## no critic qw(ProhibitSubroutinePrototypes)
   local(*{$caller.'::b'}) = \my $b;
   map { $a = $v[$_-1];  $b = $v[$_];  scalar $sub->(); } 1..$#v;
 }
+sub vecpairwise (&$$) {    ## no critic qw(ProhibitSubroutinePrototypes)
+  my($sub, $ra, $rb) = @_;
+  croak 'Not a subroutine reference'
+    unless ref($sub) && (reftype($sub)||'') eq 'CODE';
+  croak 'vecpairwise: expected two array references'
+    unless ref($ra) && (reftype($ra)||'') eq 'ARRAY' &&
+           ref($rb) && (reftype($rb)||'') eq 'ARRAY';
+
+  my $n = (@$ra < @$rb) ? scalar(@$ra) : scalar(@$rb);
+  my $caller = caller();
+  no strict 'refs'; ## no critic(strict)
+  my($a, $b);
+  local(*{$caller.'::a'}) = \$a;
+  local(*{$caller.'::b'}) = \$b;
+
+  if (!wantarray) {
+    my $count = 0;
+    for my $i (0 .. $n-1) {
+      $a = exists $ra->[$i] ? $ra->[$i] : undef;
+      $b = exists $rb->[$i] ? $rb->[$i] : undef;
+      my @r = $sub->();
+      $count += scalar(@r);
+    }
+    return $count;
+  } else {
+    my @result;
+    for my $i (0 .. $n-1) {
+      $a = exists $ra->[$i] ? $ra->[$i] : undef;
+      $b = exists $rb->[$i] ? $rb->[$i] : undef;
+      push @result, $sub->();
+    }
+    return @result;
+  }
+}
 
 sub vecany (&@) {       ## no critic qw(ProhibitSubroutinePrototypes)
   my $sub = shift;

@@ -2,6 +2,7 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.75
+2026-06-24  vecpairwise {...} \@A,\@B
 2026-06-14  crootint(n,k)
 2026-06-12  inverse_sigma0_count(k,lo,hi)
 2026-06-12  inverse_sigma0(k,lo,hi)

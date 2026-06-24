@@ -67,8 +67,8 @@ sub mpu_public_regex {
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime
-      sqrtint rootint crootint logint lshiftint rshiftint rashiftint absint negint toint
-      signint cmpint addint subint add1int sub1int
+      sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
+      absint negint signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
       miller_rabin_random
@@ -135,7 +135,8 @@ sub mpu_public_regex {
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecuniq vecsort vecsorti vecfreq vecsingleton vecslide vecwindow
+      vecuniq vecsort vecsorti vecfreq vecsingleton
+      vecslide vecpairwise vecwindow
       setbinop sumset setunion setintersect setminus setdelta toset
       setcontains setcontainsany setinsert setremove setinvert
       is_sidon_set is_sumfree_set
@@ -198,11 +199,11 @@ sub mpu_PPM_regex {
       Mdivisor_sum Mis_congruent Mis_divisible
       Mis_semiprime Mis_square_free Mhclassno
       Mvecall Mvecany Mvecmin Mvecmax Mvecnone Mvecprod Mvecsum Mvecuniq
-      Mvecslide Mvecindow
+      Mvecfirst Mvecsort Mvecsorti Mvecslide
       Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
-      Mlucasumod Mvecfirst Mvecsort Mvecsorti
+      Mlucasumod
       Saddint Ssubint Smulint Sdivint Spowint Surandomm
       Mtoint
       validate_integer     validate_integer_nonneg

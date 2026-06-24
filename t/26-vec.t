@@ -11,7 +11,7 @@ use Math::Prime::Util qw/vecreduce
                          vecuniq
                          vecsingleton
                          vecfreq
-                         vecslide vecwindow
+                         vecslide vecpairwise vecwindow
                          vecsort vecsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
@@ -22,6 +22,12 @@ use Math::Prime::Util qw/vecreduce
 # [related]
 # setcontains       return 0 if we are given something NOT in SETA
 # setcontainsany    return 1 if we are given anything in SETA
+
+# Callback values WILL NOT ALIAS input
+#  vecreduce vecpairwise vecslide vecwindow
+#
+# Callback values MAY ALIAS input
+#   vecany vecall vecnotall vecnone vecfirst vecfirstidx
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -134,6 +140,7 @@ plan tests => 1    # vecmin
             + 1    # vecfreq
             + 1    # vecsort
             + 1    # vecslide
+            + 1    # vecpairwise
             + 1    # vecwindow
             + 0;
 
@@ -223,6 +230,9 @@ subtest 'vecreduce', sub {
   is(vecreduce(sub{ $fail = 1; 0; },(15)), 15+$fail, "vecreduce with (a) is a and does not call the sub");
   is(vecreduce(sub{ $a ^ $b },(4,2)), 6, "vecreduce [xor] (4,2) => 6");
   is(vecreduce(sub{ $a * $b**2 },(1, 17, 18, 19)), 17**2 * 18**2 * 19**2, "vecreduce product of squares");
+  my @x = (1..5);
+  is(vecreduce(sub{ $a > $b ? $a += 3 : $b -= 7 }, @x), -2, "vecreduce with block assignments");
+  is_deeply(\@x, [1..5], "vecreduce block values do not alias input");
 };
 ###### vecextract
 subtest 'vecextract', sub {
@@ -450,6 +460,43 @@ subtest 'vecwindow', sub {
   # block returning multiple values (list context — G_ARRAY)
   is_deeply([vecwindow {($_[1],$_[0])} 2,2,1..4],[2,1,4,3],      "vecwindow: block returns list");
   is_deeply([vecwindow {@_}            1,2,1..3],[1,2,2,3],       "vecwindow: sliding pairs as list");
+
+  my @w = (1..4);
+  is_deeply([vecwindow { $_[0] *= 10; $_[-1] += 1; @_ } 1,2,@w],
+            [10,3,20,4,30,5], "vecwindow block assignments");
+  is_deeply(\@w, [1..4], "vecwindow block values do not alias input");
+};
+
+###### vecpairwise
+subtest 'vecpairwise', sub {
+  is_deeply([vecpairwise {$a+$b} [], []], [], "vecpairwise: empty arrays");
+  is_deeply([vecpairwise {$a+$b} [1,2,3], [10]], [11], "vecpairwise: trailing entries ignored");
+  is_deeply([vecpairwise {$a+$b} [1,2,3], [10,20,30]], [11,22,33], "vecpairwise {\$a+\$b}");
+  is_deeply([vecpairwise { "$a->[0] $b->[1]" } [["hello","world"], ["goodbye","friends"]], [["love","hate"], ["bitter","sweet"]]], ["hello hate","goodbye sweet"], "vecpairwise with array refs");
+  my @sparse;
+  $sparse[2] = 3;
+  is_deeply([vecpairwise { defined($a) ? $a : "U" } \@sparse, [1,2,3]], ["U","U",3], "vecpairwise sees sparse holes as undef");
+  ok(!exists($sparse[0]) && !exists($sparse[1]), "vecpairwise does not fill sparse holes");
+
+  is_deeply([vecpairwise { ($a,$b) } [1,2], [3,4]], [1,3,2,4], "vecpairwise: block returns list");
+  is_deeply([vecpairwise { $b ? ($a,$b) : () } [1,2,3], [1,0,4]], [1,1,3,4], "vecpairwise: block can return no values");
+
+  is(scalar(vecpairwise {$a+$b} [1,2], [3,4]), 2, "vecpairwise scalar context returns count");
+  is(scalar(vecpairwise { ($a,$b) } [1,2], [3,4]), 4, "vecpairwise scalar context counts list returns");
+
+  my @seen;
+  vecpairwise { push @seen, $a if $b } [qw/a b c/], [1,0,1];
+  is_deeply(\@seen, [qw/a c/], "vecpairwise can be used for side effects");
+
+  my @ma = (1,2);
+  my @mb = (3,4);
+  vecpairwise { $a *= 2; $b += 10 } \@ma, \@mb;
+  is_deeply([\@ma, \@mb], [[1,2], [3,4]], "vecpairwise block values do not alias input");
+
+  eval { vecpairwise {$a+$b} 1, [2] };
+  like($@, qr/array references/, "vecpairwise: first input must be an array reference");
+  eval { vecpairwise {$a+$b} [1], 2 };
+  like($@, qr/array references/, "vecpairwise: second input must be an array reference");
 };
 
 ###### vecslide
@@ -460,4 +507,7 @@ subtest 'vecslide', sub {
   is_deeply([vecslide {$a+$b} 1..5],[3,5,7,9],"vecslide {\$a+\$b} 1..5");
   is_deeply([vecslide { "$a->[0] $b->[1]" } ["hello","world"], ["goodbye","friends"], ["love","hate"]], ["hello friends","goodbye hate"], "vecslide with array refs");
   is(join(", ", vecslide { "$a and $b" } 0..3), "0 and 1, 1 and 2, 2 and 3", "vecslide example from LMU");
+  my @s = (1..5);
+  is_deeply([vecslide { $a *= 10; $b += 1; $a+$b } @s], [13,24,35,46], "vecslide block assignments");
+  is_deeply(\@s, [1..5], "vecslide block values do not alias input");
 };

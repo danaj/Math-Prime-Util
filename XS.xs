@@ -7578,8 +7578,9 @@ void
 vecreduce(SV* block, ...)
 PROTOTYPE: &@
 CODE:
-{   /* This is basically reduce from List::Util.  Try to maintain compat. */
+{   /* Similar to reduce from List::Util, but block values do not alias inputs. */
     SV *ret = sv_newmortal();
+    SV *btmp = sv_newmortal();
     SSize_t i;
     GV *agv,*bgv;
     SV **args = &PL_stack_base[ax];
@@ -7593,6 +7594,7 @@ CODE:
     SAVESPTR(GvSV(agv));
     SAVESPTR(GvSV(bgv));
     GvSV(agv) = ret;
+    GvSV(bgv) = btmp;
     SvSetMagicSV(ret, args[1]);
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
@@ -7600,7 +7602,7 @@ CODE:
       I32 gimme = G_SCALAR;
       SC_PUSH_MULTICALL(subcv);
       for (i = 2; i < items; i++) {
-        GvSV(bgv) = args[i];
+        SvSetMagicSV(btmp, args[i]);
         SC_MULTICALL;
         SvSetMagicSV(ret, *PL_stack_sp);
       }
@@ -7611,7 +7613,7 @@ CODE:
 #endif
     {
       for (i = 2; i < items; i++) {
-        GvSV(bgv) = args[i];
+        SvSetMagicSV(btmp, args[i]);
         SvSetMagicSV(ret, xs_call_cv_noinput_1_sv(aTHX_ subcv));
       }
     }
@@ -7623,11 +7625,13 @@ void
 vecslide(SV* block, ...)
 PROTOTYPE: &@
 CODE:
-{   /* Similar to slide from List::MoreUtils. */
+{   /* Similar to slide from List::MoreUtils, but block values do not alias inputs. */
     SSize_t i;
     SV **args = &PL_stack_base[ax];
     CV *subcv;
     SV **retsvarr;  /* Store results */
+    GV *agv, *bgv;
+    SV *atmp, *btmp;
 
     SETSUBREF(subcv, block);
     if (items <= 2) {
@@ -7636,27 +7640,23 @@ CODE:
     }
 
     New(0, retsvarr, items-2, SV*);
+    atmp = sv_newmortal();
+    btmp = sv_newmortal();
 
-    SAVEGENERICSV(plAgv);
-    SAVEGENERICSV(plBgv);
-    plAgv = MUTABLE_GV(SvREFCNT_inc(gv_fetchpvs("a",GV_ADD|GV_NOTQUAL,SVt_PV)));
-    plBgv = MUTABLE_GV(SvREFCNT_inc(gv_fetchpvs("b",GV_ADD|GV_NOTQUAL,SVt_PV)));
-    save_gp(plAgv, 0);
-    save_gp(plBgv, 0);
-    GvINTRO_off(plAgv);
-    GvINTRO_off(plBgv);
-    SAVEGENERICSV(GvSV(plAgv));  SvREFCNT_inc(GvSV(plAgv));
-    SAVEGENERICSV(GvSV(plBgv));  SvREFCNT_inc(GvSV(plBgv));
+    agv = gv_fetchpv("a", GV_ADD, SVt_PV);
+    bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
+    SAVESPTR(GvSV(agv));
+    SAVESPTR(GvSV(bgv));
+    GvSV(agv) = atmp;
+    GvSV(bgv) = btmp;
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       SC_dMULTICALL;
       I32 gimme = G_SCALAR;
       SC_PUSH_MULTICALL(subcv);
       for (i = 1; i < items-1; i++) {
-        SV *olda = GvSV(plAgv), *oldb = GvSV(plBgv);
-        GvSV(plAgv) = SvREFCNT_inc_simple_NN(args[i]);
-        GvSV(plBgv) = SvREFCNT_inc_simple_NN(args[i+1]);
-        SvREFCNT_dec(olda);  SvREFCNT_dec(oldb);
+        SvSetMagicSV(atmp, args[i]);
+        SvSetMagicSV(btmp, args[i+1]);
         SC_MULTICALL;
         retsvarr[i-1] = newSVsv(*PL_stack_sp);
       }
@@ -7667,11 +7667,8 @@ CODE:
 #endif
     {
       for (i = 1; i < items-1; i++) {
-        SV *olda, *oldb;
-        olda = GvSV(plAgv); oldb = GvSV(plBgv);
-        GvSV(plAgv) = SvREFCNT_inc_simple_NN(args[i]);
-        GvSV(plBgv) = SvREFCNT_inc_simple_NN(args[i+1]);
-        SvREFCNT_dec(olda);  SvREFCNT_dec(oldb);
+        SvSetMagicSV(atmp, args[i]);
+        SvSetMagicSV(btmp, args[i+1]);
         retsvarr[i-1] = newSVsv(xs_call_cv_noinput_1_sv(aTHX_ subcv));
       }
     }
@@ -7723,12 +7720,11 @@ PPCODE:
       SV **before_sp;
       I32 gimme = G_ARRAY;
       AV *av = save_ary(PL_defgv);
-      AvREAL_off(av);
       SC_PUSH_MULTICALL(subcv);
       for (i = 0; i + size <= nlist; i += step) {
-        av_fill(av, size - 1);
+        av_clear(av);
         for (j = 0; j < size; j++)
-          AvARRAY(av)[j] = list[i + j];
+          av_push(av, newSVsv(list[i + j]));
         before_sp = PL_stack_sp;
         SC_MULTICALL;
         for (j = 1; before_sp + j <= PL_stack_sp; j++)
@@ -7744,7 +7740,7 @@ PPCODE:
       for (i = 0; i + size <= nlist; i += step) {
         I32 k, nret;
         PUSHMARK(SP);  EXTEND(SP, (EXTEND_TYPE)size);
-        for (j = 0; j < size; j++)  PUSHs(list[i + j]);
+        for (j = 0; j < size; j++)  PUSHs(sv_2mortal(newSVsv(list[i + j])));
         PUTBACK;
         nret = call_sv((SV*)subcv, G_ARRAY);
         SPAGAIN;
@@ -7757,6 +7753,107 @@ PPCODE:
 
     if (GIMME_V == G_ARRAY) {
       SV **res = AvARRAY(result_av);
+      AvREAL_off(result_av);          /* transfer ownership to stack mortals */
+      EXTEND(SP, (EXTEND_TYPE)numret);
+      for (i = 0; i < numret; i++)
+          PUSHs(sv_2mortal(res[i]));
+      XSRETURN(numret);
+    }
+    XSRETURN_UV(numret);
+}
+
+void
+vecpairwise(SV* block, SV* sva, SV* svb)
+PROTOTYPE: &$$
+PREINIT:
+    SSize_t i, j, len1, len2, npairs, numret;
+    CV *subcv;
+    AV *av1, *av2, *result_av;
+    GV *agv, *bgv;
+    SV *atmp, *btmp;
+PPCODE:
+{   /* Similar to pairwise from List::MoreUtils, but block values do not alias inputs. */
+    SETSUBREF(subcv, block);
+
+    if (!SvROK(sva) || SvTYPE(SvRV(sva)) != SVt_PVAV ||
+        !SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV)
+      croak("vecpairwise: expected two array references");
+
+    av1 = MUTABLE_AV(SvRV(sva));
+    av2 = MUTABLE_AV(SvRV(svb));
+    len1 = av_len(av1) + 1;
+    len2 = av_len(av2) + 1;
+    npairs = (len1 < len2) ? len1 : len2;
+
+    if (npairs <= 0) {
+      if (GIMME_V == G_ARRAY) XSRETURN_EMPTY;
+      else                    XSRETURN_UV(0);
+    }
+
+    numret = 0;
+    result_av = (GIMME_V == G_ARRAY) ? (AV*)sv_2mortal((SV*)newAV()) : 0;
+    atmp = sv_newmortal();
+    btmp = sv_newmortal();
+
+    agv = gv_fetchpv("a", GV_ADD, SVt_PV);
+    bgv = gv_fetchpv("b", GV_ADD, SVt_PV);
+    SAVESPTR(GvSV(agv));
+    SAVESPTR(GvSV(bgv));
+    GvSV(agv) = atmp;
+    GvSV(bgv) = btmp;
+#if USE_MULTICALL
+    if (!CvISXSUB(subcv)) {
+      SC_dMULTICALL;
+      SV **before_sp;
+      I32 gimme = G_ARRAY;
+      SC_PUSH_MULTICALL(subcv);
+      for (i = 0; i < npairs; i++) {
+        SV **svpa = av_fetch(av1, i, 0);
+        SV **svpb = av_fetch(av2, i, 0);
+        SV *a = (svpa && *svpa) ? *svpa : &PL_sv_undef;
+        SV *b = (svpb && *svpb) ? *svpb : &PL_sv_undef;
+        SvSetMagicSV(atmp, a);
+        SvSetMagicSV(btmp, b);
+        before_sp = PL_stack_sp;
+        SC_MULTICALL;
+        if (result_av) {
+          for (j = 1; before_sp + j <= PL_stack_sp; j++)
+            av_push(result_av, newSVsv(*(before_sp + j)));
+        } else {
+          numret += (SSize_t)(PL_stack_sp - before_sp);
+        }
+        PL_stack_sp = before_sp;
+      }
+      FIX_MULTICALL_REFCOUNT;
+      SC_POP_MULTICALL;
+    }
+    else
+#endif
+    {
+      for (i = 0; i < npairs; i++) {
+        I32 k, nret;
+        SV **svpa = av_fetch(av1, i, 0);
+        SV **svpb = av_fetch(av2, i, 0);
+        SV *a = (svpa && *svpa) ? *svpa : &PL_sv_undef;
+        SV *b = (svpb && *svpb) ? *svpb : &PL_sv_undef;
+        SvSetMagicSV(atmp, a);
+        SvSetMagicSV(btmp, b);
+        PUSHMARK(SP);  PUTBACK;
+        nret = call_sv((SV*)subcv, G_ARRAY);
+        SPAGAIN;
+        if (result_av) {
+          for (k = 0; k < nret; k++)
+            av_push(result_av, newSVsv(SP[k + 1 - nret]));
+        } else {
+          numret += (SSize_t)nret;
+        }
+        SP -= nret;  PUTBACK;
+      }
+    }
+
+    if (GIMME_V == G_ARRAY) {
+      SV **res = AvARRAY(result_av);
+      numret = (SSize_t)av_count(result_av);
       AvREAL_off(result_av);          /* transfer ownership to stack mortals */
       EXTEND(SP, (EXTEND_TYPE)numret);
       for (i = 0; i < numret; i++)
