@@ -23,11 +23,25 @@ use Math::Prime::Util qw/vecreduce
 # setcontains       return 0 if we are given something NOT in SETA
 # setcontainsany    return 1 if we are given anything in SETA
 
+
 # Callback values WILL NOT ALIAS input
-#  vecreduce vecpairwise vecslide vecwindow
+#   vecreduce vecpairwise vecslide vecwindow
 #
 # Callback values MAY ALIAS input
 #   vecany vecall vecnotall vecnone vecfirst vecfirstidx
+
+
+# Returned values WILL NOT ALIAS input
+#   vecreduce vecslide vecpairwise vecwindow
+#   vecsum vecprod vecprefixsum vecsort vecfreq vecmex vecpmex
+#
+# Returned values MAY ALIAS input (currently XS aliases, PP does not)
+#   vecmin vecmax vecextract vecsample vecfirst vecuniq vecsingleton
+#
+# Return aliasing is not applicable:
+#   vecequal vecany vecall vecnotall vecnone vecfirstidx
+#
+# vecsorti modifies and returns the input array reference by design.
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -139,6 +153,7 @@ plan tests => 1    # vecmin
             + 1    # vecsingleton
             + 1    # vecfreq
             + 1    # vecsort
+            + 1    # return aliasing
             + 1    # vecslide
             + 1    # vecpairwise
             + 1    # vecwindow
@@ -435,6 +450,32 @@ subtest 'vecsort', sub {
   is($sctx, scalar(@actx), "returning vecsort(\@L) gives the number of items");
 };
 sub return_sort { return vecsort(@_); }
+
+###### return aliasing
+subtest 'return aliasing', sub {
+  my @base = (3,1,2);
+
+  for my $case (
+    [ 'vecsum',       sub { vecsum($_[0]->[0]) } ],
+    [ 'vecprod',      sub { vecprod($_[0]->[0]) } ],
+    [ 'vecprefixsum', sub { vecprefixsum(@{$_[0]}) } ],
+    [ 'vecreduce',    sub { vecreduce { $a+$b } @{$_[0]} } ],
+    [ 'vecsort',      sub { vecsort(@{$_[0]}) } ],
+    [ 'vecfreq',      sub { vecfreq(@{$_[0]}) } ],
+    [ 'vecslide',     sub { vecslide { $a+$b } @{$_[0]} } ],
+    [ 'vecwindow',    sub { vecwindow { $_[0]+$_[1] } 1,2,@{$_[0]} } ],
+  ) {
+    my($name, $sub) = @$case;
+    my @in = @base;
+    for ($sub->(\@in)) { $_ = 99 }
+    is_deeply(\@in, \@base, "$name return values do not alias input");
+  }
+
+  my @a = (1,2,3);
+  my @b = (10,20,30);
+  for (vecpairwise { $a+$b } \@a, \@b) { $_ = 99 }
+  is_deeply([\@a,\@b], [[1,2,3],[10,20,30]], "vecpairwise return values do not alias input");
+};
 
 ###### vecwindow
 subtest 'vecwindow', sub {

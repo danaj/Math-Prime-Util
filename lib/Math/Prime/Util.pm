@@ -3418,6 +3418,8 @@ the block are not aliases of the input values; assigning to them will not
 modify the input.  See chapter 7 of Higher Order Perl (or many other
 references) for a discussion of reduce with empty or singular-element lists.
 It is often a good idea to give an identity element as the first list argument.
+The returned value is not an lvalue alias of an input value.  References are
+not deep-copied.
 
 While operations like L</vecmin>, L</vecmax>, L</vecsum>, L</vecprod>, etc.
 can be fairly easily done with this function, it will not be as efficient.
@@ -3647,6 +3649,8 @@ in the list, setting the local C<$a> and C<$b> to the values in
 each pair.  Values supplied to the block are not aliases of the input
 values; assigning to them will not modify the input.
 In scalar context, returns the number of results.
+Returned values are not lvalue aliases of input values.  References are not
+deep-copied.
 
 There is no restriction of what the list contains, as seen in the
 second example.
@@ -3669,6 +3673,8 @@ flat list (like C<map>), so the block may return zero, one, or multiple
 values.  If one input array is longer, trailing unpaired elements are
 ignored.
 In scalar context, returns the number of results.
+Returned values are not lvalue aliases of input array elements.  References
+are not deep-copied.
 
 There is no restriction of what the arrays contain.
 
@@ -3697,6 +3703,8 @@ assigning to them will not modify the input.  All return values from each
 block call are collected and returned as a flat list (like C<map>).
 Incomplete trailing windows are silently dropped.
 In scalar context, returns the number of results.
+Returned values are not lvalue aliases of input values.  References are not
+deep-copied.
 
 Both C<step> and C<size> must be positive integers.
 When C<step E<gt> size> there are gaps between windows.
