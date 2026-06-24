@@ -7766,11 +7766,13 @@ void
 vecpairwise(SV* block, SV* sva, SV* svb)
 PROTOTYPE: &$$
 PREINIT:
-    SSize_t i, j, len1, len2, npairs, numret;
+    SSize_t i, j, npairs, numret;
     CV *subcv;
-    AV *av1, *av2, *result_av;
+    AV *result_av;
     GV *agv, *bgv;
     SV *atmp, *btmp;
+    DECL_ARREF(arr1);
+    DECL_ARREF(arr2);
 PPCODE:
 {   /* Similar to pairwise from List::MoreUtils, but block values do not alias inputs. */
     SETSUBREF(subcv, block);
@@ -7779,11 +7781,9 @@ PPCODE:
         !SvROK(svb) || SvTYPE(SvRV(svb)) != SVt_PVAV)
       croak("vecpairwise: expected two array references");
 
-    av1 = MUTABLE_AV(SvRV(sva));
-    av2 = MUTABLE_AV(SvRV(svb));
-    len1 = av_len(av1) + 1;
-    len2 = av_len(av2) + 1;
-    npairs = (len1 < len2) ? len1 : len2;
+    USE_ARREF(arr1, sva, SUBNAME, AR_READ);
+    USE_ARREF(arr2, svb, SUBNAME, AR_READ);
+    npairs = (len_arr1 < len_arr2) ? (SSize_t)len_arr1 : (SSize_t)len_arr2;
 
     if (npairs <= 0) {
       if (GIMME_V == G_ARRAY) XSRETURN_EMPTY;
@@ -7808,10 +7808,8 @@ PPCODE:
       I32 gimme = G_ARRAY;
       SC_PUSH_MULTICALL(subcv);
       for (i = 0; i < npairs; i++) {
-        SV **svpa = av_fetch(av1, i, 0);
-        SV **svpb = av_fetch(av2, i, 0);
-        SV *a = (svpa && *svpa) ? *svpa : &PL_sv_undef;
-        SV *b = (svpb && *svpb) ? *svpb : &PL_sv_undef;
+        SV *a = FETCH_ARREF(arr1, i);
+        SV *b = FETCH_ARREF(arr2, i);
         SvSetMagicSV(atmp, a);
         SvSetMagicSV(btmp, b);
         before_sp = PL_stack_sp;
@@ -7832,10 +7830,8 @@ PPCODE:
     {
       for (i = 0; i < npairs; i++) {
         I32 k, nret;
-        SV **svpa = av_fetch(av1, i, 0);
-        SV **svpb = av_fetch(av2, i, 0);
-        SV *a = (svpa && *svpa) ? *svpa : &PL_sv_undef;
-        SV *b = (svpb && *svpb) ? *svpb : &PL_sv_undef;
+        SV *a = FETCH_ARREF(arr1, i);
+        SV *b = FETCH_ARREF(arr2, i);
         SvSetMagicSV(atmp, a);
         SvSetMagicSV(btmp, b);
         PUSHMARK(SP);  PUTBACK;
