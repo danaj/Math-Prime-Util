@@ -1793,6 +1793,8 @@ primes themselves.
 Offsets for values 0 and 1 are never returned.  Hence with a depth of 0 or 1,
 no divisibility sieving is done, but values below 2 are still omitted.
 
+In scalar context, returns the number of offsets that would be returned.
+
 
 =head2 sieve_prime_cluster
 
@@ -1812,6 +1814,8 @@ Typically the number of returned values is much lower than for
 other primes functions, so this uses the more convenient array
 return.  This function has an identical signature to the function
 of the same name in L<Math::Prime::Util:GMP>.
+
+In scalar context, returns the number of values that would be returned.
 
 The cluster is described as offsets from 0, with the implicit prime
 at 0.  Hence an empty list is asking for all primes (the cluster
@@ -3370,6 +3374,8 @@ without converting to floating-point.
 The input can also be a single array reference, which will be slightly more
 efficient.  The output will still be a flat list.
 
+In scalar context, returns the number of prefix sums that would be returned.
+
 =head2 vecprod
 
   say "Totient product 5,000: ", vecprod(euler_phi(1,5_000));
@@ -3508,6 +3514,8 @@ L<List::Util::uniq> and L<List::MoreUtils::XS::uniq>.  For example,
 C<"2"> and C<"02"> are distinct values.
 Native integer inputs use a fast path that can be up to 10x faster.
 
+In scalar context, returns the number of unique values that would be returned.
+
 =head2 vecfreq
 
   # Produce frequency hash:
@@ -3524,6 +3532,8 @@ when given only native integers.
 This is very similar to the Pari/GP function C<matreduce> for vectors,
 and to Python's C<Counter>.
 
+In scalar context, returns the number of unique values.
+
 =head2 vecsingleton
 
   my @solo = vecsingleton(1,4,17,1,17,-8);  # (4,-8)
@@ -3536,6 +3546,9 @@ appear more than once in the list.  The original ordering is preserved.
 
 This is identical to L<List::MoreUtils::singleton>.  When given only native
 integers, it is typically 2 to 10x faster.
+
+In scalar context, returns the number of singleton values that would be
+returned.
 
 =head2 vecsort
 
@@ -4043,6 +4056,8 @@ The values returned may be read-only.  C<todigits(0)> returns an empty array.
 The base must be at least 2, and is limited to an int.  Length must be
 at least zero and is limited to an int.
 
+In scalar context, returns the number of digits that would be returned.
+
 This corresponds to Pari's C<digits> and C<binary> functions, and
 Mathematica's C<IntegerDigits> function.
 
@@ -4456,6 +4471,8 @@ Given an integer C<n> and a positive integer C<d>,
 returns a list with the simple continued fraction representation
 of the rational C<n / d>.
 
+In scalar context, returns the number of terms that would be returned.
+
 This corresponds to a subset of Pari's C<contfrac> function,
 Mathematica's C<ContinuedFraction[n/d]> function,
 and Sage's C<continued_fraction> function.
@@ -4490,6 +4507,8 @@ C<p_k = a_k * p_{k-1} + p_{k-2}>, and likewise for C<q_k>.
 
 The first input value may be zero or negative (the whole-number part);
 all successive values must be positive integers.
+
+In scalar context, returns the number of convergents that would be returned.
 
 =head2 bestrational
 
@@ -4740,6 +4759,9 @@ algorithm 3.2.
 Negative ranges are possible, e.g. C<moebius(-30,-20)> will return
 C<moebius(|n|)> for -30, -29, -28, ..., -20.
 
+In scalar context with two arguments, returns the number of values that would
+be returned.
+
 The return values are read-only constants.  This should almost never come up,
 but it means trying to modify aliased return values will cause an
 exception (modifying the returned scalar or array is fine).
@@ -4796,6 +4818,9 @@ If called with two integer arguments C<low> and C<high>, they define
 an inclusive range.
 The function returns a list with the totient of every n from low to high
 inclusive.
+
+In scalar context with two arguments, returns the number of values that would
+be returned.
 
 =head2 inverse_totient
 
@@ -5258,6 +5283,8 @@ If no such pairs exist, C<0> is returned.
 Given a single non-negative integer C<n>, returns a list containing each C<p>
 for all prime pairs C<p> and C<q> where C<< p <= q >> and C<p + q = n>.
 The number of elements returned is the same as L</goldbach_pair_count>.
+
+In scalar context, returns the number of values that would be returned.
 
 If no such pairs exist, an empty list is returned.
 
@@ -5846,6 +5873,9 @@ C<n> must fit in a native signed integer.
 
 This will match iteration number C<k> (zero based) of L</forperm>.
 
+In scalar context, returns C<n>, the number of elements in the permutation
+that would be returned.
+
 This corresponds to Pari's C<numtoperm(n,k)> function (Pari 2.6 and
 later use the same lexicographic ordering).
 
@@ -5912,6 +5942,9 @@ with L</randperm> as shown in its example above.  If fewer elements
 are needed (a "pick" or "sample") then L</vecsample> or slicing with
 L</randperm> will be much more efficient.
 
+In scalar context, returns the number of input elements without shuffling or
+consuming any random data.
+
 =head2 vecsample
 
   $oneof = vecsample(1,@data);  # Select one random value
@@ -5934,6 +5967,9 @@ This can be a large performance increase if the input list is large
 While there might be confusion when sampling a list with exactly
 one element, where that element is an array reference, this is
 assumed to be a rare case.
+
+In scalar context, returns the number of elements that would be selected
+without sampling or consuming any random data.
 
 This is similar to C<sample> from L<List::Util>, C<choose_multiple> from
 Rust rand, and Raku's C<pick>.

@@ -54,7 +54,7 @@ push @high_check, @high_check2 if $extra;
 #[4,6,10,16,18,24,28,30,34,40,46,48,54,58,60,66);   # A257375
 #[6,12,16,18,22,28,30,36,40,42,46,48);   # A214947
 
-plan tests => scalar(@tests) + 2 + 2 + 2 * scalar(@patterns) + scalar(@high_check);
+plan tests => scalar(@tests) + 2 + 1 + 2 + 2 * scalar(@patterns) + scalar(@high_check);
 
 for my $t (@tests) {
   my($what, $tuple, $range, $expect) = @$t;
@@ -65,6 +65,7 @@ for my $t (@tests) {
 
 is_deeply( [sieve_prime_cluster(1,1e9,2,4)], [3], "Inadmissible pattern (0,2,4) finds (3,5,7)");
 is_deeply( [sieve_prime_cluster(1,1e9,2,8,14,26)], [3,5], "Inadmissible pattern (0,2,8,14,26) finds (3,5,11,17,29) and (5,7,13,19,31)");
+is( scalar sieve_prime_cluster(0,50,2), 6, "sieve_prime_cluster returns count in scalar context");
 
 my @pcache;  # holds primes in two ranges
 

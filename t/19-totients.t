@@ -28,6 +28,8 @@ subtest 'Totient (euler_phi)', sub {
   is_deeply( \@phi1, \@A000010, "euler_phi 0 .. $#A000010" );
   my @phir = euler_phi(0, $#A000010);
   is_deeply( \@phir, \@A000010, "euler_phi with range: 0, $#A000010" );
+  is( scalar euler_phi(0, $#A000010), scalar(@A000010), "euler_phi range returns count in scalar context" );
+  is( scalar euler_phi(-5, 5), 11, "euler_phi negative range returns count in scalar context" );
   {
     my $s = 0;
     $s += $_ for euler_phi(1, 240);
@@ -40,6 +42,8 @@ subtest 'Totient (euler_phi)', sub {
 
   is_deeply([euler_phi(0,0)], [0],     "euler_phi(0,0)");
   is_deeply([euler_phi(1,0)], [],      "euler_phi with end < start");
+  is(scalar euler_phi(1,0), 0,          "euler_phi empty range returns count 0 in scalar context");
+  is(scalar euler_phi(100,90), 0,       "euler_phi descending range returns count 0 in scalar context");
   is_deeply([euler_phi(0,1)], [0,1],   "euler_phi 0-1");
   is_deeply([euler_phi(1,2)], [1,1],   "euler_phi 1-2");
   is_deeply([euler_phi(1,3)], [1,1,2], "euler_phi 1-3");

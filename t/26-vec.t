@@ -221,6 +221,8 @@ subtest 'vecprefixsum', sub {
     my($in, $exp, $desc) = @$r;
     is_deeply( [map{"$_"} vecprefixsum(@$in)],  $exp, "vecprefixsum list [$desc]" );
     is_deeply( [map{"$_"} vecprefixsum($in)],   $exp, "vecprefixsum aref [$desc]" );
+    is( scalar vecprefixsum(@$in), scalar(@$exp), "scalar vecprefixsum list [$desc]" );
+    is( scalar vecprefixsum($in), scalar(@$exp), "scalar vecprefixsum aref [$desc]" );
   }
   if ($use64) {
     my @c64 = (

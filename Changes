@@ -109,7 +109,10 @@ Revision history for Perl module Math::Prime::Util
       string/hash semantics, while retaining a fast native-integer path.
 
     - allsqrtmod and allrootmod now consistently return the count in scalar
-      context.  Add documentation and testing.
+      context.  Documentation and tests added.
+
+    - More list-returning functions consistently return the number of values
+      in scalar context.  Documentation and tests added.
 
     - todigitstring with negative bigint in base 10 included the sign.  Fixed.
 

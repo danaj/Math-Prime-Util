@@ -917,7 +917,7 @@ sub sieve_range {
   validate_integer_nonneg($depth);
   croak "sieve_range: width must fit in native unsigned integer" if ref($width);
   croak "sieve_range: depth must fit in native unsigned integer" if ref($depth);
-  return if $width == 0;
+  return wantarray ? () : 0 if $width == 0;
 
   my @candidates;
   my $start = $n;
@@ -930,7 +930,19 @@ sub sieve_range {
     $width -= ($start - $n);
   }
 
+  return scalar(@candidates) + (($width > 0) ? $width : 0)
+    if !wantarray && $depth < 2;
   return @candidates, map {$start+$_-$n } 0 .. $width-1 if $depth < 2;
+  if (!wantarray && $depth < 5) {
+    my $count = scalar(@candidates);
+    if ($width > 0) {
+      for my $i (0 .. $width-1) {
+        my $v = $start + $i;
+        $count++ if ($v & 1) && ($depth < 3 || ($v % 3));
+      }
+    }
+    return $count;
+  }
   return @candidates, map { $_ - $n }
                       grep { ($_ & 1) && ($depth < 3 || ($_ % 3)) }
                       map { $start+$_ }
@@ -942,6 +954,11 @@ sub sieve_range {
 
   my $sieveref = _sieve_segment($start, $start+$width-1, $depth);
   my $offset = $start - $n - 2;
+  if (!wantarray) {
+    my $count = scalar(@candidates);
+    $count++ while $$sieveref =~ m/0/g;
+    return $count;
+  }
   while ($$sieveref =~ m/0/g) {
     push @candidates, $offset + (pos($$sieveref) << 1);
   }
@@ -1726,6 +1743,9 @@ sub _euler_phi_range {
   my($lo, $hi) = @_;
   validate_integer($lo);
   validate_integer($hi);
+
+  return ($hi < $lo) ? 0 : Madd1int(Msubint($hi,$lo)) unless wantarray;
+  return () if $hi < $lo;
 
   my @totients;
   while ($lo < 0 && $lo <= $hi) {
@@ -3111,6 +3131,7 @@ sub _moebius_range {
   my($lo, $hi) = @_;
   validate_integer($lo);
   validate_integer($hi);
+  return ($hi < $lo) ? 0 : Madd1int(Msubint($hi,$lo)) unless wantarray;
   return () if $hi < $lo;
   return moebius($lo) if $lo == $hi;
   if ($lo < 0) {
@@ -5965,10 +5986,10 @@ sub vecsum {
 
 sub vecprefixsum {
   my @v = (@_ == 1 && _is_aref($_[0])) ? @{$_[0]} : @_;
-  return unless @v;
+  return wantarray ? () : 0 unless @v;
   if (@v == 1) {
     validate_integer($v[0]);
-    return canonicalized_integer($v[0]);
+    return wantarray ? canonicalized_integer($v[0]) : 1;
   }
 
   my @psum;
@@ -5985,7 +6006,7 @@ sub vecprefixsum {
     push @psum, $sum += $v;
   }
   canonicalize_integers(\@psum) if $need_post;
-  @psum;
+  wantarray ? @psum : scalar(@psum);
 }
 
 sub _product_mulint {
@@ -7698,8 +7719,9 @@ sub _parse_todig_args {
 
 sub todigits {
   my($n,$base,$len) = _parse_todig_args("todigits", 0, @_);
-  return () if $n == 0 || (defined $len && $len == 0);
-  _splitdigits($n, $base, $len);
+  return wantarray ? () : 0 if $n == 0 || (defined $len && $len == 0);
+  my @d = _splitdigits($n, $base, $len);
+  wantarray ? @d : scalar(@d);
 }
 
 sub _tobinarystring {
@@ -8869,7 +8891,7 @@ sub from_contfrac {
 }
 
 sub convergents {
-  return () unless @_;
+  return wantarray ? () : 0 unless @_;
   my @cf = @_;    # copy so validate can normalize in-place (args may be read-only)
   validate_integer($cf[0]);
   validate_integer_positive($cf[$_]) for 1..$#cf;
@@ -12410,8 +12432,8 @@ sub numtoperm {
   my($n,$k) = @_;
   validate_integer_nonneg($n);
   validate_integer($k);
-  return () if $n == 0;
-  return (0) if $n == 1;
+  return wantarray ? () : 0 if $n == 0;
+  return wantarray ? (0) : 1 if $n == 1;
   croak "numtoperm: n must fit in native signed integer" if $n > SINTMAX;
   my $f = Mfactorial($n-1);
   $k = Mmodint($k,Mmulint($f,$n)) if $k < 0 || Mdivint($k,$f) >= $n;

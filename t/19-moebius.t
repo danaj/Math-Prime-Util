@@ -83,7 +83,7 @@ if (!$usexs) {
                  keys %big_mertens;
 }
 
-plan tests => 1 + 5 + 2 + 2 + 3 + scalar(keys %big_mertens);
+plan tests => 1 + 5 + 2 + 2 + 3 + 4 + scalar(keys %big_mertens);
 
 ok(!eval { moebius(0); }, "moebius(0)");
 
@@ -103,6 +103,10 @@ is_deeply( [moebius(-14,-9)],
 is_deeply( [moebius(-7,5)],
            [-1,1,-1,0,-1,-1,1,0,1,-1,-1,0,-1],
            "moebius -7 .. 5 (range)" );
+is( scalar moebius(1,20), 20, "moebius range returns count in scalar context" );
+is( scalar moebius(-7,5), 13, "moebius negative range returns count in scalar context" );
+is( scalar moebius(1,0), 0, "moebius empty range returns count 0 in scalar context" );
+is( scalar moebius(100,90), 0, "moebius descending range returns count 0 in scalar context" );
 
 is( moebius(3*5*7*11*13), -1, "moebius(3*5*7*11*13) = -1" );
 is( moebius("20364840299624512075310661735"), 1, "moebius(73#/2) = 1" );

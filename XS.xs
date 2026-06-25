@@ -1086,6 +1086,12 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     XSRETURN(1); \
   }
 
+#define RETURN_NOTHING() \
+  do { \
+    if (GIMME_V != G_ARRAY) XSRETURN_UV(0); \
+    XSRETURN_EMPTY; \
+  } while (0)
+
 #define RETURN_SV(svexpr) \
   { \
     SV* out_ = svexpr; \
@@ -1981,12 +1987,17 @@ void sieve_range(IN SV* svn, IN SV* svwidth, IN SV* svdepth)
     if (_validate_and_set(&depth, aTHX_ svdepth, IFLAG_NONNEG) != 1)
       croak("sieve_range: depth must fit in native unsigned integer");
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
-    if (width == 0) XSRETURN_EMPTY;
+    if (width == 0)
+      RETURN_NOTHING();
     if (status != 1 || n > UV_MAX-(width-1))
       DISPATCHPP_RETURN();
     lo = (n<2) ? 2 : n;
     hi = n + width - 1;
     np = range_partial_sieve(&P, lo, hi, depth);
+    if (GIMME_V != G_ARRAY) {
+      Safefree(P);
+      XSRETURN_UV(np);
+    }
     EXTEND(SP, (EXTEND_TYPE)np);
     for (i = 0; i < np; i++)
       PUSHs(sv_2mortal(newSVuv(P[i] - n)));
@@ -2016,6 +2027,10 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
       list = sieve_cluster(lo, hi, nc, cl, &nprimes);
       if (list != 0) {
         done = 1;
+        if (GIMME_V != G_ARRAY) {
+          Safefree(list);
+          XSRETURN_UV(nprimes);
+        }
         EXTEND(SP, (EXTEND_TYPE)nprimes);
         for (i = 0; i < nprimes; i++)
           PUSHs(sv_2mortal(newSVuv( list[i] )));
@@ -2344,7 +2359,7 @@ vecprefixsum(...)
     UV *L;
   PPCODE:
     if (items == 0)
-      XSRETURN_EMPTY;
+      RETURN_NOTHING();
     if (SvROK(ST(0)) && SvTYPE(SvRV(ST(0))) == SVt_PVAV) {
       if (items != 1)
         croak("vecprefixsum: expected integer list or single array reference");
@@ -3285,6 +3300,13 @@ void contfrac(IN SV* svnum, IN SV* svden)
       DISPATCHPP_RETURN();
     if (nstatus == -1) num = neg_iv(num);
     steps = contfrac(&cf, &rem, num, den);
+    if (GIMME_V != G_ARRAY) {
+      int count = steps;
+      if (nstatus == -1 && steps > 1)
+        count += (cf[1] == 1) ? -1 : 1;
+      Safefree(cf);
+      XSRETURN_UV(count);
+    }
     if (nstatus == 1) {
       EXTEND(SP, (EXTEND_TYPE)steps);
       for (i = 0; i < steps; i++)
@@ -3356,13 +3378,19 @@ void convergents(...)
     UV *L, *P, *Q;
     int type;
   PPCODE:
-    if (items == 0) XSRETURN(0);
-
+    if (items == 0)
+      RETURN_NOTHING();
     type = array_to_int_array(aTHX_ &len, &L, 0, &ST(0), items);
     /* We punt negative cases to PP */
     if (!(type == IARR_TYPE_BAD || type == IARR_TYPE_NEG)) {
       if (convergents(&P, &Q, L, len)) {
         size_t i;
+        if (GIMME_V != G_ARRAY) {
+          Safefree(P);
+          Safefree(Q);
+          Safefree(L);
+          XSRETURN_UV(len);
+        }
         EXTEND(SP, (EXTEND_TYPE)len);
         for (i = 0; i < len; i++)
           PUSH_2ELEM_AREF(P[i], Q[i]);
@@ -4304,10 +4332,7 @@ void allsqrtmod(IN SV* sva, IN SV* svn)
     astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     if (astatus != 0 && nstatus != 0) {
-      if (n == 0) {
-        if (GIMME_V != G_ARRAY) XSRETURN_UV(0);
-        XSRETURN_EMPTY;
-      }
+      if (n == 0) RETURN_NOTHING();
       _mod_with(&a, astatus, n);
       roots = allsqrtmod(&numr, a, n);
       if (roots != 0) {
@@ -4335,16 +4360,11 @@ void allrootmod(IN SV* sva, IN SV* svg, IN SV* svn)
     gstatus = _validate_and_set(&g, aTHX_ svg, IFLAG_ANY);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     if (astatus != 0 && gstatus != 0 && nstatus != 0) {
-      if (n == 0) {
-        if (GIMME_V != G_ARRAY) XSRETURN_UV(0);
-        XSRETURN_EMPTY;
-      }
+      if (n == 0) RETURN_NOTHING();
       if (n == 1) XSRETURN_UV(GIMME_V == G_ARRAY ? 0 : 1);
       _mod_with(&a, astatus, n);
-      if (!prep_pow_inv(&a,&g,gstatus,n)) {
-        if (GIMME_V != G_ARRAY) XSRETURN_UV(0);
-        XSRETURN_EMPTY;
-      }
+      if (!prep_pow_inv(&a,&g,gstatus,n))
+        RETURN_NOTHING();
       roots = allrootmod(&numr, a, g, n);
       if (roots != 0) {
         if (GIMME_V != G_ARRAY) {
@@ -4972,31 +4992,51 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     UV lo, hi;
     int lostatus, histatus;
-    uint32_t mask;
   PPCODE:
-    mask = (ix == 1 && items == 1)  ?  IFLAG_ABS  :  IFLAG_ANY;
-    lostatus = _validate_and_set(&lo, aTHX_ svlo, mask);
-    if (svhi == 0 && lostatus != 0) {
-      if (ix == 0) XSRETURN_UV( (lostatus == -1) ? 0 : totient(lo) );
-      else         RETURN_NPARITY( moebius(lo) );
-    }
-    histatus = (svhi == 0) ? 0 : _validate_and_set(&hi, aTHX_ svhi, IFLAG_ANY);
-    /* - If range is larger than MAX_EXTEND, reduce it to fit.
-     *   Arguably we should croak as invalid input.
-     * - If range includes UV_MAX, pull it off and handle separately.
-     *   This makes count never underflow (e.g. lo=0,hi=max, hi-lo+1 => 0)
-     *   It also simplifies loop overflow logic in the range function.
-     */
-    if (lostatus == 1 && histatus == 1) {
-      UV i, count;
-      int appendmax = (hi == UV_MAX);
-      if (lo > hi)  XSRETURN(0);
+    lostatus = _validate_and_set(&lo, aTHX_ svlo, IFLAG_ANY);
 
+    if (items == 1) {
+      if (lostatus != 0 && ix == 0)
+        XSRETURN_UV(lostatus == -1 ? 0 : totient(lo));
+      if (lostatus != 0 && ix == 1)
+        RETURN_NPARITY(moebius(lostatus == -1 ? neg_iv(lo) : lo));
+      DISPATCHPP_RETURN();  /* single argument dispatch */
+    }
+
+    histatus = _validate_and_set(&hi, aTHX_ svhi, IFLAG_ANY);
+
+    if (GIMME_V != G_ARRAY && lostatus == 1 && histatus == 1 && hi != UV_MAX)
+      XSRETURN_UV(lo > hi ? 0 : hi - lo + 1);
+
+    if (GIMME_V != G_ARRAY) {  /* Scalar context = return range */
+      STRLEN lolen, hilen, rlen;
+      const char *lostr = SvPV_nomg(svlo, lolen);
+      const char *histr = SvPV_nomg(svhi, hilen);
+      SV *tmp;
+
+      if (strint_cmp(lostr, lolen, histr, hilen) > 0)
+        XSRETURN_UV(0);
+
+      tmp = sv_2mortal(newSV((lolen > hilen ? lolen : hilen) + 2));
+      rlen = strint_sub(SvPVX(tmp), histr, hilen, lostr, lolen); /* hi-lo   */
+      rlen = strint_add(SvPVX(tmp), SvPVX(tmp), rlen, "1", 1);   /*      +1 */
+      RETURN_STRING_BIGINT(tmp, rlen);
+    }
+
+    if (lostatus != 1 || histatus != 1)
+      DISPATCHPP_RETURN();  /* ranged list return */
+
+    if (lo > hi) XSRETURN_EMPTY;
+
+    {
+      UV i, count;
+      bool appendmax = (hi == UV_MAX);  /* Strip hi=UV_MAX from the loop */
       if (appendmax) hi--;
-      if ((hi-lo+1) > MAX_EXTEND)  hi = lo + MAX_EXTEND - 1;
       count = hi-lo+1;
+      if (count > MAX_EXTEND - appendmax)
+        croak("%s: range too large for list return", SUBNAME);
+      EXTEND(SP, (EXTEND_TYPE)count + appendmax);
       if (count > 0) {
-        EXTEND(SP, (EXTEND_TYPE)count);
         if (ix == 0) {
           UV arrlo = (lo < 100) ?  0 : lo;
           UV *totients = range_totient(arrlo, hi);
@@ -5011,15 +5051,9 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
         }
       }
       if (appendmax) {
-        EXTEND(SP, 1);
-        if (ix == 0) {
-          PUSHs(sv_2mortal(newSVuv(totient(UV_MAX))));
-        } else {
-          PUSH_NPARITY(-1);  /* moebius of 2^32-1, 2^64-1, 2^128-1 => -1 */
-        }
+        if (ix == 0) PUSHs(sv_2mortal(newSVuv(totient(UV_MAX))));
+        else         PUSH_NPARITY(-1);  /* moebius 2^{32,64,128}-1 = -1 */
       }
-    } else {
-      DISPATCHPP_RETURN();
     }
 
 void
@@ -6065,7 +6099,7 @@ void vecsort(...)
     UV *L;
   PPCODE:
     if (items == 0)
-      XSRETURN_EMPTY;
+      RETURN_NOTHING();
     if (SvROK(ST(0)) && SvTYPE(SvRV(ST(0))) == SVt_PVAV) {
       if (items != 1)
         croak("vecsort: expected integer list or single array reference");
@@ -6129,11 +6163,13 @@ void numtoperm(IN SV* svn, IN SV* svk)
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
     kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_ANY);
     if (nstatus != 0 && kstatus != 0 && n < 32) {
-      if (n == 0) XSRETURN_EMPTY;
+      if (n == 0)
+        RETURN_NOTHING();
       fn = factorial(n);
       if (fn != 0) {
         _mod_with(&k, kstatus, fn);
         if (num_to_perm(k, n, S)) {
+          if (GIMME_V != G_ARRAY) XSRETURN_UV(n);
           EXTEND(SP, (EXTEND_TYPE)n);
           for (i = 0; i < (int)n; i++)
             PUSH_NPARITY( S[i] );
@@ -6217,10 +6253,8 @@ void vecsample(IN SV* svk, ...)
   PPCODE:
     if (_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG) != 1)
       DISPATCHPP_RETURN();
-    if (items == 1 || k == 0) {
-      if (GIMME_V != G_ARRAY) XSRETURN_IV(0);
-      else                    XSRETURN_EMPTY;
-    }
+    if (items == 1 || k == 0)
+      RETURN_NOTHING();
     randcxt = MY_CXT.randcxt;
     /*
      * Fisher-Yates shuffle with first 'k' selections returned.
@@ -6253,10 +6287,8 @@ void vecsample(IN SV* svk, ...)
       DECL_ARREF(avp);
       USE_ARREF(avp, ST(1), SUBNAME, AR_READ);
       nitems = len_avp;
-      if (nitems == 0) {
-        if (GIMME_V != G_ARRAY) XSRETURN_IV(0);
-        else                    XSRETURN_EMPTY;
-      }
+      if (nitems == 0)
+        RETURN_NOTHING();
       if (k > nitems)
         k = nitems;
       if (GIMME_V != G_ARRAY)
@@ -6377,6 +6409,7 @@ void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
         UV digits[128];
         int len = to_digit_array(digits, n, base, tlen);
         if (len >= 0) {
+          if (GIMME_V != G_ARRAY) XSRETURN_UV(len);
           EXTEND(SP, (EXTEND_TYPE)len);
           for (i = 0; i < len; i++)
             PUSH_NPARITY( digits[len-i-1] );
@@ -6408,12 +6441,13 @@ void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
           XPUSHs(sv_2mortal(newSVpvn("", 0)));
           XSRETURN(1);
         }
-        XSRETURN(0);
+        RETURN_NOTHING();
       }
       if (ix == 1) {
         XPUSHs(sv_2mortal(newSVpv(str, len)));
         XSRETURN(1);
       }
+      if (GIMME_V != G_ARRAY) XSRETURN_UV(len);
       EXTEND(SP, (EXTEND_TYPE)len);
       for (i = 0; i < (int)len; i++)
         PUSH_NPARITY(str[i]-'0');
@@ -7634,11 +7668,8 @@ CODE:
     SV *atmp, *btmp;
 
     SETSUBREF(subcv, block);
-    if (items <= 2) {
-      if (GIMME_V == G_ARRAY) XSRETURN_EMPTY;
-      else                    XSRETURN_UV(0);
-    }
-
+    if (items <= 2)
+      RETURN_NOTHING();
     New(0, retsvarr, items-2, SV*);
     atmp = sv_newmortal();
     btmp = sv_newmortal();
@@ -7709,10 +7740,8 @@ PPCODE:
     /* ST(0)=block, ST(1)=step, ST(2)=size, ST(3..)=list */
     nlist = items - 3;
     list  = &PL_stack_base[ax+3];
-    if (nlist < size) {
-      if (GIMME_V == G_ARRAY) XSRETURN_EMPTY;
-      else                    XSRETURN_UV(0);
-    }
+    if (nlist < size)
+      RETURN_NOTHING();
     result_av = (AV*)sv_2mortal((SV*)newAV());
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
@@ -7784,11 +7813,8 @@ PPCODE:
     USE_ARREF(arr1, sva, SUBNAME, AR_READ);
     USE_ARREF(arr2, svb, SUBNAME, AR_READ);
     npairs = (len_arr1 < len_arr2) ? (SSize_t)len_arr1 : (SSize_t)len_arr2;
-
-    if (npairs <= 0) {
-      if (GIMME_V == G_ARRAY) XSRETURN_EMPTY;
-      else                    XSRETURN_UV(0);
-    }
+    if (npairs <= 0)
+      RETURN_NOTHING();
 
     numret = 0;
     result_av = (GIMME_V == G_ARRAY) ? (AV*)sv_2mortal((SV*)newAV()) : 0;
@@ -8001,10 +8027,8 @@ void vecfreq(...)
     size_t len, i, retlen;
     UV *L, count;
   PPCODE:
-    if (items == 0) {
-      if (GIMME_V == G_SCALAR) XSRETURN_UV(0);
-      else                     XSRETURN_EMPTY;
-    }
+    if (items == 0)
+      RETURN_NOTHING();
     /* Try to read native integers.  Bail to PP if something else. */
     len = (size_t) items;
     New(0, L, len, UV);
@@ -8060,10 +8084,8 @@ void vecsingleton(...)
     UV *L;
     iset_t seen, dups;
   PPCODE:
-    if (items == 0) {
-      if (GIMME_V == G_SCALAR) XSRETURN_UV(0);
-      else                     XSRETURN_EMPTY;
-    }
+    if (items == 0)
+      RETURN_NOTHING();
     /* Try to read native integers.  Bail to PP if something else. */
     len = (size_t) items;
     New(0, L, len, UV);

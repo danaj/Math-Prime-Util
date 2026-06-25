@@ -59,7 +59,7 @@ my %bigmin = (
 
 plan tests => 1+scalar(keys %bigmin)      # minimal
             + 1                           # count
-            + 1;                          # pairs
+            + 2;                          # pairs
 
 
 ###### minimal
@@ -93,11 +93,13 @@ while (my($n, $p) = each (%bigmin)) {
 
 ###### pairs
 {
-  my(@exp, @got);
+  my(@exp, @got, @scalargot);
   for my $g (@gb) {
     my($n,$L) = @$g;
     push @exp, $L;
     push @got, [goldbach_pairs($n)];
+    push @scalargot, scalar goldbach_pairs($n);
   }
   is_deeply(\@got, \@exp, "goldbach_pairs for small inputs");
+  is_deeply(\@scalargot, [map { scalar @$_ } @exp], "goldbach_pairs returns count in scalar context");
 }

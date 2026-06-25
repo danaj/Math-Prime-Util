@@ -57,8 +57,11 @@ subtest 'todigits', sub {
 
   is_deeply([todigits(900,2)], [1,1,1,0,0,0,0,1,0,0], "todigits 900 base 2");
   is_deeply([todigits(900,2,0)], [], "todigits 900 base 2 len 0");
+  is(scalar todigits(900,2,0), 0, "scalar todigits 900 base 2 len 0");
   is_deeply([todigits(900,2,3)], [1,0,0], "todigits 900 base 2 len 3");
+  is(scalar todigits(900,2,3), 3, "scalar todigits 900 base 2 len 3");
   is_deeply([todigits(900,2,32)], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,0,0], "todigits 900 base 2 len 32");
+  is(scalar todigits(900,2), 10, "scalar todigits 900 base 2");
 
   is(vecsum(todigits("293852387239761276234029385230912847923872323")), 201, "vecsum of todigits of bigint");
 

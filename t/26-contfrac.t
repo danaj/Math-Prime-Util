@@ -26,6 +26,7 @@ subtest 'contfrac and from_contfrac roundtrip' => sub {
   for my $t (@data) {
     my($n,$d,$exp) = @$t;
     is_deeply( [contfrac($n,$d)], $exp, "contfrac($n,$d)" );
+    is( scalar contfrac($n,$d), scalar(@$exp), "scalar contfrac($n,$d)" );
     is_deeply( [map{"$_"}from_contfrac(@$exp)], [$n,$d], "from_contfrac(@$exp)" );
   }
 };
@@ -99,6 +100,7 @@ subtest 'negative numerator' => sub {
   for my $t (@data) {
     my($n,$d,$exp) = @$t;
     is_deeply( [contfrac($n,$d)], $exp, "contfrac($n,$d)" );
+    is( scalar contfrac($n,$d), scalar(@$exp), "scalar contfrac($n,$d)" );
     is_deeply( [from_contfrac(@$exp)], [$n,$d], "from_contfrac(@$exp)" );
   }
 };
@@ -143,9 +145,11 @@ subtest 'bigint' => sub {
 subtest 'convergents' => sub {
   # Empty input returns empty list
   is_deeply( [convergents()], [], "convergents() = ()" );
+  is( scalar convergents(), 0, "scalar convergents() = 0" );
 
   # Single-element CF: just the integer itself
   is_deeply( [map{[@$_]} convergents(0)],   [[0,1]], "convergents(0)" );
+  is( scalar convergents(0), 1, "scalar convergents(0) = 1" );
   is_deeply( [map{[@$_]} convergents(3)],   [[3,1]], "convergents(3)" );
   is_deeply( [map{[@$_]} convergents(-3)],  [[-3,1]], "convergents(-3)" );
 
@@ -161,6 +165,7 @@ subtest 'convergents' => sub {
   is_deeply( \@pconv,
              [[3,1],[22,7],[333,106],[355,113],[103993,33102]],
              "pi convergents [3;7,15,1,292]" );
+  is( scalar convergents(3,7,15,1,292), 5, "scalar convergents returns count" );
 
   # Verify last-convergent numerator/denominator via from_contfrac
   my @last = @{(convergents(3,7,15,1,292))[-1]};

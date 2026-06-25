@@ -158,6 +158,7 @@ subtest 'specific XS calls', sub {
 subtest 'sieve_range', sub {
   is_deeply( [sieve_range(0, 1000, 40)], primes(1000), "sieve_range 0 width 1000 depth 40 returns primes" );
   is_deeply( [sieve_range(0, 0, 0)], [], "sieve_range width 0 returns empty" );
+  is( scalar sieve_range(0, 0, 0), 0, "sieve_range width 0 returns count 0 in scalar context" );
   is_deeply( [sieve_range(0, 1, 0)], [], "sieve_range depth 0 omits 0" );
   is_deeply( [sieve_range(0, 2, 1)], [], "sieve_range depth 1 omits 0 and 1" );
   is_deeply( [sieve_range(0, 5, 0)], [2,3,4], "sieve_range depth 0 returns unsieved candidates >= 2" );
@@ -171,6 +172,7 @@ subtest 'sieve_range', sub {
   is_deeply( [sieve_range(1, 6, 3)], [1,2,4], "sieve_range 1 width 6 depth 3 returns 1,2,4" );
   is_deeply( [sieve_range(0, 20, 2)], [2,3,5,7,9,11,13,15,17,19], "sieve_range depth 2 returns odds plus 2" );
   is_deeply( [sieve_range(0, 20, 3)], [2,3,5,7,11,13,17,19], "sieve_range depth 3 removes multiples of 2 and 3" );
+  is( scalar sieve_range(0, 20, 3), 8, "sieve_range returns candidate count in scalar context" );
   is_deeply( [sieve_range(45, 10, 5)], [2,4,8], "sieve_range depth 5 preserves 49" );
   is_deeply( [sieve_range(45, 10, 7)], [2,8], "sieve_range depth 7 removes 49" );
   is_deeply( [sieve_range(100, 50, ~0)], [map { $_ - 100 } @{primes(100,149)}], "sieve_range max depth returns prime offsets" );
