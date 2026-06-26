@@ -12036,6 +12036,14 @@ sub Pi {
   #                                                  use this FIRST ---+
   # approx
   # growth  5.6x    7.6x   8.0x      2.7x    4.1x   4.7x      3.9x    2.0x
+  #
+  # M1 Pro (2021), tested in 2026, Math::BigInt/BigFloat version 2.005003.
+  # Faster machine, new Math::BigFloat is now similar to our AGM.
+  #
+  # 16000   0.16  ----   159.0       0.16   ----   166.8      0.53    0.0008
+  #128000   2.8                      2.8                     32.0     0.004
+  #
+  # Same ordering: (1) GMP backend, (2) AGM if Math::BigInt::GMP, (3) C spigot.
 
   print "  using BigFloat for Pi($digits)\n" if $_verbose;
   _upgrade_to_float(0);

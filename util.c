@@ -1976,11 +1976,24 @@ bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
 }
 
 
-
+/* The 306M limit prevents a 32-bit size_t from overflowing.
+ * A 64-bit size_t would allow double that, but it isn't worth pursuing here.
+ * This method is not time-practical for millions of digits.
+ *
+ * GMP AGM for 300,000,000 digits on M1 Pro: 4 minutes.  This: 6+ YEARS.
+ *
+ * The point is that it works everywhere, doesn't require ANY bigint support,
+ * is small code, and is quite fast for smaller digit counts.
+ */
 #if HAVE_UINT64
   #define U64T uint64_t
+  #define PIDIGITS_MAX 306783370U
+#elif BITS_PER_WORD == 64
+  #define U64T UV
+  #define PIDIGITS_MAX 306783370U
 #else
   #define U64T UV
+  #define PIDIGITS_MAX 30566U
 #endif
 
 /* Spigot from Arndt, Haenel, Winter, and Flammenkamp. */
@@ -1992,12 +2005,14 @@ char* pidigits(uint32_t digits)
   uint32_t const f = 10000;
   U64T d64;  /* 64-bit intermediate for 2*2*10000*b > 2^32 (~30k digits) */
 
-  if (digits == 0) return 0;
-  if (digits >= 1 && digits <= DBL_DIG && digits <= 18) {
-    Newz(0, out, 20, char);
-    (void)snprintf(out, 20, "%.*lf", (digits-1), 3.141592653589793238);
+  if (digits <= 1) {
+    Newz(0, out, 2, char);
+    out[0] = '3';
+    out[digits] = '\0';
     return out;
   }
+  if (digits > PIDIGITS_MAX)
+    croak("_pidigits: too many digits for %u-bit calculations", (unsigned int)(sizeof(U64T)*8));
   digits++;   /* For rounding */
   c = 14*(digits/4 + 2);
   /* 1 for decimal point, 3 for possible extra in loop. */
