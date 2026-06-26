@@ -3643,13 +3643,18 @@ void bernfrac(IN SV* svn)
     DISPATCHPP_RETURN();
 
 void
-_pidigits(IN int digits)
+_pidigits(IN SV* svdigits)
   PREINIT:
+    UV digits;
     char* out;
   PPCODE:
-    if (digits <= 0) XSRETURN_EMPTY;
+    if (!_validate_and_set(&digits, aTHX_ svdigits, IFLAG_NONNEG) ||
+        digits > UINT32_MAX)
+      croak("_pidigits: input digits exceeds 32-bit limit");
+    if (digits == 0)
+      XSRETURN_PV("");
     out = pidigits(digits);
-    XPUSHs(sv_2mortal(newSVpvn(out, digits+1)));
+    XPUSHs(sv_2mortal(newSVpvn(out, digits + (digits>1))));
     Safefree(out);
 
 void inverse_totient(IN SV* svn)

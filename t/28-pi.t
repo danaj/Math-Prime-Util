@@ -25,7 +25,7 @@ if ($extra) {
   }
 }
 
-plan tests => 4 + !!$roundt + scalar(@extra_lengths) + 1;
+plan tests => 4 + !!$roundt + scalar(@extra_lengths) + 3;
 
 is(Pi(0), 0+$Pi, "Pi(0) gives floating point pi");
 is(Pi(1), 3, "Pi(1) = 3");
@@ -46,6 +46,8 @@ if ($roundt) {
 # Force test of C code
 SKIP: {
   skip "Not using XS, skipping XS _pidigits", 1 unless $usexs;
+  is(Math::Prime::Util::_pidigits(0), "", "XS _pidigits(0)");
+  is(Math::Prime::Util::_pidigits(1), "3", "XS _pidigits(1)");
   is(Math::Prime::Util::_pidigits(82), roundpi(82), "XS _pidigits");
 }
 
