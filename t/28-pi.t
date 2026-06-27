@@ -45,7 +45,7 @@ if ($roundt) {
 
 # Force test of C code
 SKIP: {
-  skip "Not using XS, skipping XS _pidigits", 1 unless $usexs;
+  skip "Not using XS, skipping XS _pidigits", 3 unless $usexs;
   is(Math::Prime::Util::_pidigits(0), "", "XS _pidigits(0)");
   is(Math::Prime::Util::_pidigits(1), "3", "XS _pidigits(1)");
   is(Math::Prime::Util::_pidigits(82), roundpi(82), "XS _pidigits");

@@ -415,7 +415,8 @@ sub _to_bigint {
     $n = Math::BigInt->new("$_[0]");
     $n = $_BIGINT->new("$n");
   } else {
-    $n = $_BIGINT->new("$_[0]");
+    (my $s = "$_[0]") =~ s/\A([+-]?)0+(?=\d+\z)/$1/;
+    $n = $_BIGINT->new($s);
   }
   croak "Parameter '$_[0]' must be an integer" unless $_BIGINT ne 'Math::BigInt' || $n->is_int();
   $n;
@@ -429,7 +430,8 @@ sub _to_bigint_nonneg {
   } elsif (ref($_[0]) eq 'Math::BigFloat' && !$_[0]->is_int()) {
     $n = Math::BigInt->bnan;
   } else {
-    $n = $_BIGINT->new("$_[0]");
+    (my $s = "$_[0]") =~ s/\A([+-]?)0+(?=\d+\z)/$1/;
+    $n = $_BIGINT->new($s);
   }
   croak "Parameter '$_[0]' must be a non-negative integer" unless ($_BIGINT ne 'Math::BigInt' || $n->is_int()) && $n >= 0;
   $n;
@@ -465,7 +467,8 @@ sub _maybe_bigint {
   _load_bigint() unless defined $_BIGINT;
   return $_[0] if !defined $_[0] || ref($_[0]);
   if ($_[0] >= INTMAX || $_[0] <= INTMIN) {
-    my $n = $_BIGINT->new("$_[0]");
+    (my $s = "$_[0]") =~ s/\A([+-]?)0+(?=\d+\z)/$1/;
+    my $n = $_BIGINT->new($s);
     return $_[0] = $n  if $n > INTMAX || $n < INTMIN;
   }
   $_[0];
@@ -475,7 +478,8 @@ sub _maybe_bigint_allargs {
   for my $i (0..$#_) {
     next if !defined $_[$i] || ref($_[$i]);
     next if $_[$i] < INTMAX && $_[$i] > INTMIN;
-    my $n = $_BIGINT->new("$_[$i]");
+    (my $s = "$_[$i]") =~ s/\A([+-]?)0+(?=\d+\z)/$1/;
+    my $n = $_BIGINT->new($s);
     $_[$i] = $n if $n > INTMAX || $n < INTMIN;
   }
   @_;
