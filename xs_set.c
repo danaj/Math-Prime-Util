@@ -94,6 +94,229 @@ int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, int loindex, int hiindex, 
   return 1;
 }
 
+bool xs_set_relation(pTHX_ SV* sva, SV* svb, set_relation_op_t op, int *ret, const char *name)
+{
+  int atype, btype;
+  UV *ra, *rb;
+  size_t alen, blen, inalen, inblen;
+
+  if (op < SET_REL_DISJOINT || op > SET_REL_PROPER_INTERSECTION)
+    croak("%s: unknown set relation", name);
+
+  /* If one set is much smaller than the other, it would be faster using
+   * is_in_set().  We'll keep things simple and slurp in both sets. */
+
+  /* THIS ASSUMES THE INPUT LISTS HAVE NO DUPLICATES */
+  inalen = inblen = 0;
+  if (SvROK(sva) && SvTYPE(SvRV(sva)) == SVt_PVAV && SvROK(svb) && SvTYPE(SvRV(svb)) == SVt_PVAV) {
+    /* Shortcut on length if we can to skip intersection. */
+    inalen = av_count((AV*) SvRV(sva));
+    inblen = av_count((AV*) SvRV(svb));
+    if ( (op == SET_REL_EQUAL           && inalen != inblen) ||
+         (op == SET_REL_SUBSET          && inalen <  inblen) ||
+         (op == SET_REL_PROPER_SUBSET   && inalen <= inblen) ||
+         (op == SET_REL_SUPERSET        && inalen >  inblen) ||
+         (op == SET_REL_PROPER_SUPERSET && inalen >= inblen) ) {
+      *ret = 0;
+      return 1;
+    }
+  }
+
+  /* Get the integers as sorted arrays of IV or UV */
+  atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, name);
+  btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, name);
+
+  if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
+    size_t rlen = 0, ia = 0, ib = 0;
+    int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
+
+    while (ia < alen && ib < blen) {
+      if (ra[ia] == rb[ib]) {
+        rlen++;
+        ia++; ib++;
+      } else {
+        if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
+        else                                     ib++;
+      }
+    }
+    Safefree(ra);
+    Safefree(rb);
+
+    *ret = 0;
+    switch (op) {
+      case SET_REL_DISJOINT:
+        *ret = (rlen == 0);
+        break;
+      case SET_REL_EQUAL:
+        *ret = (alen == blen && rlen == blen);
+        break;
+      case SET_REL_SUBSET:
+        *ret = (alen >= blen && rlen == blen);
+        break;
+      case SET_REL_PROPER_SUBSET:
+        *ret = (alen >  blen && rlen == blen);
+        break;
+      case SET_REL_SUPERSET:
+        *ret = (alen <= blen && rlen == alen);
+        break;
+      case SET_REL_PROPER_SUPERSET:
+        *ret = (alen <  blen && rlen == alen);
+        break;
+      case SET_REL_PROPER_INTERSECTION:
+        *ret = (rlen > 0 && rlen < alen && rlen < blen);
+        break;
+    }
+    return 1;
+  }
+  Safefree(ra);
+  Safefree(rb);
+  return 0;
+}
+
+static SV* set_arrayref_from_uv_array(pTHX_ size_t len, UV *data, int sign)
+{
+  size_t i;
+  AV *av = newAV();
+  if (len > 0) {
+    SV **ar;
+    av_extend(av, (SSize_t)len - 1);
+    ar = AvARRAY(av);
+    for (i = 0; i < len; i++)
+      ar[i] = NEWSVINT(sign, data[i]);
+    AvFILLp(av) = (SSize_t)len - 1;
+  }
+  Safefree(data);
+  return newRV_noinc((SV*)av);
+}
+
+static SV* set_arrayref_from_sv_merge(pTHX_ SV **aa, size_t alen, SV **bb, size_t blen, set_op_t op)
+{
+  int inc_eq = (op == SET_OP_UNION || op == SET_OP_INTERSECT);
+  int inc_lt = (op != SET_OP_INTERSECT);
+  int inc_gt = (op == SET_OP_UNION || op == SET_OP_DELTA);
+  size_t maxlen = (op == SET_OP_INTERSECT) ? (alen < blen ? alen : blen) : alen + blen;
+  AV *av = newAV();
+  size_t rlen = 0, ia = 0, ib = 0;
+  SV **ar;
+
+  if (maxlen > 0)
+    av_extend(av, (SSize_t)maxlen - 1);
+  ar = AvARRAY(av);
+
+  while (ia < alen && ib < blen) {
+    UV va = SvUVX(aa[ia]), vb = SvUVX(bb[ib]);
+    if (va == vb) {
+      if (inc_eq) ar[rlen++] = SvREFCNT_inc(aa[ia]);
+      ia++;
+      ib++;
+    } else if (va < vb) {
+      if (inc_lt) ar[rlen++] = SvREFCNT_inc(aa[ia]);
+      ia++;
+    } else {
+      if (inc_gt) ar[rlen++] = SvREFCNT_inc(bb[ib]);
+      ib++;
+    }
+  }
+  if (inc_lt) while (ia < alen) ar[rlen++] = SvREFCNT_inc(aa[ia++]);
+  if (inc_gt) while (ib < blen) ar[rlen++] = SvREFCNT_inc(bb[ib++]);
+  AvFILLp(av) = (SSize_t)rlen - 1;
+
+  return newRV_noinc((SV*)av);
+}
+
+bool xs_set_op(pTHX_ SV* sva, SV* svb, set_op_t op, SV **ret, const char *name)
+{
+  int atype, btype;
+  UV *ra, *rb;
+  size_t alen, blen;
+
+  if (op < SET_OP_UNION || op > SET_OP_DELTA)
+    croak("%s: unknown set operation", name);
+
+  /* Fast path: both inputs are non-magical arrayrefs of native non-negative
+   * sorted unique integers.  Merge SV* directly, preserving existing values
+   * and skipping intermediate UV arrays and per-element newSVuv calls. */
+  {
+    size_t fa, fb;
+    SV **aa = _check_sorted_nonneg_arrayref(aTHX_ sva, &fa);
+    SV **bb = aa ? _check_sorted_nonneg_arrayref(aTHX_ svb, &fb) : NULL;
+    if (aa && bb) {
+      *ret = set_arrayref_from_sv_merge(aTHX_ aa, fa, bb, fb, op);
+      return 1;
+    }
+  }
+
+  /* Get the integers and ensure they are sorted unique integers first. */
+  atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, name);
+  btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, name);
+
+  if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
+    UV *r = 0;
+    size_t rlen = 0, ia = 0, ib = 0;
+    int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
+
+    if (op == SET_OP_UNION) {
+      New(0, r, alen + blen, UV);
+      while (ia < alen && ib < blen) {
+        if (ra[ia] == rb[ib]) {
+          r[rlen++] = ra[ia];
+          ia++;
+          ib++;
+        } else {
+          if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+          else                                     r[rlen++] = rb[ib++];
+        }
+      }
+      if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
+      if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
+    } else if (op == SET_OP_INTERSECT) {
+      New(0, r, (alen < blen) ? alen : blen, UV);
+      while (ia < alen && ib < blen) {
+        if (ra[ia] == rb[ib]) {
+          r[rlen++] = ra[ia];
+          ia++;
+          ib++;
+        } else {
+          if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
+          else                                     ib++;
+        }
+      }
+    } else if (op == SET_OP_MINUS) {
+      New(0, r, alen, UV);
+      while (ia < alen && ib < blen) {
+        if (ra[ia] == rb[ib]) {
+          ia++;
+          ib++;
+        } else {
+          if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+          else                                     ib++;
+        }
+      }
+      if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
+    } else if (op == SET_OP_DELTA) {
+      New(0, r, alen + blen, UV);
+      while (ia < alen && ib < blen) {
+        if (ra[ia] == rb[ib]) {
+          ia++;
+          ib++;
+        } else {
+          if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
+          else                                     r[rlen++] = rb[ib++];
+        }
+      }
+      if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
+      if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
+    }
+    Safefree(ra);
+    Safefree(rb);
+    *ret = set_arrayref_from_uv_array(aTHX_ rlen, r, pcmp);
+    return 1;
+  }
+  Safefree(ra);
+  Safefree(rb);
+  return 0;
+}
+
 
 
 /* index of val in a set (array ref of sorted unique integers)

@@ -5481,103 +5481,13 @@ void setunion(IN SV* sva, IN SV* svb)
     setminus = 2
     setdelta = 3
   PREINIT:
-    int atype, btype;
-    UV *ra, *rb;
-    size_t alen, blen;
+    SV *ret;
   PPCODE:
-    /* Fast path: both inputs are arrayrefs of native non-negative sorted
-     * unique integers.  Merge SV* directly with SvREFCNT_inc, skipping
-     * intermediate UV array allocations and per-element newSVuv calls. */
-    {
-      size_t fa, fb;
-      SV **aa = _check_sorted_nonneg_arrayref(aTHX_ sva, &fa);
-      SV **bb = aa ? _check_sorted_nonneg_arrayref(aTHX_ svb, &fb) : NULL;
-      if (aa && bb) {
-        int inc_eq = (ix == 0 || ix == 1); /* union, intersect */
-        int inc_lt = (ix != 1);            /* union, minus, delta */
-        int inc_gt = (ix == 0 || ix == 3); /* union, delta */
-        size_t maxlen  = (ix == 1) ? (fa < fb ? fa : fb) : fa + fb;
-        AV  *res = newAV();
-        size_t rlen = 0, ia = 0, ib = 0;
-        av_extend(res, (SSize_t)maxlen - 1);
-        SV **ar = AvARRAY(res);
-        while (ia < fa && ib < fb) {
-          UV va = SvUVX(aa[ia]), vb = SvUVX(bb[ib]);
-          if      (va==vb) {if (inc_eq) ar[rlen++]=SvREFCNT_inc(aa[ia]); ia++; ib++;}
-          else if (va< vb) {if (inc_lt) ar[rlen++]=SvREFCNT_inc(aa[ia]); ia++;}
-          else             {if (inc_gt) ar[rlen++]=SvREFCNT_inc(bb[ib]); ib++;}
-        }
-        if (inc_lt) while (ia < fa) ar[rlen++] = SvREFCNT_inc(aa[ia++]);
-        if (inc_gt) while (ib < fb) ar[rlen++] = SvREFCNT_inc(bb[ib++]);
-        AvFILLp(res) = (SSize_t)rlen - 1;
-        ST(0) = sv_2mortal(newRV_noinc((SV*)res));
-        XSRETURN(1);
-      }
+    /* Alias ix values intentionally match set_op_t. */
+    if (xs_set_op(aTHX_ sva, svb, (set_op_t)ix, &ret, SUBNAME)) {
+      ST(0) = sv_2mortal(ret);
+      XSRETURN(1);
     }
-    /* Get the integers and ensure they are sorted unique integers first. */
-    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
-    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
-
-    if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
-      UV *r = 0;
-      size_t rlen = 0, ia = 0, ib = 0;
-      int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
-
-      if (ix == 0) {        /* union */
-        New(0, r, alen + blen, UV);
-        while (ia < alen && ib < blen) {
-          if (ra[ia] == rb[ib]) {
-            r[rlen++] = ra[ia];
-            ia++; ib++;
-          } else {
-            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
-            else                                     r[rlen++] = rb[ib++];
-          }
-        }
-        if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
-        if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
-      } else if (ix == 1) { /* intersect */
-        New(0, r, (alen < blen) ? alen : blen, UV);
-        while (ia < alen && ib < blen) {
-          if (ra[ia] == rb[ib]) {
-            r[rlen++] = ra[ia];
-            ia++; ib++;
-          } else {
-            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
-            else                                     ib++;
-          }
-        }
-      } else if (ix == 2) { /* minus (difference) */
-        New(0, r, alen, UV);
-        while (ia < alen && ib < blen) {
-          if (ra[ia] == rb[ib]) {
-            ia++; ib++;
-          } else {
-            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
-            else                                     ib++;
-          }
-        }
-        if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
-      } else if (ix == 3) { /* delta (symmetric difference) */
-        New(0, r, alen + blen, UV);
-        while (ia < alen && ib < blen) {
-          if (ra[ia] == rb[ib]) {
-            ia++; ib++;
-          } else {
-            if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) r[rlen++] = ra[ia++];
-            else                                     r[rlen++] = rb[ib++];
-          }
-        }
-        if (ia < alen) { Copy(ra+ia, r+rlen, alen-ia, UV); rlen += alen-ia; }
-        if (ib < blen) { Copy(rb+ib, r+rlen, blen-ib, UV); rlen += blen-ib; }
-      }
-      Safefree(ra);
-      Safefree(rb);
-      RETURN_LIST_REF(rlen, r, pcmp);
-    }
-    /* if (atype != IARR_TYPE_BAD && btype != IARR_TYPE_BAD) { .. isets .. } */
-    Safefree(ra);
-    Safefree(rb);
     DISPATCHPP_RETURN();
 
 void set_is_disjoint(IN SV* sva, IN SV* svb)
@@ -5590,59 +5500,11 @@ void set_is_disjoint(IN SV* sva, IN SV* svb)
     set_is_proper_superset = 5
     set_is_proper_intersection = 6
   PREINIT:
-    int atype, btype, ret;
-    UV *ra, *rb;
-    size_t alen, blen, inalen, inblen;
+    int ret;
   PPCODE:
-    /* If one set is much smaller than the other, it would be faster using
-     * is_in_set().  We'll keep things simple and slurp in both sets. */
-
-    /* THIS ASSUMES THE INPUT LISTS HAVE NO DUPLICATES */
-    inalen = inblen = 0;
-    if (SvROK(sva) && SvTYPE(SvRV(sva)) == SVt_PVAV && SvROK(svb) && SvTYPE(SvRV(svb)) == SVt_PVAV) {
-      /* Shortcut on length if we can to skip intersection. */
-      inalen = av_count((AV*) SvRV(sva));
-      inblen = av_count((AV*) SvRV(svb));
-      if ( (ix == 1 && inalen != inblen) ||
-           (ix == 2 && inalen <  inblen) || (ix == 3 && inalen <= inblen) ||
-           (ix == 4 && inalen >  inblen) || (ix == 5 && inalen >= inblen) )
-        RETURN_NPARITY(0);
-    }
-
-    /* Get the integers as sorted arrays of IV or UV */
-    atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, SUBNAME);
-    btype = arrayref_to_int_array(aTHX_ &blen, &rb, 1, svb, SUBNAME);
-
-    if (CAN_COMBINE_IARR_TYPES(atype,btype)) {
-      size_t rlen = 0, ia = 0, ib = 0;
-      int pcmp = (atype == IARR_TYPE_NEG || btype == IARR_TYPE_NEG) ? 0 : 1;
-
-      while (ia < alen && ib < blen) {
-        if (ra[ia] == rb[ib]) {
-          rlen++;
-          ia++; ib++;
-        } else {
-          if (SIGNED_CMP_LT(pcmp, ra[ia], rb[ib])) ia++;
-          else                                     ib++;
-        }
-      }
-      Safefree(ra);
-      Safefree(rb);
-      ret = 0;
-      switch (ix) {
-        case 0: if (rlen == 0) ret = 1;   break;
-        case 1: if (alen == blen && rlen == blen) ret = 1;  break;
-        case 2: if (alen >= blen && rlen == blen) ret = 1;  break;
-        case 3: if (alen >  blen && rlen == blen) ret = 1;  break;
-        case 4: if (alen <= blen && rlen == alen) ret = 1;  break;
-        case 5: if (alen <  blen && rlen == alen) ret = 1;  break;
-        case 6:
-        default:if (rlen > 0 && rlen < alen && rlen < blen) ret = 1; break;
-      }
+    /* Alias ix values intentionally match set_relation_op_t. */
+    if (xs_set_relation(aTHX_ sva, svb, (set_relation_op_t)ix, &ret, SUBNAME))
       RETURN_NPARITY(ret);
-    }
-    Safefree(ra);
-    Safefree(rb);
     DISPATCHPP_RETURN();
 
 void setcontains(IN SV* sva, ...)
