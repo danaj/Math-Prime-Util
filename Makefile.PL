@@ -38,15 +38,15 @@ WriteMakefile1(
                     'util.o '         .
                     'factor128.o '    .
                     'factor.o '       .
-                    'inverse_sigma0.o ' .
-                    'znlog.o '        .
                     'rootmod.o '      .
                     'strops.o '       .
                     'primality.o '    .
-                    'sieve_cluster.o '.
                     'congruent_numbers.o ' .
                     'totients.o '     .
+                    'sieve_cluster.o '.
                     'sieve.o '        .
+                    'znlog.o '        .
+                    'inverse_sigma0.o ' .
                     'lucky_numbers.o '.
                     'factmod.o '      .
                     'lmo.o '          .

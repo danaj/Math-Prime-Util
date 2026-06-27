@@ -19,6 +19,8 @@ typedef enum {
   SET_OP_DELTA
 } set_op_t;
 bool xs_set_op(pTHX_ SV* sva, SV* svb, set_op_t op, SV **ret, const char *name);
+bool xs_is_sidon_set(pTHX_ SV* sva, int *ret);
+bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret);
 
 #define MPU_SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
 typedef struct { /* lo in 0, hi in 1, cached values in rest */

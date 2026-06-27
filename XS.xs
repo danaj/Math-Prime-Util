@@ -68,7 +68,7 @@
 #include "rootmod.h"
 #include "rational.h"
 #include "real.h"
-#include "ds_iset.h"  /* Used for sumset, setbinop, is_sidon_set, vecuniq */
+#include "ds_iset.h"  /* Used for sumset, setbinop, vecuniq */
 
 /* multicall compatibility stuff */
 #if PERL_VERSION_LT(5,7,0) || !defined(dMULTICALL)
@@ -5871,74 +5871,19 @@ void setinvert(IN SV* sva, ...)
 void is_sidon_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
-    int itype, is_sidon;
-    size_t len, i, j;
-    UV *data;
-    iset_t s;
+    int ret;
   PPCODE:
-    itype = arrayref_to_int_array(aTHX_ &len, &data, 1, sva,"is_sidon_set");
-    if (itype == IARR_TYPE_NEG) {  /* All elements must be non-negative. */
-      Safefree(data);
-      RETURN_NPARITY(0);
-    }
-    /* If any bigints or we cannot add the values in 64-bits, call PP. */
-    if (itype == IARR_TYPE_BAD || itype == IARR_TYPE_POS) {
-      Safefree(data);
-      DISPATCHPP_RETURN();
-    }
-    /* Check if the set is a Sidon set. */
-    is_sidon = 1;
-    s = iset_create( 20UL * len );
-    for (i = 0; i < len && is_sidon; i++)
-      for (j = i; j < len; j++)
-        if (!iset_add(&s, data[i] + data[j], 1))
-          { is_sidon = 0; break; }
-    Safefree(data);
-    iset_destroy(&s);
-    RETURN_NPARITY(is_sidon);
+    if (xs_is_sidon_set(aTHX_ sva, &ret))
+      RETURN_NPARITY(ret);
+    DISPATCHPP_RETURN();
 
 void is_sumfree_set(IN SV* sva)
   PROTOTYPE: $
   PREINIT:
-    UV *data;
-    size_t len, i, j;
-    int itype;
-    bool is_sumfree;
+    int ret;
   PPCODE:
-    itype = arrayref_to_int_array(aTHX_ &len, &data,1,sva,"is_sumfree_set");
-    if (itype != IARR_TYPE_BAD && len <= 1) { /* Degenerate cases: len 0 or 1 */
-      is_sumfree = len == 0 || data[0] != 0;
-      Safefree(data);
-      RETURN_NPARITY(is_sumfree);
-    }
-    /* Check for IV overflow on sum */
-    if (itype == IARR_TYPE_NEG) {
-      IV min = data[0], max = data[len-1];  /* Array is sorted */
-      if (min < IV_MIN/2 || max > IV_MAX/2)  itype = IARR_TYPE_BAD;
-    }
-    is_sumfree = 1;
-    if (itype == IARR_TYPE_ANY) {
-      for (i = 0; i < len && is_sumfree; i++)
-        for (j = i; j < len; j++)
-          if (is_in_sorted_uv_array(data[i]+data[j], data, len))
-            { is_sumfree = 0; break; }
-    } else if (itype == IARR_TYPE_NEG) {
-      for (i = 0; i < len && is_sumfree; i++)
-        for (j = i; j < len; j++)
-          if (is_in_sorted_iv_array((IV)data[i]+(IV)data[j], (IV*)data, len))
-            { is_sumfree = 0; break; }
-    }
-    Safefree(data);
-
-    if (itype == IARR_TYPE_ANY || itype == IARR_TYPE_NEG)
-      RETURN_NPARITY(is_sumfree);
-
-    /* We're here because one of:
-     *   1) itype is TYPE_BAD because there were bigints.
-     *   2) itype is TYPE_BAD because summed IVs would overflow.
-     *   3) itype is TYPE_POS.
-     *      At least one element is >= 2^63, so we would overflow on sum.
-     */
+    if (xs_is_sumfree_set(aTHX_ sva, &ret))
+      RETURN_NPARITY(ret);
     DISPATCHPP_RETURN();
 
 void toset(...)

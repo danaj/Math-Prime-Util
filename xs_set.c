@@ -8,6 +8,8 @@
 #include "ppport.h"
 
 #include "ptypes.h"
+#include "util.h"
+#include "ds_iset.h"
 #include "xs_internal.h"
 #include "xs_set.h"
 
@@ -314,6 +316,85 @@ bool xs_set_op(pTHX_ SV* sva, SV* svb, set_op_t op, SV **ret, const char *name)
   }
   Safefree(ra);
   Safefree(rb);
+  return 0;
+}
+
+bool xs_is_sidon_set(pTHX_ SV* sva, int *ret)
+{
+  int itype, is_sidon;
+  size_t len, i, j;
+  UV *data;
+  iset_t s;
+
+  itype = arrayref_to_int_array(aTHX_ &len, &data, 1, sva, "is_sidon_set");
+  if (itype == IARR_TYPE_NEG) {  /* All elements must be non-negative. */
+    Safefree(data);
+    *ret = 0;
+    return 1;
+  }
+  /* If any bigints or we cannot add the values in 64-bits, call PP. */
+  if (itype == IARR_TYPE_BAD || itype == IARR_TYPE_POS) {
+    Safefree(data);
+    return 0;
+  }
+
+  is_sidon = 1;
+  s = iset_create(20UL * len);
+  for (i = 0; i < len && is_sidon; i++)
+    for (j = i; j < len; j++)
+      if (!iset_add(&s, data[i] + data[j], 1))
+        { is_sidon = 0; break; }
+  Safefree(data);
+  iset_destroy(&s);
+
+  *ret = is_sidon;
+  return 1;
+}
+
+bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret)
+{
+  UV *data;
+  size_t len, i, j;
+  int itype;
+  bool is_sumfree;
+
+  itype = arrayref_to_int_array(aTHX_ &len, &data, 1, sva, "is_sumfree_set");
+  if (itype != IARR_TYPE_BAD && len <= 1) { /* Degenerate cases: len 0 or 1 */
+    *ret = (len == 0 || data[0] != 0);
+    Safefree(data);
+    return 1;
+  }
+  /* Check for IV overflow on sum */
+  if (itype == IARR_TYPE_NEG) {
+    IV min = data[0], max = data[len-1];  /* Array is sorted */
+    if (min < IV_MIN/2 || max > IV_MAX/2)
+      itype = IARR_TYPE_BAD;
+  }
+  is_sumfree = 1;
+  if (itype == IARR_TYPE_ANY) {
+    for (i = 0; i < len && is_sumfree; i++)
+      for (j = i; j < len; j++)
+        if (is_in_sorted_uv_array(data[i]+data[j], data, len))
+          { is_sumfree = 0; break; }
+  } else if (itype == IARR_TYPE_NEG) {
+    for (i = 0; i < len && is_sumfree; i++)
+      for (j = i; j < len; j++)
+        if (is_in_sorted_iv_array((IV)data[i]+(IV)data[j], (IV*)data, len))
+          { is_sumfree = 0; break; }
+  }
+  Safefree(data);
+
+  if (itype == IARR_TYPE_ANY || itype == IARR_TYPE_NEG) {
+    *ret = is_sumfree;
+    return 1;
+  }
+
+  /* We're here because one of:
+   *   1) itype is TYPE_BAD because there were bigints.
+   *   2) itype is TYPE_BAD because summed IVs would overflow.
+   *   3) itype is TYPE_POS.
+   *      At least one element is >= 2^63, so we would overflow on sum.
+   */
   return 0;
 }
 
