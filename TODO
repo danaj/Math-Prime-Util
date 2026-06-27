@@ -322,18 +322,11 @@
   Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
 
 - GMP
-  - rootmod, binomialmod
   - almost primes
   - omega primes
-  - powerful numbers, counts
-  - prime_power_count
   - smooth_count
   - rough_count
-  - fdivrem, lucasuv, lucasumod, lucasvmod, lucasuvmod
-  - prime_bigomega
-  - prime_omega
   - qnr
-  - fdivrem
 
 - consider (in GMP 0.53):
   - setbit, clrbit, combit, tstbit
@@ -590,7 +583,7 @@ OEIS lucky numbers:
 - keyval.h sizes should be size_t, not long/UV.
 
 - Some more functions to add to the GMP backend:
-  fubini, partitionsq, dedekind_psi, vecprefixsum?, is_safe_prime, aliquot_sum
+  fubini, partitionsq, vecprefixsum
 
 - XS.xs call/return helpers need work to handle stack correctly.  The caller
   shouldn't have to worry about how many input args there were.  There's also
@@ -624,8 +617,6 @@ OEIS lucky numbers:
 
 - Check PP validation on 5.6.2.
 
-- redo t/32-iterators as subtests.
-
 - more of the is_...prime PPFE functions should be aliased.
 
 - xops in priority:
@@ -640,8 +631,6 @@ OEIS lucky numbers:
   negint
 
 - is_semiprime using 128-bit factoring.  Other things that could?
-
-- Move some set op logic from XS.xs to xs_set.c
 
 - srand should perhaps do better input parsing.
 
@@ -681,11 +670,16 @@ OEIS lucky numbers:
   Naming conversions will be an issue
 
 - inverse_sigma0 in PP should have a generator method. e.g. (5040,1<<40)
-- inverse_sigma0.c, full_factor_sieve() should be tuned.
 
 - tstbit(n,k) (bitget, bit_test).
 - scan1(n,start) / scan0(n,start)
 
-- GMP allsqrtmod
-- GMP rootmod
-- GMP allrootmod
+- forpart new option order => 'revlex' to match newer Pari
+- partitions_list function to return all partitions
+
+- sidef inverse_count is very nifty.
+  https://github.com/trizen/sidef/commit/cb4094f8
+
+- is_power deprecate k=undef, deprecate k=0.
+
+- GMP scalar count: sieve_prime_cluster, euler_phi, moebius

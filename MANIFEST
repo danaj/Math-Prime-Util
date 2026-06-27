@@ -309,7 +309,11 @@ t/28-pi.t
 t/29-mersenne.t
 t/30-relations.t
 t/31-threading.t
-t/32-iterators.t
+t/32-1-iterators.t
+t/32-2-for-range.t
+t/32-3-for-factoring.t
+t/32-4-for-combinatorial.t
+t/32-5-lastfor.t
 t/33-examples.t
 t/34-random.t
 t/35-cipher.t
