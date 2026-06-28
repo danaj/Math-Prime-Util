@@ -6,6 +6,7 @@
 
 #include <stdio.h>      /* For fileno and stdout */
 #include <stdlib.h>     /* For free */
+#include <string.h>     /* For memcmp */
 #include <errno.h>      /* For errno */
 #include "EXTERN.h"
 #include "perl.h"
@@ -1260,6 +1261,44 @@ static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask)
   }
   return TRUE;
 }
+
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+static bool xs_str_to_uint128(uint128_t *out, const char *s, STRLEN len)
+{
+  static const char uint128_max_str[] = "340282366920938463463374607431768211455";
+  STRLEN i;
+  uint128_t n = 0;
+
+  if (len == 0) return 0;
+  if (*s == '+') { s++; len--; if (len == 0) return 0; }
+  if (*s == '-') return 0;
+
+  while (len > 1 && *s == '0') { s++; len--; }
+
+  if (len > 39 || (len == 39 && memcmp(s, uint128_max_str, 39) > 0))
+    return 0;
+
+  for (i = 0; i < len; i++) {
+    if (s[i] < '0' || s[i] > '9')
+      return 0;
+    n = n * 10 + (uint8_t)(s[i] - '0');
+  }
+
+  *out = n;
+  return 1;
+}
+
+static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
+{
+  uint128_t n;
+  STRLEN len;
+  const char *s = SvPV_nomg(sv, len);
+
+  if (!xs_str_to_uint128(&n, s, len))
+    return 0;
+  return factorintp128(nf, n);
+}
+#endif
 
 /******************************************************************************/
 /******************************************************************************/
@@ -3742,53 +3781,43 @@ factor(IN SV* svn)
     } else {
 #if BITS_PER_WORD == 64 && HAVE_UINT128
       if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
-        STRLEN slen, j;
-        const char *str = SvPV_nomg(svn, slen);
-        if (strint_cmp(str,slen,"340282366920938463463374607431768211456",39) < 0) {
-          /* str is a decimal string between 0 and 2^128-1 */
-          factored128_t nf;
-          uint128_t n128 = 0;
-          for (j = 0; j < slen; j++)
-            n128 = n128 * 10 + (uint8_t)(str[j] - '0');
-          if (factorintp128(&nf, n128)) {
-            uint16_t fi, ei;
-            if (ix == 0) {
-              /* flat list */
-              uint32_t total = 0;
-              for (fi = 0; fi < nf.nfactors; fi++) total += nf.e[fi];
-              if (nf.flarge) total++;
-              if (gimme_v == G_SCALAR) XSRETURN_UV(total);
-              EXTEND(SP, (EXTEND_TYPE)total);
-              for (fi = 0; fi < nf.nfactors; fi++)
-                for (ei = 0; ei < nf.e[fi]; ei++)
-                  PUSHs(sv_2mortal(newSVuv(nf.f[fi])));
-              if (nf.flarge) {
-                char fbuf[40];
-                uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
-                PUSH_BIGINT_STR(fbuf, flen);
-              }
-            } else {
-              /* [p, e] pairs */
-              uint32_t total = nf.nfactors + (nf.flarge ? 1 : 0);
-              if (gimme_v == G_SCALAR) XSRETURN_UV(total);
-              EXTEND(SP, (EXTEND_TYPE)total);
-              for (fi = 0; fi < nf.nfactors; fi++)
-                PUSH_2ELEM_AREF(nf.f[fi], nf.e[fi]);
-              if (nf.flarge) {
-                char fbuf[40];
-                uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
-                PUTBACK;
-                AV* av_ = newAV();
-                SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen)));
-                SPAGAIN;
-                av_push(av_, SvREFCNT_inc(sv_));
-                av_push(av_, newSVuv(1));
-                PUSHs(sv_2mortal(newRV_noinc((SV*)av_)));
-              }
+        factored128_t nf;
+        if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
+          uint16_t fi, ei;
+          if (ix == 0) {
+            /* flat list */
+            uint32_t total = factored128p_total_factors(&nf);
+            if (gimme_v == G_SCALAR) XSRETURN_UV(total);
+            EXTEND(SP, (EXTEND_TYPE)total);
+            for (fi = 0; fi < nf.nfactors; fi++)
+              for (ei = 0; ei < nf.e[fi]; ei++)
+                PUSHs(sv_2mortal(newSVuv(nf.f[fi])));
+            if (nf.flarge) {
+              char fbuf[40];
+              uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
+              PUSH_BIGINT_STR(fbuf, flen);
             }
-            PUTBACK;
-            return;
+          } else {
+            /* [p, e] pairs */
+            uint32_t total = factored128p_distinct_factors(&nf);
+            if (gimme_v == G_SCALAR) XSRETURN_UV(total);
+            EXTEND(SP, (EXTEND_TYPE)total);
+            for (fi = 0; fi < nf.nfactors; fi++)
+              PUSH_2ELEM_AREF(nf.f[fi], nf.e[fi]);
+            if (nf.flarge) {
+              char fbuf[40];
+              uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
+              PUTBACK;
+              AV* av_ = newAV();
+              SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen)));
+              SPAGAIN;
+              av_push(av_, SvREFCNT_inc(sv_));
+              av_push(av_, newSVuv(1));
+              PUSHs(sv_2mortal(newRV_noinc((SV*)av_)));
+            }
           }
+          PUTBACK;
+          return;
         }
       }
 #endif

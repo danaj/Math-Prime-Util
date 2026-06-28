@@ -1134,6 +1134,36 @@ static void insert_factor128(factored128_t *nf, UV p) {
 }
 
 /*****************************************************************************
+ * Public helper functions
+ *****************************************************************************/
+
+uint32_t factored128p_total_factors(const factored128_t *nf) {
+  uint32_t i, nfacs = nf->flarge ? 1 : 0;
+  for (i = 0; i < nf->nfactors; i++)
+    nfacs += nf->e[i];
+  return nfacs;
+}
+uint32_t factored128p_distinct_factors(const factored128_t *nf) {
+  return nf->nfactors + (nf->flarge ? 1 : 0);
+}
+bool factored128p_is_square_free(const factored128_t *nf) {
+  uint32_t i;
+  for (i = 0; i < nf->nfactors; i++)
+    if (nf->e[i] > 1)
+      return 0;
+  return 1;
+}
+signed char factored128p_moebius(const factored128_t *nf) {
+  uint32_t i, nfactors = nf->flarge ? 1 : 0;
+  for (i = 0; i < nf->nfactors; i++) {
+    if (nf->e[i] > 1)
+      return 0;
+    nfactors++;
+  }
+  return nfactors % 2 ? -1 : 1;
+}
+
+/*****************************************************************************
  * Public entry point
  *****************************************************************************/
 

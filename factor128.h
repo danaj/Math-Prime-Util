@@ -22,6 +22,12 @@ extern bool factorintp128(factored128_t *nf, uint128_t n);
 MAYBE_UNUSED static INLINE factored128_t factorint128(uint128_t n)
   { factored128_t nf; factorintp128(&nf, n); return nf; }
 
+/* Simple helper functions */
+extern uint32_t    factored128p_total_factors(const factored128_t *nf);
+extern uint32_t    factored128p_distinct_factors(const factored128_t *nf);
+extern bool        factored128p_is_square_free(const factored128_t *nf);
+extern signed char factored128p_moebius(const factored128_t *nf);
+
 #endif /* BITS_PER_WORD == 64 && HAVE_UINT128 */
 
 #endif /* MPU_FACTOR128_H */
