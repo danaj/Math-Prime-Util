@@ -1288,16 +1288,33 @@ static bool xs_str_to_uint128(uint128_t *out, const char *s, STRLEN len)
   return 1;
 }
 
-static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
+static bool xs_sv_to_uint128(pTHX_ uint128_t *n, SV *sv)
 {
-  uint128_t n;
   STRLEN len;
   const char *s = SvPV_nomg(sv, len);
 
-  if (!xs_str_to_uint128(&n, s, len))
-    return 0;
-  return factorintp128(nf, n);
+  return xs_str_to_uint128(n, s, len);
 }
+
+static bool xs_sv_to_uint128_abs(pTHX_ uint128_t *n, SV *sv)
+{
+  STRLEN len;
+  const char *s = SvPV_nomg(sv, len);
+
+  if (len > 0 && *s == '-') { s++; len--; }
+  return xs_str_to_uint128(n, s, len);
+}
+
+static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
+{
+  uint128_t n;
+
+  if (!xs_sv_to_uint128(aTHX_ &n, sv))
+    return 0;
+  factorintp128(nf, n);
+  return 1;
+}
+
 #endif
 
 /******************************************************************************/
@@ -2158,6 +2175,13 @@ void is_prime(IN SV* svn)
         default: break;
       }
     }
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+    else if (ix == 13) {
+      uint128_t n128;
+      if (xs_sv_to_uint128(aTHX_ &n128, svn))
+        RETURN_NPARITY(is_semiprime128(n128));
+    }
+#endif
     if (status != 0)  RETURN_NPARITY(ret);
     DISPATCHPP_RETURN();
 
@@ -4478,6 +4502,16 @@ is_omega_prime(IN SV* svk, IN SV* svn)
               :                  is_almost_prime(k, n);
       RETURN_NPARITY(res);
     }
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+    if (kstatus != 0 && nstatus == 0) {
+      factored128_t nf;
+      if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
+        uint32_t nfac = (ix == 0) ? factored128p_distinct_factors(&nf)
+                                  : factored128p_total_factors(&nf);
+        RETURN_NPARITY(nfac == k);
+      }
+    }
+#endif
     DISPATCHPP_RETURN();
 
 void is_divisible(IN SV* svn, IN SV* svd, ...)
@@ -5034,6 +5068,13 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
         XSRETURN_UV(lostatus == -1 ? 0 : totient(lo));
       if (lostatus != 0 && ix == 1)
         RETURN_NPARITY(moebius(lostatus == -1 ? neg_iv(lo) : lo));
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+      if (ix == 1) {
+        uint128_t n128;
+        if (xs_sv_to_uint128_abs(aTHX_ &n128, svlo))
+          RETURN_NPARITY(moebius128(n128));
+      }
+#endif
       DISPATCHPP_RETURN();  /* single argument dispatch */
     }
 
@@ -5132,29 +5173,51 @@ void sqrtint(IN SV* svn)
     }
     DISPATCHPP_RETURN();
 
+void hammingweight(IN SV* svn)
+  PREINIT:
+    UV n;
+  PPCODE:
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS))
+      XSRETURN_UV(popcnt(n));
+    if (_XS_get_callgmp() < 47) {
+      char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
+      XSRETURN_UV(mpu_popcount_string(ptr, len));
+    }
+    DISPATCHPP_RETURN();
+
 void prime_omega(IN SV* svn)
   ALIAS:
     prime_bigomega = 1
-    hammingweight = 2
-    is_square_free = 3
+    is_square_free = 2
   PREINIT:
     UV n, ret;
+    int status;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS)) {
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (status != 0) {
       ret = 0;
       switch (ix) {
         case 0:  ret = prime_omega(n);    break;
         case 1:  ret = prime_bigomega(n); break;
-        case 2:  ret = popcnt(n);         break;
-        case 3:  ret = is_square_free(n); break;
+        case 2:  ret = is_square_free(n); break;
         default: break;
       }
       RETURN_NPARITY(ret);
     }
-    if (ix == 2 && _XS_get_callgmp() < 47) {
-      char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
-      XSRETURN_UV(mpu_popcount_string(ptr, len));
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+    {
+      uint128_t n128;
+      if (xs_sv_to_uint128_abs(aTHX_ &n128, svn)) {
+        if (ix < 2) {
+          factored128_t nf;
+          factorintp128(&nf, n128);
+          ret = (ix == 0) ? factored128p_distinct_factors(&nf)
+                          : factored128p_total_factors(&nf);
+        } else        ret = (moebius128(n128) != 0);
+        RETURN_NPARITY(ret);
+      }
     }
+#endif
     DISPATCHPP_RETURN();
 
 void pisano_period(IN SV* svn)
@@ -5333,6 +5396,16 @@ void mertens(IN SV* svn)
       }
       if (status != 0) RETURN_NPARITY(r);
     }
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+    if (ix == 1) {
+      uint128_t n128;
+      if (xs_sv_to_uint128(aTHX_ &n128, svn)) {
+        factored128_t nf;
+        factorintp128(&nf, n128);
+        RETURN_NPARITY((factored128p_total_factors(&nf) & 1) ? -1 : 1);
+      }
+    }
+#endif
     DISPATCHPP_RETURN();
 
 int _is_congruent_number_filter(IN UV n)
