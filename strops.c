@@ -707,6 +707,19 @@ static void b9_divexact_u32(b9_t* a, uint32_t p) {
 #endif
 }
 
+/* Divide positive b9 value a in-place by 2, truncating toward zero. */
+static void b9_tdiv2(b9_t* a) {
+  uint32_t carry = 0;
+  uint32_t i;
+  for (i = a->n; i-- > 0; ) {
+    uint32_t limb = a->d[i];
+    a->d[i] = (b9limb_t)((limb >> 1) + carry * (B9_BASE >> 1));
+    carry = limb & 1;
+  }
+  while (a->n > 0 && a->d[a->n-1] == 0) a->n--;
+  if (a->n == 0) a->neg = 0;
+}
+
 /* Convert a small b9 value to UV.  Caller must verify fit with the
  * n*B9_DIGS < sizeof(UV)*3 check before calling. */
 static UV b9_to_uv(const b9_t* x) {
@@ -726,6 +739,80 @@ static void b9_reduce_mod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *m)
 {
   b9_fdivrem(NULL, tmp, a, m);
   b9_move(out, tmp);
+}
+
+static void b9_addmod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *b, const b9_t *m)
+{
+  b9_t ar, br;
+  const b9_t *ap = a, *bp = b;
+
+  b9_init(&ar);  b9_init(&br);
+  if (a->neg || b9_cmp_abs(a, m) >= 0) {
+    b9_reduce_mod(&ar, tmp, a, m);
+    ap = &ar;
+  }
+  if (b->neg || b9_cmp_abs(b, m) >= 0) {
+    b9_reduce_mod(&br, tmp, b, m);
+    bp = &br;
+  }
+
+  b9_add(out, ap, bp);
+  b9_reduce_mod(out, tmp, out, m);
+  b9_free(&ar);  b9_free(&br);
+}
+
+static void b9_submod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *b, const b9_t *m)
+{
+  b9_t nb = *b;   /* shallow copy: nb.d aliases b->d, only neg changes */
+  b9_neg(&nb);
+  b9_addmod(out, tmp, a, &nb, m);
+}
+
+static void b9_mulmod_reduced(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *b, const b9_t *m)
+{
+  b9_mul(out, a, b);
+  b9_reduce_mod(out, tmp, out, m);
+}
+
+static void b9_mulmod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *b, const b9_t *m)
+{
+  b9_t ar, br;
+  const b9_t *ap = a, *bp = b;
+
+  b9_init(&ar);  b9_init(&br);
+  if (a->neg || b9_cmp_abs(a, m) >= 0) {
+    b9_reduce_mod(&ar, tmp, a, m);
+    ap = &ar;
+  }
+  if (b->neg || b9_cmp_abs(b, m) >= 0) {
+    b9_reduce_mod(&br, tmp, b, m);
+    bp = &br;
+  }
+
+  b9_mulmod_reduced(out, tmp, ap, bp, m);
+  b9_free(&ar);  b9_free(&br);
+}
+
+static void b9_powmod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *e, const b9_t *m)
+{
+  b9_t base, exp;
+
+  b9_init_set(&base, a);
+  b9_init_set(&exp, e);
+  b9_set_uv(out, 1);
+
+  if (base.neg || b9_cmp_abs(&base, m) >= 0)
+    b9_reduce_mod(&base, tmp, &base, m);
+
+  while (exp.n != 0) {
+    if (exp.d[0] & 1)
+      b9_mulmod_reduced(out, tmp, out, &base, m);
+    b9_tdiv2(&exp);
+    if (exp.n != 0)
+      b9_mulmod_reduced(&base, tmp, &base, &base, m);
+  }
+
+  b9_free(&base);  b9_free(&exp);
 }
 
 static void b9_product(b9_t A[], size_t a, size_t b) {
@@ -1056,20 +1143,45 @@ STRLEN strint_muladdmod_s(char* out,
   }
   if (M.neg) M.neg = 0;         /* work with |M| */
   b9_init(&R);
-  if (negate_c) b9_neg(&C);
 
-  /* Reduce A and B mod M to keep the intermediate product small */
-  if (b9_cmp_abs(&A, &M) >= 0)
-    b9_reduce_mod(&A, &R, &A, &M);
-  if (b9_cmp_abs(&B, &M) >= 0)
-    b9_reduce_mod(&B, &R, &B, &M);
+  b9_mulmod(&A, &R, &A, &B, &M);
+  if (C.n != 0) {
+    if (negate_c)  b9_submod(&A, &R, &A, &C, &M);
+    else           b9_addmod(&A, &R, &A, &C, &M);
+  }
 
-  b9_mul(&A, &A, &B);
-  b9_add(&A, &A, &C);
-  b9_fdivrem(NULL, &R, &A, &M);
-
-  rlen = b9_get_str(out, &R);
+  rlen = b9_get_str(out, &A);
   b9_free(&A);  b9_free(&B);  b9_free(&C);  b9_free(&M);  b9_free(&R);
+
+  return rlen;
+}
+
+STRLEN strint_powmod(char* out,
+                     const char* a, STRLEN alen,
+                     const char* e, STRLEN elen,
+                     const char* m, STRLEN mlen)
+{
+  b9_t A, E, M, R, T;
+  STRLEN rlen;
+
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&E, e, elen);
+  b9_init_set_str(&M, m, mlen);
+  if (M.n == 0 || E.neg) {
+    b9_free(&A);  b9_free(&E);  b9_free(&M);
+    return 0;
+  }
+  if (M.neg) M.neg = 0;         /* work with |M| */
+  if (M.n == 1 && M.d[0] == 1) {
+    out[0] = '0';
+    b9_free(&A);  b9_free(&E);  b9_free(&M);
+    return 1;
+  }
+
+  b9_init(&R);  b9_init(&T);
+  b9_powmod(&R, &T, &A, &E, &M);
+  rlen = b9_get_str(out, &R);
+  b9_free(&A);  b9_free(&E);  b9_free(&M);  b9_free(&R);  b9_free(&T);
 
   return rlen;
 }

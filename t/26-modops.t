@@ -34,7 +34,7 @@ plan tests => 0
             + 2                      # submod / addmod
             + 2                      # mulmod
             + 2 + 1                  # divmod
-            + 4                      # powmod
+            + 5                      # powmod
             + 6                      # large negative args
             + 1                      # muladdmod
             + 1                      # mulsubmod
@@ -201,6 +201,11 @@ for (0 .. $num) {
 is_deeply( \@res, \@exp, "powmod with negative exponent on ".($num+1)." random inputs" );
 is( powmod(0,-1,7), undef, "powmod(0,-1,7) = undef" );
 is( powmod(0,-3,-7), undef, "powmod(0,-3,-7) = undef" );
+is("".powmod("10000000000000000000000000000000000000123",
+              "10000000000000000000000017",
+              "100000000000000000000000000000000000039"),
+   "22545796233479012260603868476439457706",
+   "powmod with bigint base, exponent, and modulus");
 
 ###### large negative args (github issue 43)
 {

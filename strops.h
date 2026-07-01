@@ -52,6 +52,14 @@ extern STRLEN strint_muladdmod_s(char* out,
 #define strint_muladdmod(out,a,al,b,bl,c,cl,m,ml) strint_muladdmod_s(out,a,al,b,bl,c,cl,0,m,ml)
 #define strint_mulsubmod(out,a,al,b,bl,c,cl,m,ml) strint_muladdmod_s(out,a,al,b,bl,c,cl,1,m,ml)
 
+/* Return a^e mod m, for e >= 0.
+ * Result is in [0, |m|-1].  out must have at least mlen bytes.
+ * Returns 0 on failure (m = 0 or e < 0). */
+extern STRLEN strint_powmod(char* out,
+                            const char* a, STRLEN alen,
+                            const char* e, STRLEN elen,
+                            const char* m, STRLEN mlen);
+
 /* Raise a to non-negative integer power exp.
  * out must have at least limit bytes.
  * Returns 0 if result would not fit in limit characters.

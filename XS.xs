@@ -4232,6 +4232,14 @@ void powmod(IN SV* sva, IN SV* svg, IN SV* svn)
       if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
+    if (!_XS_get_callgmp() && ix == 0) {
+      STRLEN lena, leng, lenn, rlen;
+      const char *sa = SvPV_nomg(sva, lena), *sg = SvPV_nomg(svg, leng), *sn = SvPV_nomg(svn, lenn);
+      SV* tmp = sv_2mortal(newSV(0 + lenn));
+      rlen = strint_powmod(SvPVX(tmp), sa,lena, sg,leng, sn,lenn);
+      if (rlen > 0)
+        RETURN_STRING_BIGINT(tmp, rlen);
+    }
     DISPATCHPP_RETURN();
 
 void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
