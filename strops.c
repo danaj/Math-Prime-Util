@@ -500,7 +500,7 @@ static void b9_init_set_pow2(b9_t *x, UV k)
 /* Signed floor division and remainder (floor convention: rem has sign of b).
  * q or r may be NULL (that output is skipped).
  * b must be non-zero.  q and r must not alias a or b. */
-static void b9_divmod(b9_t *q, b9_t *r, const b9_t *a, const b9_t *b)
+static void b9_fdivrem(b9_t *q, b9_t *r, const b9_t *a, const b9_t *b)
 {
   int na = (int)a->n, nb = (int)b->n;
   int m, j, k, qn;
@@ -665,7 +665,7 @@ done:
  * (2^32-1)*B9_BASE + B9_BASE-1 < 2^32 * B9_BASE.  Since B9_BASE <= 10^9 < 2^30,
  * this is under 2^62, fitting in uint64_t for all three B9 tiers.
  * On the rare platform with neither uint64_t nor uint128_t (B9_BASE=10^4),
- * fall back to b9_divmod. */
+ * fall back to b9_fdivrem. */
 static uint32_t b9_mod_u32(const b9_t* a, uint32_t p) {
 #if HAVE_UINT64
   uint32_t r = 0;
@@ -678,7 +678,7 @@ static uint32_t b9_mod_u32(const b9_t* a, uint32_t p) {
   uint32_t result;
   b9_init_set_uv(&bp, (UV)p);
   b9_init(&bq);  b9_init(&br);
-  b9_divmod(&bq, &br, a, &bp);
+  b9_fdivrem(&bq, &br, a, &bp);
   result = (uint32_t)b9_to_uv(&br);
   b9_free(&bp);  b9_free(&bq);  b9_free(&br);
   return result;
@@ -701,7 +701,7 @@ static void b9_divexact_u32(b9_t* a, uint32_t p) {
   b9_t bp, bq, br;
   b9_init_set_uv(&bp, (UV)p);
   b9_init(&bq);  b9_init(&br);
-  b9_divmod(&bq, &br, a, &bp);
+  b9_fdivrem(&bq, &br, a, &bp);
   b9_move(a, &bq);
   b9_free(&bp);  b9_free(&br);
 #endif
@@ -724,7 +724,7 @@ static int b9_cmp_abs(const b9_t *a, const b9_t *b)
 
 static void b9_reduce_mod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *m)
 {
-  b9_divmod(NULL, tmp, a, m);
+  b9_fdivrem(NULL, tmp, a, m);
   b9_move(out, tmp);
 }
 
@@ -1066,7 +1066,7 @@ STRLEN strint_muladdmod_s(char* out,
 
   b9_mul(&A, &A, &B);
   b9_add(&A, &A, &C);
-  b9_divmod(NULL, &R, &A, &M);
+  b9_fdivrem(NULL, &R, &A, &M);
 
   rlen = b9_get_str(out, &R);
   b9_free(&A);  b9_free(&B);  b9_free(&C);  b9_free(&M);  b9_free(&R);
@@ -1125,7 +1125,7 @@ bool strint_fdivrem(char* qout, STRLEN* qlen, char* rout, STRLEN* rlen,
   b9_init_set_str(&bb, b, blen);
   if (bb.n == 0) { b9_free(&ba);  b9_free(&bb);  return 0; }
   b9_init(&bq);  b9_init(&br);
-  b9_divmod(&bq, &br, &ba, &bb);
+  b9_fdivrem(&bq, &br, &ba, &bb);
   if (qout) { STRLEN l = b9_get_str(qout, &bq);  if (qlen) *qlen = l; }
   if (rout) { STRLEN l = b9_get_str(rout, &br);  if (rlen) *rlen = l; }
   b9_free(&ba);  b9_free(&bb);  b9_free(&bq);  b9_free(&br);
@@ -1147,7 +1147,7 @@ STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRL
   b9_init_set_str(&bb, b, blen);
   if (bb.n == 0) { b9_free(&ba);  b9_free(&bb);  return 0; }
   b9_init(&bq);  b9_init(&br);
-  b9_divmod(&bq, &br, &ba, &bb);
+  b9_fdivrem(&bq, &br, &ba, &bb);
   if (br.n > 0)
     b9_add_uv(&bq, &bq, 1);
   len = b9_get_str(out, &bq);
@@ -1363,7 +1363,7 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
 
   /* Float overshot (very rare): step down by dividing until base^k ≤ a */
   while (k > 0 && b9_cmp(&pow, &bn) > 0) {
-    b9_divmod(&tmp, NULL, &pow, &bbase);
+    b9_fdivrem(&tmp, NULL, &pow, &bbase);
     b9_swap(&pow, &tmp);
     k--;
   }
@@ -1439,14 +1439,14 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
     b9_pow(&pk1, &r, k - 1);
 
     /* q = floor(n / r^(k-1)) */
-    b9_divmod(&q, NULL, &bn, &pk1);
+    b9_fdivrem(&q, NULL, &bn, &pk1);
 
     /* tmp = (k-1)*r + q */
     b9_mul(&tmp, &bkm1, &r);
     b9_add(&tmp, &tmp, &q);
 
     /* pk1 = floor(tmp / k)  (reuse as r_new) */
-    b9_divmod(&pk1, NULL, &tmp, &bk);
+    b9_fdivrem(&pk1, NULL, &tmp, &bk);
 
     if (b9_cmp(&pk1, &r) >= 0) break;
 
@@ -1483,7 +1483,7 @@ STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k)
   b9_init_set_pow2(&pow2, k);
   neg = n.neg;  n.neg = 0;
   b9_init(&q);
-  b9_divmod(&q, NULL, &n, &pow2);
+  b9_fdivrem(&q, NULL, &n, &pow2);
   q.neg = (q.n != 0) ? neg : 0;
   rlen = b9_get_str(out, &q);
   b9_free(&n);  b9_free(&pow2);  b9_free(&q);
@@ -1498,7 +1498,7 @@ STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k)
   b9_init_set_str(&n, a, alen);
   b9_init_set_pow2(&pow2, k);
   b9_init(&q);
-  b9_divmod(&q, NULL, &n, &pow2);
+  b9_fdivrem(&q, NULL, &n, &pow2);
   rlen = b9_get_str(out, &q);
   b9_free(&n);  b9_free(&pow2);  b9_free(&q);
   return rlen;
