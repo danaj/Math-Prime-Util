@@ -16,11 +16,14 @@ typedef struct {
                                         0 if no such factor */
 } factored128_t;
 
-/* Factor n into nf.  n must be > 1.  Returns false if cannot factor. */
-extern bool factorintp128(factored128_t *nf, uint128_t n);
+/* Factor n into nf.  Croaks if an internal split fails. */
+extern void factorintp128(factored128_t *nf, uint128_t n);
 
 MAYBE_UNUSED static INLINE factored128_t factorint128(uint128_t n)
   { factored128_t nf; factorintp128(&nf, n); return nf; }
+
+extern signed char moebius128(uint128_t n);
+extern bool        is_semiprime128(uint128_t n);
 
 /* Simple helper functions */
 extern uint32_t    factored128p_total_factors(const factored128_t *nf);

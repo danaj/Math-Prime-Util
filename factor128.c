@@ -6,6 +6,7 @@
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"       /* for verbose and next_prime */
+#include "moebius.h"
 
 #if BITS_PER_WORD == 64 && HAVE_UINT128
 
@@ -359,7 +360,6 @@ static int is_bpsw128(uint128_t n) {
   return 1;
 }
 
-#if 0
 /* Returns 1 if n is (probably) prime, 0 if composite.
  * Uses trial division up to 2011, then BPSW. */
 static int is_prime128(uint128_t n) {
@@ -376,7 +376,6 @@ static int is_prime128(uint128_t n) {
 
   return is_bpsw128(n);
 }
-#endif
 
 /*****************************************************************************
  * SQUFOF (Square Form Factorization) for 128-bit inputs.
@@ -776,8 +775,9 @@ static void ecm_mul128(ecpt128_t *R, const ecpt128_t *P, UV k,
 
 /* Fixed σ values for Suyama's parameterization.
  * All σ ≥ 11 so u = σ²-5 > v = 4σ (non-degenerate).
- * All prime factors of 16u³v are ≤ 2011 (trial-division limit),
- * so gcd(denominator, n) = 1 is guaranteed after our trial-division step. */
+ * For this table, all prime factors of u are <= 2011, hence removed by
+ * trial division.  The denominator 16u³v also contains sigma itself;
+ * if that divides n, curve setup can expose it via gcd(den,n). */
 static const uint16_t ecm_sigmas[] = {
    11,   13,   17,   19,   23,   29,   31,   37,   41,   43,
    47,   53,   59,   61,   67,   71,   73,   79,   83,   89,
@@ -1021,7 +1021,11 @@ static uint128_t tinyecm128(uint128_t n, UV B1, UV B2,
     uint128_t den     = 16 * u3 * vi;
     uint128_t den_r   = den % n;
     uint128_t den_inv = modinv128(den_r, n);
-    if (den_inv == 0) continue;   /* gcd(den,n) > 1 — shouldn't happen */
+    if (den_inv == 0) {
+      uint128_t g = gcd128(den_r, n);
+      if (g > 1 && g < n) return g;
+      continue;
+    }
 
     uint128_t mnum  = mont_enter128(num,     &ctx);   /* num * R mod n */
     uint128_t mdinv = mont_enter128(den_inv, &ctx);   /* den_inv * R mod n */
@@ -1035,6 +1039,7 @@ static uint128_t tinyecm128(uint128_t n, UV B1, UV B2,
     START_DO_FOR_EACH_PRIME(2,B1) {
       UV k = p;
       if (p <= sqrtB1) { UV pm = B1 / p; while (k <= pm) k *= p; }
+      /* A GMP-style PRAC multiply could replace the generic ladder here. */
       ecm_mul128(&P, &P, k, mA24, &ctx);
       if ((j++ % 64) == 0) {
         uint128_t g = gcd128(P.Z, n);
@@ -1163,18 +1168,69 @@ signed char factored128p_moebius(const factored128_t *nf) {
   return nfactors % 2 ? -1 : 1;
 }
 
+signed char moebius128(uint128_t n) {
+  factored128_t nf;
+
+  if (n <= (uint128_t)UV_MAX)
+    return moebius((UV)n);
+
+  for (uint32_t i = 1; i < NPRIMES_SMALL && primes_small[i] <= 37; i++) {
+    uint128_t p = primes_small[i];
+    if ((n % (p*p)) == 0)
+      return 0;
+  }
+
+  factorintp128(&nf, n);
+  return factored128p_moebius(&nf);
+}
+
+bool is_semiprime128(uint128_t n) {
+  factored128_t nf;
+  uint64_t r;
+
+  if (n <= (uint128_t)UV_MAX)
+    return is_semiprime((UV)n);
+
+  if (!(n & 1)) return is_prime128(n >> 1);
+  if (!(n % 3)) return is_prime128(n / 3);
+  if (!(n % 5)) return is_prime128(n / 5);
+
+  for (uint32_t i = 4; i < NPRIMES_SMALL; i++) {
+    uint128_t p = primes_small[i];
+    if (p*p*p > n)
+      break;
+    if ((n % p) == 0)
+      return is_prime128(n / p);
+  }
+
+  if (is_prime128(n))
+    return 0;
+
+  r = isqrt128(n);
+  if ((uint128_t)r * r == n)
+    return is_prime128(r);
+
+  factorintp128(&nf, n);
+  return factored128p_total_factors(&nf) == 2;
+}
+
 /*****************************************************************************
  * Public entry point
  *****************************************************************************/
 
-bool factorintp128(factored128_t *nf, uint128_t n) {
+void factorintp128(factored128_t *nf, uint128_t n) {
   int const verbose = _XS_get_verbose();
 
   nf->n        = n;
   nf->nfactors = 0;
   nf->flarge   = 0;
 
-  if (n <= 1) return 0;
+  if (n < 4) {
+    nf->f[0] = (UV)n;
+    nf->e[0] = 1;
+    nf->nfactors = 1 - (n == 1);
+    return;
+  }
 
   /* Trial division using primes_small[] (primes 2..2011) */
   for (int i = 1; i < NPRIMES_SMALL; i++) {
@@ -1185,7 +1241,7 @@ bool factorintp128(factored128_t *nf, uint128_t n) {
       n /= p;
     }
   }
-  if (n == 1) return 1;
+  if (n == 1) return;
 
   /* n is now > 2011; remaining cofactor stack */
   uint128_t stack[128];
@@ -1237,46 +1293,30 @@ bool factorintp128(factored128_t *nf, uint128_t n) {
       if (f && show) {show=0;printf("squfof128 found factor %s\n",u128_str(f));}
     }
 
-    /* ECM */
-    if (!f) f = tinyecm128(t, 2000, 40000, 40, 0);
-    if (f && show) {show=0;printf("tinyecm128 2k/40k found factor %s\n",u128_str(f));}
-
-    if (!f) f = tinyecm128(t, 10000, 200000, 40, 40);
-    if (f && show) {show=0;printf("tinyecm128 10k/200k found factor %s\n",u128_str(f));}
-
-    if (!f) f = tinyecm128(t, 40000, 800000, 20, 80);
-    if (f && show) {show=0;printf("tinyecm128 40k/800k found factor %s\n",u128_str(f));}
-
-    if (!f) f = tinyecm128(t, 80000, 1600000, 20, 100);
-    if (f && show) {show=0;printf("tinyecm128 80k/1600k found factor %s\n",u128_str(f));}
-
-    if (!f) f = tinyecm128(t, 120000, 2400000, 100, 120);
-    if (f && show) {show=0;printf("tinyecm128 120k/2400k found factor %s\n",u128_str(f));}
-
-    /* It is unlikely a 128-bit semiprime will get here at all. */
-    if (!f) f = tinyecm128(t, 800000, 8000000, 40, 220);
-    if (f && show) {show=0;printf("tinyecm128 800k/8000k found factor %s\n",u128_str(f));}
-
-#if 0
-    /* Pollard/Brent rho: fallback when others failed */
-    for (uint32_t c = 1; c < 20 && f == 0; c += 2) {
-      if (show)printf("  brent128 try c=%u\n",c);
-      f = brent128(t, c, 1U << 20);
+#define TINYECM_STEP(eb1,b2mult,curves) \
+    if (!f) { \
+      f = tinyecm128(t, (UV)eb1*1000, (UV)eb1*1000*b2mult, curves, NC); \
+      if (f && show) {show=0;printf("tinyecm128 %uk/%uk found factor %s\n",eb1,eb1*b2mult,u128_str(f));} \
+      NC += curves; \
     }
-    if (f && show) {show=0;printf("brent128 found factor %s\n",u128_str(f));}
-#endif
+    UV NC = 0;
+    /*              B1  *=B2  # curves */
+    TINYECM_STEP(   2U,   20,  40)
+    TINYECM_STEP(  10U,   20,  40)
+    TINYECM_STEP(  40U,   20,  40)
+    TINYECM_STEP(  80U,   20,  40)
+    TINYECM_STEP( 100U,   40, 120)
+    TINYECM_STEP( 800U,   40,  80) /* Failsafe.  Extremely unlikely to hit. */
+#undef TINYECM_STEP
 
-    if (f == 0) {
-      if (verbose) printf("failed to find factor in factor128: %s\n",u128_str(n));
-      return 0;
-    }
+    if (f <= 1 || f >= t || (t % f) != 0)
+      croak("internal: factorintp128 failed to factor %s\n", u128_str(t));
 
     /* Push both halves (f and t/f) for further factoring */
     stack[top++] = f;
     stack[top++] = t / f;
   }
   if (verbose) fflush(stdout);
-  return 1;
 }
 
 #endif /* BITS_PER_WORD == 64 && HAVE_UINT128 */
