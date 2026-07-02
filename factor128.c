@@ -76,6 +76,13 @@ static uint128_t powmod128(uint128_t a, uint128_t k, uint128_t n) {
   return r;
 }
 
+static uint128_t pow2mod128(unsigned int e, uint128_t n) {
+  uint128_t r = 1;
+  while (e-- > 0)
+    r = addmod128(r, r, n);
+  return r;
+}
+
 static uint128_t gcd128(uint128_t a, uint128_t b) {
   while (b) { uint128_t t = b; b = a % b; a = t; }
   return a;
@@ -200,7 +207,7 @@ static void mont_setup128(mont128_t *ctx, uint128_t n) {
   ctx->ninv = -x;
 
   /* r2 = R^2 mod n = (2^128)^2 mod n = 2^256 mod n. */
-  ctx->r2 = powmod128(2,256,n);
+  ctx->r2 = pow2mod128(256,n);
 }
 
 /*****************************************************************************
@@ -217,23 +224,43 @@ static uint128_t mont_powmod128(uint128_t a, UV k, const mont128_t *ctx) {
   return r;
 }
 
+static uint128_t mont_powmod128_u128(uint128_t a, uint128_t k,
+                                     const mont128_t *ctx) {
+  uint128_t r = mont_enter128(1, ctx);
+  while (k > 0) {
+    if (k & 1) r = mont_mulmod128(r, a, ctx);
+    k >>= 1;
+    if (k) a = mont_sqrmod128(a, ctx);
+  }
+  return r;
+}
+
 /*****************************************************************************
  * Primality — BPSW (Miller-Rabin base 2 + strong Lucas, Selfridge params)
  *****************************************************************************/
 
+/* We could add a base-2 M-R function, that avoided computing R2, but it is
+ * only a small gain for the added code.  Can revisit later if desired. */
+
 /* Returns 1 if n is a strong pseudoprime base `base`, 0 otherwise.
  * Assumes n > 2, n odd. */
-static int miller_rabin128(uint128_t n, uint128_t base) {
+static bool miller_rabin128(uint128_t n, uint128_t base) {
   uint128_t d = n - 1;
+  mont128_t ctx;
   int s = 0;
 
   while (!(d & 1)) { d >>= 1; s++; }
 
-  uint128_t x = powmod128(base % n, d, n);
-  if (x == 1 || x == n - 1) return 1;
+  mont_setup128(&ctx, n);
+  uint128_t mont1 = mont_enter128(1, &ctx);
+  uint128_t montbase = (base == 2) ? addmod128(mont1, mont1, n)
+                                   : mont_enter128(base % n, &ctx);
+  uint128_t x = mont_powmod128_u128(montbase, d, &ctx);
+  uint128_t montm1 = n - mont1;
+  if (x == mont1 || x == montm1) return 1;
   while (--s > 0) {
-    x = sqrmod128(x, n);
-    if (x == n - 1) return 1;
+    x = mont_sqrmod128(x, &ctx);
+    if (x == montm1) return 1;
   }
   return 0;
 }
@@ -317,7 +344,7 @@ static void lucas_seq128(uint128_t *U, uint128_t *V, uint128_t *Qk,
  * n must be odd, > 2, not a perfect square.
  * D is chosen from sequence 5,-7,9,-11,13,... until jacobi(D,n)=-1.
  * P=1, Q=(1-D)/4. */
-static int is_strong_lucas_pp128(uint128_t n) {
+static bool is_strong_lucas_pp128(uint128_t n) {
   int64_t D;
   int64_t sign = 1;
   int abs_D;
@@ -354,7 +381,9 @@ static int is_strong_lucas_pp128(uint128_t n) {
 
 /* BPSW primality test, no trial division.  Assumes n > 2011 and odd.
  * Called from the factoring loop where small factors are already removed. */
-static int is_bpsw128(uint128_t n) {
+bool is_bpsw128(uint128_t n) {
+  if (n < 7) return (n==2 || n==3 || n==5);
+  if (!(n & 1)) return 0;
   if (!miller_rabin128(n, 2)) return 0;
   if (!is_strong_lucas_pp128(n)) return 0;
   return 1;
@@ -362,9 +391,8 @@ static int is_bpsw128(uint128_t n) {
 
 /* Returns 1 if n is (probably) prime, 0 if composite.
  * Uses trial division up to 2011, then BPSW. */
-static int is_prime128(uint128_t n) {
-  if (n < 2) return 0;
-  if (n < 4) return 1;
+bool is_prime128(uint128_t n) {
+  if (n < 7) return (n==2 || n==3 || n==5);
   if (!(n & 1)) return 0;
 
   /* Trial division using primes_small[] */

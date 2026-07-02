@@ -22,6 +22,8 @@ extern void factorintp128(factored128_t *nf, uint128_t n);
 MAYBE_UNUSED static INLINE factored128_t factorint128(uint128_t n)
   { factored128_t nf; factorintp128(&nf, n); return nf; }
 
+extern bool        is_prime128(uint128_t n);
+extern bool        is_bpsw128(uint128_t n);
 extern signed char moebius128(uint128_t n);
 extern bool        is_semiprime128(uint128_t n);
 
