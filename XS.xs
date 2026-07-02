@@ -2176,10 +2176,19 @@ void is_prime(IN SV* svn)
       }
     }
 #if BITS_PER_WORD == 64 && HAVE_UINT128
-    else if (ix == 13) {
+    else {
+      int callgmp = _XS_get_callgmp();
       uint128_t n128;
-      if (xs_sv_to_uint128(aTHX_ &n128, svn))
-        RETURN_NPARITY(is_semiprime128(n128));
+      if ((ix == 1 ||                    /* is_prob_prime  => is_prime128 */
+           ix == 3 ||                    /* is_bpsw_prime  => is_bpsw128 */
+           (ix == 0 && callgmp < 1) ||   /* GMP tries harder, use if avail. */
+           (ix == 13 && callgmp < 42)    /* GMP is faster for now. */
+          ) && xs_sv_to_uint128(aTHX_ &n128, svn)) {
+        if      (ix ==  3) ret = is_bpsw128(n128);
+        else if (ix == 13) ret = is_semiprime128(n128);
+        else               ret = is_prime128(n128);
+        status = 1;
+      }
     }
 #endif
     if (status != 0)  RETURN_NPARITY(ret);
