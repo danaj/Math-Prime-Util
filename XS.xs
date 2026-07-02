@@ -1262,7 +1262,7 @@ static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask)
   return TRUE;
 }
 
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
 static bool xs_str_to_uint128(uint128_t *out, const char *s, STRLEN len)
 {
   static const char uint128_max_str[] = "340282366920938463463374607431768211455";
@@ -1336,7 +1336,7 @@ BOOT:
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
     newCONSTSUB(stash, "_nvmantdigits", newSViv((IV)((NVMANTBITS+1) / 3.322)));
     newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(128));
 #else
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(BITS_PER_WORD));
@@ -2175,7 +2175,7 @@ void is_prime(IN SV* svn)
         default: break;
       }
     }
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
     else {
       int callgmp = _XS_get_callgmp();
       uint128_t n128;
@@ -3812,7 +3812,7 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
       if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
         factored128_t nf;
         if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
@@ -3824,7 +3824,7 @@ factor(IN SV* svn)
             EXTEND(SP, (EXTEND_TYPE)total);
             for (fi = 0; fi < nf.nfactors; fi++)
               for (ei = 0; ei < nf.e[fi]; ei++)
-                PUSHs(sv_2mortal(newSVuv(nf.f[fi])));
+                PUSHs(sv_2mortal(newSVuv((UV)nf.f[fi])));
             if (nf.flarge) {
               char fbuf[40];
               uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
@@ -3836,7 +3836,7 @@ factor(IN SV* svn)
             if (gimme_v == G_SCALAR) XSRETURN_UV(total);
             EXTEND(SP, (EXTEND_TYPE)total);
             for (fi = 0; fi < nf.nfactors; fi++)
-              PUSH_2ELEM_AREF(nf.f[fi], nf.e[fi]);
+              PUSH_2ELEM_AREF((UV)nf.f[fi], nf.e[fi]);
             if (nf.flarge) {
               char fbuf[40];
               uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
@@ -4519,7 +4519,7 @@ is_omega_prime(IN SV* svk, IN SV* svn)
               :                  is_almost_prime(k, n);
       RETURN_NPARITY(res);
     }
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
     if (kstatus != 0 && nstatus == 0) {
       factored128_t nf;
       if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
@@ -4703,7 +4703,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       if (bstatus == -1) b = neg_iv(b);
       if (cstatus == -1) c = neg_iv(c);
       {
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
         /* 128-bit path: handles virtually all native inputs on 64-bit */
         IV hi; UV lo;
         if (muladd128(&hi,&lo, a,b,c, astatus,bstatus,(ix==1)?-cstatus:cstatus))
@@ -5085,7 +5085,7 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
         XSRETURN_UV(lostatus == -1 ? 0 : totient(lo));
       if (lostatus != 0 && ix == 1)
         RETURN_NPARITY(moebius(lostatus == -1 ? neg_iv(lo) : lo));
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
       if (ix == 1) {
         uint128_t n128;
         if (xs_sv_to_uint128_abs(aTHX_ &n128, svlo))
@@ -5221,7 +5221,7 @@ void prime_omega(IN SV* svn)
       }
       RETURN_NPARITY(ret);
     }
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
     {
       uint128_t n128;
       if (xs_sv_to_uint128_abs(aTHX_ &n128, svn)) {
@@ -5413,7 +5413,7 @@ void mertens(IN SV* svn)
       }
       if (status != 0) RETURN_NPARITY(r);
     }
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
     if (ix == 1) {
       uint128_t n128;
       if (xs_sv_to_uint128(aTHX_ &n128, svn)) {

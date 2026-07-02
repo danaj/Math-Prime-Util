@@ -1,14 +1,16 @@
 #include <math.h>
+
+#define FUNC_isqrt 1
 #include "ptypes.h"
 #include "constants.h"
 #include "factor.h"
 #include "factor128.h"
 #include "cache.h"
 #include "sieve.h"
-#include "util.h"       /* for verbose and next_prime */
+#include "util.h"       /* for isqrt, verbose and next_prime */
 #include "moebius.h"
 
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_FACTOR128
 
 /* Decimal string for a uint128_t, for debugging.
  * printf("  found factor %s of %s\n", u128_str(f), u128_str(t)); */
@@ -401,7 +403,7 @@ bool is_prime128(uint128_t n) {
 
   /* Trial division using primes_small[] */
   for (int i = 2; i < NPRIMES_SMALL; i++) {
-    UV p = primes_small[i];
+    uint64_t p = primes_small[i];
     if ((uint128_t)p * p > n) return 1;
     if (n % p == 0) return 0;
   }
@@ -532,13 +534,13 @@ static const uint64_t squfof128_multipliers[] = {
 
 /* Returns a nontrivial factor of n (up to 126-bit composites), or 0.
  * rounds: max total inner iterations across all racing multipliers. */
-static uint128_t squfof128(uint128_t n, UV rounds) {
+static uint128_t squfof128(uint128_t n, uint64_t rounds) {
   /* 126-bit limit: internal state uses uint64_t which holds values < 2^63 */
   static const uint128_t MAX_NN64 = ((uint128_t)1 << 126) - 1;
 
   squfof128_mult_t ms[NSQUFOF128_MULT];
   int i, mults_racing = NSQUFOF128_MULT;
-  UV rounds_done = 0;
+  uint64_t rounds_done = 0;
 
   for (i = 0; i < NSQUFOF128_MULT; i++) {
     ms[i].valid = -1;
@@ -621,8 +623,15 @@ static uint128_t squfof128(uint128_t n, UV rounds) {
  *          Small prime-gap powers bm^{2k} (k=1..111) are cached lazily.
  *****************************************************************************/
 
-static uint128_t pminus1_128(uint128_t n, UV B1, UV B2) {
+static uint128_t pminus1_128(uint128_t n, uint64_t B1_in, uint64_t B2_in) {
   mont128_t ctx;
+  UV B1, B2;
+
+  if (B1_in > (uint64_t)UV_MAX || B2_in > (uint64_t)UV_MAX)
+    croak("internal: pminus1_128 bounds exceed UV_MAX");
+
+  B1 = (UV)B1_in;
+  B2 = (UV)B2_in;
 
   if (B1 < 7) return 0;
   mont_setup128(&ctx, n);
@@ -631,7 +640,7 @@ static uint128_t pminus1_128(uint128_t n, UV B1, UV B2) {
   uint128_t a     = mont_enter128(2, &ctx);
   uint128_t savea = a;
   UV q = 2, saveq = 2;
-  UV sqrtB1 = (UV) sqrt((double)B1);
+  UV sqrtB1 = isqrt(B1);
   UV j = 15;   /* checkpoint counter, start offset like GMP */
 
   START_DO_FOR_EACH_PRIME(2,B1) {
@@ -910,24 +919,27 @@ static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
 
 /* Brent-Suyama style ECM stage 2.  Q is the stage-1 output point. */
 static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
-                                   const mont128_t *ctx, UV B1, UV B2) {
+                                   const mont128_t *ctx,
+                                   uint64_t B1_in, uint64_t B2_in) {
   uint128_t n = ctx->n, f, *nqx, *Sx;
   ecpt128_t *nq, *S;
-  UV D, twoD, m, mend, nwindows, w, i;
+  UV B1, B2, D, twoD, m, mend, nwindows, w, i;
+  UV const B2max = UV_MAX - (BITS_PER_WORD == 64 ? 3037000500U : 46340U);
   uint128_t gprod;
 
-  if (B2 <= B1) return 0;
-  D = (UV)sqrt((double)(B2 >> 1));
+  if (B1_in > (uint64_t)UV_MAX || B2_in > (uint64_t)B2max)
+    croak("internal: tinyecm128 stage 2 bounds exceed UV_MAX");
+
+  B1 = (UV)B1_in;
+  B2 = (UV)B2_in;
+
+  if (B2 <= B1 || B2 < 2) return 0;
+  D = isqrt(B2 >> 1);
   if (D & 1) D++;
-  if (D == 0 || D > (UV_MAX-1)/2) return 0;
   twoD = 2*D;
 
-  mend = (B2 > UV_MAX-D) ? UV_MAX : B2 + D;
-  for (m = 1, nwindows = 0; m < mend; nwindows++) {
-    if (m > UV_MAX-twoD) break;
-    m += twoD;
-  }
-  if (nwindows == 0) return 0;
+  mend = B2 + D;
+  nwindows = 1 + (mend - 2) / twoD;
 
   New(0, nq,  twoD+1, ecpt128_t);
   New(0, nqx, D+1, uint128_t);
@@ -972,10 +984,9 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
   gprod = mont_enter128(1, ctx);
   m = 1;
   for (w = 0; w < nwindows; w++) {
-    UV hi = (m > UV_MAX-D) ? UV_MAX : m + D;
+    UV hi = (m > B2 || B2 - m < D) ? B2 : m + D;
     UV lo = (m > D) ? m - D : 0;
 
-    if (hi > B2) hi = B2;
     if (hi > B1) {
       if (lo <= B1) lo = B1 + 1;
       if (lo < 2) lo = 2;
@@ -1012,8 +1023,7 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
         }
       }
     }
-    if (m > UV_MAX-twoD) break;
-    m += twoD;
+    if (w + 1 < nwindows) m += twoD;
   }
 
   f = gcd128(mont_exit128(gprod, ctx), n);
@@ -1026,24 +1036,30 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
 
 /* Returns a non-trivial factor of n, or 0.
  * ncurves curves, Suyama parameterization, stage-1 bound B1, optional B2. */
-static uint128_t tinyecm128(uint128_t n, UV B1, UV B2,
+static uint128_t tinyecm128(uint128_t n, uint64_t B1_in, uint64_t B2_in,
                             int ncurves, int sigma_offset) {
   mont128_t ctx;
-  UV sqrtB1 = (UV)sqrt((double)B1);
+  UV B1, sqrtB1;
+
+  if (B1_in > (uint64_t)UV_MAX)
+    croak("internal: tinyecm128 B1 exceeds UV_MAX");
+
+  B1 = (UV)B1_in;
+  sqrtB1 = isqrt(B1);
 
   mont_setup128(&ctx, n);
 
   for (int ci = 0; ci < ncurves && sigma_offset+ci < NECM128_SIGMAS; ci++) {
-    UV sigma = ecm_sigmas[sigma_offset+ci];
+    uint32_t sigma = ecm_sigmas[sigma_offset+ci];
 
     /* Suyama parameterization. */
-    UV ui          = sigma * sigma - 5;       /* u = σ²-5  */
-    UV vi          = 4 * sigma;               /* v = 4σ    */
-    uint128_t u3   = (uint128_t)ui * ui * ui; /* u³ */
-    uint128_t v3   = (uint128_t)vi * vi * vi; /* v³ */
-    uint128_t umv  = ui - vi;                 /* u-v > 0 for σ ≥ 6 */
-    uint128_t umv3 = umv * umv * umv;
-    uint128_t t3uv = 3*ui + vi;
+    uint64_t ui    = (uint64_t)sigma * sigma - 5; /* u = σ²-5  */
+    uint64_t vi    = 4 * (uint64_t)sigma;         /* v = 4σ    */
+    uint64_t umv   = ui - vi;                     /* u-v > 0 for σ ≥ 6 */
+    uint64_t t3uv  = 3 * ui + vi;
+    uint128_t u3   = (uint128_t)ui * ui * ui;     /* u³ */
+    uint128_t v3   = (uint128_t)vi * vi * vi;     /* v³ */
+    uint128_t umv3 = (uint128_t)umv * umv * umv;
 
     /* A24 = (v-u)³(3u+v) / (16u³v) = -(u-v)³(3u+v) / (16u³v)  mod n */
     uint128_t abs_num = umv3 * t3uv;
@@ -1082,8 +1098,8 @@ static uint128_t tinyecm128(uint128_t n, UV B1, UV B2,
     { uint128_t g = gcd128(P.Z, n);
       if (g > 1 && g < n) return g; }
 
-    if (B2 > B1) {
-      uint128_t g = tinyecm128_stage2(&P, mA24, &ctx, B1, B2);
+    if (B2_in > B1_in) {
+      uint128_t g = tinyecm128_stage2(&P, mA24, &ctx, B1_in, B2_in);
       if (g > 1 && g < n) return g;
     }
 
@@ -1152,9 +1168,9 @@ static uint128_t brent128(uint128_t n, uint128_t c, UV maxr) {
  * Result management
  *****************************************************************************/
 
-/* Insert a UV prime factor p into nf (sorted).  Increments exponent if
+/* Insert a 64-bit prime factor p into nf (sorted).  Increments exponent if
  * already present.  Caller must ensure nfactors < MPU_MAX_DFACTORS128. */
-static void insert_factor128(factored128_t *nf, UV p) {
+static void insert_factor128(factored128_t *nf, uint64_t p) {
   uint16_t i, nf_ = nf->nfactors;
   for (i = 0; i < nf_; i++) {
     if (nf->f[i] == p) { nf->e[i]++; return; }
@@ -1258,7 +1274,7 @@ void factorintp128(factored128_t *nf, uint128_t n) {
   nf->flarge   = 0;
 
   if (n < 4) {
-    nf->f[0] = (UV)n;
+    nf->f[0] = (uint64_t)n;
     nf->e[0] = 1;
     nf->nfactors = 1 - (n == 1);
     return;
@@ -1266,7 +1282,7 @@ void factorintp128(factored128_t *nf, uint128_t n) {
 
   /* Trial division using primes_small[] (primes 2..2011) */
   for (int i = 1; i < NPRIMES_SMALL; i++) {
-    UV p = primes_small[i];
+    uint64_t p = primes_small[i];
     if ((uint128_t)p * p > n) break;
     while (n % p == 0) {
       insert_factor128(nf, p);
@@ -1296,10 +1312,10 @@ void factorintp128(factored128_t *nf, uint128_t n) {
     }
 
     if (is_bpsw128(t)) {
-      /* Allow for shortcut above to be adjusted to allow 64-bit inputs.
-       * If 64-bit, insert the prime.  Otherwise it's the ONE large prime. */
-      if (t <= (uint128_t)UV_MAX) insert_factor128(nf, t);
-      else                        nf->flarge = t;
+      /* Store primes that fit in the 64-bit factor slots.  A larger prime
+       * can only appear once, because the original input is at most 128 bits. */
+      if (t <= (uint128_t)UINT64_MAX) insert_factor128(nf, (uint64_t)t);
+      else                            nf->flarge = t;
       continue;
     }
 
@@ -1318,7 +1334,7 @@ void factorintp128(factored128_t *nf, uint128_t n) {
     if (!f && ((t >> 60) >> 19) == 0) {
       int b128 = 0;
       { uint128_t tmp = t; while (tmp >>= 1) b128++; }
-      UV sq_rounds = (UV)(10.0 * pow(2.0, (double)b128 / 5.0));
+      uint64_t sq_rounds = (uint64_t)(10.0 * pow(2.0, (double)b128 / 5.0));
       if (sq_rounds < 300000)  sq_rounds = 300000;
       if (sq_rounds > 5000000) sq_rounds = 5000000;
       f = squfof128(t, sq_rounds);
@@ -1327,11 +1343,13 @@ void factorintp128(factored128_t *nf, uint128_t n) {
 
 #define TINYECM_STEP(eb1,b2mult,curves) \
     if (!f) { \
-      f = tinyecm128(t, (UV)eb1*1000, (UV)eb1*1000*b2mult, curves, NC); \
+      uint64_t B1_ = (uint64_t)(eb1) * 1000; \
+      uint64_t B2_ = B1_ * (uint64_t)(b2mult); \
+      f = tinyecm128(t, B1_, B2_, curves, NC); \
       if (f && show) {show=0;printf("tinyecm128 %uk/%uk found factor %s\n",eb1,eb1*b2mult,u128_str(f));} \
       NC += curves; \
     }
-    UV NC = 0;
+    int NC = 0;
     /*              B1  *=B2  # curves */
     TINYECM_STEP(   2U,   20,  40)
     TINYECM_STEP(  10U,   20,  40)
@@ -1351,4 +1369,4 @@ void factorintp128(factored128_t *nf, uint128_t n) {
   if (verbose) fflush(stdout);
 }
 
-#endif /* BITS_PER_WORD == 64 && HAVE_UINT128 */
+#endif /* HAVE_FACTOR128 */

@@ -139,7 +139,7 @@ Revision history for Perl module Math::Prime::Util
       tinyecm-based implementation.
 
     - is_prob_prime, is_bpsw_prime, and is_prime can use native 128-bit
-      primality tests if uint128_t is supported.
+      primality tests on 64-bit builds with uint128_t support.
 
     - urandomm is up to 5x faster without GMP.
 

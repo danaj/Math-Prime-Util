@@ -599,13 +599,6 @@ OEIS lucky numbers:
 - In PP, we register callbacks to free cached data.  We need something like
   that for the C code.
 
-- factor128 could be used on some 32-bit machines.
-  We might need to adjust the assumptions around RETURN_128 etc.
-
-- trialf128.  Maybe live in factor128.
-
-- string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
-
 - nth_lucky bounds:  https://arxiv.org/pdf/2604.07142
 
 - Better psi(x) and Riemann(psi(x))
@@ -660,6 +653,7 @@ OEIS lucky numbers:
   go too far there.  Perhaps just "very light", "light", "mild" or even just
   "very light" and "mild" as the choices.  I don't think we can safely do it
   in this code, but we could imagine a "time limit" argument.
+- Also consider the step method that GMP's ECPP uses.
 
 - GMP using ChaCha20.  See misc/gmp-using-chacha-plan.txt.
 
@@ -683,3 +677,15 @@ OEIS lucky numbers:
 - is_power deprecate k=undef, deprecate k=0.
 
 - GMP scalar count: sieve_prime_cluster, euler_phi, moebius
+
+- factor128 could be used on some 32-bit machines.
+  We might need to adjust the assumptions around RETURN_128 etc.
+
+- factor128: Huchalla positive-inverse REDC
+
+- trialf128.  Maybe live in factor128.
+
+- string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
+
+- util.c muladd128 could be modified to not need BITS_PER_WORD == 64
+  util.c also look carefully at to_string_128

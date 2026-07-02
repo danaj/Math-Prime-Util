@@ -3,16 +3,21 @@
 
 #include "ptypes.h"
 
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+/* factor128 internals are mostly fixed-width, but current XS call sites
+ * assume 64-bit UV when returning factors or 128-bit native results.
+ * This can be widened once those XS paths are guarded separately. */
+#define HAVE_FACTOR128 (BITS_PER_WORD == 64 && HAVE_UINT128)
+
+#if HAVE_FACTOR128
 
 #define MPU_MAX_DFACTORS128  27
 
 typedef struct {
   uint128_t n;
-  UV        f[MPU_MAX_DFACTORS128];  /* small prime factors (<= UV_MAX) */
+  uint64_t  f[MPU_MAX_DFACTORS128];  /* 64-bit prime factors */
   uint8_t   e[MPU_MAX_DFACTORS128];  /* exponents of f[] */
   uint16_t  nfactors;                /* number of entries in f[]/e[] */
-  uint128_t flarge;                  /* a prime > UV_MAX, exponent always 1;
+  uint128_t flarge;                  /* a prime > UINT64_MAX with exp 1;
                                         0 if no such factor */
 } factored128_t;
 
@@ -33,6 +38,6 @@ extern uint32_t    factored128p_distinct_factors(const factored128_t *nf);
 extern bool        factored128p_is_square_free(const factored128_t *nf);
 extern signed char factored128p_moebius(const factored128_t *nf);
 
-#endif /* BITS_PER_WORD == 64 && HAVE_UINT128 */
+#endif /* HAVE_FACTOR128 */
 
 #endif /* MPU_FACTOR128_H */

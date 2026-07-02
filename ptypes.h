@@ -151,6 +151,10 @@ typedef __int8 int8_t;
   #define HAVE_UINT64 0
 #endif
 
+#if HAVE_UINT64 && !defined(UINT64_MAX)
+  #define UINT64_MAX ((uint64_t)-1)
+#endif
+
 #define MAXBIT        (BITS_PER_WORD-1)
 #define NWORDS(bits)  ( ((bits)+BITS_PER_WORD-1) / BITS_PER_WORD )
 #define NBYTES(bits)  ( ((bits)+8-1) / 8 )
