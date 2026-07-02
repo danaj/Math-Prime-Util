@@ -294,43 +294,45 @@ static int jacobi128(int128_t a_in, uint128_t n) {
   return (n == 1) ? j : 0;
 }
 
-/* Lucas sequence mod n: given (D, P=1, Q), index k, computes (U_k, V_k, Q^k).
- * Uses left-to-right binary method. */
-static void lucas_seq128(uint128_t *U, uint128_t *V, uint128_t *Qk,
-                         int128_t D_s, int64_t Q_s,
-                         uint128_t k, uint128_t n) {
-  /* Work in [0,n) using addmod/submod for signed values */
-  uint128_t D  = (D_s >= 0) ? (uint128_t)D_s % n : n - (uint128_t)(-D_s) % n;
-  uint128_t Q  = (Q_s >= 0) ? (uint128_t)Q_s % n : n - (uint128_t)(-Q_s) % n;
-  uint128_t P  = 1;
+/* Lucas sequence mod n in Montgomery form.  Given (D, P=1, Q), index k,
+ * computes (U_k, V_k, Q^k), all returned in Montgomery form. */
+static void lucas_seq128_mont(uint128_t *U, uint128_t *V, uint128_t *Qk,
+                              int128_t D_s, int64_t Q_s,
+                              uint128_t k, const mont128_t *ctx) {
+  uint128_t n = ctx->n;
+  uint128_t D = (D_s >= 0) ? (uint128_t)D_s % n
+                           : n - (uint128_t)(-D_s) % n;
+  uint128_t Q = (Q_s >= 0) ? (uint128_t)Q_s % n
+                           : n - (uint128_t)(-Q_s) % n;
+  uint128_t mont1 = mont_enter128(1, ctx);
+  uint128_t mont2 = addmod128(mont1, mont1, n);
 
-  uint128_t u = 1, v = P, q = Q;
+  D = mont_enter128(D, ctx);
+  Q = mont_enter128(Q, ctx);
+
+  uint128_t u = mont1, v = mont1, q = Q;
   uint128_t u2, v2, q2;
   uint128_t bit;
 
-  if (k == 0) { *U = 0; *V = 2 % n; *Qk = 1; return; }
+  if (k == 0) { *U = 0; *V = mont2; *Qk = mont1; return; }
 
-  /* Find highest bit below the leading 1 */
   bit = (uint128_t)1 << 126;
   while (bit > k) bit >>= 1;
   bit >>= 1;
 
   while (bit > 0) {
     /* Double: U_{2m}, V_{2m}, Q^{2m} */
-    u2 = mulmod128(u, v, n);
-    v2 = submod128(mulmod128(v, v, n), addmod128(q, q, n), n);
-    q2 = sqrmod128(q, n);
+    u2 = mont_mulmod128(u, v, ctx);
+    v2 = submod128(mont_sqrmod128(v, ctx), addmod128(q, q, n), n);
+    q2 = mont_sqrmod128(q, ctx);
 
     if (k & bit) {
-      /* Advance by 1: U_{2m+1}, V_{2m+1}, Q^{2m+1} */
-      /* U_{2m+1} = (P*U_{2m} + V_{2m}) / 2
-         V_{2m+1} = (D*U_{2m} + P*V_{2m}) / 2  (P=1)
-         Q^{2m+1} = Q^{2m} * Q                              */
-      uint128_t pu2_v2 = addmod128(u2, v2, n); /* P*u2 + v2, P=1 */
-      uint128_t du2_v2 = addmod128(mulmod128(D, u2, n), v2, n);
+      /* Advance by 1, with P=1.  half_mod128 preserves Montgomery form. */
+      uint128_t pu2_v2 = addmod128(u2, v2, n);
+      uint128_t du2_v2 = addmod128(mont_mulmod128(D, u2, ctx), v2, n);
       u = half_mod128(pu2_v2, n);
       v = half_mod128(du2_v2, n);
-      q = mulmod128(q2, Q, n);
+      q = mont_mulmod128(q2, Q, ctx);
     } else {
       u = u2; v = v2; q = q2;
     }
@@ -367,14 +369,16 @@ static bool is_strong_lucas_pp128(uint128_t n) {
   while (!(d & 1)) { d >>= 1; s++; }
 
   uint128_t U, V, Qk;
-  lucas_seq128(&U, &V, &Qk, D, Q_s, d, n);
+  mont128_t ctx;
+  mont_setup128(&ctx, n);
+  lucas_seq128_mont(&U, &V, &Qk, D, Q_s, d, &ctx);
 
   if (U == 0) return 1;
   for (int r = 0; r < s; r++) {
     if (V == 0) return 1;
     /* V_{2m} = V_m^2 - 2*Q^m  (mod n) */
-    V = submod128(sqrmod128(V, n), addmod128(Qk, Qk, n), n);
-    Qk = sqrmod128(Qk, n);
+    V = submod128(mont_sqrmod128(V, &ctx), addmod128(Qk, Qk, n), n);
+    Qk = mont_sqrmod128(Qk, &ctx);
   }
   return 0;
 }
