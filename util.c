@@ -2162,34 +2162,31 @@ int to_digit_string(char* s, UV n, UV base, int length)
   return len;
 }
 
-int to_string_128(char str[40], IV hi, UV lo)
+int to_string_128(char str[41], IV hi, UV lo)
 {
-  int i, slen = 0, isneg = 0;
+  int i, slen = 0, isneg = (hi < 0);
+  UV uhi = (UV)hi;
 
-  if (hi < 0) {
-    isneg = 1;
-    if (lo == 0) {
-      hi = -hi;
-    } else {
-      hi = -(hi+1);
-      lo = UV_MAX - lo + 1;
-    }
+  if (isneg) {
+    uhi = ~uhi;
+    lo = ~lo + 1;
+    if (lo == 0) uhi++;
   }
-#if BITS_PER_WORD == 64 && HAVE_UINT128
+#if HAVE_UINT128
   {
-    uint128_t dd, sum = (((uint128_t) hi) << 64) + lo;
+    uint128_t dd, val = (((uint128_t) uhi) << BITS_PER_WORD) + lo;
     do {
-      dd = sum / 10;
-      str[slen++] = '0' + (char)(sum - dd*10);
-      sum = dd;
-    } while (sum);
+      dd = val / 10;
+      str[slen++] = '0' + (char)(val - dd*10);
+      val = dd;
+    } while (val);
   }
 #else
   {
     UV d, r;
     uint32_t a[4];
-    a[0] = hi >> (BITS_PER_WORD/2);
-    a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));
+    a[0] = uhi >> (BITS_PER_WORD/2);
+    a[1] = uhi & (UV_MAX >> (BITS_PER_WORD/2));
     a[2] = lo >> (BITS_PER_WORD/2);
     a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
     do {

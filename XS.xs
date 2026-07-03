@@ -1125,7 +1125,7 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     if (hi == -1 && lo > IV_MAX) \
       XSRETURN_IV((IV)lo); \
     { \
-      char str_[40]; \
+      char str_[41]; \
       uint32_t slen_ = to_string_128(str_, hi, lo); \
       RETURN_SV_CANONICAL(sv_2mortal(newSVpvn(str_, slen_))); \
     } \
@@ -3826,7 +3826,7 @@ factor(IN SV* svn)
               for (ei = 0; ei < nf.e[fi]; ei++)
                 PUSHs(sv_2mortal(newSVuv((UV)nf.f[fi])));
             if (nf.flarge) {
-              char fbuf[40];
+              char fbuf[41];
               uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
               PUSH_BIGINT_STR(fbuf, flen);
             }
@@ -3838,7 +3838,7 @@ factor(IN SV* svn)
             for (fi = 0; fi < nf.nfactors; fi++)
               PUSH_2ELEM_AREF((UV)nf.f[fi], nf.e[fi]);
             if (nf.flarge) {
-              char fbuf[40];
+              char fbuf[41];
               uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
               PUTBACK;
               AV* av_ = newAV();
