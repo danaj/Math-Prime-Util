@@ -10,6 +10,10 @@
 
 #if HAVE_FACTOR128
 
+/* Conversions of uint128_t <=> string */
+extern int  u128_to_str(char str[40], uint128_t n);
+extern bool str_to_u128(uint128_t *out, const char *s, size_t len);
+
 #define MPU_MAX_DFACTORS128  27
 
 typedef struct {

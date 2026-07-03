@@ -1101,8 +1101,58 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     XSRETURN(1); \
   }
 
+/***************************/
+
 #define RETURN_SV_CANONICAL(sv) \
   RETURN_SV(xs_to_canonical(aTHX_ sv))
+
+#define PUSH_SV_CANONICAL(sv) \
+  do { \
+    PUTBACK; \
+    SV* sv_ = xs_to_canonical(aTHX_ sv); \
+    SPAGAIN; \
+    PUSHs(sv_); \
+  } while (0)
+
+#define PUSH_STR_CANONICAL(str,len) \
+  PUSH_SV_CANONICAL(sv_2mortal(newSVpvn((str), (len))))
+
+#define RETURN_STR_CANONICAL(str,len) \
+  RETURN_SV_CANONICAL(sv_2mortal(newSVpvn((str), (len))))
+
+/***************************/
+
+#if HAVE_FACTOR128
+#define SV_FROM_U128(svout, n) \
+  do { \
+    uint128_t n_ = (n); \
+    if (n_ <= (uint128_t)UV_MAX) { \
+      (svout) = sv_2mortal(newSVuv((UV)n_)); \
+    } else { \
+      char str_[40]; \
+      uint32_t slen_ = u128_to_str(str_, n_); \
+      PUTBACK; \
+      (svout) = xs_to_canonical(aTHX_ sv_2mortal(newSVpvn(str_,slen_))); \
+      SPAGAIN; \
+    } \
+  } while (0)
+
+#define PUSH_U128(n) \
+  do { \
+    SV* sv_; \
+    SV_FROM_U128(sv_, n); \
+    PUSHs(sv_); \
+  } while (0)
+
+#define RETURN_U128(n) \
+  do { \
+    SV* sv_; \
+    SV_FROM_U128(sv_, n); \
+    RETURN_SV(sv_); \
+  } while (0)
+#endif
+
+/***************************/
 
 #define RETURN_STRING_BIGINT(sv,len) \
   { \
@@ -1263,37 +1313,12 @@ static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask)
 }
 
 #if HAVE_FACTOR128
-static bool xs_str_to_uint128(uint128_t *out, const char *s, STRLEN len)
-{
-  static const char uint128_max_str[] = "340282366920938463463374607431768211455";
-  STRLEN i;
-  uint128_t n = 0;
-
-  if (len == 0) return 0;
-  if (*s == '+') { s++; len--; if (len == 0) return 0; }
-  if (*s == '-') return 0;
-
-  while (len > 1 && *s == '0') { s++; len--; }
-
-  if (len > 39 || (len == 39 && memcmp(s, uint128_max_str, 39) > 0))
-    return 0;
-
-  for (i = 0; i < len; i++) {
-    if (s[i] < '0' || s[i] > '9')
-      return 0;
-    n = n * 10 + (uint8_t)(s[i] - '0');
-  }
-
-  *out = n;
-  return 1;
-}
-
 static bool xs_sv_to_uint128(pTHX_ uint128_t *n, SV *sv)
 {
   STRLEN len;
   const char *s = SvPV_nomg(sv, len);
 
-  return xs_str_to_uint128(n, s, len);
+  return str_to_u128(n, s, len);
 }
 
 static bool xs_sv_to_uint128_abs(pTHX_ uint128_t *n, SV *sv)
@@ -1302,7 +1327,7 @@ static bool xs_sv_to_uint128_abs(pTHX_ uint128_t *n, SV *sv)
   const char *s = SvPV_nomg(sv, len);
 
   if (len > 0 && *s == '-') { s++; len--; }
-  return xs_str_to_uint128(n, s, len);
+  return str_to_u128(n, s, len);
 }
 
 static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
@@ -1336,7 +1361,7 @@ BOOT:
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
     newCONSTSUB(stash, "_nvmantdigits", newSViv((IV)((NVMANTBITS+1) / 3.322)));
     newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
-#if HAVE_FACTOR128 && BITS_PER_WORD == 64
+#if HAVE_FACTOR128
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(128));
 #else
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(BITS_PER_WORD));
@@ -3812,7 +3837,7 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-#if HAVE_FACTOR128 && BITS_PER_WORD == 64
+#if HAVE_FACTOR128
       if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
         factored128_t nf;
         if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
@@ -3824,29 +3849,29 @@ factor(IN SV* svn)
             EXTEND(SP, (EXTEND_TYPE)total);
             for (fi = 0; fi < nf.nfactors; fi++)
               for (ei = 0; ei < nf.e[fi]; ei++)
-                PUSHs(sv_2mortal(newSVuv((UV)nf.f[fi])));
-            if (nf.flarge) {
-              char fbuf[41];
-              uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
-              PUSH_BIGINT_STR(fbuf, flen);
-            }
+                PUSH_U128((uint128_t)nf.f[fi]);
+            if (nf.flarge)
+              PUSH_U128(nf.flarge);
           } else {
             /* [p, e] pairs */
             uint32_t total = factored128p_distinct_factors(&nf);
             if (gimme_v == G_SCALAR) XSRETURN_UV(total);
             EXTEND(SP, (EXTEND_TYPE)total);
-            for (fi = 0; fi < nf.nfactors; fi++)
-              PUSH_2ELEM_AREF((UV)nf.f[fi], nf.e[fi]);
-            if (nf.flarge) {
-              char fbuf[41];
-              uint32_t flen = to_string_128(fbuf, (IV)(nf.flarge >> 64), (UV)nf.flarge);
-              PUTBACK;
+            for (fi = 0; fi < nf.nfactors; fi++) {
               AV* av_ = newAV();
-              SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn(fbuf, flen)));
-              SPAGAIN;
+              SV* sv_;
+              SV_FROM_U128(sv_, (uint128_t) nf.f[fi]);
+              av_push(av_, SvREFCNT_inc(sv_));
+              av_push(av_, newSVuv(nf.e[fi]));
+              PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
+            }
+            if (nf.flarge) {
+              AV* av_ = newAV();
+              SV* sv_;
+              SV_FROM_U128(sv_, nf.flarge);
               av_push(av_, SvREFCNT_inc(sv_));
               av_push(av_, newSVuv(1));
-              PUSHs(sv_2mortal(newRV_noinc((SV*)av_)));
+              PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
             }
           }
           PUTBACK;

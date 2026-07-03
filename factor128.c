@@ -12,17 +12,57 @@
 
 #if HAVE_FACTOR128
 
+int u128_to_str(char str[40], uint128_t n) {
+  int i, slen = 0;
+
+  do {
+    uint128_t d = n / 10;
+    str[slen++] = '0' + (char)(n - d*10);
+    n = d;
+  } while (n);
+
+  str[slen] = '\0';
+  for (i = 0; i < slen/2; i++) {
+    char t = str[i];
+    str[i] = str[slen-i-1];
+    str[slen-i-1] = t;
+  }
+  return slen;
+}
+
+bool str_to_u128(uint128_t *out, const char *s, size_t len)
+{
+  static const char uint128_max_str[] = "340282366920938463463374607431768211455";
+  size_t i;
+  uint128_t n = 0;
+
+  if (len == 0) return 0;
+  if (*s == '+') { s++; len--; if (len == 0) return 0; }
+  if (*s == '-') return 0;
+
+  while (len > 1 && *s == '0') { s++; len--; }
+
+  if (len > 39 || (len == 39 && memcmp(s, uint128_max_str, 39) > 0))
+    return 0;
+
+  for (i = 0; i < len; i++) {
+    if (s[i] < '0' || s[i] > '9')
+      return 0;
+    n = n * 10 + (uint8_t)(s[i] - '0');
+  }
+
+  *out = n;
+  return 1;
+}
+
 /* Decimal string for a uint128_t, for debugging.
  * printf("  found factor %s of %s\n", u128_str(f), u128_str(t)); */
 static const char *u128_str(uint128_t n) {
   static char bufs[4][42];
   static int  idx = 0;
   char *buf = bufs[idx++ & 3];
-  char *p   = buf + 41;
-  *p = '\0';
-  if (n == 0) { *--p = '0'; return p; }
-  while (n) { *--p = '0' + (int)(n % 10); n /= 10; }
-  return p;
+  u128_to_str(buf, n);
+  return buf;
 }
 
 /*****************************************************************************
