@@ -85,7 +85,8 @@ static uint128_t pow2mod128(unsigned int e, uint128_t n) {
   return r;
 }
 
-static uint128_t gcd128(uint128_t a, uint128_t b) {
+/* Inlining this gives problems with gcc 14 and _BitInt(128) */
+static NOINLINE uint128_t gcd128(uint128_t a, uint128_t b) {
   while (b) { uint128_t t = b; b = a % b; a = t; }
   return a;
 }
@@ -753,15 +754,22 @@ stage2:
 
 /* Returns a^{-1} mod n, or 0 if gcd(a,n) > 1. */
 static uint128_t modinv128(uint128_t a, uint128_t n) {
-  uint128_t r0 = n,  r1 = a;   /* unsigned so n > 2^127 works correctly */
-  int128_t  s0 = 0, s1 = 1;
+  uint128_t r0 = n, r1 = a % n;
+  uint128_t t0 = 0, t1 = 1;    /* coefficients modulo n */
+
+  if (r1 == 0) return 0;
+
   while (r1) {
-    uint128_t q = r0 / r1, t;
-    t = r0 - q * r1;  r0 = r1;  r1 = t;
-    int128_t ts = s0 - (int128_t)q * s1;  s0 = s1;  s1 = ts;
+    uint128_t q = r0 / r1;
+    uint128_t r = r0 - q * r1;
+    uint128_t qt = (t1 == 1) ? (q % n) : mulmod128(q % n, t1, n);
+    uint128_t t = submod128(t0, qt, n);
+
+    r0 = r1;  r1 = r;
+    t0 = t1;  t1 = t;
   }
-  if (r0 != 1) return 0;
-  return s0 < 0 ? n - (uint128_t)(-s0) : (uint128_t)s0;
+
+  return (r0 == 1) ? t0 : 0;
 }
 
 /* Projective (X:Z) point on a Montgomery curve.  Values in Montgomery form. */
@@ -1359,8 +1367,10 @@ void factorintp128(factored128_t *nf, uint128_t n) {
     TINYECM_STEP( 800U,   40,  80) /* Failsafe.  Extremely unlikely to hit. */
 #undef TINYECM_STEP
 
-    if (f <= 1 || f >= t || (t % f) != 0)
+    if (f <= 1 || f >= t)
       croak("internal: factorintp128 failed to factor %s\n", u128_str(t));
+    if ((t % f) != 0)
+      croak("internal: factorintp128 found non-factor %s for %s\n", u128_str(f), u128_str(t));
 
     /* Push both halves (f and t/f) for further factoring */
     stack[top++] = f;

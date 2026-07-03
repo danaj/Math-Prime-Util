@@ -1336,7 +1336,7 @@ BOOT:
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
     newCONSTSUB(stash, "_nvmantdigits", newSViv((IV)((NVMANTBITS+1) / 3.322)));
     newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
-#if HAVE_FACTOR128
+#if HAVE_FACTOR128 && BITS_PER_WORD == 64
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(128));
 #else
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(BITS_PER_WORD));
@@ -3812,7 +3812,7 @@ factor(IN SV* svn)
           PUSH_2ELEM_AREF( nf.f[i], nf.e[i] );
       }
     } else {
-#if HAVE_FACTOR128
+#if HAVE_FACTOR128 && BITS_PER_WORD == 64
       if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
         factored128_t nf;
         if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
@@ -4703,7 +4703,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       if (bstatus == -1) b = neg_iv(b);
       if (cstatus == -1) c = neg_iv(c);
       {
-#if HAVE_FACTOR128
+#if HAVE_FACTOR128 && BITS_PER_WORD == 64
         /* 128-bit path: handles virtually all native inputs on 64-bit */
         IV hi; UV lo;
         if (muladd128(&hi,&lo, a,b,c, astatus,bstatus,(ix==1)?-cstatus:cstatus))

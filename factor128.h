@@ -3,10 +3,10 @@
 
 #include "ptypes.h"
 
-/* factor128 internals are mostly fixed-width, but current XS call sites
- * assume 64-bit UV when returning factors or 128-bit native results.
- * This can be widened once those XS paths are guarded separately. */
-#define HAVE_FACTOR128 (BITS_PER_WORD == 64 && HAVE_UINT128)
+/* factor128 works if we have uint64_t and uint128_t.
+ * Caution: callers that use 64-bit or 128-bit factor results must not
+ * assume they fit in a UV. */
+#define HAVE_FACTOR128 (HAVE_UINT64 && HAVE_UINT128)
 
 #if HAVE_FACTOR128
 
