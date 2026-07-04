@@ -1168,7 +1168,7 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
     PUSHs(sv_); \
   } while (0)
 
-#define RETURN_128(hi,lo) \
+#define RETURN_IV_UV(hi,lo) \
   do { \
     if (hi == 0) \
       XSRETURN_UV(lo); \
@@ -1176,7 +1176,18 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
       XSRETURN_IV((IV)lo); \
     { \
       char str_[41]; \
-      uint32_t slen_ = to_string_128(str_, hi, lo); \
+      uint32_t slen_ = iv_uv_to_str(str_, hi, lo); \
+      RETURN_SV_CANONICAL(sv_2mortal(newSVpvn(str_, slen_))); \
+    } \
+  } while(0)
+
+#define RETURN_UV_UV(hi,lo) \
+  do { \
+    if (hi == 0) \
+      XSRETURN_UV(lo); \
+    { \
+      char str_[41]; \
+      uint32_t slen_ = uv_uv_to_str(str_, hi, lo); \
       RETURN_SV_CANONICAL(sv_2mortal(newSVpvn(str_, slen_))); \
     } \
   } while(0)
@@ -1744,7 +1755,7 @@ void sum_primes(IN SV* svlo, IN SV* svhi = 0)
           count -= lo_loc;
         }
         if (retok)
-          RETURN_128((IV)hicount, count);
+          RETURN_UV_UV(hicount, count);
       }
     }
     DISPATCHPP_RETURN();
@@ -2410,7 +2421,7 @@ vecsum(...)
         lo += n;
       }
       if (status != 0)
-        RETURN_128(hi, lo);
+        RETURN_IV_UV(hi, lo);
     } else if (ix == 1) {
       int sign = 1;
       for (ret = 1, i = 0; i < items; i++) {
@@ -4732,7 +4743,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
         /* 128-bit path: handles virtually all native inputs on 64-bit */
         IV hi; UV lo;
         if (muladd128(&hi,&lo, a,b,c, astatus,bstatus,(ix==1)?-cstatus:cstatus))
-          RETURN_128(hi, lo);
+          RETURN_IV_UV(hi, lo);
 #else
         /* 32-bit or 64-bit without uint128_t */
         int prodneg = (astatus == -1) ^ (bstatus == -1);
@@ -5329,7 +5340,7 @@ void sumtotient(IN SV* svn)
         UV hicount, count;
         int retok = sumtotient128(n, &hicount, &count);
         if (retok == 1)
-          RETURN_128((IV)hicount, count);
+          RETURN_UV_UV(hicount, count);
       }
     }
     DISPATCHPP_RETURN();

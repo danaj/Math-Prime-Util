@@ -2162,9 +2162,53 @@ int to_digit_string(char* s, UV n, UV base, int length)
   return len;
 }
 
-int to_string_128(char str[41], IV hi, UV lo)
+int uv_uv_to_str(char str[41], UV hi, UV lo)
 {
-  int i, slen = 0, isneg = (hi < 0);
+  int slen = 0;
+
+#if BITS_PER_WORD == 32 && HAVE_UINT64
+  uint64_t dd, val = (((uint64_t) hi) << BITS_PER_WORD) + lo;
+  do {
+    dd = val / 10;
+    str[slen++] = '0' + (char)(val - dd*10);
+    val = dd;
+  } while (val);
+#elif BITS_PER_WORD == 64 && HAVE_UINT128
+  uint128_t dd, val = (((uint128_t) hi) << BITS_PER_WORD) + lo;
+  do {
+    dd = val / 10;
+    str[slen++] = '0' + (char)(val - dd*10);
+    val = dd;
+  } while (val);
+#else
+  UV d, r;
+  uint32_t a[4];
+  a[0] = hi >> (BITS_PER_WORD/2);
+  a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));
+  a[2] = lo >> (BITS_PER_WORD/2);
+  a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
+  do {
+    r = a[0];
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[1];  a[0] = d;
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[2];  a[1] = d;
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[3];  a[2] = d;
+    d = r/10;  r = r-d*10;  a[3] = d;
+    str[slen++] = '0'+(r%10);
+  } while (a[0] || a[1] || a[2] || a[3]);
+#endif
+
+  {
+    char *p = str, *s = str+slen;
+    *s = '\0';                                          /* Add terminator. */
+    while (--s > p) { char c = *s; *s = *p; *p++ = c; } /* Reverse digits. */
+  }
+
+  return slen;
+}
+
+int iv_uv_to_str(char str[41], IV hi, UV lo)
+{
+  int i, slen, isneg = (hi < 0);
   UV uhi = (UV)hi;
 
   if (isneg) {
@@ -2172,48 +2216,16 @@ int to_string_128(char str[41], IV hi, UV lo)
     lo = ~lo + 1;
     if (lo == 0) uhi++;
   }
-#if HAVE_UINT128
-  {
-    uint128_t dd, val = (((uint128_t) uhi) << BITS_PER_WORD) + lo;
-    do {
-      dd = val / 10;
-      str[slen++] = '0' + (char)(val - dd*10);
-      val = dd;
-    } while (val);
-  }
-#else
-  {
-    UV d, r;
-    uint32_t a[4];
-    a[0] = uhi >> (BITS_PER_WORD/2);
-    a[1] = uhi & (UV_MAX >> (BITS_PER_WORD/2));
-    a[2] = lo >> (BITS_PER_WORD/2);
-    a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
-    do {
-      r = a[0];
-      d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[1];  a[0] = d;
-      d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[2];  a[1] = d;
-      d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[3];  a[2] = d;
-      d = r/10;  r = r-d*10;  a[3] = d;
-      str[slen++] = '0'+(r%10);
-    } while (a[0] || a[1] || a[2] || a[3]);
-  }
-#endif
-  /* Reverse the order */
-  for (i=0; i < slen/2; i++) {
-    char t=str[i];
-    str[i]=str[slen-i-1];
-    str[slen-i-1] = t;
-  }
-  /* Prepend a negative sign if needed */
-  if (isneg) {
+
+  slen = uv_uv_to_str(str, uhi, lo);
+
+  if (isneg) {  /* Prepend a negative sign */
     for (i = slen; i > 0; i--)
       str[i] = str[i-1];
     str[0] = '-';
     slen++;
+    str[slen] = '\0';
   }
-  /* Add terminator */
-  str[slen] = '\0';
   return slen;
 }
 

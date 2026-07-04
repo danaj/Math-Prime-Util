@@ -145,7 +145,8 @@ extern bool from_digit_to_str(char** rstr, const UV* r, size_t len, int base);
 /* These return length */
 extern int  to_digit_array(UV* bits, UV n, UV base, int length);
 extern int  to_digit_string(char *s, UV n, UV base, int length);
-extern int  to_string_128(char s[41], IV hi, UV lo);
+extern int  uv_uv_to_str(char s[41], UV hi, UV lo);
+extern int  iv_uv_to_str(char s[41], IV hi, UV lo);
 
 /* Returns 1 if good, 0 if bad, -1 if non canon, 2 ok but out of range */
 extern int validate_zeckendorf(const char* str);
