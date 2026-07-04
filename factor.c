@@ -920,11 +920,7 @@ static INLINE uint64_t tecm64_submod(uint64_t a, uint64_t b, uint64_t n)
 
 static INLINE uint64_t tecm64_halfmod(uint64_t a, uint64_t n)
 {
-  if (a & 1) {
-    uint64_t t = a + n;
-    return (t < a) ? (UINT64_C(1) << 63) | (t >> 1) : t >> 1;
-  }
-  return a >> 1;
+  return (a & 1)  ?  (a >> 1) + (n >> 1) + 1  :  a >> 1;
 }
 
 static uint64_t tecm64_mulmod(uint64_t a, uint64_t b, uint64_t n)

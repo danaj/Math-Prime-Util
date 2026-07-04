@@ -71,10 +71,9 @@ static const char *u128_str(uint128_t n) {
  *****************************************************************************/
 
 static INLINE uint128_t addmod128(uint128_t a, uint128_t b, uint128_t n) {
-  uint128_t r = a + b;
-  /* Handle both unsigned overflow (r < a) and r >= n */
-  if (r < a || r >= n) r -= n;
-  return r;
+  /* Avoid relying on unsigned 128-bit overflow. */
+  uint128_t nb = n - b;
+  return (a >= nb) ? a - nb : a + b;
 }
 
 static INLINE uint128_t submod128(uint128_t a, uint128_t b, uint128_t n) {
@@ -83,26 +82,27 @@ static INLINE uint128_t submod128(uint128_t a, uint128_t b, uint128_t n) {
 
 /* (a + n) / 2 mod n, for odd n */
 static INLINE uint128_t half_mod128(uint128_t a, uint128_t n) {
-  if (a & 1) {
-    uint128_t t = a + n;
-    /* If overflow occurred, the true value is >= 2^128, so after /2
-     * the top bit is set.  Reconstruct with (1<<127) | (t>>1). */
-    return (t < a) ? ((uint128_t)1 << 127) | (t >> 1) : t >> 1;
-  }
-  return a >> 1;
+  return (a & 1)  ?  (a >> 1) + (n >> 1) + 1  :  a >> 1;
 }
 
 /* Binary double-and-add mulmod.  O(128) addmod128 calls.
  * Used only for primality testing (variable modulus). */
 static uint128_t mulmod128(uint128_t a, uint128_t b, uint128_t n) {
   uint128_t r = 0;
+
   if (a >= n) a %= n;
   if (b >= n) b %= n;
-  if (a < b) { uint128_t t = a; a = b; b = t; }
-  while (b > 0) {
-    if (b & 1) r = addmod128(r, a, n);
-    a = addmod128(a, a, n);
-    b >>= 1;
+
+  if (a <= (uint128_t)UINT64_MAX && b <= (uint128_t)UINT64_MAX)
+    return ((uint128_t)(uint64_t)a * (uint64_t)b) % n;
+
+  uint128_t x = a >= b ? a : b;
+  uint128_t y = a >= b ? b : a;
+
+  while (y > 0) {
+    if (y & 1) r = addmod128(r, x, n);
+    x = addmod128(x, x, n);
+    y >>= 1;
   }
   return r;
 }
