@@ -35,6 +35,8 @@ extern bool        is_prime128(uint128_t n);
 extern bool        is_bpsw128(uint128_t n);
 extern signed char moebius128(uint128_t n);
 extern bool        is_semiprime128(uint128_t n);
+extern uint128_t   muladdmod128_s(uint128_t a, uint128_t b, uint128_t c,
+                                  uint128_t n, int sub);
 
 /* Simple helper functions */
 extern uint32_t    factored128p_total_factors(const factored128_t *nf);

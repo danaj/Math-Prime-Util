@@ -1353,18 +1353,68 @@ static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask)
 static bool xs_sv_to_uint128(pTHX_ uint128_t *n, SV *sv)
 {
   STRLEN len;
-  const char *s = SvPV_nomg(sv, len);
+  const char *s;
 
+  if (SVNUMTEST(sv)) {
+    IV iv = SvIVX(sv);
+    if (iv < 0 && !SvIsUV(sv))
+      return 0;
+    *n = (uint128_t)(UV)iv;
+    return 1;
+  }
+
+  s = SvPV_nomg(sv, len);
   return str_to_u128(n, s, len);
 }
 
 static bool xs_sv_to_uint128_abs(pTHX_ uint128_t *n, SV *sv)
 {
   STRLEN len;
-  const char *s = SvPV_nomg(sv, len);
+  const char *s;
 
+  if (SVNUMTEST(sv)) {
+    IV iv = SvIVX(sv);
+    *n = (iv >= 0 || SvIsUV(sv)) ? (uint128_t)(UV)iv
+                                 : (uint128_t)neg_iv((UV)iv);
+    return 1;
+  }
+
+  s = SvPV_nomg(sv, len);
   if (len > 0 && *s == '-') { s++; len--; }
   return str_to_u128(n, s, len);
+}
+
+static bool xs_sv_to_uint128_signmag(pTHX_ uint128_t *n, int *sign, SV *sv)
+{
+  STRLEN len;
+  const char *s;
+
+  if (SVNUMTEST(sv)) {
+    IV iv = SvIVX(sv);
+    if (iv >= 0 || SvIsUV(sv)) {
+      *n = (uint128_t)(UV)iv;
+      *sign = (*n == 0) ? 0 : 1;
+    } else {
+      *n = (uint128_t)neg_iv((UV)iv);
+      *sign = -1;
+    }
+    return 1;
+  }
+
+  s = SvPV_nomg(sv, len);
+  *sign = 1;
+  if (len > 0 && *s == '-') { *sign = -1; s++; len--; }
+  if (!str_to_u128(n, s, len))
+    return 0;
+  if (*n == 0)
+    *sign = 0;
+  return 1;
+}
+
+static uint128_t mod_with128(uint128_t a, int sign, uint128_t n)
+{
+  a %= n;
+  return (sign < 0 && a != 0) ? n - a : a;
 }
 
 static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
@@ -4354,6 +4404,26 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
       if (retundef) XSRETURN_UNDEF;
       XSRETURN_UV(ret);
     }
+#if HAVE_FACTOR128
+    if (ix <= 2) {
+      uint128_t a128, b128, n128, ret128;
+      int asign, bsign;
+      if (xs_sv_to_uint128_signmag(aTHX_ &a128, &asign, sva) &&
+          xs_sv_to_uint128_signmag(aTHX_ &b128, &bsign, svb) &&
+          xs_sv_to_uint128_abs(aTHX_ &n128, svn)) {
+        if (n128 == 0) XSRETURN_UNDEF;
+        if (n128 == 1) XSRETURN_UV(0);
+        a128 = mod_with128(a128, asign, n128);
+        b128 = mod_with128(b128, bsign, n128);
+        switch (ix) {
+          case 0:  ret128 = muladdmod128_s(1, a128, b128, n128, 0); break;
+          case 1:  ret128 = muladdmod128_s(1, a128, b128, n128, 1); break;
+          default: ret128 = muladdmod128_s(a128, b128, 0, n128, 0); break;
+        }
+        RETURN_U128(ret128);
+      }
+    }
+#endif
     if (!_XS_get_callgmp() && ix <= 2) {
       STRLEN lena, lenb, lenn, rlen;
       const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sn = SvPV_nomg(svn, lenn);
@@ -4387,6 +4457,24 @@ void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
       ret = (ix==0)  ?  muladdmod(a,b,c,n)  :  mulsubmod(a,b,c,n);
       XSRETURN_UV(ret);
     }
+#if HAVE_FACTOR128
+    {
+      uint128_t a128, b128, c128, n128, ret128;
+      int asign, bsign, csign;
+      if (xs_sv_to_uint128_signmag(aTHX_ &a128, &asign, sva) &&
+          xs_sv_to_uint128_signmag(aTHX_ &b128, &bsign, svb) &&
+          xs_sv_to_uint128_signmag(aTHX_ &c128, &csign, svc) &&
+          xs_sv_to_uint128_abs(aTHX_ &n128, svn)) {
+        if (n128 == 0) XSRETURN_UNDEF;
+        if (n128 == 1) XSRETURN_UV(0);
+        a128 = mod_with128(a128, asign, n128);
+        b128 = mod_with128(b128, bsign, n128);
+        c128 = mod_with128(c128, csign, n128);
+        ret128 = muladdmod128_s(a128, b128, c128, n128, ix);
+        RETURN_U128(ret128);
+      }
+    }
+#endif
     if (!_XS_get_callgmp()) {
       STRLEN lena, lenb, lenc, lenn, rlen;
       const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sc = SvPV_nomg(svc, lenc), *sn = SvPV_nomg(svn, lenn);

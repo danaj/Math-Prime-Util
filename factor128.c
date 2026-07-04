@@ -96,7 +96,9 @@ static INLINE uint128_t half_mod128(uint128_t a, uint128_t n) {
  * Used only for primality testing (variable modulus). */
 static uint128_t mulmod128(uint128_t a, uint128_t b, uint128_t n) {
   uint128_t r = 0;
-  a %= n;
+  if (a >= n) a %= n;
+  if (b >= n) b %= n;
+  if (a < b) { uint128_t t = a; a = b; b = t; }
   while (b > 0) {
     if (b & 1) r = addmod128(r, a, n);
     a = addmod128(a, a, n);
@@ -251,6 +253,19 @@ static void mont_setup128(mont128_t *ctx, uint128_t n) {
 
   /* r2 = R^2 mod n = (2^128)^2 mod n = 2^256 mod n. */
   ctx->r2 = pow2mod128(256,n);
+}
+
+uint128_t muladdmod128_s(uint128_t a, uint128_t b, uint128_t c,
+                         uint128_t n, int sub)
+{
+  uint128_t r;
+
+  if (a == 0 || b == 0) r = 0;
+  else if (a == 1)      r = b;
+  else if (b == 1)      r = a;
+  else                  r = mulmod128(a, b, n);
+
+  return sub ? submod128(r, c, n) : addmod128(r, c, n);
 }
 
 /*****************************************************************************
