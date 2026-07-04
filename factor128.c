@@ -817,7 +817,8 @@ static uint128_t modinv128(uint128_t a, uint128_t n) {
   while (r1) {
     uint128_t q = r0 / r1;
     uint128_t r = r0 - q * r1;
-    uint128_t qt = (t1 == 1) ? (q % n) : mulmod128(q % n, t1, n);
+    uint128_t qt = q % n;
+    if (t1 != 1) qt = mulmod128(qt, t1, n);
     uint128_t t = submod128(t0, qt, n);
 
     r0 = r1;  r1 = r;
