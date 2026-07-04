@@ -1125,12 +1125,12 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
 #if HAVE_FACTOR128
 #define SV_FROM_U128(svout, n) \
   do { \
-    uint128_t n_ = (n); \
-    if (n_ <= (uint128_t)UV_MAX) { \
-      (svout) = sv_2mortal(newSVuv((UV)n_)); \
+    uint128_t svu128_val_ = (n); \
+    if (svu128_val_ <= (uint128_t)UV_MAX) { \
+      (svout) = sv_2mortal(newSVuv((UV)svu128_val_)); \
     } else { \
       char str_[40]; \
-      uint32_t slen_ = u128_to_str(str_, n_); \
+      uint32_t slen_ = u128_to_str(str_, svu128_val_); \
       PUTBACK; \
       (svout) = xs_to_canonical(aTHX_ sv_2mortal(newSVpvn(str_,slen_))); \
       SPAGAIN; \
@@ -1146,10 +1146,16 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
 
 #define RETURN_U128(n) \
   do { \
-    SV* sv_; \
-    SV_FROM_U128(sv_, n); \
-    RETURN_SV(sv_); \
+    uint128_t retu128_val_ = (n); \
+    if (retu128_val_ <= (uint128_t)UV_MAX) { \
+      XSRETURN_UV((UV)retu128_val_); \
+    } else { \
+      SV* sv_; \
+      SV_FROM_U128(sv_, retu128_val_); \
+      RETURN_SV(sv_); \
+    } \
   } while (0)
+
 #endif
 
 /***************************/
@@ -1183,12 +1189,32 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
 
 #define RETURN_UV_UV(hi,lo) \
   do { \
-    if (hi == 0) \
-      XSRETURN_UV(lo); \
+    UV retuvuv_hi_ = (hi), retuvuv_lo_ = (lo); \
+    if (retuvuv_hi_ == 0) \
+      XSRETURN_UV(retuvuv_lo_); \
     { \
       char str_[41]; \
-      uint32_t slen_ = uv_uv_to_str(str_, hi, lo); \
+      uint32_t slen_ = uv_uv_to_str(str_, retuvuv_hi_, retuvuv_lo_); \
       RETURN_SV_CANONICAL(sv_2mortal(newSVpvn(str_, slen_))); \
+    } \
+  } while(0)
+
+#define RETURN_SIGNMAG_UV_UV(sign,hi,lo) \
+  do { \
+    int retsmuvuv_sign_ = (sign); \
+    UV retsmuvuv_hi_ = (hi), retsmuvuv_lo_ = (lo); \
+    if (retsmuvuv_sign_ > 0) { \
+      RETURN_UV_UV(retsmuvuv_hi_, retsmuvuv_lo_); \
+    } else if (retsmuvuv_sign_ == 0) { \
+      XSRETURN_UV(0); \
+    } else if (retsmuvuv_hi_ == 0 && retsmuvuv_lo_ <= (UV)IV_MAX) { \
+      XSRETURN_IV(-(IV)retsmuvuv_lo_); \
+    } else { \
+      char str_[42]; \
+      uint32_t slen_; \
+      str_[0] = '-'; \
+      slen_ = 1 + uv_uv_to_str(str_+1, retsmuvuv_hi_, retsmuvuv_lo_); \
+      RETURN_STR_CANONICAL(str_, slen_); \
     } \
   } while(0)
 
@@ -4739,36 +4765,11 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       if (bstatus == -1) b = neg_iv(b);
       if (cstatus == -1) c = neg_iv(c);
       {
-#if HAVE_FACTOR128 && BITS_PER_WORD == 64
-        /* 128-bit path: handles virtually all native inputs on 64-bit */
-        IV hi; UV lo;
-        if (muladd128(&hi,&lo, a,b,c, astatus,bstatus,(ix==1)?-cstatus:cstatus))
-          RETURN_IV_UV(hi, lo);
-#else
-        /* 32-bit or 64-bit without uint128_t */
-        int prodneg = (astatus == -1) ^ (bstatus == -1);
-        int cneg    = (cstatus == -1) ^ (ix == 1);
-        int retneg = 0, overflow;
-        UV prod, ret = 0;
-        overflow = (a > 0 && UV_MAX/a < b);
-        if (!overflow) {
-          prod = a * b;
-          if (prodneg == cneg) {
-            overflow = (UV_MAX - prod < c);
-            ret = prod + c;  retneg = prodneg;
-          } else if (prodneg) {
-            ret = (c >= prod) ? c - prod : prod - c;
-            retneg = (c < prod);
-          } else {
-            ret = (prod >= c) ? prod - c : c - prod;
-            retneg = (prod < c);
-          }
-        }
-        if (!overflow) {
-          if (!retneg) XSRETURN_UV(ret);
-          if (ret <= (UV)IV_MAX) XSRETURN_IV(neg_iv(ret));
-        }
-#endif
+        int sign;
+        UV hi, lo;
+        if (muladd_uv_signmag(&sign, &hi, &lo, a, b, c,
+                              astatus, bstatus, (ix == 1) ? -cstatus : cstatus))
+          RETURN_SIGNMAG_UV_UV(sign, hi, lo);
       }
     }
     {

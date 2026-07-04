@@ -1709,32 +1709,75 @@ UV ivmod(IV a, UV n) {   /* a mod n with signed a (0 <= r < n) */
   }
 }
 
-bool muladd128(IV* hi, UV* lo, UV n, UV m, UV a, int nsign, int msign, int asign) {
-#if BITS_PER_WORD == 64 && HAVE_UINT128
-  uint128_t ret, prod = (uint128_t)n * (uint128_t)m;
-  UV H, L;
-  int retneg, prodneg = (nsign == -1) ^ (msign == -1), aneg = (asign == -1);
+bool muladd_uv_signmag(int *sign, UV *hi, UV *lo,
+                       UV a, UV b, UV c,
+                       int asign, int bsign, int csign)
+{
+  int prodneg = (asign == -1) ^ (bsign == -1);
+  int cneg = (csign == -1);
 
-  if (prodneg == aneg) {  /*  prod + a  or  -prod - a */
-    ret = prod + a;
-    retneg = prodneg;
-  } else if (prodneg) {   /* -prod + a */
-    ret = a >= prod  ?  a-prod  :  prod-a;
-    retneg = (a < prod);
-  } else {                /*  prod - a */
-    ret = prod >= a  ?  prod-a  :  a-prod;
-    retneg = (prod < a);
+#if BITS_PER_WORD == 64 && HAVE_UINT128
+  uint128_t prod = (uint128_t)a * (uint128_t)b;
+  uint128_t ret;
+
+  if (prodneg == cneg) {
+    ret = prod + c;
+    *sign = prodneg ? -1 : 1;
+  } else if (prod >= c) {
+    ret = prod - c;
+    *sign = prodneg ? -1 : 1;
+  } else {
+    ret = (uint128_t)c - prod;
+    *sign = cneg ? -1 : 1;
   }
-  if (ret == 0) retneg = 0;
-  H = (ret >> 64) & UV_MAX;
-  L = (ret      ) & UV_MAX;
-  if (H > (UV)IV_MAX) return 0;
-  if      (!retneg) { *hi =  (IV)H;    *lo = L; }
-  else if (L == 0)  { *hi = -(IV)H;    *lo = L; }
-  else              { *hi = -(IV)H-1;  *lo = UV_MAX-L+1; }
+
+  if (ret == 0) *sign = 0;
+  *hi = (UV)(ret >> BITS_PER_WORD);
+  *lo = (UV) ret;
+  return 1;
+#elif BITS_PER_WORD == 32 && HAVE_UINT64
+  uint64_t prod = (uint64_t)a * (uint64_t)b;
+  uint64_t ret;
+
+  if (prodneg == cneg) {
+    ret = prod + c;
+    *sign = prodneg ? -1 : 1;
+  } else if (prod >= c) {
+    ret = prod - c;
+    *sign = prodneg ? -1 : 1;
+  } else {
+    ret = (uint64_t)c - prod;
+    *sign = cneg ? -1 : 1;
+  }
+
+  if (ret == 0) *sign = 0;
+  *hi = (UV)(ret >> BITS_PER_WORD);
+  *lo = (UV) ret;
   return 1;
 #else
-  return 0;
+  int overflow;
+  UV prod, ret = 0;
+
+  overflow = (a > 0 && UV_MAX/a < b);
+  if (overflow) return 0;
+
+  prod = a * b;
+  if (prodneg == cneg) {
+    if (UV_MAX - prod < c) return 0;
+    ret = prod + c;
+    *sign = prodneg ? -1 : 1;
+  } else if (prod >= c) {
+    ret = prod - c;
+    *sign = prodneg ? -1 : 1;
+  } else {
+    ret = c - prod;
+    *sign = cneg ? -1 : 1;
+  }
+
+  if (ret == 0) *sign = 0;
+  *hi = 0;
+  *lo = ret;
+  return 1;
 #endif
 }
 

@@ -93,7 +93,9 @@ extern IV cdivrem(IV *q, IV *r, IV D, IV d);   /* divrem ceiling */
 extern IV edivrem(IV *q, IV *r, IV D, IV d);   /* divrem Euclidian */
 extern UV ivmod(IV a, UV n) ISCONSTFUNC;       /* Returns a mod n (trunc) */
 
-extern bool muladd128(IV* hi, UV* lo, UV n, UV m, UV a, int nsign, int msign, int asign);
+extern bool muladd_uv_signmag(int *sign, UV *hi, UV *lo,
+                              UV a, UV b, UV c,
+                              int asign, int bsign, int csign);
 
 extern UV   exp_mangoldt(UV n);
 extern UV   znprimroot(UV n);
