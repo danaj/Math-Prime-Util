@@ -48,15 +48,21 @@ sub capture_fds (&) {
   return ($stdout || '', $stderr || '');
 }
 
+sub is_output {
+  my ($got, $exp, $name) = @_;
+  $got =~ s/\r\n?/\n/g;
+  is($got, $exp, $name);
+}
+
 {
   my ($stdout, $stderr) = capture_fds { print_primes(11); };
-  is($stdout, "2\n3\n5\n7\n11\n", "print_primes(hi) writes primes to STDOUT");
+  is_output($stdout, "2\n3\n5\n7\n11\n", "print_primes(hi) writes primes to STDOUT");
   is($stderr, "", "print_primes(hi) leaves STDERR alone");
 }
 
 {
   my ($stdout, $stderr) = capture_fds { print_primes(10, 19); };
-  is($stdout, "11\n13\n17\n19\n", "print_primes(lo, hi) writes primes to STDOUT");
+  is_output($stdout, "11\n13\n17\n19\n", "print_primes(lo, hi) writes primes to STDOUT");
   is($stderr, "", "print_primes(lo, hi) leaves STDERR alone");
 }
 
@@ -71,11 +77,11 @@ sub capture_fds (&) {
     print_primes("99999999999999999999999999900",
                  "100000000000000000000000000378");
   };
-  is($stdout, join("", map { "$_\n" }
-                   "99999999999999999999999999947",
-                   "99999999999999999999999999973",
-                   "100000000000000000000000000319"),
-     "print_primes bigint range writes primes to STDOUT");
+  is_output($stdout, join("", map { "$_\n" }
+                          "99999999999999999999999999947",
+                          "99999999999999999999999999973",
+                          "100000000000000000000000000319"),
+            "print_primes bigint range writes primes to STDOUT");
   is($stderr, "", "print_primes bigint range leaves STDERR alone");
 }
 
@@ -83,7 +89,7 @@ sub capture_fds (&) {
   my ($stdout, $stderr) = capture_fds {
     print_primes(5, 11, fileno(STDOUT));
   };
-  is($stdout, "5\n7\n11\n", "print_primes(..., fileno(STDOUT)) writes to STDOUT");
+  is_output($stdout, "5\n7\n11\n", "print_primes(..., fileno(STDOUT)) writes to STDOUT");
   is($stderr, "", "print_primes(..., fileno(STDOUT)) leaves STDERR alone");
 }
 
@@ -92,7 +98,7 @@ sub capture_fds (&) {
     print_primes(5, 11, fileno(STDERR));
   };
   is($stdout, "", "print_primes(..., fileno(STDERR)) leaves STDOUT alone");
-  is($stderr, "5\n7\n11\n", "print_primes(..., fileno(STDERR)) writes to STDERR");
+  is_output($stderr, "5\n7\n11\n", "print_primes(..., fileno(STDERR)) writes to STDERR");
 }
 
 {
