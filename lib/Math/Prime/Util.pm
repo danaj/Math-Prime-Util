@@ -8272,15 +8272,17 @@ However there is no option for unsigned (UV), only signed integers (IV).
 Sort::Key offers a variety of interfaces including unsigned and signed
 integers, as well as in-place versions.
 The following table compares sorting random 64-bit unsigned integers and
-is shown as speedup relative to Perl's sort (higher is faster, v5.43.7).
+is shown as speedup relative to Perl's sort (higher is faster, v5.42.0).
 
                               10    100   1000  10000 100000     1M
-  vecsort                   2.0x   2.3x   4.7x   6.2x   6.9x   9.7x
-  Sort::Key::Radix usort    1.4x   2.3x   3.4x   3.4x   4.7x   2.7x
-  Sort::XS::quick_sort      1.2x   1.5x   1.8x   1.9x   2.0x   2.7x
-  Sort::Key usort           1.2x   1.3x   1.3x   1.3x   1.3x   1.3x
+  vecsorti                  2.8x   2.7x   5.6x   7.9x   9.5x  14.2x
+  vecsort                   2.1x   2.3x   4.5x   5.9x   7.1x  10.8x
+  Sort::DJB::sort_uint64    1.9x   3.0x   3.3x   3.2x   3.0x   3.2x
+  Sort::Key::Radix usort    1.4x   1.8x   3.1x   2.7x   4.4x   3.3x
+  Sort::XS::quick_sort      1.1x   1.4x   1.8x   2.9x   2.1x   2.7x
+  Sort::Key usort           1.2x   1.3x   1.3x   1.4x   1.3x   1.3x
   sort                      1.0x   1.0x   1.0x   1.0x   1.0x   1.0x
-  List::MoreUtils::qsort    0.6x   0.5x   0.4x   0.4x   0.4x   0.3x
+  List::MoreUtils::qsort    0.7x   0.5x   0.4x   0.4x   0.4x   0.3x
 
 The implementation does not currently try to exploit patterns.
 Regarding the above timing, when given sorted or reverse sorted data,

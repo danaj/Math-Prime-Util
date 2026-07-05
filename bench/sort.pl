@@ -8,6 +8,7 @@ use Math::Prime::Util ":all";
 use Sort::XS;
 use Sort::Key::Radix;
 use Sort::Key;
+use Sort::DJB;
 use List::MoreUtils;
 
 my $narrays = 10000;
@@ -17,7 +18,7 @@ for my $len (10,100,1000,10000,100000,1000000) {
   $narrays /= 10 if $len == 100000;
   $narrays /= 10 if $len == 1000000;
 
-  my(@times) = (0) x 5;
+  my(@times) = (0) x 8;
   for (1..20) {
     my @ints;
     for (0..$narrays-1) {
@@ -31,13 +32,17 @@ for my $len (10,100,1000,10000,100000,1000000) {
     $times[3] += time_sortkeyradix(\@ints);
     $times[4] += time_vecsort(\@ints);
     $times[5] += time_lmu(\@ints);
+    $times[6] += time_djb(\@ints);
+    $times[7] += time_vecsorti(\@ints);
   }
   show_res($times[0], $times[5], "LMU::qsort", 20*$narrays, $len);
   show_res($times[0], $times[0], "sort", 20*$narrays, $len);
   show_res($times[0], $times[2], "Sort::Key::usort", 20*$narrays, $len);
   show_res($times[0], $times[1], "Sort::XS::quick_sort", 20*$narrays, $len);
   show_res($times[0], $times[3], "Sort::Key::Radix::usort", 20*$narrays, $len);
+  show_res($times[0], $times[6], "Sort::DJB", 20*$narrays, $len);
   show_res($times[0], $times[4], "vecsort", 20*$narrays, $len);
+  show_res($times[0], $times[7], "vecsorti", 20*$narrays, $len);
   print "\n";
 }
 
@@ -91,7 +96,22 @@ sub time_sortkeyradix {
 }
 sub time_lmu {
   my $ints = shift;
+  my @nints = map { [@$_] } @$ints;
   my $t0 = [gettimeofday];
-  for my $t (@$ints) { my @S=@$t; List::MoreUtils::qsort {$a<=>$b} @S; }
+  for my $t (@nints) { List::MoreUtils::qsort {$a<=>$b} @$t; }
+  return tv_interval($t0);
+}
+sub time_djb {
+  my $ints = shift;
+  my @nints = map { [@$_] } @$ints;
+  my $t0 = [gettimeofday];
+  for my $t (@nints) { Sort::DJB::sort_uint64($t); }
+  return tv_interval($t0);
+}
+sub time_vecsorti {
+  my $ints = shift;
+  my @nints = map { [@$_] } @$ints;
+  my $t0 = [gettimeofday];
+  for my $t (@nints) { vecsorti($t); }
   return tv_interval($t0);
 }
