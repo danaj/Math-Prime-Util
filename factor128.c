@@ -133,6 +133,27 @@ static NOINLINE uint128_t gcd128(uint128_t a, uint128_t b) {
   return a;
 }
 
+/* Returns a^{-1} mod n, or 0 if gcd(a,n) > 1. */
+static uint128_t modinv128(uint128_t a, uint128_t n) {
+  uint128_t r0 = n, r1 = a % n;
+  uint128_t t0 = 0, t1 = 1;    /* coefficients modulo n */
+
+  if (r1 == 0) return 0;
+
+  while (r1) {
+    uint128_t q = r0 / r1;
+    uint128_t r = r0 - q * r1;
+    uint128_t qt = q % n;
+    if (t1 != 1) qt = mulmod128(qt, t1, n);
+    uint128_t t = submod128(t0, qt, n);
+
+    r0 = r1;  r1 = r;
+    t0 = t1;  t1 = t;
+  }
+
+  return (r0 == 1) ? t0 : 0;
+}
+
 
 /*****************************************************************************
  * Montgomery multiplication for fixed modulus.
@@ -292,6 +313,7 @@ static uint128_t mont_powmod128_u128(uint128_t a, uint128_t k,
   }
   return r;
 }
+
 
 /*****************************************************************************
  * Primality — BPSW (Miller-Rabin base 2 + strong Lucas, Selfridge params)
@@ -807,26 +829,18 @@ stage2:
  * mont_mulmod128 infrastructure.
  *****************************************************************************/
 
-/* Returns a^{-1} mod n, or 0 if gcd(a,n) > 1. */
-static uint128_t modinv128(uint128_t a, uint128_t n) {
-  uint128_t r0 = n, r1 = a % n;
-  uint128_t t0 = 0, t1 = 1;    /* coefficients modulo n */
+#if 0  /* Set to 1 for tuning ECM ladder, assumes local variables. */
+#define ECM128_REPORT(stage, g) \
+  do { \
+    if ((g) > 1 && (g) < n) \
+      printf("ECM128 %luk/%luk " stage " sigma %u found factor %s of %s\n", \
+             (unsigned long)B1_in/1000, (unsigned long)B2_in/1000, \
+             sigma, u128_str(g), u128_str(n)); \
+  } while (0)
+#else
+#define ECM128_REPORT(stage, g) do { } while (0)
+#endif
 
-  if (r1 == 0) return 0;
-
-  while (r1) {
-    uint128_t q = r0 / r1;
-    uint128_t r = r0 - q * r1;
-    uint128_t qt = q % n;
-    if (t1 != 1) qt = mulmod128(qt, t1, n);
-    uint128_t t = submod128(t0, qt, n);
-
-    r0 = r1;  r1 = r;
-    t0 = t1;  t1 = t;
-  }
-
-  return (r0 == 1) ? t0 : 0;
-}
 
 /* Projective (X:Z) point on a Montgomery curve.  Values in Montgomery form. */
 typedef struct { uint128_t X, Z; } ecpt128_t;
@@ -1155,15 +1169,18 @@ static uint128_t tinyecm128(uint128_t n, uint64_t B1_in, uint64_t B2_in,
       ecm_mul128(&P, &P, k, mA24, &ctx);
       if ((j++ % 64) == 0) {
         uint128_t g = gcd128(P.Z, n);
+        ECM128_REPORT("S1", g);
         if (g > 1 && g < n) RETURN_FROM_EACH_PRIME(return g);
         if (g == n)         RETURN_FROM_EACH_PRIME(goto next_curve);
       }
     } END_DO_FOR_EACH_PRIME
     { uint128_t g = gcd128(P.Z, n);
+      ECM128_REPORT("S1", g);
       if (g > 1 && g < n) return g; }
 
     if (B2_in > B1_in) {
       uint128_t g = tinyecm128_stage2(&P, mA24, &ctx, B1_in, B2_in);
+      ECM128_REPORT("S2", g);
       if (g > 1 && g < n) return g;
     }
 
