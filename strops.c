@@ -13,13 +13,14 @@
 /* Write UV v as a decimal string; return length.  buf must have >= 21 bytes. */
 static STRLEN uv_to_str(char* buf, UV v)
 {
-  STRLEN i = 0, j;
+  STRLEN slen = 0;
   if (v == 0) { buf[0] = '0'; return 1; }
-  while (v > 0) { buf[i++] = '0' + (char)(v % 10); v /= 10; }
-  for (j = 0; j < i / 2; j++) {
-    char c = buf[j]; buf[j] = buf[i-1-j]; buf[i-1-j] = c;
+  while (v > 0) { buf[slen++] = '0' + (char)(v % 10); v /= 10; }
+  if (slen > 1) {
+    char *L = buf, *R = buf+slen;
+    while (--R > L) { char t = *R; *R = *L; *L++ = t; }
   }
-  return i;
+  return slen;
 }
 
 static UV gcduv(UV x, UV y) {

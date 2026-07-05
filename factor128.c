@@ -13,7 +13,7 @@
 #if HAVE_FACTOR128
 
 int u128_to_str(char str[40], uint128_t n) {
-  int i, slen = 0;
+  int slen = 0;
 
   do {
     uint128_t d = n / 10;
@@ -22,10 +22,9 @@ int u128_to_str(char str[40], uint128_t n) {
   } while (n);
 
   str[slen] = '\0';
-  for (i = 0; i < slen/2; i++) {
-    char t = str[i];
-    str[i] = str[slen-i-1];
-    str[slen-i-1] = t;
+  if (slen > 1) {
+    char *L = str, *R = str+slen;
+    while (--R > L) { char t = *R; *R = *L; *L++ = t; } /* Reverse digits. */
   }
   return slen;
 }

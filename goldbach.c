@@ -95,9 +95,9 @@ static UV sieve_pairs(UV* L, UV n) {
       Safefree(lowsieve);
     }
     end_segment_primes(ctx);
-    if (L && s > 1) { /* Reverse the list */
-      size_t i = 0, j = s-1;
-      while (i < j) { UV t=L[i]; L[i]=L[j]; L[j]=t; i++; j--; }
+    if (L && s > 1) {
+      UV *R = L+s;
+      while (--R > L) { UV t = *R; *R = *L; *L++ = t; }   /* Reverse list */
     }
   }
   return s;

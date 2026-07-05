@@ -2240,12 +2240,11 @@ int uv_uv_to_str(char str[41], UV hi, UV lo)
   } while (a[0] || a[1] || a[2] || a[3]);
 #endif
 
-  {
-    char *p = str, *s = str+slen;
-    *s = '\0';                                          /* Add terminator. */
-    while (--s > p) { char c = *s; *s = *p; *p++ = c; } /* Reverse digits. */
+  str[slen] = '\0';
+  if (slen > 1) {
+    char *L = str, *R = str+slen;
+    while (--R > L) { char t = *R; *R = *L; *L++ = t; } /* Reverse digits. */
   }
-
   return slen;
 }
 
