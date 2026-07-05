@@ -1168,13 +1168,13 @@ static void reverse_uv_array(UV *L, size_t len)
 
 /***************************/
 
-#define RETURN_STRING_BIGINT(sv,len) \
+#define RETURN_PVSV_CANONICAL(sv,len) \
   { \
     SvCUR_set(sv, len);  SvPOK_on(sv);  *SvEND(sv) = '\0'; \
     RETURN_SV_CANONICAL(sv) \
   }
 
-#define PUSH_BIGINT_STR(str,len) \
+#define PUSH_STR_AS_BIGINT(str,len) \
   do { \
     PUTBACK; \
     SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn((str), (len)))); \
@@ -4088,7 +4088,7 @@ trial_factor(IN SV* svn, ...)
           nret++;
         }
       } else {
-        PUSH_BIGINT_STR(cofactor_str, cofactor_len);
+        PUSH_STR_CANONICAL(cofactor_str, cofactor_len);
         nret++;
       }
       Safefree(fac_buf);
@@ -4384,7 +4384,7 @@ void powmod(IN SV* sva, IN SV* svg, IN SV* svn)
       SV* tmp = sv_2mortal(newSV(0 + lenn));
       rlen = strint_powmod(SvPVX(tmp), sa,lena, sg,leng, sn,lenn);
       if (rlen > 0)
-        RETURN_STRING_BIGINT(tmp, rlen);
+        RETURN_PVSV_CANONICAL(tmp, rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -4458,7 +4458,7 @@ void addmod(IN SV* sva, IN SV* svb, IN SV* svn)
         case 1:  rlen = strint_muladdmod_s(SvPVX(tmp), "1",1, sa,lena, sb,lenb, 1, sn,lenn); break;
         default: rlen = strint_muladdmod_s(SvPVX(tmp), sa,lena, sb,lenb, "0",1, 0, sn,lenn); break;
       }
-      RETURN_STRING_BIGINT(tmp, rlen);
+      RETURN_PVSV_CANONICAL(tmp, rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -4505,7 +4505,7 @@ void muladdmod(IN SV* sva, IN SV* svb, IN SV* svc, IN SV* svn)
       const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sc = SvPV_nomg(svc, lenc), *sn = SvPV_nomg(svn, lenn);
       SV* tmp = sv_2mortal(newSV(0 + lenn));
       rlen = strint_muladdmod_s(SvPVX(tmp), sa,lena, sb,lenb, sc,lenc, ix, sn,lenn);
-      RETURN_STRING_BIGINT(tmp,rlen);
+      RETURN_PVSV_CANONICAL(tmp,rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -4890,7 +4890,7 @@ void muladdint(IN SV* sva, IN SV* svb, IN SV* svc)
       const char *sa = SvPV_nomg(sva, lena), *sb = SvPV_nomg(svb, lenb), *sc = SvPV_nomg(svc, lenc);
       SV* tmp = sv_2mortal(newSV(2 + lena + lenb + lenc));
       rlen = strint_muladd_s(SvPVX(tmp), sa,lena, sb,lenb, sc,lenc, ix);
-      RETURN_STRING_BIGINT(tmp,rlen);
+      RETURN_PVSV_CANONICAL(tmp,rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -4934,7 +4934,7 @@ void absint(IN SV* svn)
       const char* s = SvPV_nomg(svn, len);
       SV* tmp = sv_2mortal(newSV(1 + len));
       len = ix==0 ? strint_abs(SvPVX(tmp),s,len) : strint_neg(SvPVX(tmp),s,len);
-      RETURN_STRING_BIGINT(tmp,len);
+      RETURN_PVSV_CANONICAL(tmp,len);
     }
     DISPATCHPP_RETURN();
 
@@ -5043,7 +5043,7 @@ void rootint(IN SV* svn, IN SV* svk, IN SV* svret = 0)
           SvCUR_set(vtmp, vlen);  SvPOK_on(vtmp);  *SvEND(vtmp) = '\0';
           sv_setsv(SvRV(svret), xs_to_canonical(aTHX_ vtmp));
         }
-        RETURN_STRING_BIGINT(tmp, rlen);
+        RETURN_PVSV_CANONICAL(tmp, rlen);
       }
     }
     DISPATCHPP_RETURN_GMPIF(svret == 0 && (kstatus || _XS_get_callgmp() >= 54));
@@ -5149,7 +5149,7 @@ void lshiftint(IN SV* svn, IN SV* svk = 0)
           case 1:  len = strint_rshiftint( SvPVX(tmp), s, len, k);   break;
           default: len = strint_rashiftint(SvPVX(tmp), s, len, k);   break;
         }
-        if (len > 0) RETURN_STRING_BIGINT(tmp,len);
+        if (len > 0) RETURN_PVSV_CANONICAL(tmp,len);
       }
     }
     DISPATCHPP_RETURN();
@@ -5262,7 +5262,7 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
       tmp = sv_2mortal(newSV((lolen > hilen ? lolen : hilen) + 2));
       rlen = strint_sub(SvPVX(tmp), histr, hilen, lostr, lolen); /* hi-lo   */
       rlen = strint_add(SvPVX(tmp), SvPVX(tmp), rlen, "1", 1);   /*      +1 */
-      RETURN_STRING_BIGINT(tmp, rlen);
+      RETURN_PVSV_CANONICAL(tmp, rlen);
     }
 
     if (lostatus != 1 || histatus != 1)
@@ -5336,7 +5336,7 @@ void sqrtint(IN SV* svn)
       const char* sn = SvPV_nomg(svn, lenn);
       SV* tmp = sv_2mortal(newSV(lenn + 2));
       STRLEN rlen = strint_rootint(SvPVX(tmp), sn, lenn, 2);
-      if (rlen > 0) RETURN_STRING_BIGINT(tmp,rlen);
+      if (rlen > 0) RETURN_PVSV_CANONICAL(tmp,rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -6574,8 +6574,9 @@ void fromdigits(SV* svn, SV* svbase = 0)
             Safefree(r);
             XSRETURN_UV(n);
           } else if (from_digit_to_str(&str, r, len, base)) {
+            /* This string may be 0x... or 0b... */
             Safefree(r);
-            PUSH_BIGINT_STR(str, strlen(str));
+            PUSH_STR_AS_BIGINT(str, strlen(str));
             Safefree(str);
             XSRETURN(1);
           }
