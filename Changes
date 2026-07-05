@@ -57,6 +57,8 @@ Revision history for Perl module Math::Prime::Util
     - vecprefixsum(@list)             prefix sum / cumulative sum of list
     - vecwindow { } $step,$size,@list calls block with windows of size objects
     - vecpairwise { } \@A,\@B         calls block for each pair from arrays
+    - vecrsort(@L)                    numerically reverse sort integer list
+    - vecrsorti(\@L)                  in-place numeric reverse sort a list ref
     - remove_factors(n,k)             returns r: n with all factors of k removed
     - remove_factors_exp(n,k)         as above, returns (r,e) e = times removed
     - floor_sum(n,m,a,b)              sum floor((a*i+b)/m) for i=0..n-1

@@ -12,7 +12,7 @@ use Math::Prime::Util qw/vecreduce
                          vecsingleton
                          vecfreq
                          vecslide vecpairwise vecwindow
-                         vecsort vecsorti
+                         vecsort vecsorti vecrsort vecrsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
 # vecmex      in t/26-mex.t
@@ -33,7 +33,7 @@ use Math::Prime::Util qw/vecreduce
 
 # Returned values WILL NOT ALIAS input
 #   vecreduce vecslide vecpairwise vecwindow
-#   vecsum vecprod vecprefixsum vecsort vecfreq vecmex vecpmex
+#   vecsum vecprod vecprefixsum vecsort vecrsort vecfreq vecmex vecpmex
 #
 # Returned values MAY ALIAS input (currently XS aliases, PP does not)
 #   vecmin vecmax vecextract vecsample vecfirst vecuniq vecsingleton
@@ -41,7 +41,7 @@ use Math::Prime::Util qw/vecreduce
 # Return aliasing is not applicable:
 #   vecequal vecany vecall vecnotall vecnone vecfirstidx
 #
-# vecsorti modifies and returns the input array reference by design.
+# vecsorti and vecrsorti modify and return the input array reference by design.
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -421,13 +421,16 @@ subtest 'vecfreq', sub {
 subtest 'vecsort', sub {
   foreach my $r (@vecsorts) {
     my($in, $out, $str) = @$r;
+    my @rout = reverse @$out;
     my @got1 = map{"$_"}vecsort(@$in);
     my @got2 = map{"$_"}vecsort($in);
+    my @got3 = map{"$_"}vecrsort(@$in);
+    my @got4 = map{"$_"}vecrsort($in);
     vecsorti($in);
     $_ = "$_" for @$in;
-    is_deeply( [ \@got1, \@got2, $in ],
-               [ $out, $out, $out ],
-               "vecsort list, ref, in-place [$str]" );
+    is_deeply( [ \@got1, \@got2, \@got3, \@got4, $in ],
+               [ $out, $out, \@rout, \@rout, $out ],
+               "vecsort/vecrsort list, ref, in-place [$str]" );
   }
 
   my @s = ("5",2,1,3,4);
@@ -437,10 +440,18 @@ subtest 'vecsort', sub {
   my $in0_end = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
 
   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsort sorts without modifying input");
+  is_deeply([[vecrsort(\@s)],[@s]], [[5,4,3,2,1],[5,2,1,3,4]], "vecrsort sorts without modifying input");
 
   my @ivd = (qw/-3937 4322 -3619 -390 2039 2123 -1614 -879 -4372 1793 4404 4229 286 -3613 2707 -4166 4025 2450 -2003 3390 4498 -3094 -4854 3441 3501 -2871 -1206 315 71 -2101 4881 -3141 10 -2545 -2825 -519 3534 -4904 -3523 -1170 -3 3 -2 2 -1 1 0/);
   my @sivd = (qw/-4904 -4854 -4372 -4166 -3937 -3619 -3613 -3523 -3141 -3094 -2871 -2825 -2545 -2101 -2003 -1614 -1206 -1170 -879 -519 -390 -3 -2 -1 0 1 2 3 10 71 286 315 1793 2039 2123 2450 2707 3390 3441 3501 3534 4025 4229 4322 4404 4498 4881/);
   is_deeply([vecsort(@ivd)], \@sivd, "vecsort list of negative integers");
+  is_deeply([vecrsort(@ivd)], [reverse @sivd], "vecrsort list of negative integers");
+
+  { my @L = (3,-1,3,0,1,-5);
+    my $r = vecrsorti(\@L);
+    ok($r == \@L, "vecrsorti returns the input reference");
+    is_deeply(\@L, [3,3,1,0,-1,-5], "vecrsorti sorts in place");
+  }
 
   # Both of these should be "string".  XS doesn't copy for validation.
   if ($extra) {
@@ -450,8 +461,12 @@ subtest 'vecsort', sub {
   my @actx = return_sort(12,13,14,11);
   my $sctx = return_sort(12,13,14,11);
   is($sctx, scalar(@actx), "returning vecsort(\@L) gives the number of items");
+  my @ractx = return_rsort(12,13,14,11);
+  my $rsctx = return_rsort(12,13,14,11);
+  is($rsctx, scalar(@ractx), "returning vecrsort(\@L) gives the number of items");
 };
 sub return_sort { return vecsort(@_); }
+sub return_rsort { return vecrsort(@_); }
 
 ###### return aliasing
 subtest 'return aliasing', sub {
@@ -463,6 +478,7 @@ subtest 'return aliasing', sub {
     [ 'vecprefixsum', sub { vecprefixsum(@{$_[0]}) } ],
     [ 'vecreduce',    sub { vecreduce { $a+$b } @{$_[0]} } ],
     [ 'vecsort',      sub { vecsort(@{$_[0]}) } ],
+    [ 'vecrsort',     sub { vecrsort(@{$_[0]}) } ],
     [ 'vecfreq',      sub { vecfreq(@{$_[0]}) } ],
     [ 'vecslide',     sub { vecslide { $a+$b } @{$_[0]} } ],
     [ 'vecwindow',    sub { vecwindow { $_[0]+$_[1] } 1,2,@{$_[0]} } ],

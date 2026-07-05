@@ -44,7 +44,7 @@ add_stopwords(qw/-th
                  vecsum vecprod vecmin vecmax vecreduce vecextract vecequal vecuniq
                  vecall vecany vecnone vecnotall vecfirst vecfirstidx vecmex vecpmex
                  vecsample vecfreq vecsingleton vecslide vecpairwise pairwise vecwindow vecprefixsum
-                 vecsort vecsorti heapsort quicksort
+                 vecsort vecsorti vecrsort vecrsorti heapsort quicksort
                  toint
                  sqrtint logint rootint crootint powint addint subint mulint divint
                  cdivint modint negint absint divrem tdivrem fdivrem cdivrem

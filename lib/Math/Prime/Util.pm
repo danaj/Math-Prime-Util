@@ -104,7 +104,7 @@ our @EXPORT_OK =
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecuniq vecsort vecsorti vecfreq vecsingleton
+      vecuniq vecsort vecsorti vecrsort vecrsorti vecfreq vecsingleton
       vecslide vecpairwise vecwindow
       setbinop sumset toset
       setunion setintersect setminus setdelta
@@ -3591,6 +3591,17 @@ This is almost always faster than Perl's built-in numerical sort:
 C<< @a = sort { $a <=> $b } @a >>.
 See the performance section for more information.
 
+=head2 vecrsort
+
+  my @sorted = vecrsort(1,2,3,2,-10,-100,1);   # returns (3,2,2,1,1,-10,-100)
+  my @sorted = vecrsort([1,2,3,2,-10,-100,1]); # same
+
+Numerically (descending) sort a list of integers.  The input is either a list
+or a single array reference which holds the list.
+
+This is the reverse-order equivalent of L</vecsort>.  The same input
+requirements and scalar-context behavior apply.
+
 =head2 vecsorti
 
   my @arr = map { irand } 1..100000;
@@ -3602,6 +3613,17 @@ The array reference is also returned for convenience.
 
 This is more efficient than L</vecsort>.  Perl's C<sort> has this
 optimization built-in when doing straightforward sorting on non-references.
+
+=head2 vecrsorti
+
+  my @arr = map { irand } 1..100000;
+  vecrsorti \@arr;
+
+Given an array reference of integers,
+numerically (descending) sorts the integers in-place.
+The array reference is also returned for convenience.
+
+This is the reverse-order equivalent of L</vecsorti>.
 
 =head2 vecequal
 

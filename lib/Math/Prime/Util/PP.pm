@@ -12624,6 +12624,10 @@ sub vecsort {
   }
   return @s;
 }
+sub vecrsort {
+  if (!wantarray) { my $s = vecsort(@_); return $s; }
+  reverse vecsort(@_);
+}
 
 # In-place sort.
 sub vecsorti {
@@ -12632,6 +12636,14 @@ sub vecsorti {
   validate_integer($_) for @$r;
   if ($] < 5.026) { @$r = sort { 0+($a<=>$b) } @$r; }
   else            { @$r = sort {    $a<=>$b  } @$r; }
+  return $r;
+}
+sub vecrsorti {
+  my($r) = @_;
+  croak 'Not an array reference' unless _is_aref($r);
+  validate_integer($_) for @$r;
+  if ($] < 5.026) { @$r = sort { 0+($b<=>$a) } @$r; }
+  else            { @$r = sort {    $b<=>$a  } @$r; }
   return $r;
 }
 

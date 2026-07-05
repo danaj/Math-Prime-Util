@@ -218,6 +218,8 @@ Tags:
   vecfreq(@list)                      return hash of item => count from list
   vecsort(@list)                      numerically sort a list of integers
   vecsorti(\@list)                    in-place numeric sort a list ref
+  vecrsort(@list)                     numerically reverse sort an integer list
+  vecrsorti(\@list)                   in-place numeric reverse sort a list ref
   vecextract(\@list, mask)            select from list based on mask
   vecequal(\@list1, \@list2)          compare equality of two array refs
   vecprefixsum(@list)                 prefix sum / cumulative sum of list

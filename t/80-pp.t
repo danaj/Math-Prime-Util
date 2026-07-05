@@ -1531,9 +1531,14 @@ subtest 'vector (list) functions', sub {
   ok(  (vecnone { $_ == 1 } 2, 3, 4), 'vecnone true' );
 
   is_deeply([vecsort(3,-1,3,0,1,3,-5,4,1,-3)],[-5,-3,-1,0,1,1,3,3,3,4],"vecsort");
+  is_deeply([vecrsort(3,-1,3,0,1,3,-5,4,1,-3)],[4,3,3,3,1,1,0,-1,-3,-5],"vecrsort");
   { my @L=(0,-4,3,4,-1,-4,4,-2,2,3);
     vecsorti(\@L);
     is_deeply(\@L,[-4,-4,-2,-1,0,2,3,3,4,4],"vecsorti");
+  }
+  { my @L=(0,-4,3,4,-1,-4,4,-2,2,3);
+    vecrsorti(\@L);
+    is_deeply(\@L,[4,4,3,3,2,0,-1,-2,-4,-4],"vecrsorti");
   }
 
   is(vecfirst(sub{$_>6},(3,6,-7,17,7,8,9)),17,"vecfirst");

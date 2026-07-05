@@ -411,6 +411,8 @@ sub entropy_bytes {
 *vecsample      = \&Math::Prime::Util::PP::vecsample;
 *vecsort        = \&Math::Prime::Util::PP::vecsort;
 *vecsorti       = \&Math::Prime::Util::PP::vecsorti;
+*vecrsort       = \&Math::Prime::Util::PP::vecrsort;
+*vecrsorti      = \&Math::Prime::Util::PP::vecrsorti;
 *vecmex         = \&Math::Prime::Util::PP::vecmex;
 *vecpmex        = \&Math::Prime::Util::PP::vecpmex;
 *vecextract     = \&Math::Prime::Util::PP::vecextract;

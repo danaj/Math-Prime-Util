@@ -1033,6 +1033,14 @@ static SV* xs_to_bigint_nonneg(pTHX_ SV* r) {
 #define FASTSETSVINT(sv,setpos,val) SETSVINT(sv,setpos,val,(IV)val)
 #endif
 
+static void reverse_uv_array(UV *L, size_t len)
+{
+  if (len > 1) {
+    UV *R = L+len;
+    while (--R > L) { UV t = *R; *R = *L; *L++ = t; }
+  }
+}
+
 #define CREATE_RETURN_AV(av) \
   do { \
        av = newAV(); \
@@ -6174,6 +6182,8 @@ void toset(...)
 
 void vecsort(...)
   PROTOTYPE: @
+  ALIAS:
+    vecrsort = 1
   PREINIT:
     int type;
     size_t len;
@@ -6183,8 +6193,8 @@ void vecsort(...)
       RETURN_NOTHING();
     if (SvROK(ST(0)) && SvTYPE(SvRV(ST(0))) == SVt_PVAV) {
       if (items != 1)
-        croak("vecsort: expected integer list or single array reference");
-      type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), "vecsort");
+        croak("%s: expected integer list or single array reference", SUBNAME);
+      type = arrayref_to_int_array(aTHX_ &len, &L, 0, ST(0), SUBNAME);
     } else {
       type = array_to_int_array(aTHX_ &len, &L, 0, &ST(0), items);
     }
@@ -6198,10 +6208,14 @@ void vecsort(...)
       Safefree(L);
       DISPATCHPP_RETURN();
     }
+    if (ix)
+      reverse_uv_array(L, len);
     RETURN_LIST_VALS( len, L, (type != IARR_TYPE_NEG) );
 
 void vecsorti(IN SV* sva)
   PROTOTYPE: $
+  ALIAS:
+    vecrsorti = 1
   PREINIT:
     int type;
     size_t i, len;
@@ -6214,7 +6228,7 @@ void vecsorti(IN SV* sva)
     CHECK_AV_NOT_READONLY(ava);  /* We intend to modify it */
     if (SvMAGICAL(ava) || !AvREAL(ava)) /* Punt these to Perl */
       DISPATCHPP_RETURN();
-    type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, "vecsorti");
+    type = arrayref_to_int_array(aTHX_ &len, &L, 0, sva, SUBNAME);
     /* If we really wanted to optimize small values, the reading function
      * could create a mask like:
      *    mask |= (istatus == 1) ? n : (n ^ (n<<1));
@@ -6230,7 +6244,7 @@ void vecsorti(IN SV* sva)
     }
     arr = AvARRAY(ava);
     for (i = 0; i < len; i++)
-      FASTSETSVINT(arr[i], type == IARR_TYPE_POS, L[i]);
+      FASTSETSVINT(arr[i], type == IARR_TYPE_POS, L[ix ? len-i-1 : i]);
     Safefree(L);
     XSRETURN(1);
 

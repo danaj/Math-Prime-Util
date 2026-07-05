@@ -98,7 +98,7 @@ my @functions =  qw(
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
       vecsum vecmin vecmax vecprod vecprefixsum vecreduce vecextract vecequal
       vecany vecall vecnotall vecnone vecfirst vecfirstidx vecmex vecpmex
-      vecuniq vecsort vecsorti vecfreq vecsingleton
+      vecuniq vecsort vecsorti vecrsort vecrsorti vecfreq vecsingleton
       vecslide vecpairwise vecwindow
       setbinop sumset setunion setintersect setminus setdelta toset
       setcontains setcontainsany setinsert setremove setinvert
