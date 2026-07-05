@@ -34,6 +34,10 @@
  #define MPU_MAX_LUCKY_IDX      UVCONST(395236168661920929)  /* Not correct */
 #endif
 
+#if HAVE_UINT64
+ #define MPU_MAX_PRIME64        ((uint64_t)UINT64_MAX - 58)
+#endif
+
 /* A hard limit for the random byte generation */
 #define MAX_RANDOM_BYTES        UVCONST(2147483646)
 /* Our chosen maximum for random prime / bits generation */

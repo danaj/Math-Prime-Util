@@ -142,6 +142,9 @@ Revision history for Perl module Math::Prime::Util
     - is_prob_prime, is_bpsw_prime, and is_prime can use native 128-bit
       primality tests on 64-bit builds with uint128_t support.
 
+    - 32-bit XS builds with 128-bit compiler support now use C for sumtotient
+      and sum_primes.  Big speedups on large inputs.
+
     - urandomm is up to 5x faster without GMP.
 
     - sieve_range in XS uses a partial sieve.  It can be 10x or more faster

@@ -1411,6 +1411,17 @@ static bool xs_sv_to_uint128_signmag(pTHX_ uint128_t *n, int *sign, SV *sv)
   return 1;
 }
 
+static bool xs_sv_to_uint64(pTHX_ uint64_t *n, SV *sv)
+{
+  uint128_t n128;
+
+  if (!xs_sv_to_uint128(aTHX_ &n128, sv) || n128 > (uint128_t)UINT64_MAX)
+    return 0;
+
+  *n = (uint64_t)n128;
+  return 1;
+}
+
 static uint128_t mod_with128(uint128_t a, int sign, uint128_t n)
 {
   a %= n;
@@ -1813,6 +1824,9 @@ void prime_count_upper(IN SV* svn)
 void sum_primes(IN SV* svlo, IN SV* svhi = 0)
   PREINIT:
     UV lo = 2, hi;
+#if HAVE_FACTOR128 && HAVE_SUM_PRIMES128
+    uint64_t lo64 = 2, hi64;
+#endif
   PPCODE:
     if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
         (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
@@ -1821,19 +1835,22 @@ void sum_primes(IN SV* svlo, IN SV* svhi = 0)
       if (sum_primes(lo, hi, &count))
         XSRETURN_UV(count);
       /* If that didn't work, try the 128-bit version if supported. */
-      if (HAVE_SUM_PRIMES128) {
-        UV hicount, lo_hic, lo_loc;
-        int retok = sum_primes128(hi, &hicount, &count);
-        if (retok && lo > 2) {
-          retok = sum_primes128(lo-1, &lo_hic, &lo_loc);
-          hicount -= lo_hic;
-          if (count < lo_loc) hicount--;
-          count -= lo_loc;
-        }
-        if (retok)
-          RETURN_UV_UV(hicount, count);
+      #if HAVE_FACTOR128 && HAVE_SUM_PRIMES128
+      {
+        uint128_t sum128;
+        if (sum_primes128(lo, hi, &sum128))
+          RETURN_U128(sum128);
       }
+      #endif
     }
+#if HAVE_FACTOR128 && HAVE_SUM_PRIMES128
+    else if ((items == 1 && xs_sv_to_uint64(aTHX_ &hi64, svlo)) ||
+             (items == 2 && xs_sv_to_uint64(aTHX_ &lo64, svlo) && xs_sv_to_uint64(aTHX_ &hi64, svhi))) {
+      uint128_t sum128;
+      if (sum_primes128(lo64, hi64, &sum128))
+        RETURN_U128(sum128);
+    }
+#endif
     DISPATCHPP_RETURN();
 
 void random_prime(IN SV* svlo, IN SV* svhi = 0)
@@ -5421,17 +5438,25 @@ void integer_complexity(IN SV* svn)
 void sumtotient(IN SV* svn)
   PREINIT:
     UV n, r;
+#if HAVE_FACTOR128 && HAVE_SUMTOTIENT128
+    uint64_t n64;
+    uint128_t sum128;
+#endif
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       r = sumtotient(n);
       if (n == 0 || r > 0) XSRETURN_UV(r);
-      {  /* Overflow, try 128-bit. */
-        UV hicount, count;
-        int retok = sumtotient128(n, &hicount, &count);
-        if (retok == 1)
-          RETURN_UV_UV(hicount, count);
-      }
+#if HAVE_FACTOR128 && HAVE_SUMTOTIENT128
+      if (sumtotient128(n, &sum128))   /* 64-bit overflowed, try 128-bit. */
+        RETURN_U128(sum128);
+#endif
     }
+#if HAVE_FACTOR128 && HAVE_SUMTOTIENT128
+    else if (xs_sv_to_uint64(aTHX_ &n64, svn)) {
+      if (sumtotient128(n64, &sum128))
+        RETURN_U128(sum128);
+    }
+#endif
     DISPATCHPP_RETURN();
 
 void binomial(IN SV* svn, IN SV* svk)

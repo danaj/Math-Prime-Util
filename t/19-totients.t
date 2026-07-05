@@ -8,8 +8,9 @@ use Math::Prime::Util qw/euler_phi jordan_totient carmichael_lambda
                          sumtotient dedekind_psi/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-#my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
+my $use128 = (Math::Prime::Util::prime_get_config->{'xs_factor_bits'} || 0) >= 128;
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 $use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
@@ -106,6 +107,7 @@ subtest 'sumtotient', sub {
   is_deeply([map { sumtotient($_) } 0..10], [0,1,2,4,6,10,12,18,22,28,32], "sumtotient(0..10)");
   is(sumtotient(12345),46326398,"sumtotient(12345)");
   is("".sumtotient(654321),130137945644,"sumtotient(654321)");
+  is("".sumtotient(7790208951), "18446744076294535364", "sumtotient(7790208951)") if $extra && $usexs && ($use64 || $use128);
 };
 
 subtest 'dedekind_psi', sub {

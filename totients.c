@@ -128,7 +128,6 @@ UV* range_totient(UV lo, UV hi) {
 /******************************************************************************/
 
 
-#define HAVE_SUMTOTIENT_128 (BITS_PER_WORD == 64 && HAVE_UINT128)
 #if BITS_PER_WORD == 64
 #  define MAX_TOTSUM UVCONST(7790208950)
 #else
@@ -267,17 +266,34 @@ UV sumtotient(UV n) {
 
 
 
-#if HAVE_SUMTOTIENT_128
+#if HAVE_SUMTOTIENT128
+static uint32_t isqrt64(uint64_t n)
+{
+  uint64_t r = sqrt((double)n);
+  while (((uint128_t)r+1) * (r+1) <= n) r++;
+  while ((uint128_t)r * r > n) r--;
+  return (uint32_t)r;
+}
+
+static uint32_t icbrt64(uint64_t n)
+{
+  uint64_t r = pow((double)n, 1.0/3.0);
+  while (((uint128_t)r+1) * (r+1) * (r+1) <= n) r++;
+  while ((uint128_t)r * r * r > n) r--;
+  return (uint32_t)r;
+}
+
 #define _CACHED_SUMT128(x) \
   (((x)<csize)  ?  (uint128_t)cdata[x]  :  _sumt128((x), cdata, csize, thash))
 typedef struct {
-  UV         hsize;
-  UV        *nhash;  /* n value */
+  UV        hsize;
+  uint64_t *nhash;  /* n value */
   uint128_t *shash;  /* sum for n */
 } sumt_hash_128_t;
-static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash) {
+static uint128_t _sumt128(uint64_t n, const uint64_t *cdata, UV csize, sumt_hash_128_t thash) {
   uint128_t sum;
-  UV s, k, lim, hn;
+  uint64_t s, k, lim;
+  UV hn;
   uint32_t const probes = 16;
   uint32_t const hinc = 1 + ((n >> 8) & 15);  /* mitigate clustering */
   uint32_t hashk;
@@ -291,7 +307,7 @@ static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash
     hn = (hn+hinc < thash.hsize) ? hn+hinc : hn+hinc-thash.hsize;
   }
 
-  s = isqrt(n);
+  s = isqrt64(n);
   lim = n/(s+1);
 
   sum = ((uint128_t)n+1)/2 * (n|1);    /* (n*(n+1))/2 */
@@ -315,55 +331,63 @@ static uint128_t _sumt128(UV n, const UV *cdata, UV csize, sumt_hash_128_t thash
   return sum;
 }
 
-int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
-  UV i, cbrtn, csize, hsize, *sumcache;
+bool sumtotient128(uint64_t n, uint128_t *sumout) {
+  UV i, cbrtn, csize, hsize;
+  UV *totients;
+  uint64_t csize64, *sumcache;
   uint128_t sum;
   sumt_hash_128_t thash;
 
-  if (n <= 2)  { *hi_sum = 0;  *lo_sum = n; return 1; }
+  if (n < 4000) {
+    *sumout = _sumtotient_direct((UV)n);
+    return 1;
+  }
   /* sumtotient(2^64-1) < 2^128, so we can't overflow. */
 
   /* I tried the algorithm from https://arxiv.org/abs/2506.07386v1.
    * It uses less memory, but it came out 2 to 5 times slower.
    * Probably still worth investigating later. */
 
-  cbrtn = icbrt(n);
-  csize = 0.6 * cbrtn * cbrtn;
+  cbrtn = icbrt64(n);
+  csize64 = (uint64_t)(0.6 * (double)cbrtn * (double)cbrtn);
   hsize = 8 * cbrtn;         /* 12.5% filled with csize = 1 * n^(2/3) */
 
-  if (csize > 400000000U) {  /* Limit to 3GB + hsize */
-    csize = 400000000;
+  if (csize64 > 400000000U) {  /* Limit to 3GB + hsize on 64-bit */
+    csize64 = 400000000;
     hsize = 12 * cbrtn;
   }
+  if (csize64 > (uint64_t)MAX_SSIZET / sizeof(uint64_t))
+    csize64 = (uint64_t)MAX_SSIZET / sizeof(uint64_t);
+  csize = (UV)csize64;
 
-  sumcache = range_totient(0, csize-1);
+  totients = range_totient(0, csize-1);
+  New(0, sumcache, csize, uint64_t);
+  sumcache[0] = totients[0];
+  if (csize > 1)
+    sumcache[1] = totients[1];
   for (i = 2; i < csize; i++)
-    sumcache[i] += sumcache[i-1];
+    sumcache[i] = sumcache[i-1] + totients[i];
+  Safefree(totients);
 
   /* Arguably we should expand the hash as it fills. */
   thash.hsize = next_prime( 16 + hsize );
-  Newz(0, thash.nhash, thash.hsize, UV);
+  Newz(0, thash.nhash, thash.hsize, uint64_t);
   New( 0, thash.shash, thash.hsize, uint128_t);
 
   sum = _sumt128(n, sumcache, csize, thash);
-  *hi_sum = (sum >> 64) & UV_MAX;
-  *lo_sum = (sum      ) & UV_MAX;
+  *sumout = sum;
 
   if (_XS_get_verbose() >= 2) {
     UV filled = 0;
     for (i = 0; i < thash.hsize; i++)
       filled += (thash.nhash[i] != 0);
-    printf("  128-bit totsum   phi %6.1lfMB  hash size %6.1lfMB, fill: %6.2lf%%\n", csize*sizeof(UV)/1048576.0, thash.hsize*3*sizeof(UV)/1048576.0, 100.0 * (double)filled / (double)thash.hsize);
+    printf("  128-bit totsum   phi %6.1lfMB  hash size %6.1lfMB, fill: %6.2lf%%\n", csize*(sizeof(UV)+sizeof(uint64_t))/1048576.0, thash.hsize*(sizeof(uint64_t)+sizeof(uint128_t))/1048576.0, 100.0 * (double)filled / (double)thash.hsize);
   }
 
   Safefree(thash.nhash);
   Safefree(thash.shash);
   Safefree(sumcache);
   return 1;
-}
-#else
-int sumtotient128(UV n, UV *hi_sum, UV *lo_sum) {
-  return 0;
 }
 #endif
 

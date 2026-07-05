@@ -7,6 +7,7 @@ use Math::Prime::Util qw/sum_primes vecsum primes/;
 
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+my $use128 = (Math::Prime::Util::prime_get_config->{'xs_factor_bits'} || 0) >= 128;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 my %sums = (
@@ -45,7 +46,7 @@ my @large = (
 );
 
 @large = grep { ($_->[0] <= 1000000) ||
-                ($extra && (($usexs && $use64) || $_->[0] <= 100000000))
+                ($extra && (($usexs && ($use64 || $use128)) || $_->[0] <= 100000000))
               } @large;
 
 plan tests => 1 + scalar(keys %sums) + scalar(@large) + ($usexs && $use64 ? 2 : 0);

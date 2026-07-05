@@ -41,7 +41,7 @@ static const unsigned char byte_zeros[256] =
 
 /* Simplified Legendre method giving pisum(n) for n <= 65535 or 4294967295. */
 
-UV sum_primes64(UV n) {
+static UV _sum_primes64(UV n) {
   uint32_t *V, j, k, r, r2, p;
   UV *S, sum;
 
@@ -75,23 +75,42 @@ UV sum_primes64(UV n) {
   return sum;
 }
 
-/* Simplified Legendre method giving pisum(n) for any 64-bit input n,
- * assuming the uint128_t type is available.  The result is returned as
- * two 64-bit results. */
-
-bool sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
 #if HAVE_SUM_PRIMES128
+
+/* Simplified Legendre method giving pisum(n) for any 64-bit input n,
+ * assuming the uint128_t type is available. */
+
+static uint32_t isqrt64(uint64_t n)
+{
+  uint64_t r = sqrt((double)n);
+  while (((uint128_t)r+1) * (r+1) <= n) r++;
+  while ((uint128_t)r * r > n) r--;
+  return (uint32_t)r;
+}
+
+static bool _sum_primes128(uint64_t n, uint128_t *sum) {
   uint128_t *S;
-  UV *V, j, k, r, r2, p;
+  uint64_t *V, j, k, r, r2, p;
+
+  if (n < 2) {
+    *sum = 0;
+    return 1;
+  }
+  if (n > MPU_MAX_PRIME64)
+    n = MPU_MAX_PRIME64;
 
   /* pisum(2^64-1) < 2^128-1, so no overflow issues */
-  r = isqrt(n);
+  r = isqrt64(n);
   r2 = r + n/(r+1);
 
-  New(0, V, r2+1, UV);
+  if (r2 >= (uint64_t)MAX_SSIZET / sizeof(uint128_t) ||
+      r2 >= (uint64_t)MAX_SSIZET / sizeof(uint64_t))
+    return 0;
+
+  New(0, V, r2+1, uint64_t);
   New(0, S, r2+1, uint128_t);
   for (k = 0; k <= r2; k++) {
-    UV v = (k <= r)  ?  k  :  n/(r2-k+1);
+    uint64_t v = (k <= r)  ?  k  :  n/(r2-k+1);
     V[k] = v;
     S[k] = ((uint128_t)v+1)/2 * (v|1) - 1;   /* (v*(v+1))/2-1 */
   }
@@ -100,22 +119,31 @@ bool sum_primes128(UV n, UV *hi_sum, UV *lo_sum) {
     if (S[p] > S[p-1]) { /* For each prime p from 2 to r */
       uint128_t sp = S[p-1], p2 = ((uint128_t)p) * p;
       for (j = r2; j > 1 && V[j] >= p2; j--) {
-        UV a = V[j], b = a/p;
+        uint64_t a = V[j], b = a/p;
         if (a > r) a = r2 - n/a + 1;
         if (b > r) b = r2 - n/b + 1;
         S[a] -= p * (S[b] - sp);   /* sp = sum of primes less than p */
       }
     }
   }
-  *hi_sum = (S[r2] >> 64) & UV_MAX;
-  *lo_sum = (S[r2]      ) & UV_MAX;
+  *sum = S[r2];
   Safefree(V);
   Safefree(S);
   return 1;
-#else
-  return 0;
-#endif
 }
+
+bool sum_primes128(uint64_t lo, uint64_t hi, uint128_t *sum)
+{
+  uint128_t hisum, losum = 0;
+  if (hi < lo || hi < 2) { *sum = 0; return 1; }
+  if (!_sum_primes128(hi, &hisum)) return 0;
+  if (lo > 2 && !_sum_primes128(lo-1, &losum)) return 0;
+  *sum = hisum - losum;
+  return 1;
+}
+#endif
+
+
 
 
 /* sum primes in a 64-bit range using a sieving with table acceleration */
@@ -165,14 +193,14 @@ bool sum_primes(UV low, UV high, UV *return_sum) {
   }
 
   if (low <= 2 && high >= 100000) {
-    UV s64 = sum_primes64(high);
+    UV s64 = _sum_primes64(high);
     if (s64 != 0) {
       if (return_sum != 0)
         *return_sum = s64;
       return 1;
     }
   }
-  /* TODO: performance: more cases where using sum_primes64 is faster. */
+  /* TODO: performance: more cases where using _sum_primes64 is faster. */
 
   if ((low <= 2) && (high >= 2)) sum += 2;
   if ((low <= 3) && (high >= 3)) sum += 3;
