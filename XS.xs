@@ -1174,14 +1174,6 @@ static void reverse_uv_array(UV *L, size_t len)
     RETURN_SV_CANONICAL(sv) \
   }
 
-#define PUSH_STR_AS_BIGINT(str,len) \
-  do { \
-    PUTBACK; \
-    SV* sv_ = xs_to_bigint(aTHX_ sv_2mortal(newSVpvn((str), (len)))); \
-    SPAGAIN; \
-    PUSHs(sv_); \
-  } while (0)
-
 #define RETURN_IV_UV(hi,lo) \
   do { \
     if (hi == 0) \
@@ -6567,17 +6559,17 @@ void fromdigits(SV* svn, SV* svbase = 0)
           XSRETURN_UV(n);
       } else if (!_sv_is_bigint(aTHX_ svn)) {     /* array ref of digits */
         size_t len;
+        STRLEN rlen;
         char *str;
         UV* r = 0;
         if (arrayref_to_digit_array(aTHX_ &len, &r, svn, base)) {
           if (from_digit_to_UV(&n, r, len, base)) {
             Safefree(r);
             XSRETURN_UV(n);
-          } else if (from_digit_to_str(&str, r, len, base)) {
-            /* This string may be 0x... or 0b... */
+          } else if ((str = strint_fromdigits(r, len, base, &rlen)) != 0) {
             Safefree(r);
-            PUSH_STR_AS_BIGINT(str, strlen(str));
-            Safefree(str);
+            PUSH_STR_CANONICAL(str, rlen);
+            free(str);
             XSRETURN(1);
           }
           Safefree(r);

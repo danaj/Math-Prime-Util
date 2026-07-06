@@ -1083,6 +1083,68 @@ return_prod:
   return out;
 }
 
+char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen)
+{
+  b9_t *A, b;
+  char *out;
+  size_t i, k;
+  STRLEN outlen;
+
+  if (len == 0) {
+    out = (char*) malloc(2);
+    if (!out) return 0;
+    out[0] = '0';
+    out[1] = '\0';
+    if (rlen) *rlen = 1;
+    return out;
+  }
+  if (len == 1) {
+    char buf[24];
+    STRLEN len1 = uv_to_str(buf, d[0]);
+    out = (char*) malloc((size_t)len1 + 1);
+    if (!out) return 0;
+    memcpy(out, buf, (size_t)len1);
+    out[len1] = '\0';
+    if (rlen) *rlen = len1;
+    return out;
+  }
+  if (len > (size_t)MAX_SIZET / sizeof(b9_t))
+    return 0;
+
+  A = (b9_t*) malloc(len * sizeof(b9_t));
+  if (!A) return 0;
+  for (i = 0; i < len; i++)
+    b9_init_set_uv(&A[i], d[len-1-i]);
+  b9_init_set_uv(&b, base);
+
+  k = len;
+  while (k > 1) {
+    for (i = 0; i < k-1; i += 2) {
+      b9_mul(&A[i+1], &A[i+1], &b);
+      b9_add(&A[i>>1], &A[i], &A[i+1]);
+    }
+    if (k & 1)
+      b9_move(&A[k>>1], &A[k-1]);
+    k = (k+1) >> 1;
+    if (k > 1)
+      b9_mul(&b, &b, &b);
+  }
+
+  out = (char*) malloc((size_t)b9_length(&A[0]) + 1);
+  outlen = 0;
+  if (out) {
+    outlen = b9_get_str(out, &A[0]);
+    out[outlen] = '\0';
+  }
+  if (rlen) *rlen = outlen;
+
+  for (i = 0; i < len; i++)
+    b9_free(&A[i]);
+  free(A);
+  b9_free(&b);
+  return out;
+}
+
 /******************************************************************************/
 /*                              MULTIPLICATION                                */
 /******************************************************************************/

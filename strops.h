@@ -32,6 +32,11 @@ extern char* strint_vecsum(const char* const* a, const STRLEN* alen, size_t n, S
  * Sets *rlen to the result length. */
 extern char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN* rlen);
 
+/* Convert high-to-low digit array in base to a decimal string.
+ * Returns a malloc-allocated NULL-terminated result string.
+ * Sets *rlen to the result length. */
+extern char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen);
+
 /* Multiply two signed decimal integer strings.
  * Result is written to out; caller must ensure out has at least
  * alen+blen bytes.  Returns the length of the result (no NULL written). */

@@ -2146,30 +2146,6 @@ bool from_digit_to_UV(UV* rn, const UV* r, size_t len, int base)
 }
 
 
-bool from_digit_to_str(char** rstr, const UV* r, size_t len, int base)
-{
-  char *so, *s;
-  size_t i;
-
-  if (len >= MAX_SIZET-3 || !(base == 2 || base == 10 || base == 16)) return 0;
-
-  if (r[0] >= (UV) base) return 0;  /* TODO: We don't apply extended carry */
-
-  New(0, so, len + 3, char);
-  s = so;
-  if (base == 2 || base == 16) {
-    *s++ = '0';
-    *s++ = (base == 2) ? 'b' : 'x';
-  }
-  for (i = 0; i < len; i++) {
-    UV d = r[i];
-    s[i] = (d < 10) ? '0'+(char)d : 'a'+(char)(d-10);
-  }
-  s[len] = '\0';
-  *rstr = so;
-  return 1;
-}
-
 int to_digit_array(UV* bits, UV n, UV base, int length)
 {
   int d;
