@@ -206,9 +206,7 @@ static const gmp_info_t gmp_info[] = {
   {         "is_perfect_power", 47, 1, R_BOOL },
   {           "is_fundamental", 47, 1, R_BOOL },
   {               "is_totient", 47, 1, R_BOOL },
-  {                 "is_lucky", 48, 1, R_BOOL },
   {             "is_practical", 53, 1, R_BOOL },
-  {        "is_perfect_number", 53, 1, R_BOOL },
   {           "is_square_free", 53, 1, R_BOOL },
   {             "is_powerfree", 53, 1, R_BOOL },
   {                "is_smooth", 53, 1, R_BOOL },
@@ -248,7 +246,6 @@ static const gmp_info_t gmp_info[] = {
   {                "valuation", 20, 1, R_NATIVE },
   {                "liouville", 22, 1, R_NATIVE },
   {            "hammingweight", 47, 1, R_NATIVE },
-  {                  "moebius", 49, 1, R_NATIVE }, /* v0.22 with non-neg */
   {              "prime_omega", 53, 1, R_NATIVE },
   {           "prime_bigomega", 53, 1, R_NATIVE },
 
@@ -291,7 +288,6 @@ static const gmp_info_t gmp_info[] = {
   {                  "lucasuv", 53, 2, R_BIGINT },
   {               "lucasuvmod", 53, 2, R_BIGINT },
   {           "lucas_sequence", 54, 3, R_BIGINT }, /* v0.13 with IV P,Q */
-  {            "pisano_period", 53, 1, R_BIGINT },
   {                 "powersum", 53, 1, R_BIGINT },
   {               "fromdigits", 54, 1, R_BIGINT },
   {           "remove_factors", 54, 1, R_BIGINT },
@@ -313,6 +309,7 @@ static const gmp_info_t gmp_info[] = {
   {                 "divisors", 53, 0xFF, R_BIGINT },
   {                   "factor", 41, 0xFF, R_BIGINT },
   {                "euler_phi", 54, 0xFF, R_BIGINT },
+  {                  "moebius", 49, 0xFF, R_NATIVE }, /* v0.22 with non-neg */
   {          "prime_signature", 54, 0xFF, R_BIGINT },
 
   {                "numtoperm", 47, 0xFF, R_NATIVE },

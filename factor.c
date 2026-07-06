@@ -3,7 +3,6 @@
 #include <string.h>
 #include <math.h>
 
-#define FUNC_ipow   1
 #define FUNC_isqrt  1
 #define FUNC_gcd_ui 1
 #define FUNC_is_perfect_square 1

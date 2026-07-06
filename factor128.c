@@ -108,6 +108,7 @@ static uint128_t mulmod128(uint128_t a, uint128_t b, uint128_t n) {
 
 #define sqrmod128(a, n)  mulmod128(a, a, n)
 
+#if 0
 static uint128_t powmod128(uint128_t a, uint128_t k, uint128_t n) {
   uint128_t r = 1;
   a %= n;
@@ -118,6 +119,7 @@ static uint128_t powmod128(uint128_t a, uint128_t k, uint128_t n) {
   }
   return r;
 }
+#endif
 
 static uint128_t pow2mod128(unsigned int e, uint128_t n) {
   uint128_t r = 1;

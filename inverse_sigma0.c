@@ -415,7 +415,7 @@ static void count_callback(void *data, const UV *sig, uint16_t nsig)
 
   sum_e = 0;
   for (i = 0; i < nsig; i++) sum_e += sig[i];
-  if (sum_e == 0 || sum_e > log2floor(d->n)) return;
+  if (sum_e == 0 || sum_e > (UV)log2floor(d->n)) return;
 
   /* Initial call: m=1, lo=2, j=prime_count(1)=0 */
   d->count += count_sig(d->n, 1, 2, sig, nsig, 0);
