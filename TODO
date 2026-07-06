@@ -562,9 +562,6 @@ OEIS lucky numbers:
 
 - move to 5.10.1 minimum
 
-- should vecsort have a code block option?
-  usort does not.  Time to add list reverse is negligible.
-
 - second parameter for Real functions, and/or default precision.
   Get rid of looking at input accuracy.
 
@@ -678,14 +675,15 @@ OEIS lucky numbers:
 
 - GMP scalar count: sieve_prime_cluster, euler_phi, moebius
 
-- factor128 could be used on some 32-bit machines.
-  We might need to adjust the assumptions around RETURN_128 etc.
-
 - factor128: Huchalla positive-inverse REDC
 
 - trialf128.  Maybe live in factor128.
 
 - string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
 
-- util.c muladd128 could be modified to not need BITS_PER_WORD == 64
-  util.c also look carefully at to_string_128
+- PP factoring recipe
+
+- PP sum_primes $high <= ~0  =>  Mmulint(2,Msqrtint($high)) < SINTMAX
+
+- send mail about Sort::DJB (av_fetch/av_store overhead)
+  we're only testing vs the generic version, not the SIMD one.

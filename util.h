@@ -141,8 +141,7 @@ extern IV ramanujan_tau(UV n);
 extern char* pidigits(uint32_t digits);
 
 
-extern bool from_digit_string(UV* n, const char* s, int base);
-extern bool from_digit_to_UV(UV* rn, const UV* r, size_t len, int base);
+extern bool from_digit_to_UV(UV* rn, const UV* r, size_t len, UV base);
 /* These return length */
 extern int  to_digit_array(UV* bits, UV n, UV base, int length);
 extern int  to_digit_string(char *s, UV n, UV base, int length);

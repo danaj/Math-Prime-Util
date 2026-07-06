@@ -129,13 +129,14 @@ SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i);
 
 int _sv_is_bigint(pTHX_ SV* n);
 int _sv_is_bigint_fast(pTHX_ SV* n);
+int _sv_is_math_object(pTHX_ SV* n);
 uint32_t _parse_strnum(const char* s, STRLEN len);
 int _validate_int(pTHX_ SV* n, int negok);
 int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask);
 int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr);
 SV** _check_sorted_nonneg_arrayref(pTHX_ SV *sv, size_t *lenp);
 int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svbase, size_t len);
-bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, int base);
+bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, UV base);
 int _compare_array_refs(pTHX_ SV* a, SV* b);
 
 bool xs_is_sv_scalar_ref(SV *sv);

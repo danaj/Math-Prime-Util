@@ -3,9 +3,11 @@ use strict;
 use warnings;
 
 use Test::More;
+use Math::BigInt;
+use Math::BigFloat;
 use Math::Prime::Util qw/todigits fromdigits todigitstring sumdigits
                          is_palindrome is_harshad digital_root mult_digital_root
-                         vecsum factorial/;
+                         vecsum factorial powint/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
@@ -38,12 +40,29 @@ subtest 'fromdigits', sub {
   is("".fromdigits("zzzyzzzyzzzyzzzy",36), "7958656371562241451187966", "fromdigits with Large base 36 number");
   ok(!eval { fromdigits([1,2,3],0); 1 } && $@ =~ /invalid base/i, "fromdigits arrayref invalid base");
   ok(!eval { fromdigits("123",0); 1 } && $@ =~ /invalid base/i, "fromdigits string invalid base");
+  ok(!eval { fromdigits("-1c8",16); 1 } && $@ =~ /invalid digit/i, "fromdigits string rejects leading minus");
+  ok(!eval { fromdigits("+1c8",16); 1 } && $@ =~ /invalid digit/i, "fromdigits string rejects leading plus");
   is("".fromdigits("10","4294967296"), "4294967296", "fromdigits string with base larger than 32-bit");
   is("".fromdigits("10","1000000000000"), "1000000000000", "fromdigits string with large base");
+  is("".fromdigits([1,0],"4294967296"), "4294967296", "fromdigits arrayref with base larger than 32-bit");
+  is("".fromdigits([1,4294967296],"4294967296"), "8589934592", "fromdigits arrayref large base with carry");
+  is("".fromdigits(Math::BigInt->new("123"),16), "291", "fromdigits accepts bigint object as string");
+  is("".fromdigits(Math::BigFloat->new("123"),16), "291", "fromdigits accepts math object as string");
+  ok(!eval { fromdigits(Math::BigFloat->new("123.5"),16); 1 } && $@ =~ /invalid digit/i, "fromdigits rejects invalid math object string");
   {
     my @sparse;
     $sparse[2] = 2;
     ok(!eval { fromdigits(\@sparse,10); 1 } && $@ =~ /defined/, "fromdigits rejects sparse arrayref");
+  }
+  {
+    my $n = powint(3,10);
+    $n =~ /(\d+)/;
+    is(fromdigits($1,16), 364617, "match variable string");
+  }
+  {
+    my $n = powint(3,99);
+    $n =~ /(\d+)/;
+    is(fromdigits($1,16), "566216063983779498285321989320009873549781493721285789287", "large match variable string");
   }
 };
 

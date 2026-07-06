@@ -1083,12 +1083,55 @@ return_prod:
   return out;
 }
 
+static int strint_digit_value(unsigned char c)
+{
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'A' && c <= 'Z') return c - 'A' + 10;
+  if (c >= 'a' && c <= 'z') return c - 'a' + 10;
+  return -1;
+}
+
+static char* b9_from_little_digits(b9_t *A, size_t len, UV base, STRLEN* rlen)
+{
+  b9_t b;
+  char *out;
+  size_t i, k = len;
+  STRLEN outlen;
+
+  b9_init_set_uv(&b, base);
+
+  while (k > 1) {
+    for (i = 0; i < k-1; i += 2) {
+      b9_mul(&A[i+1], &A[i+1], &b);
+      b9_add(&A[i>>1], &A[i], &A[i+1]);
+    }
+    if (k & 1)
+      b9_move(&A[k>>1], &A[k-1]);
+    k = (k+1) >> 1;
+    if (k > 1)
+      b9_mul(&b, &b, &b);
+  }
+
+  out = (char*) malloc((size_t)b9_length(&A[0]) + 1);
+  outlen = 0;
+  if (out) {
+    outlen = b9_get_str(out, &A[0]);
+    out[outlen] = '\0';
+  }
+  if (rlen) *rlen = outlen;
+
+  for (i = 0; i < len; i++)
+    b9_free(&A[i]);
+  free(A);
+  b9_free(&b);
+  return out;
+}
+
 char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen)
 {
-  b9_t *A, b;
+  b9_t *A;
   char *out;
-  size_t i, k;
-  STRLEN outlen;
+  size_t i;
 
   if (len == 0) {
     out = (char*) malloc(2);
@@ -1115,34 +1158,55 @@ char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen)
   if (!A) return 0;
   for (i = 0; i < len; i++)
     b9_init_set_uv(&A[i], d[len-1-i]);
-  b9_init_set_uv(&b, base);
 
-  k = len;
-  while (k > 1) {
-    for (i = 0; i < k-1; i += 2) {
-      b9_mul(&A[i+1], &A[i+1], &b);
-      b9_add(&A[i>>1], &A[i], &A[i+1]);
+  return b9_from_little_digits(A, len, base, rlen);
+}
+
+int strint_fromdigitstring(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base)
+{
+  b9_t *A;
+  UV n = 0;
+  STRLEN i;
+  int overflow = 0;
+
+  while (len > 0 && *s == '0') { s++;  len--; }
+  if (len == 0) {
+    *rn = 0;
+    return 1;
+  }
+
+  for (i = 0; i < len; i++) {
+    int d = strint_digit_value((unsigned char)s[i]);
+    if (d < 0 || (UV)d >= base)
+      croak("fromdigits: invalid digit for base %"UVuf, base);
+    if (!overflow) {
+      if (n > (UV_MAX - (UV)d) / base) {
+        overflow = 1;
+      } else {
+        n = n * base + (UV)d;
+      }
     }
-    if (k & 1)
-      b9_move(&A[k>>1], &A[k-1]);
-    k = (k+1) >> 1;
-    if (k > 1)
-      b9_mul(&b, &b, &b);
   }
 
-  out = (char*) malloc((size_t)b9_length(&A[0]) + 1);
-  outlen = 0;
-  if (out) {
-    outlen = b9_get_str(out, &A[0]);
-    out[outlen] = '\0';
+  if (!overflow) {
+    *rn = n;
+    return 1;
   }
-  if (rlen) *rlen = outlen;
 
-  for (i = 0; i < len; i++)
-    b9_free(&A[i]);
-  free(A);
-  b9_free(&b);
-  return out;
+  if (len > (STRLEN)((size_t)MAX_SIZET / sizeof(b9_t)))
+    croak("fromdigits: input too large");
+  A = (b9_t*) malloc((size_t)len * sizeof(b9_t));
+  if (!A)
+    croak("fromdigits: allocation failed");
+  for (i = 0; i < len; i++) {
+    int d = strint_digit_value((unsigned char)s[len-1-i]);
+    b9_init_set_uv(&A[i], (UV)d);
+  }
+
+  *rstr = b9_from_little_digits(A, (size_t)len, base, rlen);
+  if (!*rstr)
+    croak("fromdigits: allocation failed");
+  return 2;
 }
 
 /******************************************************************************/

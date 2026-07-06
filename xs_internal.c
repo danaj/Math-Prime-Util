@@ -65,6 +65,20 @@ int _sv_is_bigint_fast(pTHX_ SV* n) {
   return 0;
 }
 
+/* Intentionally broad, so covers all our known big number objects, modules
+ * like Math::Int64, and future integer modules.
+ * The downside is that Math::* objects that don't represent an integer,
+ * such as Math::Random::PCG32, will pass this test and go to string parsing.
+ * That will catch them, but the resulting error isn't clear. */
+int _sv_is_math_object(pTHX_ SV* n) {
+  if (SvROK(n) && SvOBJECT(SvRV(n))) {
+    const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));
+    if (hvname != 0 && strnEQ(hvname, "Math::", 6))
+      return 1;
+  }
+  return 0;
+}
+
 #if BITS_PER_WORD == 32
   static const unsigned int uvmax_maxlen = 10;
   static const unsigned int ivmax_maxlen = 10;
@@ -371,17 +385,13 @@ int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svba
 
 #undef READ_UV_IARR
 
-bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, int base)
+bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, UV base)
 {
   size_t len, i, j;
   int itype;
-  UV *r = 0, carry = 0, ubase = (UV)base;
+  UV *r = 0, carry = 0;
 
   *ret = 0;
-
-  /* We're treating this as always from fromdigits */
-  if (!SvROK(sva) || SvTYPE(SvRV(sva)) != SVt_PVAV)
-    croak("fromdigits: first argument must be a string or array reference");
 
   itype = arrayref_to_int_array(aTHX_ &len, &r, 0, sva, "fromdigits");
 
@@ -399,9 +409,9 @@ bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, int base)
       }
       r[j] += carry;
     }
-    if (r[j] >= ubase && j > 0) {
-      carry = r[j] / ubase;
-      r[j] -= carry * ubase;
+    if (r[j] >= base && j > 0) {
+      carry = r[j] / base;
+      r[j] -= carry * base;
     } else {
       carry = 0;
     }

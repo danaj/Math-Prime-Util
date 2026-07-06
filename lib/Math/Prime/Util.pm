@@ -4123,6 +4123,11 @@ the entries in that location, and values larger than the base are
 allowed (results are carried).  The result is a number (either a
 native integer or a bigint).
 
+String input uses digit characters 0-9 plus a-z/A-Z, so only digits 0..35
+can be represented.  Bases larger than 36 are allowed, but string digits
+larger than 35 are not possible.  For larger bases, the array reference
+input is more useful.
+
 This corresponds to Pari's C<fromdigits> function and
 Mathematica's C<FromDigits> function.
 

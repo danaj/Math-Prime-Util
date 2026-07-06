@@ -37,6 +37,10 @@ extern char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, 
  * Sets *rlen to the result length. */
 extern char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen);
 
+/* Convert a base-N digit string to either a UV or decimal string.
+ * Returns 1 for UV, 2 for malloc-allocated string.  Croaks on invalid input. */
+extern int strint_fromdigitstring(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base);
+
 /* Multiply two signed decimal integer strings.
  * Result is written to out; caller must ensure out has at least
  * alen+blen bytes.  Returns the length of the result (no NULL written). */

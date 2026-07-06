@@ -6546,21 +6546,20 @@ void fromdigits(SV* svn, SV* svbase = 0)
   PREINIT:
     int bstatus;
     UV n, base;
+    STRLEN slen, rlen;
+    char *s, *str;
+    int status;
   PPCODE:
+    SvGETMAGIC(svn);
     if (!SvOK(svn)) croak("Parameter must be defined");
     bstatus = 1;
     base = 10;
     if (items > 1)
       bstatus = _validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG);
     if (base < 2) croak("%s: invalid base: %"UVuf, SUBNAME, base);
-    if (bstatus == 1 && base <= PERL_INT_MAX) {
-      if (!SvROK(svn)) {  /* string */
-        if (from_digit_string(&n, SvPV_nolen(svn), base))
-          XSRETURN_UV(n);
-      } else if (!_sv_is_bigint(aTHX_ svn)) {     /* array ref of digits */
+    if (bstatus == 1) {
+      if (SvROK(svn) && SvTYPE(SvRV(svn)) == SVt_PVAV) {
         size_t len;
-        STRLEN rlen;
-        char *str;
         UV* r = 0;
         if (arrayref_to_digit_array(aTHX_ &len, &r, svn, base)) {
           if (from_digit_to_UV(&n, r, len, base)) {
@@ -6574,6 +6573,19 @@ void fromdigits(SV* svn, SV* svbase = 0)
           }
           Safefree(r);
         }
+      } else if (!SvROK(svn) || _sv_is_math_object(aTHX_ svn)) {
+        s = SvPV_nomg(svn, slen);
+        status = strint_fromdigitstring(&n, &str, &rlen, s, slen, base);
+        if (status == 1)
+          XSRETURN_UV(n);
+        if (status == 2) {
+          PUSH_STR_CANONICAL(str, rlen);
+          free(str);
+          XSRETURN(1);
+        }
+        croak("fromdigits: internal error");
+      } else {
+        croak("fromdigits: first argument must be a string or array reference");
       }
     }
     DISPATCHPP_RETURN();

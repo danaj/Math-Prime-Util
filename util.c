@@ -2107,34 +2107,11 @@ char* pidigits(uint32_t digits)
 }
 
 
-bool from_digit_string(UV* rn, const char* s, int base)
-{
-  UV max, n = 0;
-  int i, len;
-
-  /* Skip leading -/+ and zeros */
-  if (s[0] == '-' || s[0] == '+') s++;
-  while (s[0] == '0') s++;
-
-  len = strlen(s);
-  max = (UV_MAX-base+1)/base;
-
-  for (i = 0; i < len; i++) {
-    const unsigned char c = s[i];
-    int d = !isalnum(c) ? 255 : (c <= '9') ? c-'0' : (c <= 'Z') ? c-'A'+10 : c-'a'+10;
-    if (d >= base) croak("Invalid digit for base %d", base);
-    if (n > max) return 0;   /* Overflow */
-    n = n * base + d;
-  }
-  *rn = n;
-  return 1;
-}
-
-bool from_digit_to_UV(UV* rn, const UV* r, size_t len, int base)
+bool from_digit_to_UV(UV* rn, const UV* r, size_t len, UV base)
 {
   UV d, n = 0;
   size_t i;
-  if (len > BITS_PER_WORD)
+  if (base < 2 || len > BITS_PER_WORD)
     return 0;
   for (i = 0; i < len; i++) {
     d = r[i];
