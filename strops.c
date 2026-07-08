@@ -58,7 +58,10 @@ static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
 /*   else:         base 10^4,  32-bit accumulator (per-row carry flush needed)*/
 /******************************************************************************/
 
-#if HAVE_UINT128
+#if 0 && HAVE_UINT128
+  /* This works, but benchmarking shows it is rarely faster when we have
+   * good uint128_t support, and is much worse when it is _BitInt(128).
+   * Disable this path for now. */
   #define B9_DIGS  9
   #define B9_BASE  UINT32_C(1000000000)
   typedef uint32_t  b9limb_t;

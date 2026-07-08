@@ -40,5 +40,5 @@ plan tests => scalar(@legendre_sums);
 ###### Legendre phi
 foreach my $r (@legendre_sums) {
   my($x, $a, $exp) = @$r;
-  is( legendre_phi($x, $a), $exp, "legendre_phi($x,$a) = $exp" );
+  is( "".legendre_phi($x, $a), $exp, "legendre_phi($x,$a) = $exp" );
 }
