@@ -565,6 +565,10 @@ uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset)
   *list = P;
   return i-offset;          /* Returns number of primes, excluding offset */
 }
+void free_prime_sieve_32(uint32_t* list)
+{
+  Safefree(list);
+}
 
 UV range_partial_sieve(UV** list, UV lo, UV hi, UV depth)
 {

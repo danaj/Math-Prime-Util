@@ -24,6 +24,8 @@ extern UV range_partial_sieve(UV** list, UV lo, UV hi, UV depth);
  * Hence, the last prime will be in P[offset+count-1].
  */
 extern uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset);
+/* Free the list returned from above */
+extern void free_prime_sieve_32(uint32_t* list);
 
 
 

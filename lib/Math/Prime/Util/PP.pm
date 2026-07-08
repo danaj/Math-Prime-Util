@@ -8547,7 +8547,11 @@ sub binomial {
 
   if (defined $Math::GMPz::VERSION && !ref($k)) {
     $R = Math::GMPz->new();
-    Math::GMPz::Rmpz_bin_ui($R, Math::GMPz->new($n), $k);
+    if ($n < 4294967296) {
+      Math::GMPz::Rmpz_bin_uiui($R, "$n", $k);
+    } else {
+      Math::GMPz::Rmpz_bin_ui($R, Math::GMPz->new($n), $k);
+    }
   } elsif (defined $Math::GMP::VERSION && $Math::GMP::VERSION >= 2.23 && $n < 4294967296) {
     # This will silently coerce inputs to C 'long' type.
     $R = Math::GMP::bnok("$n","$k");

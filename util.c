@@ -917,6 +917,14 @@ UV binomial(UV n, UV k) {    /* Thanks to MJD and RosettaCode for ideas */
   if (k == 1) return n;
   if (k >= n) return (k == n);
   if (k > n/2) k = n-k;
+  /* Quick check of values that we know will overflow a UV */
+#if BITS_PER_WORD == 64
+  if ((n >= 73 && k >= 25) || (n >= 92 && k >= 19) || (n >= 131 && k >= 15))
+    return 0;
+#else
+  if ((n >= 40 && k >= 12) || (n >= 64 && k >=  8) || (n >= 124 && k >=  6))
+    return 0;
+#endif
   for (d = 1; d <= k; d++) {
     if (r >= UV_MAX/n) {  /* Possible overflow */
       UV nr, dr;  /* reduced numerator / denominator */
