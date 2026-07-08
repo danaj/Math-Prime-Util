@@ -58,7 +58,7 @@ subtest 'partitionsq', sub {
   is_deeply( [map { partitionsq($_) } 0..$#parts], \@parts, "partitionsq(0..$#parts)" );
 
   is(partitionsq(100),444793,"partitionsq(100)");
-  is(partitionsq(300),114872472064,"partitionsq(300)");
+  is("".partitionsq(300),114872472064,"partitionsq(300)");
   is("".partitionsq(1000),"8635565795744155161506","partitionsq(1000)")
     if $use64 || $extra;;
   is("".partitionsq(2000),"106972734349914451123354464808960","partitionsq(2000)")

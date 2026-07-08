@@ -62,7 +62,7 @@ plan tests => 1 + scalar(keys %sums) + scalar(@large) + ($usexs && $use64 ? 2 : 
 }
 while (my($range, $expect) = each (%sums)) {
   my($low,$high) = $range =~ /(\d+) to (\d+)/;
-  is( sum_primes($low,$high), $expect, "sum primes from $low to $high" );
+  is( "".sum_primes($low,$high), $expect, "sum primes from $low to $high" );
 }
 
 foreach my $pair (@large) {

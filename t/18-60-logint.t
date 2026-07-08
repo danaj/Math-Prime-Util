@@ -26,7 +26,7 @@ is_deeply( [map { logint($_,10) } 1..200], [map { length($_)-1 } 1..200], "login
 {
   my $be;
   is( logint(19284098234,16,\$be), 8, "logint(19284098234,16) = 8" );
-  is( $be, 16**8, "power is 16^8" );
+  is( "".$be, 16**8, "power is 16^8" );
 }
 {
   my $huge_base = "18446744073709551617";

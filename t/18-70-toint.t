@@ -36,7 +36,7 @@ subtest 'native integers pass through unchanged' => sub {
   is(toint(42),  42,  "small positive");
   is(toint(-42), -42, "small negative");
   is(toint(4294967295), 4294967295, "UV32_MAX");
-  is(toint(4294967296), 4294967296, "UV32_MAX + 1");
+  is("".toint(4294967296), 4294967296, "UV32_MAX + 1");
   SKIP: {
     skip "64-bit only", 2 unless $use64;
     is(toint(9223372036854775807),  9223372036854775807,  "IV64_MAX");

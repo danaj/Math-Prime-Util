@@ -62,7 +62,7 @@ subtest 'fromdigits', sub {
   {
     my $n = powint(3,99);
     $n =~ /(\d+)/;
-    is(fromdigits($1,16), "566216063983779498285321989320009873549781493721285789287", "large match variable string");
+    is("".fromdigits($1,16), "566216063983779498285321989320009873549781493721285789287", "large match variable string");
   }
 };
 

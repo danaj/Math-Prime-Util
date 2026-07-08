@@ -358,7 +358,7 @@ subtest 'prime_signature', sub {
   # 40-bit: 926269344000 = 2^8 * 3^5 * 5^3 * 7^2 * 11 * 13 * 17
   is_deeply( [prime_signature(926269344000)], [8,5,3,2,1,1,1],
              "prime_signature(926269344000)" );
-  is( scalar prime_signature(926269344000), 926269344000,
+  is( "" . scalar prime_signature(926269344000), 926269344000,
       "prime_signature(926269344000) scalar is A025487 member" );
 
   if ($use64) {

@@ -119,7 +119,7 @@ subtest 'dedekind_psi', sub {
              "dedekind_psi(1..20)" );
   is( dedekind_psi(30), 72, "dedekind_psi(30) = 72" );   # from pod example
   is( dedekind_psi(1000), 1800, "dedekind_psi(1000) = 1800" );
-  is( dedekind_psi(8589934592), 12884901888, "dedekind_psi(2^33) = 3*2^32" );
+  is( "".dedekind_psi(8589934592), 12884901888, "dedekind_psi(2^33) = 3*2^32" );
   if ($use64) {
     is("".dedekind_psi("927208363107752634625925"), "1204512000016257309081600", "dedekind_psi(927208363107752634625925) = 1204512000016257309081600" );
   }

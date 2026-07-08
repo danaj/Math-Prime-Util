@@ -76,7 +76,7 @@ plan tests => 1
 
 for my $data (@tests) {
   my($n,$k,$m,$exp) = @$data;
-  is( binomialmod($n,$k,$m), $exp, "binomialmod($n,$k,$m) = $exp" );
+  is( "".binomialmod($n,$k,$m), $exp, "binomialmod($n,$k,$m) = $exp" );
   #is( modint(binomial($n,$k),$m), $exp, "binomial($n,$k) mod $m = $exp" );
 }
 

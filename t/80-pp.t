@@ -1180,8 +1180,8 @@ subtest 'misc number theory functions', sub {
   is(hclassno(320),168,"hclassno");
   is_deeply([ramanujan_tau(81),ramanujan_tau(41),ramanujan_tau(44)],[1665188361,308120442,-786948864],"ramanujan_tau");
 
-  is(lucasu(6,1,14),9228778026,"lucasu");
-  is(lucasv(6,1,14),52205852194,"lucasv");
+  is("".lucasu(6,1,14),9228778026,"lucasu");
+  is("".lucasv(6,1,14),52205852194,"lucasv");
   is(lucasumod(1,-1,281,17779),5050,"lucasumod");
   is(lucasvmod(1,-1,281,17779),8665,"lucasvmod");
   is_deeply([lucasuvmod(1,-1,2811,17779)],[6323,16441],"lucasuvmod");
@@ -1276,7 +1276,7 @@ subtest 'more misc ntheory functions', sub {
   is(factorialmod(53,177),30,"factorialmod(53,177)");
   is(factorialmod(830,1777),1771,"factorialmod(830,1777)")  if $extra;
 
-  is(subfactorial(15),481066515734,"subfactorial(15)");
+  is("".subfactorial(15),481066515734,"subfactorial(15)");
 
   is(binomialmod(53,7,177),152,"binomialmod");
 
@@ -1373,7 +1373,7 @@ subtest 'perfect powers', sub {
   cmp_closeto(perfect_power_count_approx("9999999999900000000000000"),3162493192548,1000,"perfect_power_count_approx");
 
   #is("".nth_perfect_power(1234567890),"1521310467887050801","nth_perfect_power");
-  is(nth_perfect_power(1234567),1495530880561,"nth_perfect_power");
+  is("".nth_perfect_power(1234567),1495530880561,"nth_perfect_power");
   ok(nth_perfect_power_lower(1234567) <= 1495530880561,"nth_perfect_power_lower");
   ok(nth_perfect_power_upper(1234567) >= 1495530880561,"nth_perfect_power_lower");
   cmp_closeto(nth_perfect_power_approx(1234567),1495530880561,10000000,"nth_perfect_power_approx");
@@ -1409,11 +1409,11 @@ subtest 'powerfree', sub {
   is_deeply([map {powerfree_sum(5443,$_)} 1..8],[1,8999622,12322494,13687065,14286122,14561514,14693701,14756710],"powerfree_sum");
   is(powerfree_part_sum(100040),3292589515,"powerfree_part_sum(100040)");
   is(powerfree_part_sum(100040,3),4234954627,"powerfree_part_sum(100040,3)");
-  is(powerfree_part_sum(100040,4),4642253940,"powerfree_part_sum(100040,4)");
+  is("".powerfree_part_sum(100040,4),4642253940,"powerfree_part_sum(100040,4)");
 
   is(powerfree_count(27000000,3),22461494,"powerfree_count(27000000,3)");
   is(powerfree_count(400040001,2),243195224,"powerfree_count(400040001,2)");
-  is(powerfree_count("10000000000",6),9829525925,"powerfree_count(10000000000,6)");
+  is("".powerfree_count("10000000000",6),9829525925,"powerfree_count(10000000000,6)");
   #is("".powerfree_count("27000000000000",3),"22461499059723","powerfree_count(30000^3,3)");
   is("".powerfree_count("100000000000000000000",15),"99996941269930456119","powerfree_count(10^20,15)");
 };
