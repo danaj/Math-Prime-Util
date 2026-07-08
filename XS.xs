@@ -1215,6 +1215,23 @@ static void reverse_uv_array(UV *L, size_t len)
     } \
   } while(0)
 
+/* str is malloc/free owned.  If sign < 0, prepend a '-' character. */
+#define RETURN_SIGN_STRINT_STR(sign, str, len) \
+  do { \
+    SV *rsv_; \
+    STRLEN rlen_ = (len); \
+    char *rstr_ = (str); \
+    if ((sign) >= 0) { \
+      rsv_ = sv_2mortal(newSVpvn(rstr_, rlen_)); \
+    } else { \
+      rsv_ = sv_2mortal(newSVpvn("-", 1)); \
+      sv_catpvn(rsv_, rstr_, rlen_); \
+    } \
+    free(rstr_); /* note free, not Safefree */ \
+    RETURN_SV_CANONICAL(rsv_); \
+  } while (0)
+
+
 #if 1
 #define TRY_MAGIC_UNARY(sv, op) \
   do { \
@@ -2542,9 +2559,7 @@ vecsum(...)
       else         resstr = strint_vecprod(sptr, slen, items, &rlen);
       Safefree(sptr);
       Safefree(slen);
-      ST(0) = sv_2mortal(newSVpvn(resstr, rlen));
-      free(resstr);
-      RETURN_SV_CANONICAL(ST(0));
+      RETURN_SIGN_STRINT_STR(1, resstr, rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -5467,16 +5482,47 @@ void binomial(IN SV* svn, IN SV* svk)
       if ( (nstatus == 1 && (kstatus == -1 || k > n)) ||
            (nstatus ==-1 && (kstatus == -1 && k > n)) )
          XSRETURN_UV(0);
-      if (kstatus == -1)
+      if (kstatus == -1) {
         k = n - k; /* n<0,k<=n:  (-1)^(n-k) * binomial(-k-1,n-k) */
+        kstatus = 1;
+      }
       if (nstatus == -1) {
-        ret = binomial( neg_iv(n)+k-1, k );
-        if (ret > 0 && ret <= (UV)IV_MAX)
-          XSRETURN_IV( (IV)ret * ((k&1) ? -1 : 1) );
+        UV nabs = neg_iv(n);
+        if (k == 0) XSRETURN_UV(1);
+        if (nabs <= UV_MAX - k + 1) {
+          UV ntop = nabs + k - 1;
+          ret = binomial(ntop, k);
+          if (ret > 0 && ret <= (UV)IV_MAX)
+            XSRETURN_IV( (IV)ret * ((k&1) ? -1 : 1) );
+          /* The result overflowed.  Use strint. */
+          if (ntop <= 4294967295 && k <= 4294967295 && _XS_get_callgmp() < 53) {
+            STRLEN rlen;
+            char *rstr = strint_binomial_u32_u32((uint32_t)ntop, (uint32_t)k, &rlen);
+            if (rstr)
+              RETURN_SIGN_STRINT_STR((k&1) ? -1 : 1, rstr, rlen);
+          }
+        }
       } else if (nstatus == 1) {
         ret = binomial(n, k);
         if (ret != 0) XSRETURN_UV(ret);
+        /* The result overflowed.  Use strint. */
+        if (n <= 4294967295 && k <= 4294967295 && _XS_get_callgmp() < 53) {
+          STRLEN rlen;
+          char *rstr = strint_binomial_u32_u32((uint32_t)n, (uint32_t)k, &rlen);
+          if (rstr)
+            RETURN_SIGN_STRINT_STR(1, rstr, rlen);
+        }
       }
+    }
+    if (kstatus == 1 && k <= 4294967295 && _XS_get_callgmp() < 53) {
+      STRLEN snlen, rlen;
+      const char *sn;
+      char *rstr;
+      SvGETMAGIC(svn);
+      sn = SvPV_nomg(svn, snlen);
+      rstr = strint_binomial_u32(sn, snlen, (uint32_t)k, &rlen);
+      if (rstr)
+        RETURN_SIGN_STRINT_STR(1, rstr, rlen);
     }
     DISPATCHPP_RETURN();
 
@@ -6564,9 +6610,7 @@ void fromdigits(SV* svn, SV* svbase = 0)
             XSRETURN_UV(n);
           } else if ((str = strint_fromdigits(r, len, base, &rlen)) != 0) {
             Safefree(r);
-            PUSH_STR_CANONICAL(str, rlen);
-            free(str);
-            XSRETURN(1);
+            RETURN_SIGN_STRINT_STR(1, str, rlen);
           }
           Safefree(r);
         }
@@ -6575,11 +6619,8 @@ void fromdigits(SV* svn, SV* svbase = 0)
         status = strint_fromdigitstring(&n, &str, &rlen, s, slen, base);
         if (status == 1)
           XSRETURN_UV(n);
-        if (status == 2) {
-          PUSH_STR_CANONICAL(str, rlen);
-          free(str);
-          XSRETURN(1);
-        }
+        if (status == 2)
+          RETURN_SIGN_STRINT_STR(1, str, rlen);
         croak("fromdigits: internal error");
       } else {
         croak("fromdigits: first argument must be a string or array reference");

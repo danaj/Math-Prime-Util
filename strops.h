@@ -32,6 +32,16 @@ extern char* strint_vecsum(const char* const* a, const STRLEN* alen, size_t n, S
  * Sets *rlen to the result length. */
 extern char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN* rlen);
 
+/* Binomial(n,k) for signed decimal string n and 32-bit k.
+ * Returns a malloc-allocated NULL-terminated result string.
+ * Sets *rlen to the result length. */
+extern char* strint_binomial_u32(const char* n, STRLEN nlen, uint32_t k, STRLEN* rlen);
+
+/* Binomial(n,k) for unsigned 32-bit n and k.
+ * Returns a malloc-allocated NULL-terminated result string.
+ * Sets *rlen to the result length. */
+extern char* strint_binomial_u32_u32(uint32_t n, uint32_t k, STRLEN* rlen);
+
 /* Convert high-to-low digit array in base to a decimal string.
  * Returns a malloc-allocated NULL-terminated result string.
  * Sets *rlen to the result length. */

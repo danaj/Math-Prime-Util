@@ -198,6 +198,10 @@ Revision history for Perl module Math::Prime::Util
     - binomialmod can directly dispatch to the GMP 0.54 back end, avoiding
       construction of huge intermediate binomial values in more cases.
 
+    - We have a new strint binomial, so large binomials can be computed
+      entirely in standard C.  We still prefer the GMP backend.  This is
+      much faster than default Math::BigInt.
+
 
 0.74 2026-03-13
 

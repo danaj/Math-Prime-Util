@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "ptypes.h"
+#include "constants.h"
 #include "mulmod.h"
 #include "strops.h"
 
@@ -62,16 +63,20 @@ static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
   #define B9_BASE  UINT32_C(1000000000)
   typedef uint32_t  b9limb_t;
   typedef uint128_t b9acc_t;
+  /* Decimal digits needed for any b9acc_t value. */
+  #define B9_ACC_DEC_DIGS  39
 #elif HAVE_UINT64
   #define B9_DIGS  6
   #define B9_BASE  UINT32_C(1000000)
   typedef uint32_t  b9limb_t;
   typedef uint64_t  b9acc_t;
+  #define B9_ACC_DEC_DIGS  20
 #else
   #define B9_DIGS  4
   #define B9_BASE  UINT32_C(10000)
   typedef uint32_t  b9limb_t;
   typedef uint32_t  b9acc_t;
+  #define B9_ACC_DEC_DIGS  10
 #endif
 
 /* Limbs needed for a decimal string of len digits. */
@@ -79,6 +84,8 @@ static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
 
 /* Decimal digits needed for any UV value. */
 #define B9_UV_DEC_DIGS  ((BITS_PER_WORD == 64) ? 20 : 10)
+
+#define B9ACC_MAX        ((b9acc_t)~(b9acc_t)0)
 
 /* Inline limb slots: 2 UVs worth, so 4 limbs on 64-bit (36 digits)
  * or 2 limbs on 32-bit with uint64_t (12 digits).
@@ -231,9 +238,40 @@ static void b9_set_uv(b9_t *x, UV v)
   x->n = n;
 }
 
+/* Set x from an unsigned accumulator value. */
+static void b9_set_acc(b9_t *x, b9acc_t v)
+{
+  uint32_t n = 0;
+  b9_ensure(x, (uint32_t)B9_NLIMBS(B9_ACC_DEC_DIGS));
+  x->neg = 0;
+  if (v == 0) { x->n = 0;  return; }
+  while (v > 0) { x->d[n++] = (b9limb_t)(v % B9_BASE); v /= B9_BASE; }
+  x->n = n;
+}
+
+/* Convert b9 to u32, no size check. */
+MAYBE_UNUSED static uint32_t b9_get_u32(const b9_t *x)
+{
+  uint32_t i, v;
+  for (v = 0, i = x->n; i-- > 0; )
+    v = v * B9_BASE + (uint32_t)x->d[i];
+  return v;
+}
+
+/* Convert b9 to UV, no size check. [n * B9_DIGS < sizeof(UV)*3] */
+static UV b9_get_uv(const b9_t* x) {
+  UV v = 0;
+  uint32_t i;
+  for (i = x->n; i-- > 0; )
+    v = v * (UV)B9_BASE + (UV)x->d[i];
+  return v;
+}
+
 /* Simpler helpers */
 static void b9_init_set_uv(b9_t *x, UV v)
   { b9_init(x);  b9_set_uv(x,v); }
+static void b9_init_set_acc(b9_t *x, b9acc_t v)
+  { b9_init(x);  b9_set_acc(x,v); }
 static void b9_init_set_str(b9_t *x, const char *s, STRLEN len)
   { b9_init(x);  b9_set_str(x,s,len); }
 static void b9_init_set(b9_t *x, const b9_t *y)
@@ -244,6 +282,7 @@ static void b9_init_set(b9_t *x, const b9_t *y)
   x->n = y->n;
   x->neg = y->neg;
 }
+
 
 /* Signed comparison.  Returns -1, 0, or 1. */
 static int b9_cmp(const b9_t *a, const b9_t *b)
@@ -403,12 +442,55 @@ static void b9_sub(b9_t *out, const b9_t *a, const b9_t *b)
 }
 #endif
 
+static void b9_add_u32(b9_t *out, const b9_t *a, uint32_t v)
+{
+  b9acc_t carry;
+  uint32_t i, need;
+
+  if (v == 0) {
+    if (out != a) {
+      b9_ensure(out, a->n);
+      if (a->n) memcpy(out->d, a->d, a->n * sizeof(b9limb_t));
+      out->n = a->n;  out->neg = a->neg;
+    }
+    return;
+  }
+
+  if (a->neg) {
+    b9_t b;
+    b9_init_set_uv(&b, v);
+    b9_add(out, a, &b);
+    b9_free(&b);
+    return;
+  }
+
+  need = a->n + (uint32_t)B9_NLIMBS(B9_UV_DEC_DIGS);
+  b9_ensure(out, need);
+  if (out != a && a->n)
+    memcpy(out->d, a->d, a->n * sizeof(b9limb_t));
+
+  carry = v;
+  i = 0;
+  while (carry) {
+    b9acc_t s = carry;
+    if (i < a->n) s += out->d[i];
+    out->d[i++] = (b9limb_t)(s % B9_BASE);
+    carry = s / B9_BASE;
+  }
+  out->n = (a->n > i) ? a->n : i;
+  out->neg = 0;
+}
+
 static void b9_add_uv(b9_t *out, const b9_t *a, UV v)
 {
-  b9_t b;
-  b9_init_set_uv(&b, v);
-  b9_add(out, a, &b);
-  b9_free(&b);
+  if (v <= (UV)UINT32_MAX) {
+    b9_add_u32(out, a, (uint32_t)v);
+  } else {
+    b9_t b;
+    b9_init_set_uv(&b, v);
+    b9_add(out, a, &b);
+    b9_free(&b);
+  }
 }
 
 /* out = a * b (signed).
@@ -464,6 +546,14 @@ static void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
   while (rn > 1 && out->d[rn-1] == 0) rn--;
   out->n   = rn;
   out->neg = (out->n == 1 && out->d[0] == 0) ? 0 : neg;
+}
+
+MAYBE_UNUSED static void b9_mul_uv(b9_t *out, const b9_t *a, UV v)
+{
+  b9_t b;
+  b9_init_set_uv(&b, v);
+  b9_mul(out, a, &b);
+  b9_free(&b);
 }
 
 /* out = a^exp.  out can alias a. */
@@ -680,7 +770,7 @@ static uint32_t b9_mod_u32(const b9_t* a, uint32_t p) {
   b9_init_set_uv(&bp, (UV)p);
   b9_init(&bq);  b9_init(&br);
   b9_fdivrem(&bq, &br, a, &bp);
-  result = (uint32_t)b9_to_uv(&br);
+  result = b9_get_u32(&br);
   b9_free(&bp);  b9_free(&bq);  b9_free(&br);
   return result;
 #endif
@@ -721,15 +811,6 @@ static void b9_tdiv2(b9_t* a) {
   if (a->n == 0) a->neg = 0;
 }
 
-/* Convert a small b9 value to UV.  Caller must verify fit with the
- * n*B9_DIGS < sizeof(UV)*3 check before calling. */
-static UV b9_to_uv(const b9_t* x) {
-  UV v = 0;
-  uint32_t i;
-  for (i = x->n; i-- > 0; )
-    v = v * (UV)B9_BASE + (UV)x->d[i];
-  return v;
-}
 
 static int b9_cmp_abs(const b9_t *a, const b9_t *b)
 {
@@ -830,6 +911,54 @@ static void b9_product(b9_t A[], size_t a, size_t b) {
     b9_product(A, c, b);
     b9_mul(&A[a], &A[a], &A[c]);
   }
+}
+
+static void b9_product_u32(b9_t *out, const uint32_t A[], size_t len)
+{
+  b9_t *B = 0;
+  b9acc_t prod = 1;
+  size_t i, max_chunks, nprod = 0;
+  const size_t n_u32_per_acc = sizeof(b9acc_t) / sizeof(uint32_t);
+
+  if (len == 0) {
+    b9_set_uv(out, 1);
+    return;
+  }
+
+  max_chunks = (len + n_u32_per_acc - 1) / n_u32_per_acc;
+  if (max_chunks > (size_t)MAX_SIZET / sizeof(b9_t))
+    croak("internal: b9_product_u32 cannot allocate");
+  B = (b9_t*) malloc(max_chunks * sizeof(b9_t));
+  if (B == 0)
+    croak("internal: b9_product_u32 allocation failed");
+
+  for (i = 0; i < len; i++) {
+    if (A[i] == 0) { prod = 0; break; }
+    if (A[i] == 1) continue;
+    if (prod > B9ACC_MAX / A[i]) {
+      b9_init_set_acc(&B[nprod++], prod);
+      prod = A[i];
+    } else {
+      prod *= A[i];
+    }
+  }
+
+  if (prod == 0) {
+    b9_set_uv(out, 0);
+  } else {
+    if (prod != 1)
+      b9_init_set_acc(&B[nprod++], prod);
+    if (nprod == 0) {
+      b9_set_uv(out, 1);
+    } else {
+      b9_product(B, 0, nprod-1);
+      b9_move(out, &B[0]);
+    }
+  }
+
+  for (i = 0; i < nprod; i++)
+    b9_free(&B[i]);
+  free(B);
 }
 
 
@@ -1082,6 +1211,309 @@ return_prod:
   b9_free(&tmp);
   return out;
 }
+
+/******************************************************************************/
+/*                                 BINOMIAL                                   */
+/******************************************************************************/
+
+
+extern uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t os);
+extern void free_prime_sieve_32(uint32_t* list);
+
+static uint32_t binomial_prime_exp_32(uint32_t n, uint32_t k, uint32_t p)
+{
+  uint32_t e = 0, nk = n - k;
+
+  while (n > 0) {
+    n  /= p;
+    k  /= p;
+    nk /= p;
+    e  += n - k - nk;
+  }
+  return e;
+}
+
+static bool b9_binomial_window_u32(b9_t *out, uint32_t n, uint32_t k)
+{
+  uint32_t i, nstart, pidx, nprimes, *primes = 0, *A = 0;
+
+  if (k > n || k > n-k || k == 0)
+    croak("internal: b9_binomial_window_u32 bad k");
+
+  if ((size_t)k > (size_t)MAX_SIZET / sizeof(uint32_t))
+    return 0;
+  A = (uint32_t *) malloc((size_t) k * sizeof(uint32_t));
+  if (A == 0)
+    return 0;
+
+  if (k <= primes_small[NPRIMES_SMALL-1]) {
+    nprimes = NPRIMES_SMALL-1;
+  } else {
+    nprimes = range_prime_sieve_32(&primes, k, 0);
+    if (nprimes == 0 || primes == 0) {
+      free(A);
+      return 0;
+    }
+  }
+
+  nstart = n-k+1;
+  for (i = 0; i < k; i++)
+    A[i] = nstart + i;
+
+  for (pidx = 0; pidx < nprimes; pidx++) {
+    uint32_t ppow, p = primes ? primes[pidx] : primes_small[pidx+1];
+    if (p > k) break;
+    for (ppow = p; ppow <= k; ) {
+      uint32_t c, count = k / ppow;
+      uint32_t rem = nstart % ppow;
+      uint32_t off = (rem == 0) ? 0 : ppow - rem;
+      for (c = 0; c < count; c++, off += ppow)
+        A[off] /= p;
+      if (ppow > k / p) break;
+      ppow *= p;
+    }
+  }
+  b9_product_u32(out, A, k);
+
+  if (primes != 0)
+    free_prime_sieve_32(primes);
+  free(A);
+  return 1;
+}
+
+
+char* strint_binomial_u32_u32(uint32_t n, uint32_t k, STRLEN* rlen)
+{
+  b9_t result;
+  b9_t *A = 0;
+  char *out;
+  STRLEN outlen;
+  uint32_t pidx, nprimes, nprod = 0, *primes = 0;
+
+  if (rlen) *rlen = 0;
+  b9_init_set_uv(&result, 0);
+  if (k > n)
+    goto return_result;
+  if (k > n-k)
+    k = n-k;
+  b9_set_uv(&result, 1);
+  if (k == 0)
+    goto return_result;
+
+  if (k <= 65536 || k < n/20) {
+    if (!b9_binomial_window_u32(&result, n, k))
+      goto return_null;
+    goto return_result;
+  }
+
+  if (n <= primes_small[NPRIMES_SMALL-1]) {
+    nprimes = NPRIMES_SMALL-1;
+  } else {
+    nprimes = range_prime_sieve_32(&primes, n, 0);
+    if (nprimes == 0 || primes == 0)
+      goto return_null;
+  }
+
+  if ((size_t)nprimes > (size_t)MAX_SIZET / sizeof(b9_t))
+    goto return_null;
+  A = (b9_t*) malloc((size_t)nprimes * sizeof(b9_t));
+  if (A == 0)
+    goto return_null;
+
+  for (pidx = 0; pidx < nprimes; pidx++) {
+    uint32_t e, p = primes ? primes[pidx] : primes_small[pidx+1];
+    if (p > n) break;
+    e = binomial_prime_exp_32(n, k, p);
+    if (e > 0) {
+      if (e == 1) {
+        b9_init_set_uv(&A[nprod], p);
+      } else if (e == 2 && p <= 65535) {
+        b9_init_set_uv(&A[nprod], p*p);
+      } else if (e == 3 && p <= 1625) {
+        b9_init_set_uv(&A[nprod], p*p*p);
+      } else {
+        b9_t base;
+        b9_init_set_uv(&base, p);
+        b9_init(&A[nprod]);
+        b9_pow(&A[nprod], &base, e);
+        b9_free(&base);
+      }
+      nprod++;
+    }
+  }
+
+  if (nprod != 0) {
+    b9_product(A, 0, (size_t)nprod-1);
+    b9_move(&result, &A[0]);
+  }
+
+return_result:
+  out = (char*) malloc((size_t)b9_length(&result) + 1);
+  outlen = 0;
+  if (out) {
+    outlen = b9_get_str(out, &result);
+    out[outlen] = '\0';
+  }
+  goto cleanup;
+
+return_null:
+  out = 0;
+  outlen = 0;
+
+cleanup:
+  if (rlen) *rlen = outlen;
+  if (A != 0) {
+    for (pidx = 0; pidx < nprod; pidx++)
+      b9_free(&A[pidx]);
+    free(A);
+  }
+  if (primes != 0)
+    free_prime_sieve_32(primes);
+  b9_free(&result);
+  return out;
+}
+
+
+static bool b9_binomial_product_32(uint32_t k, const b9_t *N, b9_t *A)
+{
+  uint32_t pidx, nprimes, *primes = 0;
+
+  if (k <= primes_small[NPRIMES_SMALL-1]) {
+    nprimes = NPRIMES_SMALL-1;
+  } else {
+    nprimes = range_prime_sieve_32(&primes, k, 0);
+    if (nprimes == 0 || primes == 0)
+      return 0;
+  }
+
+  for (pidx = 0; pidx < nprimes; pidx++) {
+    uint32_t ppow, p = primes ? primes[pidx] : primes_small[pidx+1];
+    if (p > k) break;
+    for (ppow = p; ppow <= k; ) {
+      uint32_t c, count = k / ppow;
+      uint32_t rem = b9_mod_u32(N, ppow);
+      uint32_t off = (rem == 0) ? 0 : ppow - rem;
+      for (c = 0; c < count; c++, off += ppow)
+        b9_divexact_u32(&A[off], p);
+      if (ppow > k / p) break;
+      ppow *= p;
+    }
+  }
+  if (primes != 0)
+    free_prime_sieve_32(primes);
+  b9_product(A, 0, (size_t)k-1);
+  return 1;
+}
+
+char* strint_binomial_u32(const char* nstr, STRLEN nlen, uint32_t k, STRLEN* rlen)
+{
+  b9_t start, term, result;
+  b9_t *A = 0;
+  char *out;
+  STRLEN outlen;
+  UV nsmall;
+  int negn, negout;
+  uint32_t i;
+
+  if (rlen) *rlen = 0;
+
+  negn = (nlen > 0 && *nstr == '-');
+  if (nlen > 0 && (*nstr == '+' || *nstr == '-')) {
+    nstr++;
+    nlen--;
+  }
+  while (nlen > 1 && *nstr == '0') {
+    nstr++;
+    nlen--;
+  }
+
+  b9_init(&start);
+  b9_init_set_uv(&result, 1);
+
+  if (k == 0)
+    goto return_result;
+
+  if (nlen == 0 || (nlen == 1 && nstr[0] == '0')) {
+    b9_set_uv(&result, 0);
+    goto return_result;
+  }
+
+  b9_set_str(&start, nstr, nlen);  /* absolute value, or positive n */
+  negout = negn && (k & 1);
+
+  if (!negn) {
+    if (str_to_uv_s(nstr, nlen, &nsmall)) {
+      if (k > nsmall) {
+        b9_set_uv(&result, 0);
+        goto return_result;
+      }
+      if (k > nsmall-k)
+        k = (uint32_t)(nsmall-k);
+      if (k == 0)
+        goto return_result;
+    }
+    if (k > 1) {
+      b9_t sub;
+      b9_init_set_uv(&sub, (UV)k - 1);
+      b9_neg(&sub);
+      b9_add(&start, &start, &sub);  /* start = n-k+1 */
+      b9_free(&sub);
+    }
+  }
+
+  if ((size_t)k > (size_t)MAX_SIZET / sizeof(b9_t))
+    goto return_null;
+  A = (b9_t*) malloc((size_t)k * sizeof(b9_t));
+  if (A == 0)
+    goto return_null;
+
+  {
+    b9_init_set(&term, &start);
+    for (i = 0; i < k; i++) {
+      b9_init_set(&A[i], &term);
+      b9_add_u32(&term, &term, 1);
+    }
+    b9_free(&term);
+  }
+
+  if (!b9_binomial_product_32(k, &start, A))
+    goto return_null;
+
+  /* Result is in the first element of A. */
+  b9_move(&result, &A[0]);
+
+  if (negout)
+    b9_neg(&result);
+
+return_result:
+  out = (char*) malloc((size_t)b9_length(&result) + 1);
+  outlen = 0;
+  if (out) {
+    outlen = b9_get_str(out, &result);
+    out[outlen] = '\0';
+  }
+  goto cleanup;
+
+return_null:
+  out = 0;
+  outlen = 0;
+
+cleanup:
+  if (rlen) *rlen = outlen;
+
+  if (A != 0) {
+    for (i = 0; i < k; i++)
+      b9_free(&A[i]);
+    free(A);
+  }
+  b9_free(&start);
+  b9_free(&result);
+  return out;
+}
+
+
+/******************************************************************************/
+
 
 static int strint_digit_value(unsigned char c)
 {
@@ -1448,7 +1880,7 @@ STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
 
         /* Early UV detection: switch to UV arithmetic for the remaining tail */
         if ((STRLEN)n.n * B9_DIGS < sizeof(UV) * 3) {
-          UV v = b9_to_uv(&n);
+          UV v = b9_get_uv(&n);
           b9_free(&n);
           while (v % p == 0) { v /= p; out_f[(*nf)++] = p; }
           while (g % p == 0) g /= p;
@@ -1523,7 +1955,7 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
         b9_divexact_u32(&n, p);
         out_f[(*nf)++] = p;
         if ((STRLEN)n.n * B9_DIGS < sizeof(UV) * 3) {
-          UV v = b9_to_uv(&n);
+          UV v = b9_get_uv(&n);
           b9_free(&n);
           /* p may still divide v (e.g. p^2 | original n) */
           while (v % p == 0) { v /= p;  out_f[(*nf)++] = p; }

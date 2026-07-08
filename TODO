@@ -322,18 +322,14 @@
   Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
 
 - GMP
-  - almost primes
-  - omega primes
-  - smooth_count
-  - rough_count
-  - qnr
-
-- consider (in GMP 0.53):
-  - setbit, clrbit, combit, tstbit
-  - bitand, bitor, bitxor, bitcom
-
-- other *int functions?  See overload and GMP for possible things we want.
-  remove_factors, clzint, ctzint (scan0,scan1)
+  - hi  partitionsq
+  - hi  fubini
+  - hi  vecprefixsum
+  - med smooth_count
+  - med rough_count
+  - low qnr
+  - low almost primes
+  - low omega primes
 
 - an overload option or module, to call our *int functions.
   have: add, sub, mul, pow, div, rem, neg, ++, --, <<, >>, <=>
@@ -545,9 +541,6 @@ OEIS lucky numbers:
 - ramanujan_prime_count calls ramanujan_primes, and
   ramanujan_primes generates all primes up to high
 
-- vecpairwise {... $a,$b ...} \@A,\@B
-  List::MoreUtils::pairwise
-
 - primality
   https://arxiv.org/pdf/2411.01638  (Pell Cubic)
   https://eprint.iacr.org/2025/2083.pdf (BFW extension to BPSW, SuperBFW)
@@ -607,8 +600,6 @@ OEIS lucky numbers:
 
 - Check PP validation on 5.6.2.
 
-- more of the is_...prime PPFE functions should be aliased.
-
 - xops in priority:
   urandomm urandomr
   is_square
@@ -620,8 +611,6 @@ OEIS lucky numbers:
   absint
   negint
 
-- is_semiprime using 128-bit factoring.  Other things that could?
-
 - srand should perhaps do better input parsing.
 
 - put the secure_bzero somewhere to export.  We use it in 3 files.
@@ -630,9 +619,6 @@ OEIS lucky numbers:
 
 - permtonum better algorithm (maybe for GMP).
 - numtoperm performance.  Maybe split native/all-bigint.
-
-- PP.pm uses 'defined $x' for optional variables, while it really should be
-  looking at scalar(@_) instead.  Right now we take undef = default.
 
 - setbinop: Consider pushing any SV that doesn't go into the iset into a
   separate list.  If that list is non-empty at the end, push the iset plus
@@ -672,8 +658,6 @@ OEIS lucky numbers:
   https://github.com/trizen/sidef/commit/cb4094f8
 
 - is_power deprecate k=undef, deprecate k=0.
-
-- GMP scalar count: sieve_prime_cluster, euler_phi, moebius
 
 - factor128: Huchalla positive-inverse REDC
 
