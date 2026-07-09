@@ -98,6 +98,7 @@ int _sv_is_math_object(pTHX_ SV* n) {
  *   SNUMFLAG_NEG              negative integer, fits in IV
  *   SNUMFLAG_BIGINT [|NEG]    integer too large for native word
  *   SNUMFLAG_FP    [|NEG]     valid floating-point (non-integer) number
+ *   SNUMFLAG_RADIX [|NEG]     prefixed 0x/0X/0b/0B integer string
  *   SNUMFLAG_INVALID          not a valid number
  *
  * There is a good argument that we should be using Perl's numeric.c functions.
@@ -116,6 +117,21 @@ uint32_t _parse_strnum(const char* s, STRLEN len)
   if      (s[i] == '-') { flag |= SNUMFLAG_NEG; i++; }
   else if (s[i] == '+') { i++; }
   if (i > 0 && i == len) return SNUMFLAG_INVALID;  /* lone sign character */
+
+  if (i + 1 < len && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X')) {
+    i += 2;
+    if (i == len) return SNUMFLAG_INVALID;  /* empty hex body */
+    for ( ; i < len; i++)
+      if (!isXDIGIT(s[i])) return SNUMFLAG_INVALID;
+    return flag | SNUMFLAG_RADIX | SNUMFLAG_HEXSTR;
+  }
+  if (i + 1 < len && s[i] == '0' && (s[i+1] == 'b' || s[i+1] == 'B')) {
+    i += 2;
+    if (i == len) return SNUMFLAG_INVALID;  /* empty binary body */
+    for ( ; i < len; i++)
+      if (s[i] != '0' && s[i] != '1') return SNUMFLAG_INVALID;
+    return flag | SNUMFLAG_RADIX | SNUMFLAG_BINSTR;
+  }
 
   /* Strip leading zeros, noting if any existed */
   while (i < len && s[i] == '0') { i++; had_zeros = 1; }
