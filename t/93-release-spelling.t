@@ -50,7 +50,7 @@ add_stopwords(qw/-th
                  cdivint modint negint absint divrem tdivrem fdivrem cdivrem
                  muladdint mulsubint
                  qnr cornacchia
-                 todigits todigitstring fromdigits sumdigits hammingweight
+                 todigits todigitstring fromdigits sumdigits reverse_digits hammingweight
                  tozeckendorf fromzeckendorf
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
                  lshiftint rshiftint rashiftint signint cmpint

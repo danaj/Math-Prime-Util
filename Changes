@@ -65,6 +65,7 @@ Revision history for Perl module Math::Prime::Util
     - inverse_sigma0(k,[lo,]hi)       array ref of n where sigma0(n) = k
     - inverse_sigma0_count(k,[lo,]hi) count of n where sigma0(n) = k
     - crootint(n,k)                   ceiling integer k-th root
+    - reverse_digits(n[,base])        reverse digits of |n| in base b
 
     [FIXES]
 

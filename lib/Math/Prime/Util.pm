@@ -98,7 +98,7 @@ our @EXPORT_OK =
       gcd lcm factor factor_exp divisors valuation floor_sum hammingweight
       remove_factors remove_factors_exp
       frobenius_number
-      todigits fromdigits todigitstring sumdigits
+      todigits fromdigits todigitstring sumdigits reverse_digits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod
@@ -4192,6 +4192,20 @@ a decimal number, uses the optional base as a base to first convert to,
 then sums the digits.  This can be done with either
 C<vecsum(todigits($n, $base))> or C<sumdigits(todigitstring($n,$base))>.
 C<Math::BigInt> version 1.999818 has a similar C<digitsum> function.
+
+
+=head2 reverse_digits
+
+  say reverse_digits(12345);       #  54321
+  say reverse_digits(0b1101000,2); #  11 (0b1011)
+
+Given an integer C<n>, return the number made by reversing the digits of
+C<|n|>.  An optional second integer argument specifies a base (default 10).
+The base must be at least 2.
+Leading zeroes after reversal are not preserved, so C<reverse_digits(1200)>
+returns C<21>.
+
+This is equivalent to C<fromdigits([reverse todigits($n,$base)], $base)>.
 
 
 =head2 is_palindrome

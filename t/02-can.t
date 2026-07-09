@@ -92,7 +92,7 @@ my @functions =  qw(
       gcd lcm factor factor_exp divisors valuation floor_sum hammingweight
       remove_factors remove_factors_exp
       frobenius_number
-      todigits fromdigits todigitstring sumdigits
+      todigits fromdigits todigitstring sumdigits reverse_digits
       tozeckendorf fromzeckendorf
       sqrtmod allsqrtmod rootmod allrootmod cornacchia
       negmod invmod addmod submod mulmod divmod powmod muladdmod mulsubmod

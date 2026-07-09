@@ -143,6 +143,7 @@ sub entropy_bytes {
 *toint    = \&Math::Prime::Util::PP::toint;
 
 *sumdigits = \&Math::Prime::Util::PP::sumdigits;
+*reverse_digits = \&Math::Prime::Util::PP::reverse_digits;
 *todigits = \&Math::Prime::Util::PP::todigits;
 *todigitstring = \&Math::Prime::Util::PP::todigitstring;
 *fromdigits = \&Math::Prime::Util::PP::fromdigits;

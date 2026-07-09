@@ -42,6 +42,11 @@ extern char* strint_binomial_u32(const char* n, STRLEN nlen, uint32_t k, STRLEN*
  * Sets *rlen to the result length. */
 extern char* strint_binomial_u32_u32(uint32_t n, uint32_t k, STRLEN* rlen);
 
+/* Reverse the digits of signed decimal integer n in the given base.
+ * Returns a malloc-allocated NULL-terminated decimal result string, or NULL
+ * for unsupported bases.  Sets *rlen to the result length. */
+extern char* strint_reverse_digits(const char* n, STRLEN nlen, UV base, STRLEN* rlen);
+
 /* Convert high-to-low digit array in base to a decimal string.
  * Returns a malloc-allocated NULL-terminated result string.
  * Sets *rlen to the result length. */

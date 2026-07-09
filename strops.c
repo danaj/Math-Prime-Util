@@ -559,6 +559,37 @@ MAYBE_UNUSED static void b9_mul_uv(b9_t *out, const b9_t *a, UV v)
   b9_free(&b);
 }
 
+static void b9_mul_u32(b9_t *out, const b9_t *a, uint32_t v)
+{
+#if HAVE_UINT64
+  uint64_t carry = 0;
+  uint32_t i, need;
+  int neg = a->neg;
+
+  if (v == 0 || a->n == 0) {
+    out->n = 0;
+    out->neg = 0;
+    return;
+  }
+
+  need = a->n + (uint32_t)B9_NLIMBS(10) + 1;
+  b9_ensure(out, need);
+  for (i = 0; i < a->n; i++) {
+    uint64_t t = (uint64_t)a->d[i] * v + carry;
+    out->d[i] = (b9limb_t)(t % B9_BASE);
+    carry = t / B9_BASE;
+  }
+  while (carry > 0) {
+    out->d[i++] = (b9limb_t)(carry % B9_BASE);
+    carry /= B9_BASE;
+  }
+  out->n = i;
+  out->neg = neg;
+#else
+  b9_mul_uv(out, a, (UV)v);
+#endif
+}
+
 /* out = a^exp.  out can alias a. */
 static void b9_pow(b9_t *out, const b9_t *a, UV exp)
 {
@@ -814,6 +845,56 @@ static void b9_tdiv2(b9_t* a) {
   if (a->n == 0) a->neg = 0;
 }
 
+static void b9_tdiv16(b9_t* a) {
+  uint32_t carry = 0;
+  uint32_t i;
+  for (i = a->n; i-- > 0; ) {
+    uint32_t limb = a->d[i];
+    a->d[i] = (b9limb_t)((limb >> 4) + carry * (B9_BASE >> 4));
+    carry = limb & 15;
+  }
+  while (a->n > 0 && a->d[a->n-1] == 0) a->n--;
+  if (a->n == 0) a->neg = 0;
+}
+
+static uint32_t b9_divrem_u32_inplace(b9_t* a, uint32_t p)
+{
+#if HAVE_UINT64
+  uint32_t rem = 0;
+  uint32_t i;
+
+  if (p == 2) {
+    rem = (a->n == 0) ? 0 : (a->d[0] & 1);
+    b9_tdiv2(a);
+    return rem;
+  }
+  if (p == 16) {
+    rem = (a->n == 0) ? 0 : (a->d[0] & 15);
+    b9_tdiv16(a);
+    return rem;
+  }
+
+  for (i = a->n; i-- > 0; ) {
+    uint64_t cur = (uint64_t)rem * B9_BASE + a->d[i];
+    a->d[i] = (b9limb_t)(cur / p);
+    rem = (uint32_t)(cur % p);
+  }
+  while (a->n > 0 && a->d[a->n-1] == 0) a->n--;
+  if (a->n == 0) a->neg = 0;
+  return rem;
+#else
+  b9_t bp, bq, br;
+  uint32_t rem;
+  b9_init_set_uv(&bp, (UV)p);
+  b9_init(&bq);  b9_init(&br);
+  b9_fdivrem(&bq, &br, a, &bp);
+  rem = b9_get_u32(&br);
+  b9_move(a, &bq);
+  b9_free(&bp);  b9_free(&br);
+  return rem;
+#endif
+}
+
 
 static int b9_cmp_abs(const b9_t *a, const b9_t *b)
 {
@@ -1003,6 +1084,60 @@ static int strint_strip_and_validate(const char **sp, STRLEN *slen)
   if (*sp == NULL || *slen == 0 || i < *slen)
     croak("Parameter must be an integer");
   return neg;
+}
+
+char* strint_reverse_digits(const char* n, STRLEN nlen, UV base, STRLEN* rlen)
+{
+  b9_t N, R;
+  char *out;
+  STRLEN outlen;
+
+  if (rlen) *rlen = 0;
+  if (base < 2 || base > (UV)UINT32_MAX)
+    return 0;
+
+  strint_strip(&n, &nlen);  /* Ignore sign, remove leading zeros. */
+
+  if (nlen == 1 && n[0] == '0') {
+    out = (char*) malloc(2);
+    if (out == 0) return 0;
+    out[0] = '0';
+    out[1] = '\0';
+    if (rlen) *rlen = 1;
+    return out;
+  }
+
+  if (base == 10) {
+    STRLEN i;
+    while (nlen > 1 && n[nlen-1] == '0')
+      nlen--;
+    out = (char*) malloc((size_t)nlen + 1);
+    if (out == 0) return 0;
+    for (i = 0; i < nlen; i++)
+      out[i] = n[nlen-i-1];
+    out[nlen] = '\0';
+    if (rlen) *rlen = nlen;
+    return out;
+  }
+
+  b9_init_set_str(&N, n, nlen);
+  b9_init_set_uv(&R, 0);
+  while (N.n != 0) {
+    uint32_t d = b9_divrem_u32_inplace(&N, (uint32_t)base);
+    b9_mul_u32(&R, &R, (uint32_t)base);
+    b9_add_u32(&R, &R, d);
+  }
+
+  out = (char*) malloc((size_t)b9_length(&R) + 1);
+  outlen = 0;
+  if (out != 0) {
+    outlen = b9_get_str(out, &R);
+    out[outlen] = '\0';
+  }
+  if (rlen) *rlen = outlen;
+  b9_free(&N);
+  b9_free(&R);
+  return out;
 }
 
 int strint_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen) {

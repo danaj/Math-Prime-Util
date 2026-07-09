@@ -1308,6 +1308,10 @@ subtest 'functions from v0.75', sub {
 
   is(digital_root(493),       7, "digital_root(493) = 7");
   is(mult_digital_root(77),   8, "mult_digital_root(77) = 8");
+  is(reverse_digits(1200),   21, "reverse_digits(1200) = 21");
+  is("".reverse_digits("123456789012345678901234567890"),
+     "98765432109876543210987654321",
+     "reverse_digits bigint decimal");
 
   is(fibonacci(10),     55,  "fibonacci(10) = 55");
   is(lucas_number(10), 123,  "lucas_number(10) = 123");

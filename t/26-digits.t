@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::BigInt;
 use Math::BigFloat;
-use Math::Prime::Util qw/todigits fromdigits todigitstring sumdigits
+use Math::Prime::Util qw/todigits fromdigits todigitstring sumdigits reverse_digits
                          is_palindrome is_harshad digital_root mult_digital_root
                          vecsum factorial powint/;
 
@@ -14,6 +14,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 plan tests => 1    # fromdigits
             + 1    # todigits
             + 1    # sumdigits
+            + 1    # reverse_digits
             + 1    # todigitstring
             + 1    # is_palindrome
             + 1    # is_harshad
@@ -107,6 +108,25 @@ subtest 'sumdigits', sub {
   }
 
   is(sumdigits(-143), 8, "sumdigits ignores negative sign");
+};
+
+subtest 'reverse_digits', sub {
+  is(reverse_digits(0), 0, "reverse_digits 0");
+  is(reverse_digits(123456), 654321, "reverse_digits decimal");
+  is(reverse_digits(1200), 21, "reverse_digits drops leading zeroes after reversal");
+  is(reverse_digits(-143), 341, "reverse_digits ignores negative sign");
+  is(reverse_digits(0b1101000, 2), 0b1011, "reverse_digits base 2");
+  is(reverse_digits(0x1234, 16), 0x4321, "reverse_digits base 16");
+  is(reverse_digits(123456, 8), fromdigits([reverse todigits(123456,8)],8),
+     "reverse_digits matches reverse todigits in base 8");
+  is("".reverse_digits("1000000000000000000000000000000000000000000000000010"),
+     "100000000000000000000000000000000000000000000000001",
+     "reverse_digits bigint decimal");
+  is("".reverse_digits("123456789012345678901234567890", 36),
+     "".fromdigits([reverse todigits("123456789012345678901234567890",36)],36),
+     "reverse_digits bigint base 36");
+  ok(!eval { reverse_digits(17, 1); 1 } && $@ =~ /reverse_digits: .*invalid base: 1/i,
+     "reverse_digits invalid base croak");
 };
 
 subtest 'todigitstring', sub {

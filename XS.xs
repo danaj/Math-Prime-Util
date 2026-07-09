@@ -3032,6 +3032,7 @@ is_power(IN SV* svn, IN SV* svk = 0, IN SV* svroot = 0)
       svroot = svk;
       svk = 0;
     }
+    if (svk) SvGETMAGIC(svk);
     if (items < 2 || svk == 0 || !SvOK(svk)) {
       kstatus = 1;  k = 0;
     } else {
@@ -3446,6 +3447,7 @@ void toint(IN SV* svn)
     STRLEN len;
     uint32_t stype;
   PPCODE:
+    SvGETMAGIC(svn);
     if (!SvOK(svn)) XSRETURN_UV(0);  /* undef returns 0 without warning */
     /* Fastest path: if it is already a native int then we're done. */
     /* TODO: verify 5.6.2 */
@@ -3620,6 +3622,7 @@ void bestrational(IN SV* svx, IN SV* svdbound)
   PREINIT:
     UV dbound, P, Q;
   PPCODE:
+    SvGETMAGIC(svx);
     if (_validate_and_set(&dbound, aTHX_ svdbound, IFLAG_POS) &&
         SvOK(svx) &&
         !sv_isobject(svx) &&
@@ -6478,6 +6481,7 @@ sumdigits(SV* svn, SV* svbase = 0)
     STRLEN i, len;
     const char* s;
   PPCODE:
+    SvGETMAGIC(svn);
     if (!SvOK(svn)) croak("Parameter must be defined");
     if (items > 1 && !_validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG))
       DISPATCHPP_RETURN();
@@ -6509,6 +6513,37 @@ sumdigits(SV* svn, SV* svbase = 0)
         sum += d;
     }
     XSRETURN_UV(sum);
+
+void reverse_digits(SV* svn, SV* svbase = 0)
+  PREINIT:
+    int nstatus, bstatus = 1;
+    UV n, base = 10, r = 0;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (items > 1)
+      bstatus = _validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG);
+    if (base < 2) croak("%s: invalid base: %"UVuf, SUBNAME, base);
+    if (nstatus == 1 && bstatus == 1) {
+      while (n > 0) {
+        UV q = n / base;
+        UV d = n - q * base;
+        if (r > (UV_MAX - d) / base)
+          break;  /* overflow, dispatch */
+        r = r * base + d;
+        n = q;
+      }
+      if (n == 0)
+        XSRETURN_UV(r);
+    }
+    if (bstatus == 1) {
+      char *rstr;
+      STRLEN len, rlen;
+      const char *s = SvPV_nomg(svn, len);
+      rstr = strint_reverse_digits(s, len, base, &rlen);
+      if (rstr)
+        RETURN_SIGN_STRINT_STR(1, rstr, rlen);
+    }
+    DISPATCHPP_RETURN();
 
 void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
   ALIAS:

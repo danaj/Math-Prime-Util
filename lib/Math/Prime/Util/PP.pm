@@ -6177,6 +6177,13 @@ sub sumdigits {
   $sum;
 }
 
+sub reverse_digits {
+  my($n, $base) = _parse_base_args("reverse_digits", 0, @_);
+  validate_integer_abs($n);
+  return Mtoint(scalar reverse "$n") if $base == 10;
+  Mfromdigits([reverse Mtodigits($n, $base)], $base);
+}
+
 sub digital_root {
   my($n, $base) = _parse_base_args("digital_root", 0, @_);
   validate_integer_nonneg($n);

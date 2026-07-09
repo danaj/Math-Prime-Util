@@ -272,6 +272,7 @@ Tags:
   fromdigits(\@d,[,base])             convert base digit vector to number
   fromdigits(str,[,base])             convert base digit string to number
   sumdigits(n)                        sum of digits, with optional base
+  reverse_digits(n[,base])            reverse digits of |n| in base b
   tozeckendorf(n)                     convert n to Zeckendorf/Fibbinary
   fromzeckendorf(str)                 convert Zeckendorf binary str to num
   is_odd(n)                           return 1 if n is odd, 0 otherwise
