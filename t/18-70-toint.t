@@ -15,6 +15,7 @@ sub is_bigint {  ref($_[0]) }
 plan tests => 1  # native ints
             + 1  # small floats
             + 1  # integer strings
+            + 1  # radix strings
             + 1  # float strings
             + 1  # scientific notation strings
             + 1  # bigints
@@ -78,6 +79,34 @@ subtest 'integer strings' => sub {
   { my $r = toint("99999999999999999999");
     ok( is_bigint($r), "20-digit integer string → bigint");
     is("$r", "99999999999999999999", "20-digit value correct");
+  }
+};
+
+###############################################################################
+
+subtest 'radix strings' => sub {
+  is(toint("0xFF"),    255, "hex string");
+  is(toint("-0xFF"),  -255, "negative hex string");
+  is(toint("+0X10"),    16, "uppercase hex prefix with explicit plus");
+  is(toint("0b1011"),   11, "binary string");
+  is(toint("-0B1011"), -11, "negative uppercase binary prefix");
+  is(toint("0x00000100"), 256, "hex leading zeros");
+  is(toint("0b00010000"), 16, "binary leading zeros");
+  ok(is_native(toint("0xFF")), "small hex string returns native");
+  ok(is_native(toint("0b1011")), "small binary string returns native");
+
+  {
+    my $hex = "0x100000000000000000000";
+    my $exp = "1208925819614629174706176";
+    is("".toint($hex), $exp, "large hex string");
+    is("".toint("-$hex"), "-$exp", "large negative hex string");
+    ok(is_bigint(toint($hex)), "large hex string returns bigint");
+  }
+  {
+    my $bin = "0b1" . ("0" x 80);
+    my $exp = "1208925819614629174706176";
+    is("".toint($bin), $exp, "large binary string");
+    ok(is_bigint(toint($bin)), "large binary string returns bigint");
   }
 };
 
@@ -245,8 +274,10 @@ subtest 'invalid inputs croak' => sub {
     "1 2",       # embedded space
     #"3 ",        # trailing space
     #" 3",        # leading space
-    #"0xFF",      # hex — use hex() first
-    #"0b101",     # binary — use oct() first
+    "0x",         # empty hex
+    "0b",         # empty binary
+    "0x1g",       # invalid hex digit
+    "0b102",      # invalid binary digit
     "inf",       # infinity string
     "Inf",
     "nan",       # not-a-number string

@@ -3470,6 +3470,25 @@ void toint(IN SV* svn)
     if (stype == SNUMFLAG_UV)  XSRETURN_UV(PSTRTOULL(s, NULL, 10));
     if (stype == SNUMFLAG_NEG) XSRETURN_IV(PSTRTOLL(s,NULL,10));
 
+    if (stype & SNUMFLAG_RADIX) {
+      UV n, base = (stype & SNUMFLAG_HEXSTR) ? 16 : 2;
+      char *rstr = 0;
+      STRLEN rlen = 0;
+      int sign = (stype & SNUMFLAG_NEG) ? -1 : 1;
+      int status;
+      if (*s == '-' || *s == '+') { s++; len--; }
+      s += 2; len -= 2;
+      status = strint_radix_to_int(&n, &rstr, &rlen, s, len, base);
+      if (status == 1) {
+        if (sign > 0)
+          XSRETURN_UV(n);
+        RETURN_SIGNMAG_UV_UV(-1, 0, n);
+      }
+      if (status == 2)
+        RETURN_SIGN_STRINT_STR(sign, rstr, rlen);
+      croak("%s: internal radix conversion error", SUBNAME);
+    }
+
     if (stype & SNUMFLAG_FP) {
       NV x = SvNV(svn);  /* This might lose user precision, so check */
       if (x >= 0.0 && x < nvuvmaxval+1.0) XSRETURN_UV((UV)x);

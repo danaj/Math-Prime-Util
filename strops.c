@@ -1779,6 +1779,80 @@ int strint_fromdigitstring(UV* rn, char** rstr, STRLEN* rlen, const char* s, STR
   return 2;
 }
 
+static void b9_mul_2pow_chunk(b9_t *out, const b9_t *a, unsigned bits)
+{
+  if (bits == 0) {
+    if (out != a) {
+      b9_ensure(out, a->n);
+      if (a->n) memcpy(out->d, a->d, a->n * sizeof(b9limb_t));
+      out->n = a->n;  out->neg = a->neg;
+    }
+  } else if (bits == 32) {
+    b9_mul_u32(out, a, UINT32_C(65536));
+    b9_mul_u32(out, out, UINT32_C(65536));
+  } else {
+    b9_mul_u32(out, a, UINT32_C(1) << bits);
+  }
+}
+
+int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base)
+{
+  b9_t R;
+  UV n = 0;
+  STRLEN i, start;
+
+  if (rlen) *rlen = 0;
+  if (rstr) *rstr = 0;
+  while (len > 0 && *s == '0') { s++;  len--; }
+  if (base != 2 && base != 16) return 0;
+
+  if (len <= BITS_PER_WORD / (base == 16 ? 4 : 1)) {
+    if (base == 16) {
+      for (i = 0; i < len; i++)
+        n = n * base + (UV)strint_digit_value((unsigned char)s[i]);
+    } else {
+      for (i = 0; i < len; i++)
+        n = n * base + (UV)(s[i] - '0');
+    }
+    *rn = n;
+    return 1;
+  }
+
+  b9_init_set_uv(&R, 0);
+  start = 0;
+  while (start < len) {
+    STRLEN chunk_len = len - start;
+    uint32_t chunk = 0;
+    unsigned bits;
+
+    if (base == 16 && chunk_len > 8)
+      chunk_len = 8;
+    else if (chunk_len > 32)
+      chunk_len = 32;
+
+    bits = (unsigned)chunk_len * ((base == 16) ? 4 : 1);
+    for (i = 0; i < chunk_len; i++) {
+      if (base == 16)
+        chunk = (chunk << 4) | (uint32_t)strint_digit_value((unsigned char)s[start+i]);
+      else
+        chunk = (chunk << 1) | (uint32_t)(s[start+i] - '0');
+    }
+    b9_mul_2pow_chunk(&R, &R, bits);
+    b9_add_u32(&R, &R, chunk);
+    start += chunk_len;
+  }
+
+  *rstr = (char*) malloc((size_t)b9_length(&R) + 1);
+  if (*rstr == 0) {
+    b9_free(&R);
+    croak("toint: allocation failed");
+  }
+  *rlen = b9_get_str(*rstr, &R);
+  (*rstr)[*rlen] = '\0';
+  b9_free(&R);
+  return 2;
+}
+
 /******************************************************************************/
 /*                              MULTIPLICATION                                */
 /******************************************************************************/
