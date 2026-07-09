@@ -266,6 +266,7 @@ static const gmp_info_t gmp_info[] = {
   {             "lucas_number", 54, 1, R_BIGINT },
   {           "catalan_number", 54, 1, R_BIGINT },
   {              "bell_number", 54, 1, R_BIGINT },
+  {                   "fubini", 54, 1, R_BIGINT },
   {                  "chinese", 32, 1, R_BIGINT },
   {                 "chinese2", 53, 2, R_BIGINT },
   {            "ramanujan_tau", 53, 1, R_BIGINT }, /* v0.53 much faster */
