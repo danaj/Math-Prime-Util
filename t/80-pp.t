@@ -833,6 +833,26 @@ subtest 'factoring', sub {
                [ 1013, 100003 ],
                "ecm(101303039)" );
   }
+  {
+    require Math::Prime::Util::ECM;
+    my($ok, $out) = Math::Prime::Util::ECM::_tiny_batch_normalize_x(
+      [map { Math::BigInt->new($_) } (10,18)],
+      [map { Math::BigInt->new($_) } (3,5)], Math::BigInt->new(77));
+    is($ok, 1, "ECM batch normalization succeeds");
+    is_deeply([map { "$_" } @$out], [29,19],
+              "ECM batch normalization returns affine x coordinates");
+
+    ($ok, $out) = Math::Prime::Util::ECM::_tiny_batch_normalize_x(
+      [1,1], [2,5], Math::BigInt->new(35));
+    is_deeply([$ok,"$out"], [0,5], "ECM batch normalization finds a factor");
+    ($ok, $out) = Math::Prime::Util::ECM::_tiny_batch_normalize_x(
+      [1,1], [5,7], Math::BigInt->new(35));
+    is_deeply([$ok,"$out"], [0,5],
+              "ECM batch normalization isolates combined factors");
+    ($ok, $out) = Math::Prime::Util::ECM::_tiny_batch_normalize_x(
+      [1], [35], Math::BigInt->new(35));
+    is_deeply([$ok,$out], [0,0], "ECM batch normalization rejects null Z");
+  }
   my $n64 = $use64 ? 55834573561 : Math::BigInt->new("55834573561");
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor($n64) ],
              [ 13, 4294967197 ],

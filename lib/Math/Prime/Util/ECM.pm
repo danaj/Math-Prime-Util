@@ -20,6 +20,7 @@ BEGIN {
 *getconfig = \&Math::Prime::Util::prime_get_config;
 
 *Mdivint = \&Math::Prime::Util::divint;
+*Madd1int = \&Math::Prime::Util::add1int;
 *Mmulint = \&Math::Prime::Util::mulint;
 *Minvmod = \&Math::Prime::Util::invmod;
 *Mgcd = \&Math::Prime::Util::gcd;
@@ -125,7 +126,7 @@ sub _tiny_stage2_plan {
   return $TINY_STAGE2_PLAN{$key} if exists $TINY_STAGE2_PLAN{$key};
 
   my $D = Msqrtint($B2 >> 1);
-  $D++ if $D % 2;
+  $D = Madd1int($D) if $D % 2;
 
   my @b2primes = @{ Mprimes($B1+1, $B2) };
   my @windows;
@@ -177,6 +178,42 @@ sub _tiny_mul {
   ($x0, $z0);
 }
 
+sub _tiny_batch_normalize_x {
+  my($xs, $zs, $n) = @_;
+  my $npoints = scalar @$xs;
+  my($acc, @prefix, @xout) = (1);
+
+  return (1, []) if $npoints == 0;
+
+  for my $i (0 .. $npoints-1) {
+    $acc = ($acc * $zs->[$i]) % $n;
+    $prefix[$i] = $acc;
+  }
+
+  my $inv = Minvmod($acc, $n);
+  unless (defined $inv) {
+    my $g = Mgcd($acc, $n);
+    return (0, $g) if $g != 1 && $g != $n;
+
+    # A product can contain different factors whose combined gcd is n.
+    # Check each coordinate to recover any proper factor before giving up.
+    for my $z (@$zs) {
+      $g = Mgcd($z, $n);
+      return (0, $g) if $g != 1 && $g != $n;
+    }
+    return (0, 0);
+  }
+
+  for my $i (reverse 0 .. $npoints-1) {
+    my $prev = $i ? $prefix[$i-1] : 1;
+    my $zinv = ($inv * $prev) % $n;
+    $inv = ($inv * $zs->[$i]) % $n;
+    $xout[$i] = ($xs->[$i] * $zinv) % $n;
+  }
+
+  (1, \@xout);
+}
+
 sub _tiny_stage2 {
   my($x, $z, $a24, $n, $plan, $cinfo) = @_;
 
@@ -184,53 +221,62 @@ sub _tiny_stage2 {
   return _found_factor($f, $n, "ECM S2 $cinfo") if $f != 1 && $f != $n;
   return (0) if $f == $n;
 
-  my $u = Minvmod($z, $n);
-  return (0) unless defined $u;
-
   my $D = $plan->{'D'};
 
-  my $one = $n - $n + 1;
-  my $g = $one;
-  my $S2x = ($x * $u) % $n;
-  my @nqx = ($n-$n, $S2x);
+  my $g = 1;
+  my(@nqx, @nqz, @Sx, @Sz);
 
+  @nqx = (0, $x);
+  @nqz = (0, $z);
   foreach my $i (2 .. 2*$D) {
-    my($x2, $z2);
     if ($i % 2) {
-      ($x2, $z2) = _tiny_dadd($nqx[($i-1)/2], $one,
-                              $nqx[($i+1)/2], $one,
-                              $S2x, $one, $n);
+      ($nqx[$i], $nqz[$i]) = _tiny_dadd($nqx[($i-1)/2], $nqz[($i-1)/2],
+                                        $nqx[($i+1)/2], $nqz[($i+1)/2],
+                                        $x, $z, $n);
     } else {
-      ($x2, $z2) = _tiny_double($nqx[$i/2], $one, $a24, $n);
+      ($nqx[$i], $nqz[$i]) = _tiny_double($nqx[$i/2], $nqz[$i/2], $a24, $n);
     }
-    $nqx[$i] = $x2;
-    $f = Mgcd($z2, $n);
-    last if $f != 1;
-    $u = Minvmod($z2, $n);
-    return (0) unless defined $u;
-    $nqx[$i] = ($x2 * $u) % $n;
-  }
-  if ($f != 1) {
-    return (0) if $f == $n;
-    return _found_factor($f, $n, "ECM S2 $cinfo");
   }
 
-  $x = $nqx[2*$D-1];
-  for my $window (@{ $plan->{'windows'} }) {
-    my($m, $left, $right) = @$window;
-    if ($m != 1) {
-      my $oldx = $S2x;
-      my ($x1, $z1) = _tiny_dadd($nqx[2*$D], $one, $S2x, $one, $x, $one, $n);
-      $f = Mgcd($z1, $n);
-      last if $f != 1;
-      $u = Minvmod($z1, $n);
-      return (0) unless defined $u;
-      $S2x = ($x1 * $u) % $n;
-      $x = $oldx;
+  @Sx = ($x);
+  @Sz = ($z);
+  {
+    my($xm_x, $xm_z) = ($nqx[2*$D-1], $nqz[2*$D-1]);
+    for my $w (1 .. $#{ $plan->{'windows'} }) {
+      my($oldx, $oldz) = ($Sx[$w-1], $Sz[$w-1]);
+      ($Sx[$w], $Sz[$w]) = _tiny_dadd($nqx[2*$D], $nqz[2*$D],
+                                      $oldx, $oldz,
+                                      $xm_x, $xm_z, $n);
+      ($xm_x, $xm_z) = ($oldx, $oldz);
     }
+  }
+
+  {
+    # Keep all 1..2D points in the batch.  The upper half is not needed for
+    # the final products, but its Z coordinates can expose a factor.  S[0]
+    # is the same base point as nQ[1], so normalize it only once.
+    my @xs = @nqx[1 .. 2*$D];
+    my @zs = @nqz[1 .. 2*$D];
+    if (@Sx > 1) {
+      push @xs, @Sx[1 .. $#Sx];
+      push @zs, @Sz[1 .. $#Sz];
+    }
+    my($ok, $xout) = _tiny_batch_normalize_x(\@xs, \@zs, $n);
+    return (0) if !$ok && $xout == 0;
+    return _found_factor($xout, $n, "ECM S2 $cinfo") unless $ok;
+
+    my @allx = @$xout;
+    my @nqout = splice(@allx, 0, 2*$D);
+    @nqx = (0, @nqout);
+    @Sx = ($nqx[1], @allx);
+  }
+
+  for my $wi (0 .. $#{ $plan->{'windows'} }) {
+    my $window = $plan->{'windows'}[$wi];
+    my($m, $left, $right) = @$window;
     if (@$left || @$right) {
-      foreach my $i (@$left)  { $g = ($g * (($S2x - $nqx[$i]) % $n)) % $n; }
-      foreach my $i (@$right) { $g = ($g * (($S2x - $nqx[$i]) % $n)) % $n; }
+      foreach my $i (@$left)  { $g = ($g * (($Sx[$wi] - $nqx[$i]) % $n)) % $n; }
+      foreach my $i (@$right) { $g = ($g * (($Sx[$wi] - $nqx[$i]) % $n)) % $n; }
       $f = Mgcd($g, $n);
       last if $f != 1;
     }

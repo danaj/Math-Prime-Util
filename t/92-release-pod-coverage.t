@@ -34,7 +34,7 @@ foreach my $m (@modules) {
     if $m eq 'Math::Prime::Util::PP';
   $param->{trustme} = [qw/maybetobigint tobigint/]
     if $m eq 'Math::Prime::Util::RandomPrimes';
-  $param->{trustme} = [qw/tobigint getconfig Mdivint Mmulint Minvmod Mgcd Mis_prime Mprimes Msqrtint/]
+  $param->{trustme} = [qw/tobigint getconfig Mdivint Mmulint Minvmod Mgcd Mis_prime Mprimes Msqrtint Madd1int/]
     if $m eq 'Math::Prime::Util::ECM';
   $param->{trustme} = [mpu_public_regex(), mpu_factor_regex(), qw/rand srand/]
     if $m eq 'ntheory';
