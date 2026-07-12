@@ -142,6 +142,10 @@ Revision history for Perl module Math::Prime::Util
       non-GMP factoring.  PP ECM now uses a deterministic two-stage
       tinyecm-based implementation.
 
+    - PP factoring has improved ECM, p-1, and pbrent implementations.
+      General factoring removes the initial pbrent stage, starts with a
+      deeper p-1 stage, uses an ECM ladder, and correctly uses HOLF.
+
     - is_prob_prime, is_bpsw_prime, and is_prime can use native 128-bit
       primality tests on 64-bit builds with uint128_t support.
 

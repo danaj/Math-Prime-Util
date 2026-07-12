@@ -223,6 +223,8 @@ subtest 'specific cases for factoring code coverage', sub {
     is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );
   }
   is_deeply( [Math::Prime::Util::pminus1_factor(166213)], [347,479], "p-1 factor 347 * 479" );
+  is_deeply( [Math::Prime::Util::pminus1_factor("18450931744652885087",100,1000)],
+             [4294976731,4295932877], "p-1 bigint stage 2 after native residue" );
   SKIP: {
     skip "p-1 tests for C code", 3 unless $usexs;
     is_deeply( [Math::Prime::Util::pminus1_factor(899,20)], [29,31], "p-1 factor 29 * 31 with tiny B1" );

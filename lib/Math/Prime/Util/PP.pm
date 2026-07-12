@@ -10732,25 +10732,22 @@ sub _factor_ecm {
   Math::Prime::Util::ECM::ecm_factor_pp(@_);
 }
 
-my $_holf_r;
+my $_holf_pos;
 my @_fsublist = (
   [ "power",       sub { _factor_power  (shift) } ],
-  [ "pbrent 8k",   sub { _factor_pbrent (shift,      8192, 1) } ],
-  [ "p-1 8k",      sub { _factor_pminus1(shift,      8192, 8192) } ],
-  [ "ECM 500",     sub { _factor_ecm    (shift,       500, 0, 20,  0) } ],
-  [ "ECM 2k",      sub { _factor_ecm    (shift,     2_000, 0, 20, 20) } ],
-  [ "ECM 8k",      sub { _factor_ecm    (shift,     8_000, 0, 20, 40) } ],
+  [ "p-1 64k",     sub { _factor_pminus1(shift,     65536, 65536) } ],
+  [ "ECM 500",     sub { _factor_ecm    (shift,       500, 50* 500, 20,  0) } ],
+  [ "ECM 2k",      sub { _factor_ecm    (shift,      2000, 50*2000, 20, 20) } ],
+  [ "ECM 8k",      sub { _factor_ecm    (shift,      8000, 0,       20, 40) } ],
+  [ "HOLF 256k",   sub { my $r=256; my @f = _factor_holf(shift, $r*1024, $_holf_pos); $_holf_pos += $r*1024; @f; } ],
+  [ "ECM 40k",     sub { _factor_ecm    (shift,    40_000, 0,       10, 60) } ],
+  [ "ECM 80k",     sub { _factor_ecm    (shift,    80_000, 0,       10, 70) } ],
+  [ "ECM 160k",    sub { _factor_ecm    (shift,   160_000, 0,       10, 80) } ],
   [ "pbrent 512k", sub { _factor_pbrent (shift,  512*1024, 7) } ],
-  [ "p-1 4M",      sub { _factor_pminus1(shift, 4_000_000, undef) } ],
-  [ "pbrent 512k", sub { _factor_pbrent (shift,  512*1024, 11) } ],
-  [ "HOLF 256k",   sub { _factor_holf   (shift, 256*1024, $_holf_r); $_holf_r += 256*1024; } ],
-  [ "p-1 20M",     sub { _factor_pminus1(shift, 20_000_000) } ],
-  [ "ECM 100k",    sub { _factor_ecm    (shift,   100_000, 0, 20, 60) } ],
-  [ "HOLF 512k",   sub { _factor_holf   (shift, 512*1024, $_holf_r); $_holf_r += 512*1024; } ],
-  [ "pbrent 2M",   sub { _factor_pbrent (shift, 2048*1024, 13) } ],
-  [ "HOLF 2M",     sub { _factor_holf   (shift, 2048*1024, $_holf_r); $_holf_r += 2048*1024; } ],
-  [ "ECM 1M",      sub { _factor_ecm    (shift, 1_000_000, 0, 20, 80) } ],
-  [ "p-1 100M",    sub { _factor_pminus1(shift, 100_000_000, 500_000_000) } ],
+  [ "HOLF 1M",     sub { my $r=1024; my @f = _factor_holf(shift, $r*1024, $_holf_pos); $_holf_pos += $r*1024; @f; } ],
+  [ "ECM 320k",    sub { _factor_ecm    (shift,   320_000, 0, 20, 90) } ],
+  [ "ECM 1M",      sub { _factor_ecm    (shift, 1_000_000, 0, 20, 110) } ],
+  [ "HOLF 2M",     sub { my $r=2048; my @f = _factor_holf(shift, $r*1024, $_holf_pos); $_holf_pos += $r*1024; @f; } ],
 );
 
 sub factor {
@@ -10802,7 +10799,7 @@ sub factor {
 
     # The main factoring loop.  Go through our algorithm recipe.
     my @ftry;
-    $_holf_r = 1;
+    $_holf_pos = 1;
     for my $sub (@_fsublist) {
       print "  starting $sub->[0]\n" if $verbose > 1;
       @ftry = $sub->[1]->($n);
@@ -10863,7 +10860,7 @@ sub _factor_prho {
   $rounds = 4*1024*1024 unless defined $rounds;
   $pa = 3 unless defined $pa;
 
-  my($U,$V) = (7,7);
+  my($U,$V,$orounds) = (7,7,int($rounds/1024)."k");
 
   if (ref($n) || $n >= MPU_HALFWORD) {
 
@@ -10892,7 +10889,7 @@ sub _factor_prho {
         }
         last if $f == 1 || $f == $n;
       }
-      return _found_factor($f, $n, "prho-bigint");
+      return _found_factor($f, $n, "prho-bigint $orounds");
     }
 
   } else {
@@ -10922,7 +10919,7 @@ sub _factor_prho {
         }
         last if $f == 1 || $f == $n;
       }
-      return _found_factor($f, $n, "prho-32") if $f != 1 && $f != $n;
+      return _found_factor($f, $n, "prho-32 $orounds") if $f != 1 && $f != $n;
     }
 
   }
@@ -10941,30 +10938,50 @@ sub _factor_pbrent {
   my($n, $rounds, $pa) = @_;
   $rounds = 4*1024*1024 unless defined $rounds;
   croak "pbrent_factor: rounds must fit in native signed integer" if $rounds > SINTMAX;
-  $pa = 1 unless defined $pa;
+  $pa = defined $pa ? Mmodint($pa,$n) : 1;
 
-  my($Xi,$Xm) = (2,2);
+  my($Xi,$Xm,$failsrem,$orounds) = (2,2,6,int($rounds/1024)."k");
+  my $refn = ref($n);
 
-  if (ref($n) || $n >= MPU_HALFWORD) {
+  if ($refn || $n >= MPU_HALFWORD) {
 
-    # Same code as the GMP version, but runs *much* slower.  Even with
-    # Math::BigInt::GMP it's >200x slower.  With the default Calc backend
-    # it's thousands of times slower.
-    my($inner,$r,$saveXi,$f) = (32,1);
+    # Brent's version of Pollard's Rho, with batched gcds.
+    # Performance depends heavily on bigint class and available accelerators.
+    # Direct use of the GMP backend is fastest.
+    # This PP code using Math::GMPz or Math::GMP is roughly an order of
+    # magnitude slower, while Math::BigInt (Calc) is slower yet.
+
+    my($inner,$r,$saveXi,$f) = (64,1);
+
+    my $direct_arith = $refn && !OLD_PERL_VERSION
+                    && ( $refn ne 'Math::BigInt'
+                      || (!getconfig()->{'xs'}
+                          && !$Math::Prime::Util::_GMPfunc{"muladdmod"}
+                          && !$Math::Prime::Util::_GMPfunc{"mulmod"})   );
 
     while ($rounds > 0) {
       my $rleft = ($r > $rounds) ? $rounds : $r;
       while ($rleft > 0) {
         my $dorounds = ($rleft > $inner) ? $inner : $rleft;
-        my $m = 1;
-        $saveXi = Maddint($Xi,0);
-        foreach my $i (1 .. $dorounds) {
-          $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
-          if (OLD_PERL_VERSION) { $m=mulmod($m,subint($Xi,$Xm),$n); next; }
-          $m = Mmulmod($m, $Xi > $Xm ? $Xi-$Xm : $Xm-$Xi,$n);
-        }
-        $rleft -= $dorounds;
+        $saveXi = Maddint($Xi,0);  # Guarantee copy
+        $rleft  -= $dorounds;
         $rounds -= $dorounds;
+        my $m;
+        if ($direct_arith) {
+          $Xi = (($Xi*$Xi)+$pa) % $n;
+          $m = $Xm-$Xi;
+          while (--$dorounds > 0) {
+            $Xi = (($Xi*$Xi)+$pa) % $n;
+            $m = ($m * ($Xm-$Xi)) % $n;
+          }
+        } else {
+          $Xi = Mmuladdmod($Xi,$Xi,$pa,$n);
+          $m = Msubint($Xm,$Xi);
+          while (--$dorounds > 0) {
+            $Xi = Mmuladdmod($Xi,$Xi,$pa,$n);
+            $m = Mmulmod($m, Msubint($Xm, $Xi), $n);
+          }
+        }
         $f = Mgcd($m,$n);
         last unless $f == 1;
       }
@@ -10977,11 +10994,17 @@ sub _factor_pbrent {
         $Xi = Maddint($saveXi,0);
         do {
           $Xi = Mmuladdmod($Xi, $Xi, $pa, $n);
-          $f = Mgcd($Xi > $Xm ? $Xi-$Xm : $Xm-$Xi, $n);
+          $f = Mgcd(Msubmod($Xi,$Xm,$n), $n);
         } while ($f == 1 && $r-- != 0);
-        last if $f == 1 || $f == $n;
+        if ($f == 0 || $f == $n) {
+          last if $failsrem-- <= 0;
+          $Xm = Maddmod($Xm, 11, $n);
+          $Xi = Maddint($Xm,0);
+          $pa = Madd1int($pa);
+          next;
+        }
       }
-      return _found_factor($f, $n, "pbrent");
+      return _found_factor($f, $n, "pbrent $orounds");
     }
 
   } else {
@@ -10992,7 +11015,7 @@ sub _factor_pbrent {
       $Xi = ($Xi * $Xi) % $n;
       $Xi += $pa; $Xi -= $n if $Xi >= $n;
       my $f = _gcd_ui( ($Xi>$Xm) ? $Xi-$Xm : $Xm-$Xi, $n);
-      return _found_factor($f, $n, "pbrent-32") if $f != 1 && $f != $n;
+      return _found_factor($f, $n, "pbrent-32 $orounds") if $f != 1 && $f != $n;
       $Xm = $Xi if ($i & ($i-1)) == 0;  # i is a power of 2
     }
 
@@ -11011,6 +11034,7 @@ sub pbrent_factor {
 sub _factor_pminus1 {
   my($n, $B1, $B2) = @_;
 
+  return ($n) if defined $B1 && $B1 < 7;
   $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
 
   if (!ref($n)) {
@@ -11052,12 +11076,13 @@ sub _factor_pminus1 {
   $B2 = 10*$B1 unless defined $B2;
 
   $n = tobigint($n) if !ref($n) || (defined $_BIGINT && $_BIGINT ne ref($n));
-  # bigints:  n, pa, t, savea, [stage2] b, bm
+  # bigints:  n, pa, savea, [stage2] bm
 
-  my ($j, $q, $saveq) = (32, 2, 2);
+  # savea is the state after saveq; recovery resumes at the next prime.
+  my ($j, $q, $saveq) = (32, 2, 1);
   my $pa = tobigint(2);
-  my $t  = tobigint(1);
-  my $savea = $pa+0;
+  my @kpowers;
+  my $savea = tobigint("$pa");
   my $f = 1;
   my($pc_beg, $pc_end) = (2, 2+100_000);
 
@@ -11067,33 +11092,36 @@ sub _factor_pminus1 {
     foreach my $q (@bprimes) {
       my($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
-      $t *= $k;                         # accumulate powers for a
+      push @kpowers, $k;  # accumulate powers for a
       if ( ($j++ % 64) == 0) {
         next if $pc_beg > 2 && ($j-1) % 256;
-        $pa = _bi_powmod($pa, $t, $n);
-        $t = tobigint(1);
+        $pa = Mpowmod($pa, Mvecprod(@kpowers), $n);
+        @kpowers = ();
         if ($pa == 0) { return ($n); }
         $f = Mgcd($pa-1, $n);
         last if $f == $n;
         return _found_factor($f, $n, "pminus1-bigint $B1") unless $f == 1;
         $saveq = $q;
-        $savea = $pa+0;
+        $savea = tobigint("$pa");
       }
     }
     $q = $bprimes[-1];
     last if $f != 1 || $pc_end >= $B1;
     ($pc_beg, $pc_end) = (Madd1int($pc_end), Maddint($pc_end,500_000));
   }
-  $pa = _bi_powmod($pa, $t, $n);
-  if ($pa == 0) { return ($n); }
-  $f = Mgcd($pa-1, $n);
+  if (@kpowers) {
+    $pa = Mpowmod($pa, Mvecprod(@kpowers), $n);
+    @kpowers = ();
+    if ($pa == 0) { return ($n); }
+    $f = Mgcd($pa-1, $n);
+  }
   if ($f == $n) {
-    $q = $saveq;
-    $pa = $savea+0;
+    $q = Mnext_prime($saveq);
+    $pa = tobigint("$savea");
     while ($q <= $B1) {
       my ($k, $kmin) = ($q, int($B1 / $q));
       while ($k <= $kmin) { $k *= $q; }
-      $pa = _bi_powmod($pa, $k, $n);
+      $pa = Mpowmod($pa, $k, $n);
       $f = Mgcd($pa-1, $n);
       if ($f == $n) { return ($n); }
       last if $f != 1;
@@ -11102,12 +11130,13 @@ sub _factor_pminus1 {
   }
   # STAGE 2
   if ($f == 1 && $B2 > $B1) {
-    my $bm = $pa + 0;
-    my $b = tobigint(1);
+    my $bm = tobigint("$pa");
+    my @bfactors;
     my @precomp_bm;
-    $precomp_bm[0] = ($bm * $bm) % $n;
-    $precomp_bm[$_] = ($precomp_bm[$_-1] * $bm * $bm) % $n for 1..19;
-    $pa = _bi_powmod($pa, $q, $n);
+    my $bm2 = ($bm * $bm) % $n;
+    $precomp_bm[0] = $bm2;
+    $precomp_bm[$_] = ($precomp_bm[$_-1] * $bm2) % $n for 1..19;
+    $pa = tobigint(Mpowmod($pa, $q, $n));
 
     my $j = 1;
     $pc_beg = $q+1;
@@ -11119,21 +11148,21 @@ sub _factor_pminus1 {
         my $diff = $bprimes[$i] - $q;
         $q = $bprimes[$i];
         my $qdiff = ($diff >> 1) - 1;
-        $precomp_bm[$qdiff] = _bi_powmod($bm, $diff, $n)
+        $precomp_bm[$qdiff] = Mpowmod($bm, $diff, $n)
           unless defined $precomp_bm[$qdiff];
-        $pa = ($pa * $precomp_bm[$qdiff]) % $n;
+        $pa = Mmulmod($pa, $precomp_bm[$qdiff], $n);
         if ($pa == 0) { return ($n); }
-        $b *= ($pa-1);
+        push @bfactors, $pa-1;
         if (($j++ % 128) == 0) {
-          $b %= $n;
-          $f = Mgcd($b, $n);
+          $f = Mgcd(Mvecprod(@bfactors), $n);
+          @bfactors = ();
           last if $f != 1;
         }
       }
       last if $f != 1 || $pc_end >= $B2;
       ($pc_beg, $pc_end) = (Madd1int($pc_end), Maddint($pc_end,500_000));
     }
-    $f = Mgcd($b, $n);
+    $f = Mgcd(Mvecprod(@bfactors), $n) if @bfactors;
   }
   return _found_factor($f, $n, "pminus1-bigint $B1/$B2");
 }
@@ -11180,30 +11209,32 @@ sub cheb_factor {
 }
 
 sub _factor_holf {
-  my($n, $rounds, $startrounds) = @_;
+  my($n, $rounds, $startpos) = @_;
+  $startpos = 1 if !defined $startpos || $startpos < 1;
   $rounds = 64*1024*1024 unless defined $rounds;
-  $startrounds = 1 if !defined $startrounds || $startrounds < 1;
-  croak "holf_factor: rounds must fit in native signed integer" if $rounds > SINTMAX;
-  croak "holf_factor: startrounds must fit in native signed integer" if $startrounds > SINTMAX;
+  return ($n) if $rounds <= 0;
+  my $endpos = $startpos + $rounds - 1;
+  croak "holf_factor: startpos and endpos must fit in native signed integers"
+    if $startpos > SINTMAX || $endpos > SINTMAX;
 
   if (ref($n)) {
-    for my $i ($startrounds .. $rounds) {
+    for my $i ($startpos .. $endpos) {
       my $ni = Mmulint($n,$i);
       my $s = Msqrtint($ni);
       if (Mmulint($s,$s) == $ni) {
         # s^2 = n*i, so m = s^2 mod n = 0.  Hence f = GCD(n, s) = GCD(n, n*i)
         my $f = Mgcd($ni, $n);
-        return _found_factor($f, $n, "HOLF");
+        return _found_factor($f, $n, "HOLF i $i");
       }
       $s = Madd1int($s);
       my $m = Mmulsubint($s,$s,$ni);
       if (Mis_power($m, 2, \my $f)) {
         $f = Mgcd($n, $s > $f ? $s-$f : $f-$s);
-        return _found_factor($f, $n, "HOLF ($i rounds)");
+        return _found_factor($f, $n, "HOLF i $i");
       }
     }
   } else {
-    for my $i ($startrounds .. $rounds) {
+    for my $i ($startpos .. $endpos) {
       my $s = int(sqrt($n * $i));
       $s++ if ($s * $s) != ($n * $i);
       my $m = ($s < MPU_HALFWORD) ? ($s*$s) % $n : _mulmod($s, $s, $n);
@@ -11213,18 +11244,18 @@ sub _factor_holf {
       my $f = int(sqrt($m));
       next unless $f*$f == $m;
       $f = _gcd_ui($s - $f,  $n);
-      return _found_factor($f, $n, "HOLF ($i rounds)");
+      return _found_factor($f, $n, "HOLF i $i");
     }
   }
   ($n);
 }
 
 sub holf_factor {
-  my($n, $rounds, $startrounds) = _parse_factor_args("holf_factor", 2, @_);
+  my($n, $rounds, $startpos) = _parse_factor_args("holf_factor", 2, @_);
   my @f = _basic_factor($n);
   return @f if $n < 4;
   return (@f, $n) if _is_prime7($n);
-  (@f, _factor_holf($n, $rounds, $startrounds));
+  (@f, _factor_holf($n, $rounds, $startpos));
 }
 
 sub _factor_fermat {

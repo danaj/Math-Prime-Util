@@ -814,6 +814,10 @@ subtest 'factoring', sub {
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::pminus1_factor(403) ],
              [ 13, 31 ],
              "pminus1(403)" );
+  is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::_factor_pminus1(
+                         Math::BigInt->new(166213), 1000, 1000) ],
+             [ 347, 479 ],
+             "pminus1 bigint stage 1 recovery" );
   is_deeply( [ sort {$a<=>$b} Math::Prime::Util::PP::prho_factor(851981) ],
              [ 13, 65537 ],
              "prho(851981)" );
