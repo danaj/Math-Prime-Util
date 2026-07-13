@@ -24,7 +24,7 @@ while (1) {
 
   my $mu_sum = vecsum(@mu_range);
   my $mo_sum = vecsum(@mobius);
-  my $mert_sum = mertens($end) - mertens($beg-1);
+  my $mert_sum = mertens($beg,$end);
   warn "\nbeg $beg  end $end  sum $mu_sum  range sum $mo_sum\n"
        unless $mu_sum == $mo_sum;
   warn "\nbeg $beg  end $end  sum $mu_sum  mertsum $mert_sum\n"

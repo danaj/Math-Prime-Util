@@ -387,7 +387,7 @@ Tags:
   prime_omega(n)                      number of distinct prime factors
   moebius(n)                          Moebius function of n
   moebius(beg, end)                   list of Moebius in range
-  mertens(n)                          sum of Moebius for 1 to n
+  mertens([lo,]hi)                    sum of Moebius over the range
   euler_phi(n)                        Euler totient of n
   euler_phi(beg, end)                 Euler totient for a range
   inverse_totient(n)                  image of Euler totient

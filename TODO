@@ -305,6 +305,7 @@
   Not high priority since we can just call rootint with k=2.
 
 - Faster Mertens. Helfgott/Thompson 2020.  https://arxiv.org/pdf/2101.08773.pdf
+  Also:  https://arxiv.org/pdf/2607.07566
 
 - gcdext, see Sorenson, Jabelean, and kernel/none/gcdll.c.
 
@@ -427,8 +428,6 @@ OEIS lucky numbers:
 
 - nonpowerfree:    is_npf, mpf_count, npf_sum, nth_npf
 - pf_numbers(lo,hi,k), npf_numbers(lo,hi,k)
-
-- mertens(lo,hi) = mertens(hi) - mertens(lo-1)
 
 - consider moving leaf PP functions to new file, so PP loads faster
 
@@ -665,9 +664,15 @@ OEIS lucky numbers:
 
 - string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
 
-- PP factoring recipe
-
 - PP sum_primes $high <= ~0  =>  Mmulint(2,Msqrtint($high)) < SINTMAX
+
+- we ought to have a factor64 with full support given HAVE_UINT64
+  this really only benefits 32-bit.  holf32 and tinyecm64 support.
+  otherwise it's nice code rearrangement, but also adding primality code.
 
 - send mail about Sort::DJB (av_fetch/av_store overhead)
   we're only testing vs the generic version, not the SIMD one.
+
+- Priorities
+  factor/factorint negative
+  GMP migrate to compile-time selectable rand

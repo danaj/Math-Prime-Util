@@ -60,28 +60,29 @@ bool is_powerfree(UV n, uint32_t k)
 static UV squarefree_count(UV n)
 {
   signed char* mu;
+  void* mctx;
   IV *M, *Mx, Mxisum, mert;
-  UV I, D, i, j, S1 = 0, S2 = 0;
+  UV I, D, i, j, lo, hi, S1 = 0, S2 = 0;
 
   if (n < 4) return n;
 
   I = rootint(n, 5);   /* times loglogn ^ (4/5) */
   D = isqrt(n / I);
-  mu = range_moebius(0, D);
 
   S1 += n;
   New(0, M, D+1, IV);
-  M[0] = 0;
-  M[1] = 1;
-  mert = 1;
-  for (i = 2; i <= D; i++) {
-    if (mu[i] != 0) {
-      S1 += mu[i] * (n/(i*i));
-      mert += mu[i];
+  mert = 0;
+  mctx = start_segment_moebius(0, D, &mu);
+  while (next_segment_moebius(mctx, &lo, &hi)) {
+    for (i = lo; i <= hi; i++) {
+      signed char mui = mu[i-lo];
+      if (i >= 2 && mui != 0)
+        S1 += mui * (n/(i*i));
+      mert += mui;
+      M[i] = mert;
     }
-    M[i] = mert;
   }
-  Safefree(mu);
+  end_segment_moebius(mctx);
 
   Newz(0, Mx, I+1, IV);
   Mxisum = 0;
@@ -121,11 +122,16 @@ UV powerfree_count(UV n, uint32_t k)
         count += m * (n / ipow(i, k));
     }
   } else {
-    signed char* mu = range_moebius(0, nk);
-    for (i = 2; i <= nk; i++)
-      if (mu[i] != 0)
-        count += mu[i] * (n/ipow(i,k));
-    Safefree(mu);
+    signed char* mu;
+    void* mctx;
+    UV lo, hi;
+    mctx = start_segment_moebius(2, nk, &mu);
+    while (next_segment_moebius(mctx, &lo, &hi)) {
+      for (i = lo; i <= hi; i++)
+        if (mu[i-lo] != 0)
+          count += mu[i-lo] * (n/ipow(i,k));
+    }
+    end_segment_moebius(mctx);
   }
   return count;
 }

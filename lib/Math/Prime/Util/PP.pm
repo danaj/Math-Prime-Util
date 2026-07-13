@@ -137,6 +137,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mvaluation = \&Math::Prime::Util::valuation;
 *Mkronecker = \&Math::Prime::Util::kronecker;
 *Mmoebius = \&Math::Prime::Util::moebius;
+*Mmertens = \&Math::Prime::Util::mertens;
 *Mtotient = \&Math::Prime::Util::euler_phi;
 *Mfactorial = \&Math::Prime::Util::factorial;
 *Mfalling_factorial = \&Math::Prime::Util::falling_factorial;
@@ -2286,7 +2287,7 @@ sub powerfree_count {
       $count += $mu[$i] * $n/($i**$k) if $mu[$i];
     }
     #@mu = Mmoebius($L1+1, $nk);   my $c1 = 0;   $c1 += $_ for @mu;
-    my $c1 = Math::Prime::Util::mertens($nk) - Math::Prime::Util::mertens($L1);
+    my $c1 = Mmertens(Madd1int($L1), $nk);
     return Mvecsum($count,$c1,$n);
   }
 
@@ -2304,8 +2305,10 @@ sub powerfree_count {
   # Optimization 2:  Use GMP basic arithmetic functions if possible, saving
   #                  all the bigint object overhead.  Can be 10x faster.
 
-  my $A = Msqrtint($nk);
-  my @L = (0, $nk, map { Mrootint(Mdivint($n,$_),$k) } 2..$A);
+  my $A = Mmulint(4,Msqrtint($nk));
+  $A = $nk if $A > $nk;
+  my $lastlo = Mrootint(Mdivint($n,$A),$k);
+  my $native_mertens = getconfig()->{'xs'} && $nk <= INTMAX;
   my @C;
 
   Math::Prime::Util::forsquarefree(
@@ -2314,17 +2317,22 @@ sub powerfree_count {
              ? Ssubint($count, Sdivint($n, Spowint($_, $k)))
              : Saddint($count, Sdivint($n, Spowint($_, $k)));
     },
-    2, $L[$A]
+    2, $lastlo
   );
+  my $hi = $nk;
   for my $i (2 .. $A) {
-    my($c, $lo, $hi) = (0, $L[$i], $L[$i-1]);
-    if ($i < 15) {
-      $c = Math::Prime::Util::mertens($hi) - Math::Prime::Util::mertens($lo);
-    } else {
-      $c += $_ for Mmoebius( Madd1int($lo), $hi );
+    my $lo = Mrootint(Mdivint($n,$i),$k);
+    if ($lo < $hi) {
+      my $c = 0;
+      if ($native_mertens || ($nk > 4294967296 && $i < 15)) {
+        $c = Mmertens(Madd1int($lo), $hi);
+      } else {
+        $c += $_ for Mmoebius(Madd1int($lo), $hi);
+      }
+      push @C, $c * ($i-1);
+      @C = (Mvecsum(@C)) if scalar(@C) > 100000;  # Save/restrict memory.
     }
-    push @C, $c * ($i-1);
-    @C = (Mvecsum(@C)) if scalar(@C) > 100000;  # Save/restrict memory.
+    $hi = $lo;
   }
   my $ctot = Mvecsum(@C); # Can typically be done in native math.
   Mvecsum($count, $n, $ctot);
@@ -3227,20 +3235,29 @@ sub _rmertens {
 }
 
 sub mertens {
-  my($n) = @_;
-  validate_integer_nonneg($n);
+  my($lo, $hi) = _parse_range_args("mertens", 1, @_);
+  return 0 if $lo > $hi;
+  return Mmoebius($lo) if $lo == $hi;
+  return Mvecsum(Mmoebius($lo, $hi)) if Msubint($hi, $lo) < 10;
 
-  return _omertens($n) if $n < 20000;
+  if ($hi < 20000) {
+    my $sum = _omertens($hi);
+    $sum -= _omertens(Msub1int($lo)) if $lo > 1;
+    return $sum;
+  }
 
   # Larger size would be faster, but more memory.
-  my $size = (Mrootint($n, 3)**2) >> 2;
-  $size = Msqrtint($n) if $size < Msqrtint($n);
+  my $size = (Mrootint($hi, 3)**2) >> 2;
+  $size = Msqrtint($hi) if $size < Msqrtint($hi);
 
   my @M = (0);
   push @M, $M[-1] + $_ for Mmoebius(1, $size);
 
   my %seen;
-  return _rmertens($n, \@M, \%seen, $size);
+  my $sum = _rmertens($hi, \@M, \%seen, $size);
+  $sum = Msubint($sum, _rmertens(Msub1int($lo), \@M, \%seen, $size))
+    if $lo > 1;
+  return $sum;
 }
 
 
@@ -9205,7 +9222,7 @@ sub farey_rank {
     my $mertens = sub {
       my $x = shift;
       return $mcache{$x} if exists $mcache{$x};
-      $mcache{$x} = Math::Prime::Util::mertens($x);
+      $mcache{$x} = Mmertens($x);
     };
 
     for (my $lo = 1; $lo <= $n; ) {

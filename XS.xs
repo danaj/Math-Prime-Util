@@ -251,6 +251,7 @@ static const gmp_info_t gmp_info[] = {
 
   {  "consecutive_integer_lcm",  4, 1, R_BIGINT },
   {               "partitions", 16, 1, R_BIGINT },
+  {              "partitionsq", 54, 1, R_BIGINT },
   {                      "gcd", 17, 1, R_BIGINT },
   {                      "lcm", 17, 1, R_BIGINT },
   {                   "vecsum", 20, 1, R_BIGINT },
@@ -312,6 +313,7 @@ static const gmp_info_t gmp_info[] = {
   {                "euler_phi", 54, 0xFF, R_BIGINT },
   {                  "moebius", 49, 0xFF, R_NATIVE }, /* v0.22 with non-neg */
   {          "prime_signature", 54, 0xFF, R_BIGINT },
+  {             "vecprefixsum", 54, 0xFF, R_BIGINT },
 
   {                "numtoperm", 47, 0xFF, R_NATIVE },
   {                 "todigits", 41, 0xFF, R_NATIVE },
@@ -5313,10 +5315,14 @@ void euler_phi(IN SV* svlo, IN SV* svhi = 0)
             PUSHs(sv_2mortal(newSVuv(totients[i+lo-arrlo])));
           Safefree(totients);
         } else {
-          signed char* mu = range_moebius(lo, hi);
-          for (i = 0; i < count; i++)
-            PUSH_NPARITY(mu[i]);
-          Safefree(mu);
+          signed char* mu;
+          UV seglo, seghi;
+          void* mctx = start_segment_moebius(lo, hi, &mu);
+          while (next_segment_moebius(mctx, &seglo, &seghi)) {
+            for (i = seglo; i <= seghi; i++)
+              PUSH_NPARITY(mu[i-seglo]);
+          }
+          end_segment_moebius(mctx);
         }
       }
       if (appendmax) {
@@ -5597,31 +5603,40 @@ void floor_sum(IN SV* svn, IN SV* svm, IN SV* sva, IN SV* svb)
     }
     DISPATCHPP_RETURN();
 
-void mertens(IN SV* svn)
+void mertens(IN SV* svlo, IN SV* svhi = 0)
+  PREINIT:
+    UV lo = 1, hi;
+  PPCODE:
+    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+        (items == 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) &&
+                       _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
+      RETURN_NPARITY(mertens_range(lo, hi));
+    }
+    DISPATCHPP_RETURN();
+
+void liouville(IN SV* svn)
   ALIAS:
-    liouville = 1
-    sumliouville = 2
-    is_pillai = 3
-    is_congruent_number = 4
-    hclassno = 5
-    ramanujan_tau = 6
+    sumliouville = 1
+    is_pillai = 2
+    is_congruent_number = 3
+    hclassno = 4
+    ramanujan_tau = 5
   PREINIT:
     UV n;
     int status;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix < 5) ? IFLAG_NONNEG : IFLAG_ANY);
+    status = _validate_and_set(&n, aTHX_ svn, (ix < 4) ? IFLAG_NONNEG : IFLAG_ANY);
     if (status == -1)
       XSRETURN_IV(0);
     if (status == 1) {
       IV r = 0;
       switch(ix) {
-        case 0:  r = mertens(n); break;
-        case 1:  r = liouville(n); break;
-        case 2:  r = sumliouville(n); break;
-        case 3:  r = pillai_v(n); break;
-        case 4:  r = is_congruent_number(n); break;
-        case 5:  r = hclassno(n); break;
-        case 6:  r = ramanujan_tau(n);
+        case 0:  r = liouville(n); break;
+        case 1:  r = sumliouville(n); break;
+        case 2:  r = pillai_v(n); break;
+        case 3:  r = is_congruent_number(n); break;
+        case 4:  r = hclassno(n); break;
+        case 5:  r = ramanujan_tau(n);
                  if (r == 0 && n != 0)
                    status = 0;
                  break;
@@ -5630,7 +5645,7 @@ void mertens(IN SV* svn)
       if (status != 0) RETURN_NPARITY(r);
     }
 #if HAVE_FACTOR128
-    if (ix == 1) {
+    if (ix == 0) {
       uint128_t n128;
       if (xs_sv_to_uint128(aTHX_ &n128, svn)) {
         factored128_t nf;

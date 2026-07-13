@@ -4815,34 +4815,40 @@ exception (modifying the returned scalar or array is fine).
 =head2 mertens
 
   say "Mertens(10M) = ", mertens(10_000_000);   # = 1037
+  say "Mertens(1M..10M) = ", mertens(1_000_000, 10_000_000); # = 825
 
-Given a non-negative integer C<n>, return M(n), the Mertens function.
-This function is defined as C<sum(moebius(1..n))>, but calculated more
-efficiently for large inputs.  For example, computing Mertens(100M) takes:
+Given a non-negative integer C<n>, return M(n), the Mertens function.  This is
+defined as C<sum(moebius(1..n))>, but calculated more efficiently for large
+inputs.
 
-   time    approx mem
-     0.01s     0.1MB   mertens(100_000_000)
-     1.3s    880MB     vecsum(moebius(1,100_000_000))
-    16s        0MB     $sum += moebius($_) for 1..100_000_000
+With two non-negative arguments, returns the sum of the Möbius function over
+the inclusive range C<lo> to C<hi>.  Equivalently, this is
+C<M(hi) - M(lo-1)>.  A lower bound of zero is treated as one, and an empty or
+descending range returns zero.
+
+For example, computing Mertens(100M) takes approximately:
+
+   time   extra mem
+   0.001s    0.6 MB    mertens(100_000_000)
+   0.9s      780 MB    vecsum(moebius(1,100_000_000))
+  16s          0 MB    $sum += moebius($_) for 1..100_000_000
 
 The summation of individual terms via factoring is quite expensive in time,
 though uses O(1) space.  Using the range version of moebius is much faster,
 but returns a 100M element array which, even though they are shared constants,
 is not good for memory at this size.
-In comparison, this function will generate the equivalent output
-via a sieving method that is relatively memory frugal and very fast.
-The current method is a simple C<n^1/2> version of Deléglise and Rivat (1996),
-which involves calculating all moebius values to C<n^1/2>, which in turn will
-require prime sieving to C<n^1/4>.
+In comparison, this function uses a recursive quotient-grouping method backed
+by a segmented Möbius sieve and a cache of previously calculated values.  The
+two-argument form prepares this shared state once for both endpoints.
 
 Various algorithms exist for this, using differing quantities of μ(n).  The
 simplest way is to efficiently sum all C<n> values.  Benito and Varona (2008)
 show a clever and simple method that only requires C<n/3> values.  Deléglise
-and Rivat (1996) describe a segmented method using only C<n^1/3> values.  The
-current implementation does a simple non-segmented C<n^1/2> version of their
-method.  Kuznetsov (2011) gives an alternate method that he indicates is even
-faster.  Helfgott and Thompson (2020) give a fast method based on advanced
-prime count algorithms.
+and Rivat (1996) describe a segmented method using only C<n^1/3> values.
+Kuznetsov (2011) gives an alternate method that he indicates is even faster.
+Helfgott and Thompson (2020) give a fast method based on advanced prime count
+algorithms.  Hurst (2026) gives more optimizations and shows a practical
+implementation for very large values.
 
 
 =head2 euler_phi

@@ -83,7 +83,7 @@ if (!$usexs) {
                  keys %big_mertens;
 }
 
-plan tests => 1 + 5 + 2 + 2 + 3 + 4 + scalar(keys %big_mertens);
+plan tests => 1 + 5 + 2 + 2 + 3 + 12 + scalar(keys %big_mertens);
 
 ok(!eval { moebius(0); }, "moebius(0)");
 
@@ -141,6 +141,23 @@ SKIP: {
   is_deeply( \@mert_sum1, \@expect, "sum(moebius(k) for k=1..n)   small n" );
   is_deeply( \@mert_sum2, \@expect, "sum(moebius(1,n))   small n" );
   is_deeply( \@mertens, \@expect, "mertens(n)   small n" );
+}
+ok(!eval { &mertens() }, "mertens requires an argument");
+ok(!eval { &mertens(1,2,3) }, "mertens accepts at most two arguments");
+ok(!eval { mertens(-1,5) }, "mertens rejects a negative lower bound");
+ok(!eval { mertens(1,-5) }, "mertens rejects a negative upper bound");
+is_deeply([map { &mertens(@$_) }
+             ([0,0], [0,10], [1,10], [5,10], [10,5], [12345,12345],
+              [4294967293,4294967295])],
+          [0, -1, -1, 0, 0, -1, 1],
+          "mertens(lo,hi) edge cases");
+is(mertens(12345,444444), -53, "mertens(lo,hi) larger range");
+is(mertens(995001,1000000), mertens(1000000)-mertens(995000),
+   "mertens(lo,hi) segmented range");
+{
+  my $sum = 0;
+  $sum += $_ for moebius(10000,50000);
+  is($sum, 46, "segmented moebius range");
 }
 while (my($n, $mertens) = each (%big_mertens)) {
   is( mertens($n), $mertens, "mertens($n)" );

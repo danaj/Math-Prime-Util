@@ -1031,6 +1031,7 @@ subtest 'misc number theory functions', sub {
 
   is( mertens(219), 4, "mertens(219)" );
   is( mertens(24219), -67, "mertens(24219)" );
+  is( mertens(1000,24219), -69, "mertens(1000,24219)" );
 
   is_deeply( [euler_phi(1513,1537)],
              [qw/1408 756 800 756 1440 440 1260 576 936 760 1522 504 1200 648 1016 760 1380 384 1530 764 864 696 1224 512 1456/],

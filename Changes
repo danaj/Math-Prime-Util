@@ -146,6 +146,10 @@ Revision history for Perl module Math::Prime::Util
       General factoring removes the initial pbrent stage, starts with a
       deeper p-1 stage, uses an ECM ladder, and correctly uses HOLF.
 
+    - mertens accepts an optional lower bound.  Native Mertens uses segmented
+      Möbius generation and shares calculation state between range endpoints,
+      reducing memory and runtime.
+
     - is_prob_prime, is_bpsw_prime, and is_prime can use native 128-bit
       primality tests on 64-bit builds with uint128_t support.
 

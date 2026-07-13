@@ -188,7 +188,7 @@ sub mpu_PPM_regex {
       Mbinomial Mchinese Mfactor Mfactor_exp Mtrial_factor Mdivisors
       Mfactorial Mfordivisors Mforprimes Mgcd Mlcm Mgcdext Mznorder
       Mfalling_factorial
-      Mkronecker Mmoebius Mtotient Mstirling
+      Mkronecker Mmoebius Mmertens Mtotient Mstirling
       Mnext_prime Mprev_prime Mprime_count Mnth_prime_upper
       Mprime_power_count Msemiprime_count
       Mprimorial Mpn_primorial Mprime_omega
