@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/vecreduce
+use Math::Prime::Util qw/vecreduce addint
                          vecextract
                          vecequal
                          vecmin vecmax
@@ -250,6 +250,10 @@ subtest 'vecreduce', sub {
   my @x = (1..5);
   is(vecreduce(sub{ $a > $b ? $a += 3 : $b -= 7 }, @x), -2, "vecreduce with block assignments");
   is_deeply(\@x, [1..5], "vecreduce block values do not alias input");
+  my $add = \&Math::Prime::Util::addint;
+  is("".vecreduce(sub { $add->($a,$b) }, "18446744073709551616", 1, 2, 3),
+     "18446744073709551622",
+     "vecreduce preserves a callback-produced bigint return");
 };
 ###### vecextract
 subtest 'vecextract', sub {

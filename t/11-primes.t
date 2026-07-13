@@ -153,6 +153,13 @@ subtest 'specific XS calls', sub {
     is_deeply($sub->(2010733, 2010733+148), [2010733,2010733+148], "$method Primegap 21 inclusive");
     is_deeply($sub->(2010733+1, 2010733+148-2), [], "$method Primegap 21 exclusive");
   }
+  my @nested = map {
+    my $sub = $_->[1];
+    $sub->(2, 20);
+  } @subs;
+  is_deeply(\@nested,
+            [map { [2,3,5,7,11,13,17,19] } @subs],
+            "low-level prime arrayrefs retain nested return shape");
 };
 
 subtest 'sieve_range', sub {

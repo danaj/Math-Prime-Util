@@ -1043,13 +1043,8 @@ static void reverse_uv_array(UV *L, size_t len)
 
 #define CREATE_RETURN_AV(av) \
   do { \
-       av = newAV(); \
-       { \
-         SV * retsv = sv_2mortal(newRV_noinc( (SV*) av )); \
-         PUSHs(retsv); \
-         PUTBACK; \
-         SP = NULL; /* never use SP again, poison */ \
-       } \
+    av = newAV(); \
+    ST(0) = sv_2mortal(newRV_noinc((SV*) av)); \
   } while(0)
 
 #define PUSH_2ELEM_AREF(p, q) \
@@ -1242,7 +1237,7 @@ static void reverse_uv_array(UV *L, size_t len)
       SV* tsv_ = amagic_call(sv, &PL_sv_undef, op, AMGf_noright|AMGf_unary); \
       if (tsv_) { \
         if (sv_isobject(tsv_)) { RETURN_SV_CANONICAL(tsv_); } \
-        else                   { SPAGAIN; ST(0) = tsv_; XSRETURN(1); } \
+        else                   { RETURN_SV(tsv_); } \
       } \
     } \
   } while(0)
@@ -1253,7 +1248,7 @@ static void reverse_uv_array(UV *L, size_t len)
       SV* tsv_ = amagic_call(sva, svb, op, 0); \
       if (tsv_) { \
         if (sv_isobject(tsv_)) { RETURN_SV_CANONICAL(tsv_); } \
-        else                   { SPAGAIN; ST(0) = tsv_; XSRETURN(1); } \
+        else                   { RETURN_SV(tsv_); } \
       } \
     } \
   } while(0)
@@ -1264,7 +1259,7 @@ static void reverse_uv_array(UV *L, size_t len)
       SV* tsv_ = amagic_call(sva, svb, op, 0); \
       if (tsv_) { \
         if (sv_isobject(tsv_)) { RETURN_SV_CANONICAL(tsv_); } \
-        else                   { SPAGAIN; ST(0) = tsv_; XSRETURN(1); } \
+        else                   { RETURN_SV(tsv_); } \
       } \
     } \
   } while(0)
@@ -1987,7 +1982,7 @@ sieve_primes(IN UV low, IN UV high)
         end_segment_primes(ctx);
       }
     }
-    return; /* skip implicit PUTBACK */
+    XSRETURN(1);
 
 
 void primes(IN SV* svlo, IN SV* svhi = 0)
@@ -3982,10 +3977,11 @@ factor(IN SV* svn)
       if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
         factored128_t nf;
         if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
+          uint32_t total;
           uint16_t fi, ei;
           if (ix == 0) {
             /* flat list */
-            uint32_t total = factored128p_total_factors(&nf);
+            total = factored128p_total_factors(&nf);
             if (gimme_v == G_SCALAR) XSRETURN_UV(total);
             EXTEND(SP, (EXTEND_TYPE)total);
             for (fi = 0; fi < nf.nfactors; fi++)
@@ -3995,7 +3991,7 @@ factor(IN SV* svn)
               PUSH_U128(nf.flarge);
           } else {
             /* [p, e] pairs */
-            uint32_t total = factored128p_distinct_factors(&nf);
+            total = factored128p_distinct_factors(&nf);
             if (gimme_v == G_SCALAR) XSRETURN_UV(total);
             EXTEND(SP, (EXTEND_TYPE)total);
             for (fi = 0; fi < nf.nfactors; fi++) {
@@ -4015,8 +4011,7 @@ factor(IN SV* svn)
               PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
             }
           }
-          PUTBACK;
-          return;
+          XSRETURN(total);
         }
       }
 #endif
@@ -4885,10 +4880,8 @@ void addint(IN SV* sva, IN SV* svb)
       XSRETURN_IV(ivret);
     }
     slowret = addint_try_slow_result(aTHX_ ix, sva, svb, astatus, bstatus, SUBNAME);
-    if (slowret != NULL) {
-      ST(0) = slowret;
-      XSRETURN(1);
-    }
+    if (slowret != NULL)
+      RETURN_SV(slowret);
     /* Others get dispatched here */
     DISPATCHPP_RETURN();
 
@@ -4937,10 +4930,8 @@ void add1int(IN SV* svn)
       XSRETURN_IV(ivret);
     }
     slowret = add1_try_slow_result(aTHX_ ix, svn);
-    if (slowret != NULL) {
-      ST(0) = slowret;
-      XSRETURN(1);
-    }
+    if (slowret != NULL)
+      RETURN_SV(slowret);
     DISPATCHPP_RETURN();
 
 void absint(IN SV* svn)
@@ -7859,8 +7850,7 @@ CODE:
         SvSetMagicSV(ret, xs_call_cv_noinput_1_sv(aTHX_ subcv));
       }
     }
-    ST(0) = ret;
-    XSRETURN(1);
+    RETURN_SV(ret);
 }
 
 void

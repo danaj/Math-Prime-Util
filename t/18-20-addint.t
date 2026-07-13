@@ -75,6 +75,20 @@ subtest 'selected test values', sub {
   is_deeply( [map { "".addint($_->[0],$_->[1])} @vals],
              [map { "".addint($_->[1],$_->[0])} @vals],
              "addint is commutative" );
+
+  my $add  = \&Math::Prime::Util::addint;
+  my $add1 = \&Math::Prime::Util::add1int;
+  my $n = "7899999999999959999999996";
+  is_deeply([map { "".$add->($n,$_) } 0..4],
+            [qw/7899999999999959999999996
+                7899999999999959999999997
+                7899999999999959999999998
+                7899999999999959999999999
+                7899999999999960000000000/],
+            "addint function reference retains nested bigint return shape");
+  is_deeply([map { "".$add1->($_) } @{$vals[19]}[0,1]],
+            [qw/1178630961471601951655863 827639478068904540013/],
+            "add1int function reference retains nested bigint return shape");
 };
 
 ###### add1int / sub1int
