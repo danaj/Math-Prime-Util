@@ -80,6 +80,15 @@ subtest 'integer strings' => sub {
     ok( is_bigint($r), "20-digit integer string → bigint");
     is("$r", "99999999999999999999", "20-digit value correct");
   }
+  {
+    my $big = "18446744073709551616";
+    is("".toint("000000000000000000000$big"), $big,
+       "large integer strips leading zeros");
+    is("".toint("+000000000000000000000$big"), $big,
+       "large positive integer strips leading zeros");
+    is("".toint("-000000000000000000000$big"), "-$big",
+       "large negative integer strips leading zeros");
+  }
 };
 
 ###############################################################################

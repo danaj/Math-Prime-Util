@@ -566,6 +566,9 @@ subtest 'canonical bigint returns', sub {
   my $n = Math::BigInt->new("123456789012345678901234567890");
   my $p2 = 2 * Math::BigInt->new("18446744073709551629");
   my @tests = (
+    [ "toint leading zeros",       toint("000000000000000000000$n"), $n ],
+    [ "toint plus leading zeros",  toint("+000000000000000000000$n"), $n ],
+    [ "toint minus leading zeros", toint("-000000000000000000000$n"), "-$n" ],
     [ "vecsum single",          vecsum($n),                   $n ],
     [ "vecprod single",         vecprod($n),                  $n ],
     [ "vecmin single",          vecmin($n),                   $n ],

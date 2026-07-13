@@ -942,6 +942,53 @@ static SV* xs_call_cv_noinput_1_sv(pTHX_ CV* subcv) {
   return ret;
 }
 
+/* Convert an already-validated decimal bigint to the configured bigint class.
+ * The string must have been classified as SNUMFLAG_BIGINT by _parse_strnum.
+ */
+static SV* xs_to_canonical_bigint(pTHX_ SV* sv, const char* str, STRLEN len) {
+  dMY_CXT;
+  const char *digits = str;
+  STRLEN dlen = len;
+  int neg = 0;
+  SV *arg;
+
+  /* If we've never been here before, lazy load the class */
+  if (!MY_CXT.bigintname)
+    _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_load_bigint", 0, 0, NULL);
+  /* Check to see if it's already the right class */
+  if (sv_isobject(sv) && MY_CXT.bigintstash &&
+      SvSTASH(SvRV(sv)) == MY_CXT.bigintstash)
+    return sv;
+
+  /* Some constructors treat leading zeroes as a base prefix. */
+  if (dlen > 0 && (*digits == '-' || *digits == '+')) {
+    neg = (*digits == '-');
+    digits++;
+    dlen--;
+  }
+  while (dlen > 1 && *digits == '0') {
+    digits++;
+    dlen--;
+  }
+
+  /* Preserve the common normalized forms without rebuilding the string. */
+  if (digits == str || (neg && digits == str+1)) {
+    arg = sv_2mortal(newSVpvn(str, len));
+  } else if (neg) {
+    arg = sv_2mortal(newSVpvn("-", 1));
+    sv_catpvn(arg, digits, dlen);
+  } else {
+    arg = sv_2mortal(newSVpvn(digits, dlen));
+  }
+
+  /* Construct canonical bigint: MY_CXT.bigintname->new(arg) */
+  if (MY_CXT.bigintname)
+    return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(MY_CXT.bigintname,0)),
+                                     "new", arg);
+  croak("Invalid bigint result");
+  return sv;
+}
+
 /* Takes an SV and returns a mortalized SV of the correct native/bigint form.
  *
  * INPUT                  OUTPUT           COMMENTS
@@ -955,7 +1002,6 @@ static SV* xs_call_cv_noinput_1_sv(pTHX_ CV* subcv) {
  * other bigint class     BIGINT object    converted class
  */
 static SV* xs_to_canonical(pTHX_ SV* sv) {
-  dMY_CXT;
   const char* str;
   STRLEN len;
   uint32_t stype;
@@ -969,21 +1015,8 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
     return sv_2mortal(newSVuv((UV)PSTRTOULL(str, NULL, 10)));
   if (stype == SNUMFLAG_NEG)
     return sv_2mortal(newSViv((IV)PSTRTOLL(str, NULL, 10)));
-  if (stype & SNUMFLAG_BIGINT) {
-    /* If we've never been here before, lazy load the class */
-    if (!MY_CXT.bigintname)
-      _vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, "_load_bigint", 0, 0, NULL);
-    /* Check to see if it's already the right class */
-    if (sv_isobject(sv) && MY_CXT.bigintstash &&
-        SvSTASH(SvRV(sv)) == MY_CXT.bigintstash)
-      return sv;
-    /* Construct canonical bigint: MY_CXT.bigintname->new(str) */
-    if (MY_CXT.bigintname) {
-      return xs_call_method_1_sv(aTHX_ sv_2mortal(newSVpv(MY_CXT.bigintname,0)),
-                                       "new",
-                                       sv_2mortal(newSVpvn(str, len)));
-    }
-  }
+  if (stype & SNUMFLAG_BIGINT)
+    return xs_to_canonical_bigint(aTHX_ sv, str, len);
   /* We can't understand the input.  Return it unchanged. */
   croak("Invalid bigint result");
   return sv;
@@ -3495,7 +3528,7 @@ void toint(IN SV* svn)
       RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
     }
     if (stype & SNUMFLAG_BIGINT)
-      RETURN_SV_CANONICAL(svn);   /* Converts to appropriate bigint */
+      RETURN_SV(xs_to_canonical_bigint(aTHX_ svn, s, len));
     /* It's not clear what the input is.  Let Math::BigFloat decide. */
     RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
 
