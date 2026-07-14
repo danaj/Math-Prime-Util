@@ -3585,6 +3585,58 @@ sub _sigma0_possible_from_nfactors {
   $k <= (1 << $nf);
 }
 
+sub _inverse_sigma0_generate {
+  my($k, $low, $high, $want_list) = @_;
+  my(@result, %divs, %minsum);
+  my $count = 0;
+  my $recurse;
+  $recurse = sub {
+    my($n, $pmin, $rem) = @_;
+    if ($rem == 1) {
+      if ($n >= $low) { $want_list ? push(@result,$n) : ($count=Madd1int($count)); }
+      return;
+    }
+
+    my $D = $divs{$rem} ||= [grep { $_ >= 2 } Mdivisors($rem)];
+    if (@$D == 1) {  # The final exponent is rem-1 for one prime.
+      my $e = $rem - 1;
+      my $minpow = ($n >= $low) ? 1 : Mcdivint($low,$n);
+      my $maxpow = Mdivint($high,$n);
+      my $plo = ($e == 1) ? $minpow : Math::Prime::Util::crootint($minpow,$e);
+      my $phi = ($e == 1) ? $maxpow : Mrootint($maxpow,$e);
+      $plo = $pmin if $plo < $pmin;
+      return if $plo > $phi;
+      if ($want_list) {
+        push @result, map { Mmulint($n, Mpowint($_,$e)) } @{Mprimes($plo,$phi)};
+      } else {
+        $count = Maddint($count, Mprime_count($plo,$phi));
+      }
+      return;
+    }
+    my $maxpow = Mdivint($high,$n);
+    for my $d (@$D) {
+      my($e, $nextrem) = ($d-1, Mdivint($rem,$d));
+      if (!defined $minsum{$nextrem}) {
+        $minsum{$nextrem} = 0;
+        $minsum{$nextrem} += $_-1 for Mfactor($nextrem);
+      }
+      my $phi = Mrootint($maxpow, $e+$minsum{$nextrem});
+      next if $pmin > $phi;
+      Mforprimes( sub {
+        my $v = Mmulint($n, Mpowint($_,$e));
+        $recurse->($v, Madd1int($_), $nextrem);
+      }, $pmin, $phi);
+    }
+  };
+  $recurse->(1, 2, $k);
+  undef $recurse;
+  if ($want_list) {
+    @result = Mvecsort(@result) if @result > 1;
+    return \@result;
+  }
+  $count;
+}
+
 sub inverse_sigma0_count {
   croak "inverse_sigma0_count: expected k and 1 or 2 integers" if @_ != 2 && @_ != 3;
   my $k = shift;
@@ -3596,7 +3648,9 @@ sub inverse_sigma0_count {
   return Mprime_count($low,$high) if $k == 2;
   $low = 1 if $low < 1;
   return 0 if $low > $high;
-
+  return 0 if $k > $high;
+  return _inverse_sigma0_generate($k,$low,$high,0)
+    if !ref($k) && $low <= Mdivint($high,2);
   my $count = 0;
   Math::Prime::Util::forfactored(sub {
     my $nf = @_;
@@ -3617,7 +3671,9 @@ sub inverse_sigma0 {
   return Mprimes($low,$high) if $k == 2;
   $low = 1 if $low < 1;
   return [] if $low > $high;
-
+  return [] if $k > $high;
+  return _inverse_sigma0_generate($k,$low,$high,1)
+    if !ref($k) && $low <= Mdivint($high,2);
   my @result;
   Math::Prime::Util::forfactored(sub {
     my $nf = @_;
