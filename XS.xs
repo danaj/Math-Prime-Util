@@ -1880,13 +1880,13 @@ void sum_primes(IN SV* svlo, IN SV* svhi = 0)
       if (sum_primes(lo, hi, &count))
         XSRETURN_UV(count);
       /* If that didn't work, try the 128-bit version if supported. */
-      #if HAVE_FACTOR128 && HAVE_SUM_PRIMES128
+#if HAVE_FACTOR128 && HAVE_SUM_PRIMES128
       {
         uint128_t sum128;
         if (sum_primes128(lo, hi, &sum128))
           RETURN_U128(sum128);
       }
-      #endif
+#endif
     }
 #if HAVE_FACTOR128 && HAVE_SUM_PRIMES128
     else if ((items == 1 && xs_sv_to_uint64(aTHX_ &hi64, svlo)) ||
@@ -3486,7 +3486,7 @@ void toint(IN SV* svn)
       if (SvIsUV(svn)) XSRETURN_UV(SvUVX(svn));
       XSRETURN_IV(SvIVX(svn));
     }
-    /* Simple NV within native UV/IV range — truncate toward zero */
+    /* Simple NV within native UV/IV range: truncate toward zero. */
     if (SvNOK(svn) && !SvROK(svn)) {
       NV x = SvNV(svn);
       /* This is a NV, there is no way to recover possible lost precision */

@@ -217,28 +217,30 @@ extern UV gcdz(UV x, UV y) ISCONSTFUNC;
 
  /* For MSC, we need to use _BitScanForward and _BitScanReverse.  The way to
   * get to them has changed, so we're going to only use them on new systems.
+  * The 64-bit intrinsics are unavailable on x86 even with a 64-bit UV.
   * The performance of these functions are not super critical.
   * What is:  popcnt, mulmod, and muladd.
   */
-#elif defined (_MSC_VER) && _MSC_VER >= 1400 && !defined(__clang__) && !defined(_WIN32_WCE)
+#elif defined(_MSC_VER) && _MSC_VER >= 1400 && !defined(__clang__) && \
+      !defined(_WIN32_WCE) && (BITS_PER_WORD == 32 || defined(_M_X64))
  #include <intrin.h>
  #ifdef FUNC_ctz
   static int ctz(UV n) {
-    UV tz = 0;
+   unsigned long tz = 0;
    #if BITS_PER_WORD == 64
-    if (_BitScanForward64(&tz, n)) return tz; else return 64;
+    if (_BitScanForward64(&tz, n)) return (int)tz; else return 64;
    #else
-    if (_BitScanForward(&tz, n))   return tz; else return 32;
+    if (_BitScanForward(&tz, n))   return (int)tz; else return 32;
    #endif
   }
  #endif
  #if defined(FUNC_clz) || defined(FUNC_log2floor)
   static int log2floor(UV n) {
-    UV lz = 0;
+   unsigned long lz = 0;
    #if BITS_PER_WORD == 64
-    if (_BitScanReverse64(&lz, n)) return lz; else return 0;
+    if (_BitScanReverse64(&lz, n)) return (int)lz; else return 0;
    #else
-    if (_BitScanReverse(&lz, n))   return lz; else return 0;
+    if (_BitScanReverse(&lz, n))   return (int)lz; else return 0;
    #endif
   }
  #endif
@@ -357,9 +359,9 @@ static UV lcm_ui(UV x, UV y) {
 #include <math.h>
 static uint32_t isqrt(UV n) {
   /* The small addition means we only need to check for fixing downwards. */
-  IV r = sqrt((double)n) + 1e-6f;
+  IV r = (IV)(sqrt((double)n) + 1e-6f);
   IV diff = n - (UV)r*r;
-  return r - (diff < 0);
+  return (uint32_t)(r - (diff < 0));
 }
 #endif
 

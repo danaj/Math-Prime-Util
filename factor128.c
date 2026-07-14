@@ -430,7 +430,7 @@ static void lucas_seq128_mont(uint128_t *U, uint128_t *V, uint128_t *Qk,
 static bool is_strong_lucas_pp128(uint128_t n) {
   int64_t D;
   int64_t sign = 1;
-  int abs_D;
+  int r, abs_D;
 
   for (abs_D = 5; ; abs_D += 2, sign = -sign) {
     D = sign * abs_D;
@@ -455,7 +455,7 @@ static bool is_strong_lucas_pp128(uint128_t n) {
   lucas_seq128_mont(&U, &V, &Qk, D, Q_s, d, &ctx);
 
   if (U == 0) return 1;
-  for (int r = 0; r < s; r++) {
+  for (r = 0; r < s; r++) {
     if (V == 0) return 1;
     /* V_{2m} = V_m^2 - 2*Q^m  (mod n) */
     V = submod128(mont_sqrmod128(V, &ctx), addmod128(Qk, Qk, n), n);
@@ -477,11 +477,13 @@ bool is_bpsw128(uint128_t n) {
 /* Returns 1 if n is (probably) prime, 0 if composite.
  * Uses trial division up to 2011, then BPSW. */
 bool is_prime128(uint128_t n) {
+  int i;
+
   if (n < 7) return (n==2 || n==3 || n==5);
   if (!(n & 1)) return 0;
 
   /* Trial division using primes_small[] */
-  for (int i = 2; i < NPRIMES_SMALL; i++) {
+  for (i = 2; i < NPRIMES_SMALL; i++) {
     uint64_t p = primes_small[i];
     if ((uint128_t)p * p > n) return 1;
     if (n % p == 0) return 0;
@@ -1119,6 +1121,7 @@ static uint128_t tinyecm128(uint128_t n, uint64_t B1_in, uint64_t B2_in,
                             int ncurves, int sigma_offset) {
   mont128_t ctx;
   UV B1, sqrtB1;
+  int ci;
 
   if (B1_in > (uint64_t)UV_MAX)
     croak("internal: tinyecm128 B1 exceeds UV_MAX");
@@ -1128,7 +1131,7 @@ static uint128_t tinyecm128(uint128_t n, uint64_t B1_in, uint64_t B2_in,
 
   mont_setup128(&ctx, n);
 
-  for (int ci = 0; ci < ncurves && sigma_offset+ci < NECM128_SIGMAS; ci++) {
+  for (ci = 0; ci < ncurves && sigma_offset+ci < NECM128_SIGMAS; ci++) {
     uint32_t sigma = ecm_sigmas[sigma_offset+ci];
 
     /* Suyama parameterization. */
@@ -1215,13 +1218,13 @@ static uint128_t brent128(uint128_t n, uint128_t c, UV maxr) {
 
   cx = cy;
   do {
+    UV i, k = 0;
     cx = cy;
-    for (UV i = 0; i < r; i++)
+    for (i = 0; i < r; i++)
       cy = MBRENT_F(cy);
-    UV k = 0;
     do {
       cys = cy;
-      for (UV i = 0; i < (m < r - k ? m : r - k); i++) {
+      for (i = 0; i < (m < r - k ? m : r - k); i++) {
         cy = MBRENT_F(cy);
         uint128_t diff = (cx > cy) ? cx - cy : cy - cx;
         cq = mont_mulmod128(cq, diff, &ctx);
@@ -1253,13 +1256,13 @@ static uint128_t brent128(uint128_t n, uint128_t c, UV maxr) {
 /* Insert a 64-bit prime factor p into nf (sorted).  Increments exponent if
  * already present.  Caller must ensure nfactors < MPU_MAX_DFACTORS128. */
 static void insert_factor128(factored128_t *nf, uint64_t p) {
-  uint16_t i, nf_ = nf->nfactors;
+  uint16_t i, j, nf_ = nf->nfactors;
   for (i = 0; i < nf_; i++) {
     if (nf->f[i] == p) { nf->e[i]++; return; }
     if (nf->f[i] >  p) break;
   }
   /* Shift right and insert */
-  for (uint16_t j = nf_; j > i; j--) {
+  for (j = nf_; j > i; j--) {
     nf->f[j] = nf->f[j-1];
     nf->e[j] = nf->e[j-1];
   }
@@ -1300,11 +1303,12 @@ signed char factored128p_moebius(const factored128_t *nf) {
 
 signed char moebius128(uint128_t n) {
   factored128_t nf;
+  uint32_t i;
 
   if (n <= (uint128_t)UV_MAX)
     return moebius((UV)n);
 
-  for (uint32_t i = 1; i < NPRIMES_SMALL && primes_small[i] <= 37; i++) {
+  for (i = 1; i < NPRIMES_SMALL && primes_small[i] <= 37; i++) {
     uint128_t p = primes_small[i];
     if ((n % (p*p)) == 0)
       return 0;
@@ -1317,6 +1321,7 @@ signed char moebius128(uint128_t n) {
 bool is_semiprime128(uint128_t n) {
   factored128_t nf;
   uint64_t r;
+  uint32_t i;
 
   if (n <= (uint128_t)UV_MAX)
     return is_semiprime((UV)n);
@@ -1325,7 +1330,7 @@ bool is_semiprime128(uint128_t n) {
   if (!(n % 3)) return is_prime128(n / 3);
   if (!(n % 5)) return is_prime128(n / 5);
 
-  for (uint32_t i = 4; i < NPRIMES_SMALL; i++) {
+  for (i = 4; i < NPRIMES_SMALL; i++) {
     uint128_t p = primes_small[i];
     if (p*p*p > n)
       break;
@@ -1350,6 +1355,7 @@ bool is_semiprime128(uint128_t n) {
 
 void factorintp128(factored128_t *nf, uint128_t n) {
   int const verbose = _XS_get_verbose();
+  int i;
 
   nf->n        = n;
   nf->nfactors = 0;
@@ -1363,7 +1369,7 @@ void factorintp128(factored128_t *nf, uint128_t n) {
   }
 
   /* Trial division using primes_small[] (primes 2..2011) */
-  for (int i = 1; i < NPRIMES_SMALL; i++) {
+  for (i = 1; i < NPRIMES_SMALL; i++) {
     uint64_t p = primes_small[i];
     if ((uint128_t)p * p > n) break;
     while (n % p == 0) {
@@ -1388,7 +1394,7 @@ void factorintp128(factored128_t *nf, uint128_t n) {
       UV uv = (UV)t;
       UV factors[MPU_MAX_FACTORS];
       int nf2 = factor(uv, factors);
-      for (int i = 0; i < nf2; i++)
+      for (i = 0; i < nf2; i++)
         insert_factor128(nf, factors[i]);
       continue;
     }
