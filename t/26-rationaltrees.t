@@ -220,6 +220,16 @@ if ($extended) {
       is( farey($n), $expcount, "scalar farey($n) = $expcount" );
     }
 
+    is( "".farey(120_000), "4377098667",
+        "scalar farey dispatches on native length overflow" );
+
+    is( "".farey_rank(100_000,[50_000,50_001]), "3039600754",
+        "farey_rank dispatches when native multiplication would overflow" );
+
+    is_deeply( [map { "$_" } @{next_farey("4294967295",[1,2])}],
+               ["2147483648","4294967295"],
+               "next_farey avoids 32-bit intermediate overflow" );
+
     # next_farey iteration count for larger order
     {
       my $n = 50;

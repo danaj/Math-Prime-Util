@@ -210,19 +210,37 @@ UV farey_length(uint32_t n)
 
 bool next_farey(uint32_t n, uint32_t* p, uint32_t* q)
 {
-  IV ivu, ivg;
-  UV u, uvp, uvq;
+  IV ivu, ivv;
+  UV g, uvp, uvq, r, tail, h, np, nq;
 
   if (n == 0 || p == 0 || q == 0 || *p >= *q) return 0;
 
-  ivg = gcdext( (IV)*p, (IV)*q, &ivu, 0, 0, 0);
+  uvp = *p;  uvq = *q;
+  g = gcd_ui(uvp, uvq);
+  if (g > 1) { uvp /= g;  uvq /= g; }
 
-  u = ivu;
-  uvp = *p / ivg;
-  uvq = *q / ivg;
+  if (uvq > n || uvq > (UV)IV_MAX) return 0;
 
-  *q = ((n+u) / uvq) * uvq - u;
-  *p = (*q * uvp + 1) / uvq;
+  if (gcdext((IV)uvp, (IV)uvq, &ivu, &ivv, 0, 0) != 1)
+    croak("next_farey: internal gcd / gcdext error");
+
+  if (ivu <= 0) {
+    r = (UV)0 - (UV)ivu;
+    tail = (UV)ivv;
+  } else {
+    UV vabs = (UV)0 - (UV)ivv;
+    r = uvq - (UV)ivu;
+    if (vabs > uvp) return 0;
+    tail = uvp - vabs;
+  }
+
+  h = (n - r) / uvq;
+  nq = h * uvq + r;
+  np = h * uvp + tail;
+  if (np > nq || nq > n) return 0;
+
+  *p = (uint32_t)np;
+  *q = (uint32_t)nq;
   return 1;
 }
 
@@ -277,10 +295,11 @@ UV farey_rank(uint32_t n, uint32_t p, uint32_t q)
   UV sum;
 
   if (n == 0 || q == 0 || p == 0) return 0;
-  if (n == 0xFFFFFFFFU) croak("farey_rank: n too large");
+  if (n == UINT32_MAX) return UV_MAX;
 
   g = gcd_ui(p,q);
   if (g != 1) { p /= g;  q /= g; }
+  if ((UV)n > UV_MAX / (UV)p) return UV_MAX;
 
   New(0, count, (size_t)n+1, uint32_t);
 
@@ -291,6 +310,10 @@ UV farey_rank(uint32_t n, uint32_t p, uint32_t q)
     uint32_t j, icount = count[i];
     for (j = i; j <= n-i; j += i)
       count[j+i] -= icount;
+    if ((UV)icount >= UV_MAX - sum) {
+      Safefree(count);
+      return UV_MAX;
+    }
     sum += icount;
   }
   Safefree(count);
@@ -347,7 +370,7 @@ static bool _walk_to_k(uint32_t a, uint32_t n, uint32_t k, uint32_t* p, uint32_t
   *q = q1;
   return 1;
 }
-bool kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
+int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
 {
   uint32_t lo = 1, hi = n;
   UV cnt = 1;
@@ -375,6 +398,7 @@ bool kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
 
     if (lo < hi) {
       gcnt = farey_rank(n, guess, n);
+      if (gcnt == UV_MAX) return -1;
       if (gcnt <= k) { lo = guess; cnt = gcnt; } else { hi = guess-1; }
     }
 
@@ -386,6 +410,7 @@ bool kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
 
     if (lo < hi && guess > lo && guess < hi) {
       gcnt = farey_rank(n,guess,n);
+      if (gcnt == UV_MAX) return -1;
       if (gcnt <= k) { lo = guess; cnt = gcnt; } else { hi = guess-1; }
     }
   }
@@ -395,6 +420,7 @@ bool kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
   while (lo < hi) {
     uint32_t mid = lo + ((hi-lo+1)>>1);
     UV midcnt = farey_rank(n, mid, n);
+    if (midcnt == UV_MAX) return -1;
     if (midcnt <= k)  { lo = mid;  cnt = midcnt; }
     else              { hi = mid-1; }
   }

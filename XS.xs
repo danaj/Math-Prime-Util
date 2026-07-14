@@ -3090,9 +3090,11 @@ is_power(IN SV* svn, IN SV* svk = 0, IN SV* svroot = 0)
           if (ret) root = ipow(root,1U << v);
         }
       }
-      if (ret && svroot != 0)
-        SETSVINT(SvRV(svroot), nstatus == 1,
-                 k==1 ? n : root, k == 1 ? neg_iv(n) : -(IV)root);
+      if (ret && svroot != 0) {
+        SV *svr = SvRV(svroot);
+        if (nstatus==1) sv_setuv(svr, k == 1 ? n : root);
+        else            sv_setiv(svr, k == 1 ? (IV)neg_iv(n) : -(IV)root);
+      }
       RETURN_NPARITY(ret);
     }
     DISPATCHPP_RETURN_GMPIF(svroot == 0);
@@ -3770,29 +3772,30 @@ void farey(IN SV* svn, IN SV* svk = 0)
       if (!_validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG))
         k = UV_MAX;
     }
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS)) {
-      if (!wantsingle && GIMME_V != G_ARRAY)
-        XSRETURN_UV(farey_length(n));
-      if (n <= UVCONST(4294967295)) {
-        if (wantsingle) {
-          uint32_t p, q;
-          kresult = kth_farey(n, k, &p, &q);
-          if (kresult == 0) XSRETURN_UNDEF;
-          if (kresult == 1) {
-            PUSH_2ELEM_AREF(p, q);
-            XSRETURN(1);
-          }
-        } else {
-          uint32_t *num, *den;
-          UV i, len = farey_array(n, &num, &den);
-          if (len > 0) {
-            EXTEND(SP, (EXTEND_TYPE)len);
-            for (i = 0; i < len; i++)
-              PUSH_2ELEM_AREF(num[i], den[i]);
-            Safefree(num);
-            Safefree(den);
-            XSRETURN(len);
-          }
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) && n <= UINT32_MAX) {
+      uint32_t n32 = (uint32_t) n;
+      if (wantsingle) {
+        uint32_t p, q;
+        kresult = kth_farey(n32, k, &p, &q);
+        if (kresult == 0) XSRETURN_UNDEF;
+        if (kresult == 1) {
+          PUSH_2ELEM_AREF(p, q);
+          XSRETURN(1);
+        }
+      } else if (GIMME_V != G_ARRAY) {
+        UV len = farey_length(n32);
+        if (len > 0)
+          XSRETURN_UV(len);
+      } else {
+        uint32_t *num, *den;
+        UV i, len = farey_array(n32, &num, &den);
+        if (len > 0) {
+          EXTEND(SP, (EXTEND_TYPE)len);
+          for (i = 0; i < len; i++)
+            PUSH_2ELEM_AREF(num[i], den[i]);
+          Safefree(num);
+          Safefree(den);
+          XSRETURN(len);
         }
       }
     }
@@ -3805,11 +3808,10 @@ void next_farey(IN SV* svn, IN SV* svfrac)
     SV **psvp, **psvq;
     AV* av;
     UV n, p64, q64;
-    uint32_t p, q;
     int status;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) &&
-        n <= UVCONST(4294967295)) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_POS) && n <= UINT32_MAX) {
+      uint32_t n32 = (uint32_t) n;
       CHECK_ARRAYREF(svfrac);
       av = (AV*) SvRV(svfrac);
       if (av_count(av) != 2) croak("%s: expected 2-element array reference", SUBNAME);
@@ -3822,35 +3824,33 @@ void next_farey(IN SV* svn, IN SV* svfrac)
         status = _validate_and_set(&p64, aTHX_ *psvp, IFLAG_NONNEG);
       if (status != 0)
         status = _validate_and_set(&q64, aTHX_ *psvq, IFLAG_POS);
+      if (status != 0 && p64 >= q64 && ix == 0)
+        XSRETURN_UNDEF;
       if (status != 0 && p64 >= q64) {
-        if (ix == 0) XSRETURN_UNDEF;
-        else         XSRETURN_UV(farey_length(n) - (p64 == q64));
+        UV len = farey_length(n32);
+        if (len > 0)
+          XSRETURN_UV(len - (p64 == q64));
+        status = 0;  /* Force dispatch */
       }
-      if (status != 0 && ix == 0) {
+      if (status != 0) {
         UV g = gcd_ui(p64,q64);
-        if (g != 1) { p64 /= g;  q64 /= g; }
-        if (q64 > n)
-          status = 0;  /* Use PP rank/select for non-entry fractions. */
-      }
-      if (status != 0) {
-        p = p64;  q = q64;
-        if (p != p64 || q != q64)
-          status = 0;  /* We only do 32-bit here */
-      }
-      if (status != 0) {
-        if (ix == 1)
-          XSRETURN_UV(farey_rank(n, p, q));
-        else {
-          if (next_farey(n, &p, &q)) {
-            PUSH_2ELEM_AREF(p, q);
-            XSRETURN(1);
+        if (g > 1) { p64 /= g;  q64 /= g; }
+        if (p64 <= UINT32_MAX && q64 <= UINT32_MAX) {
+          uint32_t p = (uint32_t) p64, q = (uint32_t) q64;
+          if (ix == 1) {
+            UV rank = farey_rank(n32, p, q);
+            if (rank != UV_MAX)
+              XSRETURN_UV(rank);
+          } else {
+            if (next_farey(n32, &p, &q)) {
+              PUSH_2ELEM_AREF(p, q);
+              XSRETURN(1);
+            }
           }
-          /* Possibly drop through */
         }
       }
     }
     DISPATCHPP_RETURN();
-
 
 
 void Pi(IN SV* svdigits = 0)
@@ -5548,7 +5548,7 @@ void binomial(IN SV* svn, IN SV* svk)
           if (ret > 0 && ret <= (UV)IV_MAX)
             XSRETURN_IV( (IV)ret * ((k&1) ? -1 : 1) );
           /* The result overflowed.  Use strint. */
-          if (ntop <= 4294967295 && k <= 4294967295 && _XS_get_callgmp() < 53) {
+          if (ntop <= UINT32_MAX && k <= UINT32_MAX && _XS_get_callgmp() < 53) {
             STRLEN rlen;
             char *rstr = strint_binomial_u32_u32((uint32_t)ntop, (uint32_t)k, &rlen);
             if (rstr)
@@ -5559,7 +5559,7 @@ void binomial(IN SV* svn, IN SV* svk)
         ret = binomial(n, k);
         if (ret != 0) XSRETURN_UV(ret);
         /* The result overflowed.  Use strint. */
-        if (n <= 4294967295 && k <= 4294967295 && _XS_get_callgmp() < 53) {
+        if (n <= UINT32_MAX && k <= UINT32_MAX && _XS_get_callgmp() < 53) {
           STRLEN rlen;
           char *rstr = strint_binomial_u32_u32((uint32_t)n, (uint32_t)k, &rlen);
           if (rstr)
@@ -5567,7 +5567,7 @@ void binomial(IN SV* svn, IN SV* svk)
         }
       }
     }
-    if (kstatus == 1 && k <= 4294967295 && _XS_get_callgmp() < 53) {
+    if (kstatus == 1 && k <= UINT32_MAX && _XS_get_callgmp() < 53) {
       STRLEN snlen, rlen;
       const char *sn;
       char *rstr;

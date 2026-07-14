@@ -71,6 +71,8 @@ Revision history for Perl module Math::Prime::Util
 
     - chebyshev_theta and chebyshev_psi had tables corrected for 3 ranges.
 
+    - Fix overflow handling in Farey functions on 32-bit builds.
+
     - lastfor handles die/croak inside loops much better.
 
     - random_factored_integer dropped the array return for bigints.
