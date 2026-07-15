@@ -462,9 +462,7 @@ static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask);
 static SV* xs_to_bigint(pTHX_ SV* r);
 static SV* xs_to_canonical(pTHX_ SV* sv);
 static void xs_aref_to_canonical(pTHX_ SV* aref, const char* name);
-#if HAVE_FACTOR128
-static bool xs_is_square128(pTHX_ SV *sv, int *ret);
-#endif
+static bool xs_sv_is_perfect_square(pTHX_ SV *sv, int *ret);
 
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
@@ -1460,17 +1458,6 @@ static bool xs_sv_to_uint128_signmag(pTHX_ uint128_t *n, int *sign, SV *sv)
   return 1;
 }
 
-static bool xs_is_square128(pTHX_ SV *sv, int *ret)
-{
-  uint128_t n;
-  int sign;
-
-  if (!xs_sv_to_uint128_signmag(aTHX_ &n, &sign, sv))
-    return 0;
-  *ret = sign >= 0 && is_perfect_square128(n);
-  return 1;
-}
-
 static bool xs_sv_to_uint64(pTHX_ uint64_t *n, SV *sv)
 {
   uint128_t n128;
@@ -1499,6 +1486,38 @@ static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
 }
 
 #endif
+
+/* Return true when the square test was handled here, setting *ret. */
+static bool xs_sv_is_perfect_square(pTHX_ SV *sv, int *ret)
+{
+  STRLEN len;
+  const char *s = SvPV_nomg(sv, len);
+  int neg = 0;
+
+  if (len > 0 && (*s == '-' || *s == '+')) {
+    neg = (*s == '-');
+    s++;
+    len--;
+  }
+  if (neg) {
+    *ret = 0;
+    return 1;
+  }
+#if HAVE_FACTOR128
+  {
+    uint128_t n;
+    if (str_to_u128(&n, s, len)) {
+      *ret = is_perfect_square128(n);
+      return 1;
+    }
+  }
+#endif
+  if (_XS_get_callgmp() < 47) {
+    *ret = strint_is_perfect_square(s, len);
+    return 1;
+  }
+  return 0;
+}
 
 /******************************************************************************/
 /******************************************************************************/
@@ -2956,10 +2975,9 @@ void is_square(IN SV* svn)
         default:break;
       }
     }
-#if HAVE_FACTOR128
-    if (ix == 0 && status == 0 && xs_is_square128(aTHX_ svn, &ret))
+    if (ix == 0 && status == 0 &&
+        xs_sv_is_perfect_square(aTHX_ svn, &ret))
       RETURN_NPARITY(ret);
-#endif
     if (status != 0) RETURN_NPARITY(ret);
     DISPATCHPP_RETURN();
 

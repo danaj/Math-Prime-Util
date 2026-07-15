@@ -267,12 +267,10 @@ static OP* pp_is_square_custom(pTHX) {
     SETs(_sv_const_int(aTHX_ status == 1 && is_perfect_square(n)));
     RETURN;
   }
-#if HAVE_FACTOR128
-  if (xs_is_square128(aTHX_ TOPs, &ret)) {
+  if (xs_sv_is_perfect_square(aTHX_ TOPs, &ret)) {
     SETs(_sv_const_int(aTHX_ ret));
     RETURN;
   }
-#endif
   return xop_dispatch_unary(aTHX_ "is_square", 47);
 }
 

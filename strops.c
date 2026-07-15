@@ -2264,22 +2264,14 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
 }
 
 /* floor(n^(1/k)) via Newton's method, starting from above.
- * out must have at least alen+2 bytes.
- * Returns the length of the result, or 0 on error (k==0, n<0). */
-STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
+ * r must be initialized.  n and its canonical decimal string must represent
+ * the same value. */
+static void b9_root_ui(b9_t *r, const b9_t *n,
+                       const char* a, STRLEN alen, UV k)
 {
-  STRLEN nd, i, rlen;
+  STRLEN nd, i;
   double approx, log10_a, r_est_f;
-  b9_t bn, bkm1, bk, r, pk1, q, tmp;
-
-  if (k == 0) return 0;
-
-  if (strint_strip(&a, &alen))
-    return 0;
-
-  if (k == 1) { memcpy(out, a, alen); return alen; }
-
-  if (alen == 1 && (a[0] == '0' || a[0] == '1')) { out[0] = a[0]; return 1; }
+  b9_t bkm1, bk, pk1, q, tmp;
 
   /* Float estimate of floor(log10(n^(1/k))) */
   nd = (alen < 15) ? alen : 15;
@@ -2289,10 +2281,9 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
   log10_a = (double)(alen - nd) + log10(approx);
   r_est_f = log10_a / (double)k;
 
-  b9_init_set_str(&bn, a, alen);
   b9_init_set_uv(&bkm1, k - 1);
   b9_init_set_uv(&bk,   k);
-  b9_init(&r);  b9_init(&pk1);  b9_init(&q);  b9_init(&tmp);
+  b9_init(&pk1);  b9_init(&q);  b9_init(&tmp);
 
   /* Initial r: float within ~0.02% of true root, biased above.
    * r_est_f = q_exp + frac.  r_mantissa ≈ 10^frac * 1.0002e8 (9 sig figs).
@@ -2308,10 +2299,10 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
       char *r_char = (char*) malloc(q_exp + 4);
       memcpy(r_char, mant_buf, mlen);
       memset(r_char + mlen, '0', q_exp + 1 - mlen);
-      b9_set_str(&r, r_char, q_exp + 1);
+      b9_set_str(r, r_char, q_exp + 1);
       free(r_char);
     } else {
-      b9_set_uv(&r, (UV)(pow(10.0, r_est_f) * 1.0002) + 1);
+      b9_set_uv(r, (UV)(pow(10.0, r_est_f) * 1.0002) + 1);
     }
   }
 
@@ -2319,28 +2310,85 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
    * Converges from above; terminate when r_new >= r. */
   for (;;) {
     /* pk1 = r^(k-1) */
-    b9_pow(&pk1, &r, k - 1);
+    b9_pow(&pk1, r, k - 1);
 
     /* q = floor(n / r^(k-1)) */
-    b9_fdivrem(&q, NULL, &bn, &pk1);
+    b9_fdivrem(&q, NULL, n, &pk1);
 
     /* tmp = (k-1)*r + q */
-    b9_mul(&tmp, &bkm1, &r);
+    b9_mul(&tmp, &bkm1, r);
     b9_add(&tmp, &tmp, &q);
 
     /* pk1 = floor(tmp / k)  (reuse as r_new) */
     b9_fdivrem(&pk1, NULL, &tmp, &bk);
 
-    if (b9_cmp(&pk1, &r) >= 0) break;
+    if (b9_cmp(&pk1, r) >= 0) break;
 
     /* r = r_new */
-    b9_swap(&r, &pk1);
+    b9_swap(r, &pk1);
   }
 
+  b9_free(&bkm1);  b9_free(&bk);  b9_free(&pk1);
+  b9_free(&q);     b9_free(&tmp);
+}
+
+/* floor(n^(1/k)) via Newton's method, starting from above.
+ * out must have at least alen+2 bytes.
+ * Returns the length of the result, or 0 on error (k==0, n<0). */
+STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
+{
+  STRLEN rlen;
+  b9_t n, r;
+
+  if (k == 0) return 0;
+  if (strint_strip(&a, &alen)) return 0;
+  if (k == 1) { memcpy(out, a, alen); return alen; }
+  if (alen == 1 && (a[0] == '0' || a[0] == '1')) {
+    out[0] = a[0];
+    return 1;
+  }
+
+  b9_init_set_str(&n, a, alen);
+  b9_init(&r);
+  b9_root_ui(&r, &n, a, alen, k);
   rlen = b9_get_str(out, &r);
-  b9_free(&bn);  b9_free(&bkm1);  b9_free(&bk);
-  b9_free(&r);   b9_free(&pk1);   b9_free(&q);  b9_free(&tmp);
+  b9_free(&n);  b9_free(&r);
   return rlen;
+}
+
+bool strint_is_perfect_square(const char* a, STRLEN alen)
+{
+  uint32_t m, r99, r105;
+  b9_t n, r, square;
+  bool ret = 0;
+
+  if (strint_strip(&a, &alen)) return 0;
+  if (alen == 1 && (a[0] == '0' || a[0] == '1')) return 1;
+
+  b9_init_set_str(&n, a, alen);
+
+  /* One b9 remainder supplies filters modulo multiple small integers.
+   * The three filters remove over 98% of candidates. */
+  m = b9_mod_u32(&n, 64 * 105 * 33);
+
+#if HAVE_UINT64
+  if ((UINT64_C(1) << (m & 63)) & UINT64_C(0xfdfdfdedfdfcfdec)) goto done;
+#else
+  if ((UINT32_C(1) << (m & 31)) & UINT32_C(0xfdfcfdec)) goto done;
+#endif
+  r105 = m % 105;
+  if ((r105*0xd24554cd) & (r105*0x0929579a) & 0x38020141) goto done;
+  r99  = m % 99;
+  if ((r99*0x5411171d) & (r99*0xe41dd1c7) & 0x80028a80) goto done;
+
+  b9_init(&r);  b9_init(&square);
+  b9_root_ui(&r, &n, a, alen, 2);
+  b9_mul(&square, &r, &r);
+  ret = b9_cmp(&square, &n) == 0;
+  b9_free(&r);  b9_free(&square);
+done:
+  b9_free(&n);
+  return ret;
 }
 
 STRLEN strint_lshiftint(char* out, const char* a, STRLEN alen, UV k)

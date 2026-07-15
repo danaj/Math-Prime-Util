@@ -103,6 +103,9 @@ extern UV strint_logint(const char* a, STRLEN alen, UV base);
  * Returns 0 on error (k==0, a<0). */
 extern STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k);
 
+/* Return true if the validated signed decimal integer string is a square. */
+extern bool strint_is_perfect_square(const char* a, STRLEN alen);
+
 /* Signed floor division and remainder.
  * Either qout or rout (and its companion length pointer) may be NULL.
  * qout needs alen+1 bytes; rout needs blen bytes.
