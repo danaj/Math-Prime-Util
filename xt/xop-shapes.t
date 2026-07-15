@@ -9,6 +9,10 @@ sub strs {
   return [ map { "$_" } @_ ];
 }
 
+sub passthrough {
+  return $_[0];
+}
+
 my $BIG_S    = '7' x 30;
 my $BIG_P1_S = ('7' x 29) . '8';
 my $BIG_P2_S = ('7' x 29) . '9';
@@ -18,6 +22,14 @@ my $BIG    = toint($BIG_S);
 my $BIG_P1 = toint($BIG_P1_S);
 my $BIG_P2 = toint($BIG_P2_S);
 my $BIG_N  = toint($BIG_N_S);
+
+subtest 'void-context arguments' => sub {
+  eval { is_square(passthrough(4)); };
+  is($@, '', 'unary nested call retains scalar context');
+
+  eval { addint(passthrough(2), passthrough(3)); };
+  is($@, '', 'binary nested calls retain scalar context');
+};
 
 subtest 'drand shape' => sub {
   my $drand_sub = \&Math::Prime::Util::drand;

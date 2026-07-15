@@ -53,6 +53,15 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
     }
   }
 
+  /* The custom op inherits its caller's context.  Preserve the scalar
+   * argument context supplied by the original prototypes, even when the
+   * custom op itself is used in void context. */
+  cur = arg_first;
+  for (i = 0; i < xopreg->nargs; i++) {
+    op_contextualize(cur, G_SCALAR);
+    cur = OpSIBLING(cur);
+  }
+
   OpMORESIB_set(pushop, cvop);
   if (xopreg->nargs > 0)
     OpLASTSIB_set(arg_last, NULL);

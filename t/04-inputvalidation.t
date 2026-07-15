@@ -81,8 +81,6 @@ while (my($v, $expect) = each (%correct)) {
   my $class = 'MPU::Test::IntegerObject';
   my $big = "10000000000000000000000012";
   my $square = "765413284212226299051111674934086564882382225721";
-  my $negative = $class->new(-4);
-  my $noninteger = $class->new("4.5");
   my $plain = bless({}, "MPU::Test::PlainObject");
   my $zero = $class->new(0);
 
@@ -96,10 +94,11 @@ while (my($v, $expect) = each (%correct)) {
   is(is_square($class->new($square)), 1,
      "integer object works in accelerated bigint path");
 
-  eval { next_prime($negative); };
+  eval { next_prime($class->new(-4)); };
   like($@, $qrnn, "negative integer object respects non-negative input");
-  eval { is_square($noninteger); };
-  like($@, qr/ must be an integer/, "non-integer object is rejected");
+  eval { is_square($class->new("4.5")); };
+  like($@, qr/Parameter '4\.5' must be an integer/,
+       "temporary non-integer object is rejected after a validation croak");
   eval { is_square($plain); };
   like($@, qr/ must be an integer/, "plain object is rejected");
   eval { urandomm($zero); };
