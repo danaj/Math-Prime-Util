@@ -32,7 +32,7 @@ extern UV   get_prime_cache(UV n, const unsigned char** sieve);
 #ifdef USE_ITHREADS
 extern void release_prime_cache(const unsigned char* sieve);
 #else
- #define release_prime_cache(mem)
+ #define release_prime_cache(mem) do { } while (0)
 #endif
 
   /* Get the segment cache.  Set size to its size. */

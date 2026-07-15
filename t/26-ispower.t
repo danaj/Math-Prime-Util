@@ -76,7 +76,7 @@ plan tests => 0
             + 4  # large explicit exponent
             + 13  # tests for 3,5,7 power
             + 15 # is_power/is_prime_power interface
-            + 3  # is_square
+            + 4  # is_square
             + 7  # is_sum_of_squares
             + 0;
 
@@ -219,6 +219,18 @@ is_deeply(
 );
 is(is_square(603729), 1, "603729 is a square");
 is(is_square("765413284212226299051111674934086564882382225721"), 1, "is_square(<square of 80-bit prime>) = 1");
+is_deeply(
+  [map { is_square($_) } qw/
+    -340282366920938463426481119284349108225
+     340282366920938463426481119284349108224
+     340282366920938463426481119284349108225
+     340282366920938463426481119284349108226
+     340282366920938463463374607431768211455
+     340282366920938463463374607431768211456
+  /],
+  [0, 0, 1, 0, 0, 1],
+  "is_square at the 128-bit boundary"
+);
 
 ###### is_sum_of_squares
 is_deeply(

@@ -22,6 +22,7 @@
 
 #define FUNC_gcd_ui 1
 #define FUNC_isqrt 1
+#define FUNC_is_perfect_square 1
 #define FUNC_ipow 1
 #define FUNC_popcnt 1
 #include "ptypes.h"
@@ -461,6 +462,9 @@ static bool xs_validate_integer_inplace(pTHX_ SV* svn, uint32_t mask);
 static SV* xs_to_bigint(pTHX_ SV* r);
 static SV* xs_to_canonical(pTHX_ SV* sv);
 static void xs_aref_to_canonical(pTHX_ SV* aref, const char* name);
+#if HAVE_FACTOR128
+static bool xs_is_square128(pTHX_ SV *sv, int *ret);
+#endif
 
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
@@ -1453,6 +1457,17 @@ static bool xs_sv_to_uint128_signmag(pTHX_ uint128_t *n, int *sign, SV *sv)
     return 0;
   if (*n == 0)
     *sign = 0;
+  return 1;
+}
+
+static bool xs_is_square128(pTHX_ SV *sv, int *ret)
+{
+  uint128_t n;
+  int sign;
+
+  if (!xs_sv_to_uint128_signmag(aTHX_ &n, &sign, sv))
+    return 0;
+  *ret = sign >= 0 && is_perfect_square128(n);
   return 1;
 }
 
@@ -2922,7 +2937,7 @@ void is_square(IN SV* svn)
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == 1) {
       switch (ix) {
-        case 0: ret = is_power(n,2); break;
+        case 0: ret = is_perfect_square(n); break;
         case 1: ret = is_carmichael(n); break;
         case 2: ret = is_quasi_carmichael(n); break;
         case 3: ret = is_perfect_power(n); break;
@@ -2941,6 +2956,10 @@ void is_square(IN SV* svn)
         default:break;
       }
     }
+#if HAVE_FACTOR128
+    if (ix == 0 && status == 0 && xs_is_square128(aTHX_ svn, &ret))
+      RETURN_NPARITY(ret);
+#endif
     if (status != 0) RETURN_NPARITY(ret);
     DISPATCHPP_RETURN();
 

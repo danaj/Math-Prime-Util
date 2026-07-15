@@ -493,11 +493,11 @@ bool is_prime128(uint128_t n) {
 }
 
 /*****************************************************************************
- * SQUFOF (Square Form Factorization) for 128-bit inputs.
+ * 128-bit integer square root and SQUFOF (Square Form Factorization).
  *
  * Adapted from squfof126.c (Dana Jacobsen / Ben Buhrow racing SQUFOF).
  * Internal state stays in uint64_t (values are O(sqrt(N*mult)) < 2^63).
- * Only the two places that need N itself use uint128_t:
+ * Only the three places that need N itself use uint128_t:
  *   • isqrt128()  — initial sqrt
  *   • So = (N - Ro^2)/S  — one division during the reduction phase
  *   • gcd(Ro, N)  — gcd at the end of each inner cycle
@@ -520,6 +520,23 @@ static uint64_t isqrt128(uint128_t n) {
   /* r may still be one too high; adjust down */
   while (r * r > n) r--;
   return (uint64_t)r;
+}
+
+bool is_perfect_square128_ret(uint128_t n, uint64_t *root) {
+  uint64_t r;
+  uint32_t m;
+
+  /* Fast filters reject 95.0% of non-squares. */
+  if ((UINT64_C(1) << ((uint64_t)n & 63)) &
+      UINT64_C(0xfdfdfdedfdfcfdec))
+    return 0;
+  m = (uint32_t)(n % 45);
+  if ((UINT64_C(1) << m) & UINT64_C(0xfffffeeb7df6f9ec))
+    return 0;
+
+  r = isqrt128(n);
+  if (root != 0) *root = r;
+  return (uint128_t)r * r == n;
 }
 
 typedef struct {
@@ -1341,8 +1358,7 @@ bool is_semiprime128(uint128_t n) {
   if (is_prime128(n))
     return 0;
 
-  r = isqrt128(n);
-  if ((uint128_t)r * r == n)
+  if (is_perfect_square128_ret(n, &r))
     return is_prime128(r);
 
   factorintp128(&nf, n);
