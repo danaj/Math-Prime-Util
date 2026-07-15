@@ -40,15 +40,21 @@ my @cases = (
   [ 'powint',        q{ my $y = 56; sub { powint($y, $_) } },      'OPCODE', '$_ ok' ],
   [ 'is_odd',        q{sub { is_odd($_) for 1..10 }},              'OPCODE', '$_ ok' ],
   [ 'is_even',       q{sub { is_even($_) for 1..10 }},             'OPCODE', '$_ ok' ],
-  [ 'signint',       q{sub { signint(56) }},                       'OPCODE', 'simple only' ],
-  [ 'signint',       q{ my $x = 56; sub { signint($x) } },         'SUB',    'simple only; lexical' ],
-  [ 'signint',       q{my $x=0; sub{$x+=signint($_) for -5..5}},   'SUB',    '$_ ok' ],
-  [ 'cmpint',        q{sub { cmpint(56, 0) }},                     'OPCODE', 'simple only' ],
-  [ 'cmpint',        q{ my ($a,$b) = (56,0); sub { cmpint($a,$b) } }, 'SUB', 'simple only; lexical' ],
+  [ 'irand',         q{sub { irand }},                              'OPCODE', 'zero argument' ],
+  [ 'irand64',       q{sub { irand64 }},                            'OPCODE', 'zero argument' ],
+  [ 'drand',         q{sub { drand }},                              'OPCODE', 'zero argument, bare' ],
+  [ 'drand',         q{sub { drand() }},                            'OPCODE', 'zero argument' ],
+  [ 'drand',         q{sub { drand(10) }},                          'SUB',    'one argument' ],
+  [ 'signint',       q{sub { signint(56) }},                       'OPCODE', 'literal' ],
+  [ 'signint',       q{ my $x = 56; sub { signint($x) } },         'OPCODE', 'lexical' ],
+  [ 'signint',       q{my $x=0; sub{$x+=signint($_) for -5..5}},   'OPCODE', '$_ ok' ],
+  [ 'cmpint',        q{sub { cmpint(56, 0) }},                     'OPCODE', 'literals' ],
+  [ 'cmpint',        q{ my ($a,$b) = (56,0); sub { cmpint($a,$b) } }, 'OPCODE', 'lexicals' ],
 
   [ 'is_power',      q{sub { is_power(56) }},                      'SUB',    'candidate' ],
   [ 'is_prime',      q{sub { is_prime(56) }},                      'SUB',    'candidate' ],
-  [ 'is_square',     q{sub { is_square(56) }},                     'SUB',    'candidate' ],
+  [ 'is_square',     q{sub { is_square(56) }},                     'OPCODE', 'literal' ],
+  [ 'is_square',     q{my $x=0; sub{$x+=is_square($_) for 1..10}}, 'OPCODE', '$_ ok' ],
   [ 'is_square_free',q{sub { is_square_free(56) }},                'SUB',    'candidate' ],
   [ 'is_congruent',  q{sub { is_congruent(10,1,3) }},              'SUB',    'candidate' ],
   [ 'kronecker',     q{sub { kronecker(5,7) }},                    'SUB',    'candidate' ],
@@ -58,12 +64,9 @@ my @cases = (
   [ 'mulmod',        q{sub { mulmod(5,7,11) }},                    'SUB',    'candidate' ],
   [ 'setcontains',   q{sub { setcontains([1,2,3],2) }},            'SUB',    'candidate' ],
   [ 'setcontainsany',q{sub { setcontainsany([1,2,3],2) }},         'SUB',    'candidate' ],
-  [ 'absint',        q{sub { absint(56) }},                        'OPCODE', 'candidate' ],
-  [ 'absint',        q{ my $x = 56; sub { absint($x) } },          'SUB',    'candidate' ],
-  [ 'negint',        q{sub { negint(56) }},                        'OPCODE', 'candidate' ],
-  [ 'negint',        q{ my $x = 56; sub { negint($x) } },          'SUB',    'candidate' ],
-  [ 'sqrtint',       q{sub { sqrtint(56) }},                       'OPCODE', 'candidate' ],
-  [ 'sqrtint',       q{ my $x = 56; sub { sqrtint($x) } },         'SUB',    'candidate' ],
+  [ 'absint',        q{sub { absint(56) }},                        'SUB',    'candidate' ],
+  [ 'negint',        q{sub { negint(56) }},                        'SUB',    'candidate' ],
+  [ 'sqrtint',       q{sub { sqrtint(56) }},                       'SUB',    'candidate' ],
 );
 
 printf "%-14s %-7s %-7s %s\n", "Function", "Got", "Want", "Notes";
@@ -76,4 +79,3 @@ for my $case (@cases) {
   ($lname,$name) = ($name, $name eq $lname ? '' : $name);
   printf "%-14s %-7s %-7s %s\n", $name, $got, $want, $note;
 }
-

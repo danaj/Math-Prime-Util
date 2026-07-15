@@ -72,8 +72,7 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
   return newop;
 }
 
-/* This is for xop GMP calls that return one bigint-like scalar.
- * All current xops follow this pattern, but be careful when adding later. */
+/* This is for xop GMP calls that return one bigint-like scalar. */
 static void xop_canonicalize_result(pTHX) {
   dSP;
   SV* out = xs_to_canonical(aTHX_ TOPs);
@@ -82,11 +81,26 @@ static void xop_canonicalize_result(pTHX) {
   PUTBACK;
 }
 
+/* Calling call_sv from a custom pp op can let the nested runloop execute the
+ * caller's continuation before call_sv returns.  Hide the current op during
+ * the callback; SAVEOP restores it on both return and croak. */
+static vcall_used_t xop_call_backend(pTHX_ const char* name, int nargs, int minversion) {
+  OP *curop = PL_op;
+  vcall_used_t used = VCALL_USED_NONE;
+  ENTER;
+  SAVEOP();
+  PL_op = NULL;
+  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, nargs, minversion, &used);
+  LEAVE;
+  assert(PL_op == curop);
+  return used;
+}
+
 static OP* xop_dispatch_binary(pTHX_ const char* name, int minversion) {
   dSP;
-  vcall_used_t used = VCALL_USED_NONE;
+  vcall_used_t used;
   PUTBACK;
-  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 2, minversion, &used);
+  used = xop_call_backend(aTHX_ name, 2, minversion);
   if (used == VCALL_USED_GMP) xop_canonicalize_result(aTHX);
   SPAGAIN;
   RETURN;
@@ -94,9 +108,9 @@ static OP* xop_dispatch_binary(pTHX_ const char* name, int minversion) {
 
 static OP* xop_dispatch_unary(pTHX_ const char* name, int minversion) {
   dSP;
-  vcall_used_t used = VCALL_USED_NONE;
+  vcall_used_t used;
   PUTBACK;
-  (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, 1, minversion, &used);
+  used = xop_call_backend(aTHX_ name, 1, minversion);
   if (used == VCALL_USED_GMP) xop_canonicalize_result(aTHX);
   SPAGAIN;
   RETURN;
@@ -117,6 +131,13 @@ static OP* pp_irand64_custom(pTHX) {
 #else
   PUSHs(sv_2mortal(newSVuv(irand64(MY_CXT.randcxt))));
 #endif
+  RETURN;
+}
+
+static OP* pp_drand_custom(pTHX) {
+  dSP;
+  dMY_CXT;
+  PUSHs(sv_2mortal(newSVnv(drand64(MY_CXT.randcxt))));
   RETURN;
 }
 
@@ -236,6 +257,25 @@ static OP* pp_signint_custom(pTHX) { return pp_signint_custom_common(aTHX_ 0, "s
 static OP* pp_is_odd_custom(pTHX)  { return pp_signint_custom_common(aTHX_ 1, "is_odd"); }
 static OP* pp_is_even_custom(pTHX) { return pp_signint_custom_common(aTHX_ 2, "is_even"); }
 
+static OP* pp_is_square_custom(pTHX) {
+  dSP;
+  UV n;
+  int ret;
+  int status = _validate_and_set(&n, aTHX_ TOPs, IFLAG_ANY);
+
+  if (status != 0) {
+    SETs(_sv_const_int(aTHX_ status == 1 && is_perfect_square(n)));
+    RETURN;
+  }
+#if HAVE_FACTOR128
+  if (xs_is_square128(aTHX_ TOPs, &ret)) {
+    SETs(_sv_const_int(aTHX_ ret));
+    RETURN;
+  }
+#endif
+  return xop_dispatch_unary(aTHX_ "is_square", 47);
+}
+
 static OP* pp_cmpint_custom(pTHX) {
   dSP;
   SV *sva = SP[-1], *svb = SP[0];
@@ -268,6 +308,7 @@ static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::_validate_integer_abs", "_validate_integer_abs", "_validate_integer_abs custom op", pp_validate_integer_abs_custom, 1, {0} },
   { "Math::Prime::Util::irand", "irand", "irand custom op", pp_irand_custom, 0, {0} },
   { "Math::Prime::Util::irand64", "irand64", "irand64 custom op", pp_irand64_custom, 0, {0} },
+  { "Math::Prime::Util::drand", "drand", "drand custom op", pp_drand_custom, 0, {0} },
   { "Math::Prime::Util::addint", "addint", "addint custom op", pp_addint_custom, 2, {0} },
   { "Math::Prime::Util::subint", "subint", "subint custom op", pp_subint_custom, 2, {0} },
   { "Math::Prime::Util::add1int", "add1int", "add1int custom op", pp_add1int_custom, 1, {0} },
@@ -279,6 +320,7 @@ static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::powint", "powint", "powint custom op", pp_powint_custom, 2, {0} },
   { "Math::Prime::Util::is_odd", "is_odd", "is_odd custom op", pp_is_odd_custom, 1, {0} },
   { "Math::Prime::Util::is_even", "is_even", "is_even custom op", pp_is_even_custom, 1, {0} },
+  { "Math::Prime::Util::is_square", "is_square", "is_square custom op", pp_is_square_custom, 1, {0} },
   { "Math::Prime::Util::cmpint", "cmpint", "cmpint custom op", pp_cmpint_custom, 2, {0} },
   { "Math::Prime::Util::signint", "signint", "signint custom op", pp_signint_custom, 1, {0} },
 

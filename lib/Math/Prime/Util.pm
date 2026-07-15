@@ -8348,9 +8348,10 @@ Different use cases would show things differently.
 
 Some functions use custom ops, set up at compile time, to reduce Perl call
 overhead for fast functions.  Current functions:
-C<irand>, C<irand64>,
+C<irand>, C<irand64>, C<drand>,
 C<addint>, C<subint>, C<add1int>, C<sub1int>, C<mulint>, C<divint>,
 C<modint>, C<cdivint>, C<powint>,
+C<signint>, C<is_odd>, C<is_even>, C<is_square>, C<cmpint>,
 C<_validate_integer>, C<_validate_integer_nonneg>,
 C<_validate_integer_positive>, C<_validate_integer_abs>.
 

@@ -19,6 +19,15 @@ my $BIG_P1 = toint($BIG_P1_S);
 my $BIG_P2 = toint($BIG_P2_S);
 my $BIG_N  = toint($BIG_N_S);
 
+subtest 'drand shape' => sub {
+  my $drand_sub = \&Math::Prime::Util::drand;
+  Math::Prime::Util::srand(123456789);
+  my @got = map { drand() } 1 .. 5;
+  Math::Prime::Util::srand(123456789);
+  my @expected = map { $drand_sub->() } 1 .. 5;
+  is_deeply(\@got, \@expected, 'custom op matches direct XSUB sequence');
+};
+
 subtest 'addint shapes' => sub {
   is("".addint(56, 7), "63", 'native literals');
   is("".addint("56", "7"), "63", 'decimal strings');
@@ -123,6 +132,26 @@ subtest 'signint shapes' => sub {
 
   is(signint($BIG), 1, 'bigint lexical');
   is(signint($BIG_N), -1, 'negative bigint lexical');
+};
+
+subtest 'is_square shapes' => sub {
+  is_deeply([ map { is_square($_) } (-1, 0, 1, 2, 4, 15, 16) ],
+            [0, 1, 1, 0, 1, 0, 1],
+            'native values through $_');
+
+  my $root = toint('12345678901234567890');
+  my $square = mulint($root, $root);
+  is(is_square($square), 1, 'bigint square');
+  is(is_square('765413284212226299051111674934086564882382225721'), 1,
+     'bigint string square');
+  is(is_square(addint($square, 1)), 0, 'bigint nonsquare');
+  is(is_square(negint($square)), 0, 'negative bigint');
+
+  my $is_square_sub = \&Math::Prime::Util::is_square;
+  is($is_square_sub->('340282366920938463426481119284349108225'), 1,
+     'direct XSUB handles largest 128-bit square');
+  is($is_square_sub->('340282366920938463463374607431768211455'), 0,
+     'direct XSUB handles maximum 128-bit integer');
 };
 
 subtest 'cmpint shapes' => sub {
