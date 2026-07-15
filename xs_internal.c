@@ -182,9 +182,21 @@ uint32_t _parse_strnum(const char* s, STRLEN len)
   }
 }
 
+/* Copy an unknown object's string representation into a plain scalar.  This
+ * lets validation and native conversion use the same overloaded value. */
+static SV* _stringify_unknown_integer_object(pTHX_ SV* n)
+{
+  if (sv_isobject(n) && !_sv_is_bigint(aTHX_ n)) {
+    STRLEN len;
+    const char *s = SvPV(n, len);
+    return sv_2mortal(newSVpvn(s, len));
+  }
+  return n;
+}
+
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
- * Returns 0 if it is an object or a string too large for a UV.
+ * Returns 0 for a validated integer that is not safe to process natively.
  * Returns 1/-1 if it is good to process by XS.
  * TODO: it would be useful to know the sign even if returning 0 for bigint.
  */
@@ -193,7 +205,7 @@ int _validate_int(pTHX_ SV* n, int negok)
   const char* mustbe = (negok) ? "must be an integer" : "must be a non-negative integer";
   const char* sptr;
   STRLEN len;
-  uint32_t stype, isbignum = 0;
+  uint32_t stype, isbignum = 0, isunknown = 0;
 
   /* TODO: magic, grok_number, etc. */
   if (SVNUMTEST(n)) { /* If defined as number, use it */
@@ -203,17 +215,21 @@ int _validate_int(pTHX_ SV* n, int negok)
   }
   if (sv_isobject(n)) {
     isbignum = _sv_is_bigint(aTHX_ n);
-    if (!isbignum) return 0;
+    isunknown = !isbignum;
   }
   if (!SvOK(n))  croak("Parameter must be defined");
-  if (SvGAMAGIC(n) && !isbignum)   sptr = SvPV(n, len);
-  else                             sptr = SvPV_nomg(n, len);
+  if (isunknown || (SvGAMAGIC(n) && !isbignum)) sptr = SvPV(n, len);
+  else                                          sptr = SvPV_nomg(n, len);
   if (len == 0 || sptr == 0)  croak("Parameter %s", mustbe);
   stype = _parse_strnum(sptr, len);
-  if (stype == SNUMFLAG_UV)      return 1;
-  if (negok || !(stype & SNUMFLAG_NEG)) {
-    if (stype == SNUMFLAG_NEG)   return -1;
-    if (stype & SNUMFLAG_BIGINT) return 0;
+  if (!(stype & SNUMFLAG_NEG) || negok) {
+    switch (stype) {
+      case SNUMFLAG_UV:                    return isunknown ? 0 : 1;
+      case SNUMFLAG_NEG:                   return isunknown ? 0 : -1;
+      case SNUMFLAG_BIGINT:
+      case (SNUMFLAG_NEG|SNUMFLAG_BIGINT): return 0;
+      default:                             break;
+    }
   }
   croak("Parameter '%" SVf "' %s", n, mustbe);
 }
@@ -222,6 +238,7 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
   int status;
 
   if (svn == 0) croak("Parameter must be defined");
+
   /* Streamline the typical path of input being a native integer. */
   if (SVNUMTEST(svn)) {
     IV n = SvIVX(svn);
@@ -244,6 +261,7 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
     return -1;
   }
 
+  svn = _stringify_unknown_integer_object(aTHX_ svn);
   status = _validate_int( aTHX_ svn, !(mask & (IFLAG_NONNEG|IFLAG_POS)) );
   if (status == 1) {
     UV n = my_svuv(svn);

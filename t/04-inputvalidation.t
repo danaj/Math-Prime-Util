@@ -3,11 +3,21 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/toint next_prime/;
+use Math::Prime::Util qw/toint next_prime is_square urandomm vecsum/;
 use Math::BigInt try=>"GMP,Pari";
 use Math::BigFloat;
 use Config;
 use Carp;
+
+{
+  package MPU::Test::IntegerObject;
+  use overload '""' => sub { ${$_[0]} }, fallback => 0;
+  sub new {
+    my($class, $value) = @_;
+    bless \$value, $class;
+  }
+}
+package main;
 
 my @incorrect = (
   -4,
@@ -45,6 +55,7 @@ plan tests => 2                      # undefined and empty string
             + 2                      # infinity and nan
             + 2                      # internal validators normalize scalar ints
             + 1                      # internal validators reject coderefs
+            + 8                      # unknown object integer validation
             + 7                      # internal canonicalization helper
             + 1;                     # long invalid string
 
@@ -64,6 +75,35 @@ foreach my $v (@incorrect) {
 
 while (my($v, $expect) = each (%correct)) {
   is("".next_prime($v), $expect, "Correct:      next_prime($v)");
+}
+
+{
+  my $class = 'MPU::Test::IntegerObject';
+  my $big = "10000000000000000000000012";
+  my $square = "765413284212226299051111674934086564882382225721";
+  my $negative = $class->new(-4);
+  my $noninteger = $class->new("4.5");
+  my $plain = bless({}, "MPU::Test::PlainObject");
+  my $zero = $class->new(0);
+
+  is(next_prime($class->new(4)), 5,
+     "integer object converts to native input");
+  is("".next_prime($class->new($big)), "10000000000000000000000013",
+     "big integer object remains valid non-native input");
+  is("".vecsum($class->new($big), $class->new(1)),
+     "10000000000000000000000013",
+     "integer objects are validated for direct string processing");
+  is(is_square($class->new($square)), 1,
+     "integer object works in accelerated bigint path");
+
+  eval { next_prime($negative); };
+  like($@, $qrnn, "negative integer object respects non-negative input");
+  eval { is_square($noninteger); };
+  like($@, qr/ must be an integer/, "non-integer object is rejected");
+  eval { is_square($plain); };
+  like($@, qr/ must be an integer/, "plain object is rejected");
+  eval { urandomm($zero); };
+  like($@, qr/ must be a positive integer/, "zero object respects positive input");
 }
 
 # The next two tests really are not critical, but are nice to check.
