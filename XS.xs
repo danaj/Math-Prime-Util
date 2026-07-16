@@ -1108,11 +1108,14 @@ static void reverse_uv_array(UV *L, size_t len)
   { \
     size_t k_, alen_ = in_alen; \
     AV* av_ = newAV(); \
-    av_extend(av_, (SSize_t)alen_-1); \
-    SV **ar_ = AvARRAY(av_); \
-    for (k_ = 0; k_ < alen_; k_++) \
-      ar_[k_] = NEWSVINT(sign,arr[k_]); \
-    AvFILLp(av_) = (SSize_t)alen_-1; \
+    if (alen_ > 0) { \
+      SV **ar_; \
+      av_extend(av_, (SSize_t)alen_-1); \
+      av_fill(av_, (SSize_t)alen_-1); \
+      ar_ = AvARRAY(av_); \
+      for (k_ = 0; k_ < alen_; k_++) \
+        ar_[k_] = NEWSVINT(sign,arr[k_]); \
+    } \
     Safefree(arr); \
     ST(0) = sv_2mortal(newRV_noinc((SV*) av_)); \
     XSRETURN(1); \
@@ -7683,7 +7686,7 @@ void forsetproduct (SV* block, ...)
         }
         if (i < 0)
           break;
-        if (AvFILLp(av) != lastarg || AvARRAY(av) != arr) {
+        if (av_count(av) != (Size_t)narrays || AvARRAY(av) != arr) {
           av_fill(av, lastarg);
           arr = AvARRAY(av);
         }

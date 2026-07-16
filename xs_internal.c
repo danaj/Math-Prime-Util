@@ -458,19 +458,19 @@ bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, UV base)
 int _compare_array_refs(pTHX_ SV* a, SV* b)
 {
   AV *ava, *avb;
-  SSize_t i, alen, blen;
+  Size_t i, alen, blen;
   if ( ((!SvROK(a)) || (SvTYPE(SvRV(a)) != SVt_PVAV)) ||
        ((!SvROK(b)) || (SvTYPE(SvRV(b)) != SVt_PVAV)) )
     return -1;
   ava = (AV*) SvRV(a);
   avb = (AV*) SvRV(b);
-  alen = av_len(ava);
-  blen = av_len(avb);
+  alen = av_count(ava);
+  blen = av_count(avb);
   if (alen != blen)
     return 0;
-  for (i = 0; i <= alen; i++) {
-    SV** iva = av_fetch(ava, i, 0);
-    SV** ivb = av_fetch(avb, i, 0);
+  for (i = 0; i < alen; i++) {
+    SV** iva = av_fetch(ava, (SSize_t)i, 0);
+    SV** ivb = av_fetch(avb, (SSize_t)i, 0);
     SV *sva, *svb;
     int res;
 

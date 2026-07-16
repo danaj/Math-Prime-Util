@@ -160,7 +160,7 @@ typedef __int8 int8_t;
 #define NBYTES(bits)  ( ((bits)+8-1) / 8 )
 
 #define MAX_SIZET     ((Size_t)(-1))
-#define MAX_SSIZET    ((SSize_t)((Size_t)(-1) >> 1))
+#define MAX_SSIZET    ((SSize_t)(MAX_SIZET >> 1))
 
 #define MPUassert(c,text) if (!(c)) { croak("Math::Prime::Util internal error: " text); }
 #define MPUverbose(level,fmt,...) \

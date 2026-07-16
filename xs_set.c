@@ -182,10 +182,10 @@ static SV* set_arrayref_from_uv_array(pTHX_ size_t len, UV *data, int sign)
   if (len > 0) {
     SV **ar;
     av_extend(av, (SSize_t)len - 1);
+    av_fill(av, (SSize_t)len - 1);
     ar = AvARRAY(av);
     for (i = 0; i < len; i++)
       ar[i] = NEWSVINT(sign, data[i]);
-    AvFILLp(av) = (SSize_t)len - 1;
   }
   Safefree(data);
   return newRV_noinc((SV*)av);
@@ -201,8 +201,10 @@ static SV* set_arrayref_from_sv_merge(pTHX_ SV **aa, size_t alen, SV **bb, size_
   size_t rlen = 0, ia = 0, ib = 0;
   SV **ar;
 
-  if (maxlen > 0)
+  if (maxlen > 0) {
     av_extend(av, (SSize_t)maxlen - 1);
+    av_fill(av, (SSize_t)maxlen - 1);
+  }
   ar = AvARRAY(av);
 
   while (ia < alen && ib < blen) {
@@ -221,7 +223,7 @@ static SV* set_arrayref_from_sv_merge(pTHX_ SV **aa, size_t alen, SV **bb, size_
   }
   if (inc_lt) while (ia < alen) ar[rlen++] = SvREFCNT_inc(aa[ia++]);
   if (inc_gt) while (ib < blen) ar[rlen++] = SvREFCNT_inc(bb[ib++]);
-  AvFILLp(av) = (SSize_t)rlen - 1;
+  av_fill(av, (SSize_t)rlen - 1);
 
   return newRV_noinc((SV*)av);
 }

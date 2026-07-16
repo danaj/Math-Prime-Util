@@ -287,7 +287,7 @@ static int my_sprint(char* ptr, UV val) {
 }
 static bool write_buf(int fd, char* buf, char* bend) {
   while (buf < bend) {
-    ssize_t res = write(fd, buf, bend-buf);
+    SSize_t res = write(fd, buf, bend-buf);
     if (res < 0) {
       if (errno == EINTR) continue;
       return 0;
@@ -686,7 +686,7 @@ unsigned char* range_issquarefree(UV lo, UV hi) {
   UV i, p2, range, sqrthi;
 
   if (hi < lo) return 0;
-  if (hi-lo == UV_MAX || hi-lo+1 > (UV)((Size_t)((SSize_t)-1)))
+  if (hi-lo == UV_MAX || hi-lo+1 > (UV)MAX_SIZET)
     croak("range_issquarefree: range too large");
 
   range = hi - lo + 1;
