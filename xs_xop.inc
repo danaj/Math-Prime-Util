@@ -308,6 +308,26 @@ static OP* pp_cmpint_custom(pTHX) {
   RETURN;
 }
 
+static OP* pp_kronecker_custom(pTHX) {
+  dSP;
+  SV *sva = SP[-1], *svb = SP[0];
+  int astatus, bstatus, ret;
+  UV a, b;
+
+  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+  if (astatus != 0 && bstatus != 0) {
+    if (bstatus == 1)
+      ret = (astatus == 1) ? kronecker_uu(a, b) : kronecker_su((IV)a, b);
+    else
+      ret = (astatus == 1) ? kronecker_uu(a, neg_iv(b)) : -kronecker_su((IV)a, neg_iv(b));
+    SP -= 1;
+    SETs(_sv_const_int(aTHX_ ret));
+    RETURN;
+  }
+  return xop_dispatch_binary(aTHX_ "kronecker", 17);
+}
+
 static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::_validate_integer", "_validate_integer", "_validate_integer custom op", pp_validate_integer_custom, 1, {0} },
   { "Math::Prime::Util::_validate_integer_nonneg", "_validate_integer_nonneg", "_validate_integer_nonneg custom op", pp_validate_integer_nonneg_custom, 1, {0} },
@@ -329,6 +349,7 @@ static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::is_even", "is_even", "is_even custom op", pp_is_even_custom, 1, {0} },
   { "Math::Prime::Util::is_square", "is_square", "is_square custom op", pp_is_square_custom, 1, {0} },
   { "Math::Prime::Util::cmpint", "cmpint", "cmpint custom op", pp_cmpint_custom, 2, {0} },
+  { "Math::Prime::Util::kronecker", "kronecker", "kronecker custom op", pp_kronecker_custom, 2, {0} },
   { "Math::Prime::Util::signint", "signint", "signint custom op", pp_signint_custom, 1, {0} },
 
   /* We considered absint, negint, sqrtint.  Returning a possible bigint from

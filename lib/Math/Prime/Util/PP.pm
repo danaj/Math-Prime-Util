@@ -89,6 +89,14 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mpowint = \&Math::Prime::Util::powint;
 *Madd1int = \&Math::Prime::Util::add1int;
 *Msub1int = \&Math::Prime::Util::sub1int;
+*Mis_odd = \&Math::Prime::Util::is_odd;
+*Mis_even = \&Math::Prime::Util::is_even;
+*Mcmpint = \&Math::Prime::Util::cmpint;
+*Mkronecker = \&Math::Prime::Util::kronecker;
+# Mis_square
+*Mdrand = \&Math::Prime::Util::drand;
+*Mirand = \&Math::Prime::Util::irand;
+*Mirand64 = \&Math::Prime::Util::irand64;
 }
 
 *Mtoint = \&Math::Prime::Util::toint;
@@ -99,7 +107,6 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mrootint = \&Math::Prime::Util::rootint;
 *Mlogint = \&Math::Prime::Util::logint;
 *Mnegint = \&Math::Prime::Util::negint;
-*Mcmpint = \&Math::Prime::Util::cmpint;
 *Mlshiftint = \&Math::Prime::Util::lshiftint;
 *Mrshiftint = \&Math::Prime::Util::rshiftint;
 *Mdivrem  = \&Math::Prime::Util::divrem;
@@ -129,13 +136,10 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mis_prime_power = \&Math::Prime::Util::is_prime_power;
 *Mis_power = \&Math::Prime::Util::is_power;
 *Mis_square_free = \&Math::Prime::Util::is_square_free;
-*Mis_odd = \&Math::Prime::Util::is_odd;
-*Mis_even = \&Math::Prime::Util::is_even;
 *Mis_congruent = \&Math::Prime::Util::is_congruent;
 *Mis_divisible = \&Math::Prime::Util::is_divisible;
 *Mchinese = \&Math::Prime::Util::chinese;
 *Mvaluation = \&Math::Prime::Util::valuation;
-*Mkronecker = \&Math::Prime::Util::kronecker;
 *Mmoebius = \&Math::Prime::Util::moebius;
 *Mmertens = \&Math::Prime::Util::mertens;
 *Mtotient = \&Math::Prime::Util::euler_phi;
@@ -13409,8 +13413,8 @@ sub urandomb {
   validate_integer_nonneg($n);
   croak "urandomb: bits must be between 0 and ",MAX_RANDOM_BITS if $n > MAX_RANDOM_BITS;
   return 0 if $n <= 0;
-  return ( Math::Prime::Util::irand() >> (32-$n) ) if $n <= 32;
-  return ( Math::Prime::Util::irand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
+  return ( Mirand() >> (32-$n) ) if $n <= 32;
+  return ( Mirand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
   my $nbytes = ($n+7)>>3;
   croak "urandomb: input too large" if $nbytes > 2147483646;
   my $randstr = Math::Prime::Util::random_bytes($nbytes);
@@ -13425,10 +13429,10 @@ sub urandomm {
   my $r;
   if ($n <= 4294967295) {
     my $rmin = (4294967295 - ($n-1)) % $n;
-    do { $r = Math::Prime::Util::irand(); } while $r < $rmin;
+    do { $r = Mirand(); } while $r < $rmin;
   } elsif (!ref($n)) {
     my $rmin = (~0 - ($n-1)) % $n;
-    do { $r = Math::Prime::Util::irand64(); } while $r < $rmin;
+    do { $r = Mirand64(); } while $r < $rmin;
   } else {
     my $nbytes   = (int(3.322*length("$n")) + 15) >> 3;
     my $rmax     = Msub1int(Mpowint(2, $nbytes*8));
@@ -13666,7 +13670,7 @@ sub random_unrestricted_semiprime {
       127 => 0.0490620204315701,
     );
     my ($p,$r);
-    $r = Math::Prime::Util::drand();
+    $r = Mdrand();
     for my $prime (2..113,127) {
       next unless defined $M{$prime};
       my $PR = $M{$prime} / $b  +  0.19556 / $prime;
@@ -13688,7 +13692,7 @@ sub random_unrestricted_semiprime {
       my $weight = $M + log($b * log(2)/2);
       my $minr = log(log(131));
       do {
-        $r  = Math::Prime::Util::drand($weight) - $M;
+        $r  = Mdrand($weight) - $M;
       } while $r < $minr;
       my $a;
       if ($r <= 3.54) {

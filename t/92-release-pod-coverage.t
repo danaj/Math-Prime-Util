@@ -204,6 +204,7 @@ sub mpu_PPM_regex {
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
       Mlucasumod
+      Mdrand Mirand Mirand64
       Saddint Ssubint Smulint Sdivint Spowint Surandomm
       Mtoint
       validate_integer     validate_integer_nonneg

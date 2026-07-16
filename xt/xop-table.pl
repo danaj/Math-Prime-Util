@@ -51,13 +51,13 @@ my @cases = (
   [ 'cmpint',        q{sub { cmpint(56, 0) }},                     'OPCODE', 'literals' ],
   [ 'cmpint',        q{ my ($a,$b) = (56,0); sub { cmpint($a,$b) } }, 'OPCODE', 'lexicals' ],
 
-  [ 'is_power',      q{sub { is_power(56) }},                      'SUB',    'candidate' ],
-  [ 'is_prime',      q{sub { is_prime(56) }},                      'SUB',    'candidate' ],
+  [ 'kronecker',     q{sub { kronecker(5,7) }},                    'OPCODE', 'literals' ],
   [ 'is_square',     q{sub { is_square(56) }},                     'OPCODE', 'literal' ],
   [ 'is_square',     q{my $x=0; sub{$x+=is_square($_) for 1..10}}, 'OPCODE', '$_ ok' ],
+  [ 'is_power',      q{sub { is_power(56) }},                      'SUB',    'candidate' ],
+  [ 'is_prime',      q{sub { is_prime(56) }},                      'SUB',    'candidate' ],
   [ 'is_square_free',q{sub { is_square_free(56) }},                'SUB',    'candidate' ],
   [ 'is_congruent',  q{sub { is_congruent(10,1,3) }},              'SUB',    'candidate' ],
-  [ 'kronecker',     q{sub { kronecker(5,7) }},                    'SUB',    'candidate' ],
   [ 'urandomm',      q{sub { urandomm(10) }},                      'SUB',    'candidate' ],
   [ 'urandomr',      q{sub { urandomr(1,10) }},                    'SUB',    'candidate' ],
   [ 'addmod',        q{sub { addmod(5,7,11) }},                    'SUB',    'candidate' ],
@@ -69,7 +69,7 @@ my @cases = (
   [ 'sqrtint',       q{sub { sqrtint(56) }},                       'SUB',    'candidate' ],
 );
 
-printf "%-14s %-7s %-7s %s\n", "Function", "Got", "Want", "Notes";
+printf "%-14s %-7s %-7s %s\n", "Function", "Got", "Expect", "Notes";
 printf "%-14s %-7s %-7s %s\n", "-" x 14, "-" x 7, "-" x 7, "-" x 24;
 
 my $lname = 'xxxxxx';
