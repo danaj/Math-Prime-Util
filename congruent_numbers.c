@@ -44,24 +44,22 @@ static void remove_square_part(factored_t *nf)   /* Turn n*c^2 into n */
 }
 
 /* Cycle through n! permutations of factors (if used). */
-static factored_t permute_odd_factors(const factored_t NF, UV k)
+static void permute_odd_factors(factored_t *nf, const factored_t *NF, UV k)
 {
-  factored_t nf;
   int      permvec[MPU_MAX_DFACTORS];
-  bool     iseven = NF.f[0] == 2;
-  uint32_t noddfac = NF.nfactors - iseven;
+  bool     iseven = NF->f[0] == 2;
+  uint32_t noddfac = NF->nfactors - iseven;
   uint16_t i;
 
-  nf.n = NF.n;
-  nf.nfactors = NF.nfactors;
-  if (iseven) { nf.f[0] = 2;  nf.e[0] = NF.e[0]; }
+  nf->n = NF->n;
+  nf->nfactors = NF->nfactors;
+  if (iseven) { nf->f[0] = 2;  nf->e[0] = NF->e[0]; }
 
   num_to_perm(k, noddfac, permvec);
   for (i = 0; i < noddfac; i++) {
-    nf.f[i + iseven] = NF.f[permvec[i] + iseven];
-    nf.e[i + iseven] = NF.e[permvec[i] + iseven];
+    nf->f[i + iseven] = NF->f[permvec[i] + iseven];
+    nf->e[i + iseven] = NF->e[permvec[i] + iseven];
   }
-  return nf;
 }
 
 /******************************************************************************/
@@ -171,8 +169,8 @@ static bool _can_orderk(uint32_t nfac, const UV fac[]) {
 }
 
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
-static int _is_congruent_number_filter1(const factored_t nf) {
-  const UV n         = nf.n;
+static int _is_congruent_number_filter1(const factored_t *nf) {
+  const UV n         = nf->n;
   const bool isodd   = n & 1;
   const bool iseven  = !isodd;
 
@@ -190,14 +188,14 @@ static int _is_congruent_number_filter1(const factored_t nf) {
   if (n % 8 == 5 || n % 8 == 6 || n % 8 == 7)  return 1;
 
   /* No filter here handles more than 4 odd factors */
-  if (nf.nfactors-iseven > 4)  return -1;
+  if (nf->nfactors-iseven > 4)  return -1;
 
   { /* Sort odd factors into fac array by mod 8 */
     uint32_t i;
-    for (i=0; i<nf.nfactors; i++) if (nf.f[i] % 8 == 1) fac[nfac++] = nf.f[i];
-    for (i=0; i<nf.nfactors; i++) if (nf.f[i] % 8 == 3) fac[nfac++] = nf.f[i];
-    for (i=0; i<nf.nfactors; i++) if (nf.f[i] % 8 == 5) fac[nfac++] = nf.f[i];
-    for (i=0; i<nf.nfactors; i++) if (nf.f[i] % 8 == 7) fac[nfac++] = nf.f[i];
+    for (i=0; i<nf->nfactors; i++) if (nf->f[i] % 8 == 1) fac[nfac++] = nf->f[i];
+    for (i=0; i<nf->nfactors; i++) if (nf->f[i] % 8 == 3) fac[nfac++] = nf->f[i];
+    for (i=0; i<nf->nfactors; i++) if (nf->f[i] % 8 == 5) fac[nfac++] = nf->f[i];
+    for (i=0; i<nf->nfactors; i++) if (nf->f[i] % 8 == 7) fac[nfac++] = nf->f[i];
   }
   p = fac[0];
   q = (nfac > 1) ? fac[1] : 0;
@@ -403,10 +401,10 @@ static int _is_congruent_number_filter1(const factored_t nf) {
  */
 
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
-static int _is_congruent_number_filter2(const factored_t nf) {
-  const bool     iseven  = nf.f[0] == 2;
-  const uint32_t noddfac = nf.nfactors - iseven;
-  const UV      *oddfac  = nf.f + iseven;
+static int _is_congruent_number_filter2(const factored_t *nf) {
+  const bool     iseven  = nf->f[0] == 2;
+  const uint32_t noddfac = nf->nfactors - iseven;
+  const UV      *oddfac  = nf->f + iseven;
   uint16_t i;
   bool allmod3;
 
@@ -434,10 +432,10 @@ static int _is_congruent_number_filter2(const factored_t nf) {
  */
 
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
-static int _is_congruent_number_filter3(const factored_t nf) {
-  const UV *fac      = nf.f;
-  const UV n         = nf.n;
-  const int nfactors = nf.nfactors;
+static int _is_congruent_number_filter3(const factored_t *nf) {
+  const UV *fac      = nf->f;
+  const UV n         = nf->n;
+  const int nfactors = nf->nfactors;
   int i, j;
 
   /* Reinholz 2013 https://central.bac-lac.gc.ca/.item?id=TC-BVAU-44941&op=pdf
@@ -621,15 +619,16 @@ static int _is_congruent_number_filter3(const factored_t nf) {
 
 int is_congruent_number_filter(UV n) {
   int res;
-  factored_t nf = factorint(n);
+  factored_t nf;
+  factorintp(&nf, n);
   remove_square_part(&nf);
   if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
 
-  res = _is_congruent_number_filter1(nf);
+  res = _is_congruent_number_filter1(&nf);
   if (res != -1) return res;
-  res = _is_congruent_number_filter2(nf);
+  res = _is_congruent_number_filter2(&nf);
   if (res != -1) return res;
-  res = _is_congruent_number_filter3(nf);
+  res = _is_congruent_number_filter3(&nf);
   if (res != -1) return res;
 
 #if 0
@@ -638,8 +637,9 @@ int is_congruent_number_filter(UV n) {
     if (noddfac > 3) {
       UV i, nperms = factorial(noddfac);
       for (i = 1; res == -1 && i < nperms; i++) {
-        factored_t trynf = permute_odd_factors(nf, i);
-        res = _is_congruent_number_filter3(trynf);
+        factored_t trynf;
+        permute_odd_factors(&trynf, &nf, i);
+        res = _is_congruent_number_filter3(&trynf);
       }
     }
   }
@@ -648,7 +648,8 @@ int is_congruent_number_filter(UV n) {
   return res;
 }
 bool is_congruent_number_tunnell(UV n) {
-  factored_t nf = factorint(n);
+  factored_t nf;
+  factorintp(&nf, n);
   remove_square_part(&nf);
   if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
 
@@ -661,18 +662,19 @@ bool is_congruent_number_tunnell(UV n) {
 bool is_congruent_number(UV n)
 {
   int res;
-  factored_t nf = factorint(n);
+  factored_t nf;
+  factorintp(&nf, n);
   remove_square_part(&nf);
   if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
 
   /* Relatively simple filters.  Order doesn't matter. */
-  res = _is_congruent_number_filter1(nf);
+  res = _is_congruent_number_filter1(&nf);
   if (res != -1) return res;
   /* More complicated filters.  Permutation is handled. */
-  res = _is_congruent_number_filter2(nf);
+  res = _is_congruent_number_filter2(&nf);
   if (res != -1) return res;
   /* More complicated filters.  We haven't implemented permutations. */
-  res = _is_congruent_number_filter3(nf);
+  res = _is_congruent_number_filter3(&nf);
   if (res != -1) return res;
 
   if (0) {  /* Try filter3 with all odd factor permutations */
@@ -680,8 +682,9 @@ bool is_congruent_number(UV n)
     if (noddfac > 3) {
       UV i, nperms = factorial(noddfac);
       for (i = 1; res == -1 && i < nperms; i++) {
-        factored_t trynf = permute_odd_factors(nf, i);
-        res = _is_congruent_number_filter3(trynf);
+        factored_t trynf;
+        permute_odd_factors(&trynf, &nf, i);
+        res = _is_congruent_number_filter3(&trynf);
       }
     }
     if (res != -1) return res;
