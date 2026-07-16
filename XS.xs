@@ -1248,7 +1248,7 @@ static void reverse_uv_array(UV *L, size_t len)
     } \
   } while(0)
 
-/* str is malloc/free owned.  If sign < 0, prepend a '-' character. */
+/* str is strint_free owned.  If sign < 0, prepend a '-' character. */
 #define RETURN_SIGN_STRINT_STR(sign, str, len) \
   do { \
     SV *rsv_; \
@@ -1260,7 +1260,7 @@ static void reverse_uv_array(UV *L, size_t len)
       rsv_ = sv_2mortal(newSVpvn("-", 1)); \
       sv_catpvn(rsv_, rstr_, rlen_); \
     } \
-    free(rstr_); /* note free, not Safefree */ \
+    strint_free(rstr_); \
     RETURN_SV_CANONICAL(rsv_); \
   } while (0)
 

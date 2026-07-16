@@ -3,6 +3,10 @@
 
 #include "ptypes.h"
 
+/* Free a malloc-owned result returned by a strint function.  Keeping the
+ * matching free in strops is required by wrapped allocators on Windows. */
+extern void strint_free(void* ptr);
+
 /* Compare two signed decimal integer strings.
  * Returns -1, 0, or 1 like strcmp. */
 extern int  strint_cmp(const char* a, STRLEN alen, const char* b, STRLEN blen);

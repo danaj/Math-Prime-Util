@@ -11,6 +11,11 @@
 /* Helper functions. */
 /******************************************************************************/
 
+void strint_free(void* ptr)
+{
+  free(ptr);
+}
+
 /* Write UV v as a decimal string; return length.  buf must have >= 21 bytes. */
 static STRLEN uv_to_str(char* buf, UV v)
 {
@@ -2293,7 +2298,7 @@ static void b9_root_ui(b9_t *r, const b9_t *n,
     UV q_exp = (r_est_f >= 1.0) ? (UV)r_est_f : 0;
     double frac = r_est_f - (double)q_exp;
     UV r_mantissa = (UV)(pow(10.0, frac) * 1.0002e8) + 1;
-    char mant_buf[12];
+    char mant_buf[24];
     STRLEN mlen = uv_to_str(mant_buf, r_mantissa);
     if (q_exp + 1 >= mlen) {
       char *r_char = (char*) malloc(q_exp + 4);
