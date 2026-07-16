@@ -852,9 +852,8 @@ int kronecker_su(IV a, UV b) {
     if ((r&1) && IS_MOD8_3OR5(a))  s = -s;
     b >>= r;
   }
-  rem = (-a) % b;
-  a = (rem == 0) ? 0 : b-rem;
-  return kronecker_uu_sign(a, b, s);
+  rem = ((UV)0 - (UV)a) % b;
+  return kronecker_uu_sign((rem == 0) ? 0 : b-rem, b, s);
 }
 
 int kronecker_ss(IV a, IV b) {
@@ -862,7 +861,7 @@ int kronecker_ss(IV a, IV b) {
     return (b & 1)  ?  kronecker_uu_sign(a, b, 1)  :  kronecker_uu(a,b);
   if (b >= 0)
     return kronecker_su(a, b);
-  return kronecker_su(a, -b) * ((a < 0) ? -1 : 1);
+  return kronecker_su(a, (UV)0 - (UV)b) * ((a < 0) ? -1 : 1);
 }
 
 #define MAX_PNPRIM ( (BITS_PER_WORD == 64) ? 15 : 9 )
@@ -1056,13 +1055,15 @@ UV rising_factorial(UV n, UV m)
 
 IV falling_factorial_s(IV n, UV m)
 {
-  UV r = (n>=0) ? falling_factorial(n,m) : rising_factorial(-n,m);
+  UV un = (n >= 0) ? (UV)n : (UV)0 - (UV)n;
+  UV r = (n >= 0) ? falling_factorial(un,m) : rising_factorial(un,m);
   if (r >= IV_MAX) return IV_MAX;  /* Overflow */
   return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
 }
 IV rising_factorial_s(IV n, UV m)
 {
-  UV r = (n>=0) ? rising_factorial(n,m) : falling_factorial(-n,m);
+  UV un = (n >= 0) ? (UV)n : (UV)0 - (UV)n;
+  UV r = (n >= 0) ? rising_factorial(un,m) : falling_factorial(un,m);
   if (r >= IV_MAX) return IV_MAX;  /* Overflow */
   return (n < 0 && (m&1)) ? -(IV)r : (IV)r;
 }
@@ -1712,7 +1713,7 @@ UV ivmod(IV a, UV n) {   /* a mod n with signed a (0 <= r < n) */
   if (a >= 0) {
     return (UV)(a) % n;
   } else {
-    UV r = (UV)(-a) % n;
+    UV r = ((UV)0 - (UV)a) % n;
     return (r == 0)  ?  0  :  n-r;
   }
 }
@@ -2021,7 +2022,7 @@ bool prep_pow_inv(UV *a, UV *k, int kstatus, UV n) {
   if (kstatus < 0) {
     if (*a != 0) *a = modinverse(*a, n);
     if (*a == 0) return 0;
-    *k = -(IV)*k;
+    *k = (UV)0 - *k;
   }
   return 1;
 }

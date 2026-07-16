@@ -5187,8 +5187,9 @@ void divrem(IN SV* sva, IN SV* svb)
       XSRETURN(2);
     } else if (astatus != 0 && bstatus != 0 &&
                _validate_and_set((UV*)&iD, aTHX_ sva, IFLAG_IV) != 0 &&
-               _validate_and_set((UV*)&id, aTHX_ svb, IFLAG_IV) != 0) {
-      /* Both values fit in an IV */
+               _validate_and_set((UV*)&id, aTHX_ svb, IFLAG_IV) != 0 &&
+               iD != IV_MIN && id != IV_MIN) {
+      /* Both values, and their negations, fit in an IV */
       IV q, r;
       switch (ix) {
         case 0:  edivrem(&q, &r, iD, id); break;
@@ -5263,7 +5264,8 @@ gcdext(IN SV* sva, IN SV* svb)
     IV u, v, d, a, b;
   PPCODE:
     if (_validate_and_set((UV*)&a, aTHX_ sva, IFLAG_IV) &&
-        _validate_and_set((UV*)&b, aTHX_ svb, IFLAG_IV)) {
+        _validate_and_set((UV*)&b, aTHX_ svb, IFLAG_IV) &&
+        a != IV_MIN && b != IV_MIN) {
       d = gcdext(a, b, &u, &v, 0, 0);
       XPUSHs(sv_2mortal(newSViv( u )));
       XPUSHs(sv_2mortal(newSViv( v )));

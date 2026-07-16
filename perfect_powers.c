@@ -24,7 +24,7 @@ bool is_perfect_power_neg(UV n) {
 }
 bool is_perfect_power_iv(IV n) {
   if (n < -1) {
-    uint32_t k = powerof(-n);
+    uint32_t k = powerof((UV)0 - (UV)n);
     return (k > 2 && (k & (k-1)) != 0);
   }
   return (n <= 1 || powerof(n) > 1);

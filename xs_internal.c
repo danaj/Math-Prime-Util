@@ -12,13 +12,6 @@
 #include "sort.h"
 #include "xs_internal.h"
 
-#if 0
-UV neg_iv(UV n) {
-  if ((IV)n == IV_MIN)  return (UV_MAX >> 1) + 1;
-  else                  return (UV) (-(IV)n);
-}
-#endif
-
 /* Given 'a' and astatus (-1 means 'a' is an IV), properly mod with n */
 void _mod_with(UV *a, int astatus, UV n) {
   if (n == 0) return;
@@ -254,7 +247,7 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
       *val = (UV)n;
       return 1;
     }
-    if (mask & IFLAG_ABS)    { *val = (UV)(-n); return 1; }
+    if (mask & IFLAG_ABS)    { *val = neg_iv((UV)n); return 1; }
     if (mask & IFLAG_POS)    croak("Parameter '%" SVf "' must be a positive integer", svn);
     if (mask & IFLAG_NONNEG) croak("Parameter '%" SVf "' must be a non-negative integer", svn);
     *val = n;
@@ -272,7 +265,7 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
     *val = n;
   } else if (status == -1) {
     IV n = my_sviv(svn);
-    if (mask & IFLAG_ABS) { *val = (UV)(-n); status = 1; }
+    if (mask & IFLAG_ABS) { *val = neg_iv((UV)n); status = 1; }
     else                  { *val = (UV)n; }
   }
   return status;

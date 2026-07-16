@@ -73,7 +73,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Fix overflow handling in Farey functions on 32-bit builds.
 
-    - Fix tdivrem with negative native inputs on some Windows builds.
+    - Fix native IV_MIN edge cases in several integer functions, including
+      divrem.  Fix tdivrem with negative inputs on some Windows builds.
 
     - lastfor handles die/croak inside loops much better.
 

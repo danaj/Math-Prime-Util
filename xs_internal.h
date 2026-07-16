@@ -119,12 +119,8 @@
 
 #define FETCH_ARREF(name,i) _fetch_arref(aTHX_ avp_ ## name, svarr_ ## name, i)
 
-#if 1
-  /* This is NEGATE_2UV(iv) from handy.h */
-  #define neg_iv(n) ((UV)-((n)+1) + 1U)
-#else
-UV neg_iv(UV n);
-#endif
+/* This is NEGATE_2UV(iv) from handy.h */
+#define neg_iv(n) ((UV)-((n)+1) + 1U)
 
 void _mod_with(UV *a, int astatus, UV n);
 int _sign_cmp(int xsign, UV x, int ysign, UV y);
