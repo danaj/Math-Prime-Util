@@ -5745,14 +5745,14 @@ void chebyshev_theta(IN SV* svn)
     DISPATCHPP_RETURN();  /* Result is FP */
 
 
-#define RETURN_SET_REF(s)   /* Return sorted set values */ \
+#define RETURN_SET_REF(ps)   /* Return sorted set values (ps is iset_t pointer) */ \
   { \
     UV *sdata; \
-    size_t slen = iset_size(s); \
-    int sign = iset_sign(s); \
+    size_t slen = iset_size(ps); \
+    int sign = iset_sign(ps); \
     New(0, sdata, slen, UV); \
-    iset_allvals(s, sdata); \
-    iset_destroy(&s); \
+    iset_allvals(ps, sdata); \
+    iset_destroy(ps); \
     RETURN_LIST_REF( slen, sdata, sign ); \
   }
 #define RETURN_EMPTY_SET_REF()  RETURN_EMPTY_LIST_REF()
@@ -5789,13 +5789,13 @@ void sumset(IN SV* sva, IN SV* svb = 0)
     }
     sign = IARR_TYPE_TO_STATUS(stype);
     /* Sumset */
-    s = iset_create( 10UL * (alen+blen) );
+    iset_create(&s, 10UL * (alen+blen));
     for (i = 0; i < alen; i++)
       for (j = 0; j < blen; j++)
         iset_add(&s, ra[i]+rb[j], sign);
     if (rb != ra) Safefree(rb);
     Safefree(ra);
-    RETURN_SET_REF(s);
+    RETURN_SET_REF(&s);
 
 void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
   PROTOTYPE: &$;$
@@ -5840,7 +5840,7 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
       SAVESPTR(GvSV(bgv));
       GvSV(agv) = asv;
       GvSV(bgv) = bsv;
-      s = iset_create( 4UL * ((size_t)alen + (size_t)blen + 2) );
+      iset_create(&s, 4UL * ((size_t)alen + (size_t)blen + 2));
 #if USE_MULTICALL
       if (!CvISXSUB(subcv)) {
         SC_dMULTICALL;
@@ -5853,7 +5853,7 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
             SC_MULTICALL;
             status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
             if (status != 0)  iset_add(&s, ret, status);
-            if (status == 0 || iset_is_invalid(s)) break;
+            if (status == 0 || iset_is_invalid(&s)) break;
           }
           if (j < blen) break;
         }
@@ -5871,15 +5871,15 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
             cbret = xs_call_cv_noinput_1_sv(aTHX_ subcv);
             status = _validate_and_set(&ret, aTHX_ cbret, IFLAG_ANY);
             if (status != 0)  iset_add(&s, ret, status);
-            if (status == 0 || iset_is_invalid(s)) break;
+            if (status == 0 || iset_is_invalid(&s)) break;
           }
           if (j < blen) break;
         }
       }
-      if (status != 0 && !iset_is_invalid(s)) {
+      if (status != 0 && !iset_is_invalid(&s)) {
         if (rb != ra) Safefree(rb);
         Safefree(ra);
-        RETURN_SET_REF(s);
+        RETURN_SET_REF(&s);
       }
       iset_destroy(&s);
     }
@@ -8240,8 +8240,9 @@ void vecuniq(...)
 
     /* 2. Use an iset if possible. */
     if (j >= items) {
-      iset_t s = iset_create((size_t)items);
+      iset_t s;
       size_t sz, nret = 0;
+      iset_create(&s, (size_t)items);
       for (j = 0, nret = 0; j < items; j++) {
         SV *sv = ST(j);
         UV n = (UV)SvIVX(sv);
@@ -8251,11 +8252,11 @@ void vecuniq(...)
           nret++;
         }
       }
-      if (iset_sign(s) == 0) {
+      if (iset_sign(&s) == 0) {
         iset_destroy(&s);
         croak("vecuniq: iset failure");
       }
-      sz = iset_size(s);
+      sz = iset_size(&s);
       iset_destroy(&s);
       if (!retvals)
         XSRETURN_UV(sz);
@@ -8360,8 +8361,8 @@ void vecsingleton(...)
     /* Try to read native integers.  Bail to PP if something else. */
     len = (size_t) items;
     New(0, L, len, UV);
-    seen = iset_create(len);
-    dups = iset_create(len>>1);
+    iset_create(&seen, len);
+    iset_create(&dups, len>>1);
     itype = IARR_TYPE_ANY;
     for (i = 0; i < len && itype != IARR_TYPE_BAD && SVNUMTEST(ST(i)); i++) {
       IV n = SvIVX(ST(i));
@@ -8374,7 +8375,7 @@ void vecsingleton(...)
       if (!iset_add(&seen, n, sign))
         iset_add(&dups, n, sign);
     }
-    if (iset_is_invalid(seen))  itype = IARR_TYPE_BAD;  /* Poison the type */
+    if (iset_is_invalid(&seen))  itype = IARR_TYPE_BAD;  /* Poison the type */
     iset_destroy(&seen);
     if (i < len || itype == IARR_TYPE_BAD) {
       iset_destroy(&dups);
@@ -8383,13 +8384,13 @@ void vecsingleton(...)
     }
     if (GIMME_V != G_ARRAY) {
       for (i = 0, count = 0; i < len; i++)
-        if (!iset_contains(dups, L[i]))
+        if (!iset_contains(&dups, L[i]))
           count++;
       ST(0) = sv_2mortal(newSVuv(count));
       retlen = 1;
     } else {
       for (i = 0, retlen = 0; i < len; i++)
-        if (!iset_contains(dups, L[i]))
+        if (!iset_contains(&dups, L[i]))
           ST(retlen++) = ST(i);
     }
     iset_destroy(&dups);

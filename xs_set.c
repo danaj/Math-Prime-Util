@@ -341,7 +341,7 @@ bool xs_is_sidon_set(pTHX_ SV* sva, int *ret)
   }
 
   is_sidon = 1;
-  s = iset_create(20UL * len);
+  iset_create(&s, 20UL * len);
   for (i = 0; i < len && is_sidon; i++)
     for (j = i; j < len; j++)
       if (!iset_add(&s, data[i] + data[j], 1))
