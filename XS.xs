@@ -5748,7 +5748,7 @@ void chebyshev_theta(IN SV* svn)
 #define RETURN_SET_REF(s)   /* Return sorted set values */ \
   { \
     UV *sdata; \
-    unsigned long slen = iset_size(s); \
+    size_t slen = iset_size(s); \
     int sign = iset_sign(s); \
     New(0, sdata, slen, UV); \
     iset_allvals(s, sdata); \

@@ -58,7 +58,7 @@ void iset_destroy(iset_t *set) {
   set->arr = 0;
 }
 
-static size_t _iset_pos(const UV* arr, UV mask, UV val) {
+static size_t _iset_pos(const UV* arr, size_t mask, UV val) {
   size_t h = HVAL(val,mask);
   while (arr[h] != 0 && arr[h] != val)
     h = (h+1) & mask;
