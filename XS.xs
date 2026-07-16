@@ -15,6 +15,8 @@
 #define NEED_newRV_noinc
 #define NEED_sv_2pv_flags
 #define NEED_HvNAME_get
+#define NEED_grok_number
+#define NEED_grok_numeric_radix
 #include "ppport.h"
 
 #include "multicall.h"  /* only works in 5.6 and newer */
@@ -3713,22 +3715,30 @@ void convergents(...)
 void bestrational(IN SV* svx, IN SV* svdbound)
   PREINIT:
     UV dbound, P, Q;
+    STRLEN xlen;
+    const char *xstr;
+    int xtype;
   PPCODE:
     SvGETMAGIC(svx);
     if (_validate_and_set(&dbound, aTHX_ svdbound, IFLAG_POS) &&
         SvOK(svx) &&
-        !sv_isobject(svx) &&
-        looks_like_number(svx)) {
-      NV x = SvNV(svx);
-      if (MPU_NV_ISFINITE(x) && bestrational(&P, &Q, x, dbound)) {
-        if (x >= 0.0) {
-          XPUSHs(sv_2mortal(newSVuv(P)));
-          XPUSHs(sv_2mortal(newSVuv(Q)));
-          XSRETURN(2);
-        } else if (P <= IV_MAX) {
-          XPUSHs(sv_2mortal(newSViv(-(IV)P)));
-          XPUSHs(sv_2mortal(newSVuv(Q)));
-          XSRETURN(2);
+        !sv_isobject(svx)) {
+      xstr = SvPV_nomg(svx, xlen);
+      xtype = grok_number(xstr, xlen, 0);
+      if (xtype & (IS_NUMBER_INFINITY | IS_NUMBER_NAN))
+        croak("bestrational: first argument must be a finite real number");
+      if (xtype) {
+        NV x = SvNV(svx);
+        if (MPU_NV_ISFINITE(x) && bestrational(&P, &Q, x, dbound)) {
+          if (x >= 0.0) {
+            XPUSHs(sv_2mortal(newSVuv(P)));
+            XPUSHs(sv_2mortal(newSVuv(Q)));
+            XSRETURN(2);
+          } else if (P <= IV_MAX) {
+            XPUSHs(sv_2mortal(newSViv(-(IV)P)));
+            XPUSHs(sv_2mortal(newSVuv(Q)));
+            XSRETURN(2);
+          }
         }
       }
     }
@@ -5185,7 +5195,7 @@ void divrem(IN SV* sva, IN SV* svb)
         case 1:  fdivrem(&q, &r, iD, id); break;
         case 2:  cdivrem(&q, &r, iD, id); break;
         case 3:
-        default: tdivrem(&q, &r, D, d); break;
+        default: tdivrem(&q, &r, iD, id); break;
       }
       XPUSHs(sv_2mortal(newSViv( q )));
       XPUSHs(sv_2mortal(newSViv( r )));

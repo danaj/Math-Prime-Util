@@ -92,6 +92,11 @@ typedef __int8 int8_t;
 #pragma clang diagnostic ignored "-Wcompound-token-split-by-macro"
 #endif
 
+/* Old MinGW Perl headers redefine the isnan macro without checking first. */
+#if defined(WIN32) && !defined(H_PERL) && defined(isnan)
+#  undef isnan
+#endif
+
 #include "EXTERN.h"
 #include "perl.h"
 

@@ -73,6 +73,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Fix overflow handling in Farey functions on 32-bit builds.
 
+    - Fix tdivrem with negative native inputs on some Windows builds.
+
     - lastfor handles die/croak inside loops much better.
 
     - random_factored_integer dropped the array return for bigints.

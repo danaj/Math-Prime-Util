@@ -610,7 +610,11 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
    *                                1145325184 with <= 16 divisors
    * 64-bit overflow:  2459565884898017280 < n <= 2772864768682229760.
    */
-  if (n >= (BITS_PER_WORD == 64 ? UVCONST(2459565884898017280) : 716636160UL)) {
+#if BITS_PER_WORD == 64
+  if (n >= UVCONST(2459565884898017280)) {
+#else
+  if (n >= UVCONST(716636160)) {
+#endif
     *ntotients = UV_MAX;
     return totlist;
   }

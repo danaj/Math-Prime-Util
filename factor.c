@@ -1991,7 +1991,13 @@ factor_range_context_t factor_range_init(UV lo, UV hi, bool square_free) {
   ctx.is_square_free = square_free;
 
   if (span >= 100) {          /* Sieve in chunks */
-    if (square_free) ctx._noffset = (hi <= 42949672965UL) ? 10 : 15;
+    if (square_free) {
+#if BITS_PER_WORD == 64
+      ctx._noffset = (hi <= UVCONST(42949672965)) ? 10 : 15;
+#else
+      ctx._noffset = 10;
+#endif
+    }
     else             ctx._noffset = BITS_PER_WORD - clz(hi);
     ctx._coffset = _fr_chunk;
     New(0, ctx._nfactors, _fr_chunk, UV);

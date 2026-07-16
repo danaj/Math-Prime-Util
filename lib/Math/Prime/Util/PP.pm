@@ -9005,6 +9005,8 @@ sub bestrational {
   validate_integer_positive($dbound);
   croak "bestrational: first argument must be numeric"
     if !defined $x || (!ref($x) && !looks_like_number($x));
+  croak "bestrational: first argument must be a finite real number"
+    if !ref($x) && $x =~ /(?:inf|nan)/i;
 
   # In case they gave us a bigint
   if (ref($x) eq 'Math::BigFloat') {
