@@ -27,12 +27,14 @@ my @overflow_tests = $use64 ?
     [6074001000, 1, 2, 0, "36893488141926999000", "scaled triangular term"],
     [2, 1, 0, ~0, "36893488147419103230", "constant term"],
     [~0, ~0, 2, 0, "9223372036854775807", "a*n+b intermediate"],
+    [1, 1, 0, ~0, "18446744073709551615", "exact UV_MAX result"],
   ) :
   (
     [92683, 1, 1, 0, "4295022903", "triangular term"],
     [92682, 1, 2, 0, "8589860442", "scaled triangular term"],
     [2, 1, 0, ~0, "8589934590", "constant term"],
     [~0, ~0, 2, 0, "2147483647", "a*n+b intermediate"],
+    [1, 1, 0, ~0, "4294967295", "exact UV_MAX result"],
   );
 
 plan tests => scalar(@tests) + scalar(@overflow_tests) + 4;

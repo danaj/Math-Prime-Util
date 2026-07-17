@@ -111,6 +111,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mrshiftint = \&Math::Prime::Util::rshiftint;
 *Mdivrem  = \&Math::Prime::Util::divrem;
 *Mtdivrem = \&Math::Prime::Util::tdivrem;
+*Mfloor_sum = \&Math::Prime::Util::floor_sum;
 
 *Maddmod = \&Math::Prime::Util::addmod;
 *Msubmod = \&Math::Prime::Util::submod;
@@ -9275,7 +9276,7 @@ sub farey_rank {
       my $v = Mdivint($n, $lo);
       my $hi = Mdivint($n, $v);
       my $mdelta = $mertens[0+$hi] - $mertens[0+Msub1int($lo)];
-      $sum = Maddint($sum, Mmulint($mdelta, _floor_sum($v, $q, $p, $pm1)))
+      $sum = Maddint($sum, Mmulint($mdelta, Mfloor_sum($v, $q, $p, $pm1)))
         if $mdelta != 0;
       $lo = Madd1int($hi);
     }
@@ -9291,7 +9292,7 @@ sub farey_rank {
       my $v = Mdivint($n, $lo);
       my $hi = Mdivint($n, $v);
       my $mdelta = Msubint($mertens->($hi), $mertens->(Msub1int($lo)));
-      $sum = Maddint($sum, Mmulint($mdelta, _floor_sum($v, $q, $p, $pm1)))
+      $sum = Maddint($sum, Mmulint($mdelta, Mfloor_sum($v, $q, $p, $pm1)))
         if $mdelta != 0;
       $lo = Madd1int($hi);
     }

@@ -203,7 +203,7 @@ sub mpu_PPM_regex {
       Msetinsert Msetintersect Msetunion
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
-      Mlucasumod
+      Mlucasumod Mfloor_sum
       Mdrand Mirand Mirand64
       Saddint Ssubint Smulint Sdivint Spowint Surandomm
       Mtoint
