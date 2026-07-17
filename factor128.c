@@ -437,11 +437,8 @@ static bool is_strong_lucas_pp128(uint128_t n) {
     int j = jacobi128((int128_t)D, n);
     if (j == -1) break;
     if (j == 0)  return 0; /* gcd(D,n) > 1 => composite */
-    if (abs_D == 21) {
-      /* Check for perfect square before going further */
-      /* (simple check: if n is a perfect square, jacobi never hits -1) */
-      /* We rely on caller having excluded perfect squares or just continue */
-    }
+    /* Selfridge parameter search cannot terminate for a coprime square. */
+    if (abs_D == 21 && is_perfect_square128(n)) return 0;
   }
 
   int64_t Q_s = (1 - D) / 4;

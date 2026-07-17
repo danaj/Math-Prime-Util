@@ -76,6 +76,8 @@ Revision history for Perl module Math::Prime::Util
     - Fix native IV_MIN edge cases in several integer functions, including
       divrem.  Fix tdivrem with negative inputs on some Windows builds.
 
+    - signint correctly handles positive bigint strings with leading zeroes.
+
     - lastfor handles die/croak inside loops much better.
 
     - random_factored_integer dropped the array return for bigints.

@@ -387,11 +387,13 @@ xt/test-sets.pl
 xt/test-znlog.pl
 xt/totientsum.pl
 xt/threaded-xop-stress.t
+xt/uint128-differential.t
 xt/twin_prime_count.t
 xt/nth_twin_prime.t
 xt/lucasuv.pl
 xt/make-perrin-data.pl
 xt/test-pcbounds.pl
+xt/xop-differential.t
 xt/xop-table.pl
 xt/xop-shapes.t
 .travis.yml

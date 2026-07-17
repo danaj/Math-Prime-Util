@@ -24,7 +24,7 @@ my @pos = (qw/32767 32768
                982349082340982348502392937523840234029384908325098234/);
 my @neg = map { '-' . $_ } @pos;
 
-plan tests => 3 + 2 + 2 + 2 + 2;
+plan tests => 3 + 2 + 2 + 2 + 2 + 1;
 
 {
   my(@absgot,@neggot,@sgngot, @absexp,@negexp,@sgnexp);
@@ -52,3 +52,9 @@ is_deeply([map{"$_"}map { negint($_) } @neg], \@pos, "negint with negative input
 
 is_deeply([map {signint($_)} @pos], [map { 1} @pos], "signint with positive inputs");
 is_deeply([map {signint($_)} @neg], [map {-1} @neg], "signint with negative inputs");
+is_deeply(
+  [map { signint($_) }
+   qw/000184467440737095516160 +000000000000000000000 -000184467440737095516160/],
+  [1, 0, -1],
+  "signint with leading zeroes"
+);

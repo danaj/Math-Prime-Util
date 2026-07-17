@@ -241,25 +241,7 @@ static OP* pp_sub1int_custom(pTHX) { return pp_add1int_custom_common(aTHX_ 1, "s
 
 static OP* pp_signint_custom_common(pTHX_ int opix, const char *opname) {
   dSP;
-  SV *svret, *svn = TOPs;
-  int status, sign, isodd, ret;
-  UV n;
-  const char* s;
-  STRLEN len;
-
-  status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-  if (status == 0) {
-    s = SvPV_nomg(svn, len);
-    if (len == 0 || s == 0) croak("%s: invalid non-empty input", opname);
-    sign = (s[0] == '-') ? -1 : (s[0] == '0') ? 0 : 1;
-    isodd = (s[len-1] == '1' || s[len-1] == '3' || s[len-1] == '5' || s[len-1] == '7' || s[len-1] == '9');
-  } else {
-    sign = (status == -1) ? -1 : (n == 0) ? 0 : 1;
-    isodd = n & 1;
-  }
-  ret = (opix==0) ? sign : (opix==1) ? isodd : !isodd;
-  svret = _sv_const_int(aTHX_ ret);
-  SETs(svret);
+  SETs(_sv_const_int(aTHX_ xs_sign_parity_result(aTHX_ TOPs, opname, opix)));
   RETURN;
 }
 static OP* pp_signint_custom(pTHX) { return pp_signint_custom_common(aTHX_ 0, "signint"); }

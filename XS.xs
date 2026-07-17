@@ -728,6 +728,29 @@ static SV* add1_try_slow_result(pTHX_ int opix, SV* svn) {
   return NULL;
 }
 
+/* Return sign (0), oddness (1), or evenness (2). */
+static int xs_sign_parity_result(pTHX_ SV* svn, const char* opname, int opix) {
+  UV n;
+  int status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+  bool isodd;
+
+  if (status == 0) {
+    STRLEN len;
+    const char* s = SvPV(svn, len);
+    if (len == 0 || s == 0) croak("%s: invalid non-empty input", opname);
+
+    if (opix == 0) return strint_cmp(s, len, "0", 1);
+
+    isodd = (s[len-1] == '1' || s[len-1] == '3' || s[len-1] == '5' ||
+             s[len-1] == '7' || s[len-1] == '9');
+    return (opix == 1) ? isodd : !isodd;
+  }
+
+  isodd = n & 1;
+  if (opix == 0) return n != 0 ? status : 0;   /* sign */
+  return (opix == 1) ? isodd : !isodd;         /* odd/even */
+}
+
 /******************************************************************************/
 
 #include "xs_xop.inc"
@@ -5050,23 +5073,8 @@ void signint(IN SV* svn)
   ALIAS:
     is_odd = 1
     is_even = 2
-  PREINIT:
-    int status, sign, isodd;
-    UV n;
-    const char* s;
-    STRLEN len;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (status == 0) {  /* Look at the string input */
-      s = SvPV(svn, len);
-      if (len == 0 || s == 0) croak("%s: invalid non-empty input", SUBNAME);
-      sign = (s[0] == '-')  ?  -1  : (s[0] == '0')  ?  0  :  1;
-      isodd = (s[len-1] == '1' || s[len-1] == '3' || s[len-1] == '5' || s[len-1] == '7' || s[len-1] == '9');
-    } else {
-      sign = (status == -1)  ?  -1  :  (n == 0)  ?  0  :  1;
-      isodd = n & 1;
-    }
-    RETURN_NPARITY( (ix==0) ? sign : (ix==1) ? isodd : !isodd );
+    RETURN_NPARITY(xs_sign_parity_result(aTHX_ svn, SUBNAME, ix));
 
 void cmpint(IN SV* sva, IN SV* svb)
   PREINIT:
