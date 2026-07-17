@@ -21,7 +21,7 @@ BEGIN {
 
 # Math::Pari + threads = crossing the streams.  Instant segfault.
 use Math::BigInt lib=>"Calc";
-use Test::More 'tests' => 8;
+use Test::More 'tests' => 9;
 use Math::Prime::Util qw/:all srand/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -114,6 +114,20 @@ thread_test(
 thread_test(
   sub { srand(10); my $sum = 0;  $sum += irand for 1..1141; return $sum;},
   $numthreads, "irand");
+
+sub bigint_thread_result {
+  return "".addint("184467440737095516160",17);
+}
+
+{
+  # Initialize the preferred bigint class before cloning the interpreters.
+  my $expected = bigint_thread_result();
+  my @threads = map {
+    threads->create(\&bigint_thread_result)
+  } 1 .. $numthreads;
+  is_deeply([map { $_->join } @threads], [($expected) x $numthreads],
+            "$numthreads threads canonical bigint return");
+}
 
 sub thread_test {
   my $tsub = shift;

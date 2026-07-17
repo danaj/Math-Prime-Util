@@ -374,6 +374,18 @@ typedef struct {
 
 START_MY_CXT
 
+static void xs_set_bigint_class(pTHX_ SV* sv) {
+  dMY_CXT;
+  if (sv == NULL || !SvOK(sv) || SvCUR(sv) == 0) {
+    MY_CXT.bigintstash = NULL;
+    MY_CXT.bigintname  = NULL;
+  } else {
+    HV* stash = gv_stashsv(sv, GV_ADD);
+    MY_CXT.bigintstash = stash;
+    MY_CXT.bigintname  = HvNAME(stash);
+  }
+}
+
 static SV* _sv_const_int(pTHX_ IV v) {
   if (v >= -1 && v < CINTS) {
     dMY_CXT;
@@ -1575,6 +1587,7 @@ void
 CLONE(...)
 PREINIT:
   int i;
+  SV* bigintclass;
 PPCODE:
   {
     MY_CXT_CLONE; /* possible declaration */
@@ -1592,8 +1605,8 @@ PPCODE:
     /* NOTE:  There is no thread destroy, so these never get freed... */
     MY_CXT.forcount = 0;
     MY_CXT.forexit = 0;
-    MY_CXT.bigintname = NULL;
-    MY_CXT.bigintstash = NULL;
+    bigintclass = get_sv("Math::Prime::Util::_BIGINT", 0);
+    xs_set_bigint_class(aTHX_ bigintclass);
   }
   return; /* skip implicit PUTBACK, returning @_ to caller, more efficient */
 
@@ -1740,15 +1753,7 @@ UV _is_csprng_well_seeded()
 void
 _XS_set_bigint_class(IN SV* sv)
   CODE:
-    dMY_CXT;
-    if (!SvOK(sv) || SvCUR(sv) == 0) {
-      MY_CXT.bigintstash = NULL;
-      MY_CXT.bigintname  = NULL;
-    } else {
-      HV* stash = gv_stashsv(sv, GV_ADD);
-      MY_CXT.bigintstash = stash;
-      MY_CXT.bigintname  = HvNAME(stash);
-    }
+    xs_set_bigint_class(aTHX_ sv);
 
 bool _validate_integer(SV* svn)
   ALIAS:

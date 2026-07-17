@@ -337,6 +337,7 @@ xt/A003459.pl
 xt/allrootmod.pl
 xt/almost-primes-big.pl
 xt/binomialmod.pl
+xt/boundary-differential.t
 xt/check-bigint.pl
 xt/check-nth-bounds.pl
 xt/chinese.pl
@@ -385,6 +386,7 @@ xt/test-rootint.pl
 xt/test-sets.pl
 xt/test-znlog.pl
 xt/totientsum.pl
+xt/threaded-xop-stress.t
 xt/twin_prime_count.t
 xt/nth_twin_prime.t
 xt/lucasuv.pl
