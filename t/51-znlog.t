@@ -60,6 +60,10 @@ if ($usexs || $extra) {
 if (($use64 && $usexs) || $extra) {
   push @znlogs, [[15,2,"1000000000000000000117"], "77714890122519843915"];
 }
+if ($use64 && $usexs) {
+  # Exercise native Montgomery arithmetic with a modulus above IV_MAX.
+  push @znlogs, [["12000186537568654368",7,"18446744073709551557"], 12345];
+}
 
 plan tests => 2;
 

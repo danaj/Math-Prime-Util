@@ -354,6 +354,7 @@ xt/primality-proofs.pl
 xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/factor128-regressions.t
+xt/bigint-class-differential.t
 xt/kronecker.pl
 xt/legendre_phi.t
 xt/lucasseq.pl

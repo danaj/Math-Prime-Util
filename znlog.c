@@ -8,12 +8,73 @@
 #include "util.h"
 #include "mulmod.h"
 #include "primality.h"
-#include "montmath.h"
 #include "znlog.h"
 
-/* TODO: test the montmath code.  Until fully tested, disable it */
-#undef USE_MONTMATH
-#define USE_MONTMATH 0
+#if BITS_PER_WORD == 64 && HAVE_UINT64 && HAVE_UINT128
+  #define USE_ZNLOG_MONTMATH 1
+
+/* Pollard rho spends almost all its time multiplying with one fixed modulus.
+ * Keep its state in Montgomery form to avoid a 128-bit remainder each step.
+ * R is 2^64 and all inputs to znlog_mont_mul are in [0,n). */
+typedef struct {
+  uint64_t n, ninv, r2, one;
+} znlog_mont_t;
+
+static INLINE uint64_t znlog_mont_mul(uint64_t a, uint64_t b,
+                                      const znlog_mont_t *ctx) {
+  uint128_t t = (uint128_t)a * b;
+  uint64_t lo = (uint64_t)t;
+  uint64_t m = lo * ctx->ninv;
+  uint128_t mn = (uint128_t)m * ctx->n;
+  uint64_t th = (uint64_t)(t >> 64);
+  uint64_t mh = (uint64_t)(mn >> 64);
+  uint64_t r = th + mh;
+  int overflow = (r < th);
+  uint64_t oldr = r;
+
+  /* lo + low(m*n) is either 0 or 2^64.  Track that carry and any
+   * overflow from the high-half addition before the final subtraction. */
+  r += (lo != 0);
+  overflow |= (r < oldr);
+  return (overflow || r >= ctx->n) ? r - ctx->n : r;
+}
+
+static void znlog_mont_setup(znlog_mont_t *ctx, uint64_t n) {
+  uint64_t i, x = (3*n) ^ 2;
+
+  ctx->n = n;
+  /* Hensel lifting doubles the correct bits of n^-1 at each step. */
+  x *= (uint64_t)2 - n*x;
+  x *= (uint64_t)2 - n*x;
+  x *= (uint64_t)2 - n*x;
+  x *= (uint64_t)2 - n*x;
+  ctx->ninv = (uint64_t)0 - x;
+
+  /* r2 = R^2 mod n.  Setup is infrequent, so avoid division entirely. */
+  ctx->r2 = 1;
+  for (i = 0; i < 128; i++)
+    ctx->r2 = addmod(ctx->r2, ctx->r2, n);
+  ctx->one = znlog_mont_mul(1, ctx->r2, ctx);
+}
+
+static INLINE uint64_t znlog_mont_enter(uint64_t a,
+                                        const znlog_mont_t *ctx) {
+  return znlog_mont_mul(a, ctx->r2, ctx);
+}
+
+static uint64_t znlog_mont_pow(uint64_t a, uint64_t k,
+                               const znlog_mont_t *ctx) {
+  uint64_t r = ctx->one;
+  while (k) {
+    if (k & 1) r = znlog_mont_mul(r, a, ctx);
+    k >>= 1;
+    if (k) a = znlog_mont_mul(a, a, ctx);
+  }
+  return r;
+}
+#else
+  #define USE_ZNLOG_MONTMATH 0
+#endif
 
 /******************************************************************************/
 /* DLP */
@@ -23,15 +84,27 @@ static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
   UV k, t;
   if (maxrounds >= p) maxrounds = p-1;
 
-#if USE_MONTMATH
-  if (p&1) {
-    const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
-    g = mont_geta(g, p);
-    a = mont_geta(a, p);
-    for (t = g, k = 1; k < maxrounds; k++) {
+#if USE_ZNLOG_MONTMATH
+  if ((p&1) && maxrounds > 256) {
+    znlog_mont_t ctx;
+    UV stop = 128;
+
+    /* Avoid Montgomery setup when the log is found almost immediately. */
+    for (t = g, k = 1; k < stop; k++) {
       if (t == a)
         return k;
-      t = mont_mulmod(t, g, p);
+      t = mulmod(t, g, p);
+      if (t == g) return 0;   /* Stop at cycle */
+    }
+
+    znlog_mont_setup(&ctx, p);
+    t = znlog_mont_enter(t, &ctx);
+    g = znlog_mont_enter(g, &ctx);
+    a = znlog_mont_enter(a, &ctx);
+    for ( ; k < maxrounds; k++) {
+      if (t == a)
+        return k;
+      t = znlog_mont_mul(t, g, &ctx);
       if (t == g) break;   /* Stop at cycle */
     }
   } else
@@ -66,31 +139,35 @@ static UV dlp_trial(UV a, UV g, UV p, UV maxrounds) {
       case 2: u = mulmod(u,g,p);                      w = addmod(w,1,n); break;\
     }
 
-#if USE_MONTMATH
-#define pollard_rho_cycle_mont(u,v,w,p,n,a,g) \
+#if USE_ZNLOG_MONTMATH
+#define pollard_rho_cycle_mont(u,v,w,n,a,g,ctx) \
     switch (u % 3) { \
-      case 0: u = mont_sqrmod(u,p);    v = addmod(v,v,n);  w = addmod(w,w,n); break;\
-      case 1: u = mont_mulmod(u,a,p);  v = addmod(v,1,n);                     break;\
-      case 2: u = mont_mulmod(u,g,p);                      w = addmod(w,1,n); break;\
+      case 0: u = znlog_mont_mul(u,u,ctx);  v = addmod(v,v,n);  w = addmod(w,w,n); break;\
+      case 1: u = znlog_mont_mul(u,a,ctx);  v = addmod(v,1,n);                     break;\
+      case 2: u = znlog_mont_mul(u,g,ctx);                      w = addmod(w,1,n); break;\
     }
 
 static UV dlp_prho_mont(UV a, UV g, UV p, UV n, UV maxrounds) {
-  const uint64_t npi = mont_inverse(p),  mont1 = mont_get1(p);
+  znlog_mont_t ctx;
   int const verbose = _XS_get_verbose();
   UV k = 0, round;
-  UV am = mont_geta(a, p);
-  UV gm = mont_geta(g, p);
+  UV am, gm;
   int nrestarts;
+
+  znlog_mont_setup(&ctx, p);
+  am = znlog_mont_enter(a, &ctx);
+  gm = znlog_mont_enter(g, &ctx);
 
   for (nrestarts = 0; nrestarts <= 4; nrestarts++) {
     UV u, v, w, U, V, W, power, lam;
 
-    u = U = (nrestarts == 0) ? mont1 : mont_powmod(gm, (UV)nrestarts, p);
+    u = U = (nrestarts == 0) ? ctx.one
+                             : znlog_mont_pow(gm, (UV)nrestarts, &ctx);
     v = V = 0;
     w = W = (UV)nrestarts;
     power = lam = 1;
 
-    pollard_rho_cycle_mont(U,V,W,p,n,am,gm);
+    pollard_rho_cycle_mont(U,V,W,n,am,gm,&ctx);
     round = 1;
 
     while (u != U && round < maxrounds) {
@@ -99,7 +176,7 @@ static UV dlp_prho_mont(UV a, UV g, UV p, UV n, UV maxrounds) {
         power <<= 1;
         lam = 0;
       }
-      pollard_rho_cycle_mont(U,V,W,p,n,am,gm);
+      pollard_rho_cycle_mont(U,V,W,n,am,gm,&ctx);
       lam++;
       round++;
     }
@@ -155,8 +232,9 @@ static UV dlp_prho(UV a, UV g, UV p, UV n, UV maxrounds) {
 
   if (maxrounds > n) maxrounds = n;
 
-#if USE_MONTMATH
-  if (p & 1)
+#if USE_ZNLOG_MONTMATH
+  /* Setup costs more than the complete search for very small orders. */
+  if ((p & 1) && maxrounds > 256)
     return dlp_prho_mont(a, g, p, n, maxrounds);
 #endif
 
