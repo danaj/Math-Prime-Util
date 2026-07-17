@@ -182,6 +182,16 @@ static uint32_t  _refill_buffer(chacha_context_t *ctx) {
 /*   Test vectors                                                            */
 /*****************************************************************************/
 #if RUN_INTERNAL_TESTS
+static void _bytes_to_hex(char *out, const unsigned char *in, uint32_t len) {
+  static const char hex[] = "0123456789abcdef";
+  uint32_t i;
+  for (i = 0; i < len; i++) {
+    out[2*i  ] = hex[in[i] >> 4];
+    out[2*i+1] = hex[in[i] & 0x0f];
+  }
+  out[2*len] = '\0';
+}
+
 static bool _test_qr(void) {
   uint32_t i;
   uint32_t       tv1i[4] = {0x11111111, 0x01020304, 0x9b8d6f43, 0x01234567};
@@ -236,9 +246,7 @@ static bool _test_core(void) {
         if (ctx.state[i] != 0)
           croak("core modified state");
     }
-    for (i = 0; i < 64; i++)
-      sprintf(got+2*i, "%02x", ctx.buf[i]);
-    got[128] = '\0';
+    _bytes_to_hex(got, ctx.buf, 64);
     if (memcmp(got, expout, 128))
       croak("fail core test vector %u:\n  exp %s\n  got %s\n",test,expout,got);
   }
@@ -270,9 +278,7 @@ static bool _test_keystream(void) {
     gen = chacha_keystream(kbuf, len, &ctx);
     if (gen < len) croak("short keystream");
     /* Check state block counter */
-    for (i = 0; i < len; i++)
-      sprintf(got+2*i, "%02x", kbuf[i]);
-    got[2*len] = '\0';
+    _bytes_to_hex(got, kbuf, len);
     if (memcmp(got, expout, 2*len))
       croak("fail keystream test vector %u:\n  exp %s\n  got %s\n",test,expout,got);
   }
