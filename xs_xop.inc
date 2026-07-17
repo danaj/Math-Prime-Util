@@ -128,7 +128,7 @@ static OP* xop_dispatch_unary(pTHX_ const char* name, int minversion) {
 static OP* pp_irand_custom(pTHX) {
   dSP;
   dMY_CXT;
-  PUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
+  XPUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
   RETURN;
 }
 
@@ -136,9 +136,9 @@ static OP* pp_irand64_custom(pTHX) {
   dSP;
   dMY_CXT;
 #if BITS_PER_WORD == 32
-  PUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
+  XPUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
 #else
-  PUSHs(sv_2mortal(newSVuv(irand64(MY_CXT.randcxt))));
+  XPUSHs(sv_2mortal(newSVuv(irand64(MY_CXT.randcxt))));
 #endif
   RETURN;
 }
@@ -146,7 +146,7 @@ static OP* pp_irand64_custom(pTHX) {
 static OP* pp_drand_custom(pTHX) {
   dSP;
   dMY_CXT;
-  PUSHs(sv_2mortal(newSVnv(drand64(MY_CXT.randcxt))));
+  XPUSHs(sv_2mortal(newSVnv(drand64(MY_CXT.randcxt))));
   RETURN;
 }
 
