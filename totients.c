@@ -372,7 +372,9 @@ bool sumtotient128(uint64_t n, uint128_t *sumout) {
   /* Arguably we should expand the hash as it fills. */
   thash.hsize = next_prime( 16 + hsize );
   Newz(0, thash.nhash, thash.hsize, uint64_t);
-  New( 0, thash.shash, thash.hsize, uint128_t);
+  thash.shash = (uint128_t*)mpu_aligned_alloc(thash.hsize,
+                                               sizeof(uint128_t),
+                                               sizeof(uint128_t));
 
   sum = _sumt128(n, sumcache, csize, thash);
   *sumout = sum;
@@ -385,7 +387,7 @@ bool sumtotient128(uint64_t n, uint128_t *sumout) {
   }
 
   Safefree(thash.nhash);
-  Safefree(thash.shash);
+  mpu_aligned_free(thash.shash);
   Safefree(sumcache);
   return 1;
 }

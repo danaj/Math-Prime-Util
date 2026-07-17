@@ -13,6 +13,11 @@ extern void _XS_set_nobigint(int v);
 extern bool  _XS_get_secure(void);
 extern void _XS_set_secure(void);
 
+#if HAVE_UINT128
+extern void* mpu_aligned_alloc(UV count, Size_t size, Size_t alignment);
+extern void  mpu_aligned_free(void* ptr);
+#endif
+
 extern unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len);
 extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
 #define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)

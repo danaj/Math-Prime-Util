@@ -108,7 +108,8 @@ static bool _sum_primes128(uint64_t n, uint128_t *sum) {
     return 0;
 
   New(0, V, r2+1, uint64_t);
-  New(0, S, r2+1, uint128_t);
+  S = (uint128_t*)mpu_aligned_alloc((UV)(r2+1), sizeof(uint128_t),
+                                    sizeof(uint128_t));
   for (k = 0; k <= r2; k++) {
     uint64_t v = (k <= r)  ?  k  :  n/(r2-k+1);
     V[k] = v;
@@ -128,7 +129,7 @@ static bool _sum_primes128(uint64_t n, uint128_t *sum) {
   }
   *sum = S[r2];
   Safefree(V);
-  Safefree(S);
+  mpu_aligned_free(S);
   return 1;
 }
 

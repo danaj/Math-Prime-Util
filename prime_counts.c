@@ -134,6 +134,26 @@ static UV count_segment_maxcount(const unsigned char* sieve, UV base, UV nbytes,
   return 0;
 }
 
+static UV count_in_one_sieve_byte(const unsigned char* sieve, UV lowp, UV highp)
+{
+  UV count = 0, d = lowp/30;
+  unsigned char bit, s;
+
+  /* Count unmarked candidates in [lowp,highp].
+   * Both bounds must lie in the same wheel-30 sieve byte. */
+  MPUassert(d == highp/30, "count_in_one_sieve_byte must not span bytes");
+  s = sieve[d] | clearprev30[lowp-d*30];
+  while (s != 0xFF) {
+    UV p;
+    bit = nextzero30[s];
+    s |= 1 << bit;
+    p = d*30 + wheel30[bit];
+    if (p > highp) break;
+    count++;
+  }
+  return count;
+}
+
 /* Given a sieve of size nbytes, counting zeros (primes) but excluding the
  * areas outside lowp and highp.
  */
@@ -168,9 +188,7 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   /* Count first fragment */
   if (lo_m > 1) {
     UV upper = (highp <= (lo_d*30+29)) ? highp : (lo_d*30+29);
-    START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, lowp, upper)
-      count++;
-    END_DO_FOR_EACH_SIEVE_PRIME;
+    count += count_in_one_sieve_byte(sieve, lowp, upper);
     lowp = upper+2;
     lo_d = lowp/30;
   }
@@ -189,10 +207,8 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
   if (highp < lowp)
     return count;
 
-  /* Count last fragment */
-  START_DO_FOR_EACH_SIEVE_PRIME(sieve, 0, lowp, highp)
-    count++;
-  END_DO_FOR_EACH_SIEVE_PRIME;
+  /* Count the final partial byte without reading a complete UV past it. */
+  count += count_in_one_sieve_byte(sieve, lowp, highp);
 
   return count;
 }

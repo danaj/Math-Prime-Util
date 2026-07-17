@@ -974,13 +974,14 @@ static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
 
   if (npoints == 0) { *fout = 0; return 1; }
 
-  New(0, prefix, npoints, uint128_t);
+  prefix = (uint128_t*)mpu_aligned_alloc(npoints, sizeof(uint128_t),
+                                         sizeof(uint128_t));
 
   for (i = 0; i < npoints; i++) {
     g = gcd128(P[i].Z, n);
     if (g > 1) {
       *fout = (g < n) ? g : 0;
-      Safefree(prefix);
+      mpu_aligned_free(prefix);
       return 0;
     }
     acc = mont_mulmod128(acc, P[i].Z, ctx);
@@ -990,14 +991,14 @@ static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
   g = gcd128(acc, n);
   if (g > 1) {
     *fout = (g < n) ? g : 0;
-    Safefree(prefix);
+    mpu_aligned_free(prefix);
     return 0;
   }
 
   inv = modinv128(mont_exit128(acc, ctx), n);
   if (inv == 0) {
     *fout = 0;
-    Safefree(prefix);
+    mpu_aligned_free(prefix);
     return 0;
   }
   inv = mont_enter128(inv, ctx);
@@ -1011,7 +1012,7 @@ static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
   }
 
   *fout = 0;
-  Safefree(prefix);
+  mpu_aligned_free(prefix);
   return 1;
 }
 
@@ -1039,8 +1040,10 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
   mend = B2 + D;
   nwindows = 1 + (mend - 2) / twoD;
 
-  New(0, nq,  twoD+1, ecpt128_t);
-  New(0, nqx, D+1, uint128_t);
+  nq = (ecpt128_t*)mpu_aligned_alloc(twoD+1, sizeof(ecpt128_t),
+                                     sizeof(uint128_t));
+  nqx = (uint128_t*)mpu_aligned_alloc(D+1, sizeof(uint128_t),
+                                      sizeof(uint128_t));
 
   nq[1] = *Q;
   for (i = 2; i <= twoD; i++) {
@@ -1053,13 +1056,15 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
 
   nqx[0] = 0;
   if (!ecm_batch_normalize_x128(nqx+1, &f, nq+1, D, ctx)) {
-    Safefree(nqx);
-    Safefree(nq);
+    mpu_aligned_free(nqx);
+    mpu_aligned_free(nq);
     return f;
   }
 
-  New(0, S,  nwindows, ecpt128_t);
-  New(0, Sx, nwindows, uint128_t);
+  S = (ecpt128_t*)mpu_aligned_alloc(nwindows, sizeof(ecpt128_t),
+                                    sizeof(uint128_t));
+  Sx = (uint128_t*)mpu_aligned_alloc(nwindows, sizeof(uint128_t),
+                                     sizeof(uint128_t));
 
   S[0] = *Q;
   {
@@ -1072,10 +1077,10 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
   }
 
   if (!ecm_batch_normalize_x128(Sx, &f, S, nwindows, ctx)) {
-    Safefree(Sx);
-    Safefree(S);
-    Safefree(nqx);
-    Safefree(nq);
+    mpu_aligned_free(Sx);
+    mpu_aligned_free(S);
+    mpu_aligned_free(nqx);
+    mpu_aligned_free(nq);
     return f;
   }
 
@@ -1113,10 +1118,10 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
         } END_DO_FOR_EACH_PRIME
         f = gcd128(mont_exit128(gprod, ctx), n);
         if (f > 1) {
-          Safefree(Sx);
-          Safefree(S);
-          Safefree(nqx);
-          Safefree(nq);
+          mpu_aligned_free(Sx);
+          mpu_aligned_free(S);
+          mpu_aligned_free(nqx);
+          mpu_aligned_free(nq);
           return (f < n) ? f : 0;
         }
       }
@@ -1125,10 +1130,10 @@ static uint128_t tinyecm128_stage2(const ecpt128_t *Q, uint128_t A24,
   }
 
   f = gcd128(mont_exit128(gprod, ctx), n);
-  Safefree(Sx);
-  Safefree(S);
-  Safefree(nqx);
-  Safefree(nq);
+  mpu_aligned_free(Sx);
+  mpu_aligned_free(S);
+  mpu_aligned_free(nqx);
+  mpu_aligned_free(nq);
   return (f > 1 && f < n) ? f : 0;
 }
 

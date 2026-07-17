@@ -51,6 +51,36 @@ bool  _XS_get_secure(void) { return _secure; }
 
 /******************************************************************************/
 
+#if HAVE_UINT128
+void* mpu_aligned_alloc(UV count, Size_t size, Size_t alignment)
+{
+  unsigned char *raw;
+  uintptr_t addr;
+  Size_t overhead;
+
+  if (alignment < sizeof(void*) || (alignment & (alignment-1)) != 0 ||
+      alignment > MAX_SIZET - sizeof(void*) + 1)
+    croak("internal: invalid aligned allocation");
+  overhead = alignment - 1 + sizeof(void*);
+  if (size == 0 || count > (UV)((MAX_SIZET-overhead)/size))
+    croak("internal: aligned allocation too large");
+
+  New(0, raw, (Size_t)count*size + overhead, unsigned char);
+  if (raw == 0) croak("internal: aligned allocation failed");
+  addr = ((uintptr_t)raw + sizeof(void*) + alignment-1)
+       & ~((uintptr_t)alignment-1);
+  ((void**)addr)[-1] = raw;
+  return (void*)addr;
+}
+
+void mpu_aligned_free(void* ptr)
+{
+  if (ptr != 0) Safefree(((void**)ptr)[-1]);
+}
+#endif
+
+/******************************************************************************/
+
 /* Returns 0 if not found, index+1 if found (returns leftmost if dups) */
 unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len)
 {
@@ -459,7 +489,7 @@ UV rootint(UV n, uint32_t k)
   /*  32-bit:       10               16                 20       */
   /*  64-bit:       15               32                 40       */
 
-  if (n >> k == 0)           return 1;
+  if (k >= BITS_PER_WORD || n >> k == 0)  return 1;
 
   if (k <= MAX_IROOTN)       return _irootn(n,k);
 
@@ -829,6 +859,7 @@ static int kronecker_uu_sign(UV a, UV b, int s) {
 
 int kronecker_uu(UV a, UV b) {
   int r, s;
+  if (b == 0)  return (a == 1);
   if (b & 1)   return kronecker_uu_sign(a, b, 1);
   if (!(a&1))  return 0;
   s = 1;

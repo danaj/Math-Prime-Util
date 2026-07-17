@@ -251,7 +251,7 @@ UV lucasumod(UV P, UV Q, UV k, UV n)
 
 
 #define OVERHALF(v) \
-  ( ((v) >= 0 ? (UV)(v) : (UV)0 - (UV)(v)) > \
+  ( ((v) >= 0 ? (UV)(v) : (UV)0 - (UV)(v)) >= \
     (UVCONST(1) << (BITS_PER_WORD/2-1)) )
 bool lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
 {
@@ -264,6 +264,8 @@ bool lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
     return 1;
   }
 
+  if (OVERHALF(P) || OVERHALF(Q)) return 0;
+
   Uh = 1;  Vl = 2;  Vh = P;  Ql = 1;  Qh = 1;
   s = 0; n = 0;
   { UV v = k; while (!(v & 1)) { v >>= 1; s++; } }
@@ -272,8 +274,10 @@ bool lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
   for (j = n; j > s; j--) {
     if (OVERHALF(Uh) || OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
     Ql *= Qh;
+    if (OVERHALF(Ql)) return 0;
     if ( (k >> j) & UVCONST(1) ) {
       Qh = Ql * Q;
+      if (OVERHALF(Qh)) return 0;
       Uh = Uh * Vh;
       Vl = Vh * Vl - P * Ql;
       Vh = Vh * Vh - 2 * Qh;
@@ -286,6 +290,7 @@ bool lucasuv(IV* U, IV *V, IV P, IV Q, UV k)
   }
   if (OVERHALF(Ql) || OVERHALF(Qh)) return 0;
   Ql = Ql * Qh;
+  if (OVERHALF(Ql)) return 0;
   Qh = Ql * Q;
   if (OVERHALF(Uh) || OVERHALF(Vh) || OVERHALF(Vl) || OVERHALF(Ql) || OVERHALF(Qh)) return 0;
   Uh = Uh * Vl - Ql;
