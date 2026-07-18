@@ -9739,9 +9739,18 @@ sub lucas_sequence {
 
   return maybetobigintall(Math::Prime::Util::GMP::lucas_sequence($n,$P,$Q,$k))
     if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} &&
+       $Math::Prime::Util::GMP::VERSION >= 0.53 &&
+       !ref($P) && $P > INTMIN && $P <= SINTMAX &&
+       !ref($Q) && $Q > INTMIN && $Q <= SINTMAX;
+
+  return maybetobigintall(Math::Prime::Util::GMP::lucas_sequence($n,$P,$Q,$k))
+    if $Math::Prime::Util::_GMPfunc{"lucas_sequence"} &&
        $Math::Prime::Util::GMP::VERSION >= 0.13 &&
-       !ref($P) && $P >= INTMIN && $P <= SINTMAX &&
-       !ref($Q) && $Q >= INTMIN && $Q <= SINTMAX;
+       !ref($P) && $P > INTMIN && $P <= SINTMAX &&
+       !ref($Q) && $Q > INTMIN && $Q <= SINTMAX &&
+       Mcmpint($n,Mabsint($P)) > 0 &&
+       Mcmpint($n,Mabsint($Q)) > 0 &&
+       Mcmpint(Mmulsubint($P,$P,Mmulint(4,$Q)),0) != 0;
 
   return (lucasuvmod($P,$Q,$k,$n), Mpowmod($Q,$k,$n));
 }
@@ -12158,7 +12167,7 @@ sub Pi {
     }
     $an->badd($bn);
     $an->bmul($an,$digits)->bdiv(4*$tn, $digits-8);
-    return _upgrade_to_float($an);
+    return _upgrade_to_float("$an");
   }
 
   # Spigot method in C.  Low overhead but not good growth rate.
@@ -13814,8 +13823,9 @@ sub prime_memfree {
   # Make the internal callbacks that reset cached data.
   $_->() for @_free_subs;
   # Call GMP's free if we have it
+  # Earlier versions do not guard repeated calls before module destruction.
   eval { Math::Prime::Util::GMP::_GMP_memfree(); }
-    if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.49;
+    if defined $Math::Prime::Util::GMP::VERSION && $Math::Prime::Util::GMP::VERSION >= 0.53;
 }
 sub _get_prime_cache_size { $_precalc_size }
 sub _prime_memfreeall { prime_memfree; }
