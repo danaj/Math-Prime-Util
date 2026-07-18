@@ -73,6 +73,8 @@ subtest 'integer strings' => sub {
   is(toint("007"),   7,   "'007' leading zeros stripped");
   is(toint("-007"), -7,   "'-007' leading zeros stripped");
   is(toint("00"),    0,   "'00' is zero");
+  is(toint("1_000_000"), 1_000_000, "underscores between decimal digits");
+  is(toint(" \t-42\r\n"), -42, "surrounding ASCII whitespace");
   ok( is_native(toint("42")),  "string int → native");
   ok( is_native(toint("-42")), "string neg int → native");
   # 20-digit integer > UV64_MAX → bigint
@@ -99,10 +101,17 @@ subtest 'radix strings' => sub {
   is(toint("+0X10"),    16, "uppercase hex prefix with explicit plus");
   is(toint("0b1011"),   11, "binary string");
   is(toint("-0B1011"), -11, "negative uppercase binary prefix");
+  is(toint("0o777"),   511, "octal string");
+  is(toint("-0O10"),    -8, "negative uppercase octal prefix");
+  is(toint(" 0xF_F_F "), 4095, "hex digit separators and whitespace");
+  is(toint("0b1010_0110"), 166, "binary digit separators");
+  is(toint("0o7_77"), 511, "octal digit separators");
   is(toint("0x00000100"), 256, "hex leading zeros");
   is(toint("0b00010000"), 16, "binary leading zeros");
+  is(toint("0o00000100"), 64, "octal leading zeros");
   ok(is_native(toint("0xFF")), "small hex string returns native");
   ok(is_native(toint("0b1011")), "small binary string returns native");
+  ok(is_native(toint("0o777")), "small octal string returns native");
 
   {
     my $hex = "0x100000000000000000000";
@@ -116,6 +125,12 @@ subtest 'radix strings' => sub {
     my $exp = "1208925819614629174706176";
     is("".toint($bin), $exp, "large binary string");
     ok(is_bigint(toint($bin)), "large binary string returns bigint");
+  }
+  {
+    my $oct = "0o4" . ("0" x 26);
+    my $exp = "1208925819614629174706176";
+    is("".toint($oct), $exp, "large octal string");
+    ok(is_bigint(toint($oct)), "large octal string returns bigint");
   }
 };
 
@@ -135,6 +150,7 @@ subtest 'float strings — truncate toward zero' => sub {
   is(toint("-0.9"),    0,  "'-0.9' → 0  (truncate not floor)");
   is(toint("0.0"),     0,  "'0.0' → 0");
   is(toint("99.99"), 99,   "'99.99' → 99");
+  is(toint("1.5_0"),   1,  "underscore in fractional digits");
 };
 
 ###############################################################################
@@ -148,8 +164,9 @@ subtest 'scientific notation strings' => sub {
   is(toint("0e5"),        0,   "'0e5' = 0");
   is(toint("1.5e-1"),     0,   "'1.5e-1' = 0.15 → 0 (truncate)");
   is(toint("-1.5e-1"),    0,   "'-1.5e-1' = -0.15 → 0 (truncate, not -1)");
-  SKIP: { skip "64-bit only", 1 unless $use64;
+  SKIP: { skip "64-bit only", 2 unless $use64;
     is(toint("1e10"),  10000000000, "'1e10'");
+    is(toint("1e1_0"), 10000000000, "underscore in exponent digits");
   }
   # large sci notation → bigint
   { my $r = toint("1e50");
@@ -281,12 +298,22 @@ subtest 'invalid inputs croak' => sub {
     ".",         # lone decimal point
     "+-3",       # double sign
     "1 2",       # embedded space
-    #"3 ",        # trailing space
-    #" 3",        # leading space
+    " ",         # whitespace only
+    "_1000",     # leading underscore
+    "1000_",     # trailing underscore
+    "1__000",    # repeated underscore
+    "1_.5",      # underscore before decimal point
+    "1._5",      # underscore after decimal point
+    "1e_10",     # underscore after exponent marker
     "0x",         # empty hex
     "0b",         # empty binary
+    "0o",         # empty octal
+    "0x_FF",      # underscore after radix prefix
+    "0xFF_",      # trailing radix underscore
+    "0xF__F",     # repeated radix underscore
     "0x1g",       # invalid hex digit
     "0b102",      # invalid binary digit
+    "0o128",      # invalid octal digit
     "inf",       # infinity string
     "Inf",
     "nan",       # not-a-number string

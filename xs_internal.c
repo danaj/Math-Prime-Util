@@ -87,12 +87,12 @@ int _sv_is_math_object(pTHX_ SV* n) {
 #endif
 
 /* Parse any numeric string.  Returns:
- *   SNUMFLAG_UV               non-negative integer, fits in UV
- *   SNUMFLAG_NEG              negative integer, fits in IV
+ *   SNUMFLAG_UNKNOWN          syntax not recognized by this parser
+ *   SNUMFLAG_NATIVE [|NEG]    integer fits in native UV or IV
  *   SNUMFLAG_BIGINT [|NEG]    integer too large for native word
  *   SNUMFLAG_FP    [|NEG]     valid floating-point (non-integer) number
- *   SNUMFLAG_RADIX [|NEG]     prefixed 0x/0X/0b/0B integer string
- *   SNUMFLAG_INVALID          not a valid number
+ *   SNUMFLAG_RADIX [|NEG]     prefixed 0x/0X/0b/0B/0o/0O integer string
+ *   SNUMFLAG_INVALID [|...]   not a valid number
  *
  * There is a good argument that we should be using Perl's numeric.c functions.
  */
@@ -104,7 +104,7 @@ uint32_t _parse_strnum(const char* s, STRLEN len)
   uint32_t flag = 0;
   int had_zeros = 0;
 
-  if (s == 0 || len == 0) return SNUMFLAG_UV;   /* null/empty -> 0 */
+  if (s == 0 || len == 0) return SNUMFLAG_NATIVE;  /* null/empty -> 0 */
 
   /* Sign */
   if      (s[i] == '-') { flag |= SNUMFLAG_NEG; i++; }
@@ -125,10 +125,17 @@ uint32_t _parse_strnum(const char* s, STRLEN len)
       if (s[i] != '0' && s[i] != '1') return SNUMFLAG_INVALID;
     return flag | SNUMFLAG_RADIX | SNUMFLAG_BINSTR;
   }
+  if (i + 1 < len && s[i] == '0' && (s[i+1] == 'o' || s[i+1] == 'O')) {
+    i += 2;
+    if (i == len) return SNUMFLAG_INVALID;  /* empty octal body */
+    for ( ; i < len; i++)
+      if (!isOCTAL(s[i])) return SNUMFLAG_INVALID;
+    return flag | SNUMFLAG_RADIX | SNUMFLAG_OCTSTR;
+  }
 
   /* Strip leading zeros, noting if any existed */
   while (i < len && s[i] == '0') { i++; had_zeros = 1; }
-  if (i == len) return SNUMFLAG_UV;      /* zero */
+  if (i == len) return SNUMFLAG_NATIVE;  /* zero */
   sig_start = i;
 
   /* Scan integer digits */
@@ -147,22 +154,24 @@ uint32_t _parse_strnum(const char* s, STRLEN len)
       if (j < maxlen && s[sig_start + j] > maxstr[j])
         return flag | SNUMFLAG_BIGINT;
     }
-    return flag;   /* SNUMFLAG_UV or SNUMFLAG_NEG */
+    return flag | SNUMFLAG_NATIVE;
   }
 
   /* Not a pure integer - try to parse as float */
   /*   [+-]? digit* (. digit*)? ([eE] [+-]? digit+)? */
   {
+    int has_dot  = 0;
     int has_frac = 0;
     int has_int  = (i > sig_start || had_zeros);  /* had any integer digits? */
 
     if (i < len && s[i] == '.') {
+      has_dot = 1;
       i++;
       while (i < len && isDIGIT(s[i])) { i++; has_frac = 1; }
     }
 
-    /* Reject lone ".", ".e5", bare "e5", etc. */
-    if (!has_int && !has_frac) return SNUMFLAG_INVALID;
+    if (!has_int && !has_frac)
+      return has_dot ? SNUMFLAG_INVALID : SNUMFLAG_UNKNOWN;
 
     if (i < len && (s[i] == 'e' || s[i] == 'E')) {
       i++;
@@ -171,8 +180,73 @@ uint32_t _parse_strnum(const char* s, STRLEN len)
       while (i < len && isDIGIT(s[i])) i++;
     }
 
-    return (i == len) ? flag | SNUMFLAG_FP : SNUMFLAG_INVALID;
+    if (i == len) return flag | SNUMFLAG_FP;
   }
+  return SNUMFLAG_INVALID;
+}
+
+static bool _toint_base_digit(unsigned char c, unsigned int base)
+{
+  if (base == 16) return isXDIGIT(c);
+  if (base == 8)  return isOCTAL(c);
+  if (base == 2)  return c == '0' || c == '1';
+  return isDIGIT(c);
+}
+
+/* Normalize formatting accepted only by toint, not general integer inputs.
+ * The returned SV is either svn or a mortal whose PV is stored in sp/lenp. */
+SV* _normalize_toint_string(pTHX_ SV* svn, const char **sp, STRLEN *lenp)
+{
+  const char *s = *sp;
+  STRLEN len = *lenp, start = 0, end = len, i, j, p;
+  unsigned int base = 10;
+  bool has_underscore = FALSE;
+  SV *tmp;
+  char *d;
+
+  if (SvROK(svn) || len == 0 ||
+      (!isSPACE((unsigned char)s[0]) &&
+       !isSPACE((unsigned char)s[len-1]) &&
+       memchr(s, '_', len) == 0))
+    return svn;
+
+  while (start < end && isSPACE((unsigned char)s[start])) start++;
+  while (end > start && isSPACE((unsigned char)s[end-1])) end--;
+  if (start == end)
+    croak("toint: '%" SVf "' is not a valid number", svn);
+
+  p = start;
+  if (s[p] == '+' || s[p] == '-') p++;
+  if (p + 1 < end && s[p] == '0') {
+    if      (s[p+1] == 'x' || s[p+1] == 'X') base = 16;
+    else if (s[p+1] == 'o' || s[p+1] == 'O') base = 8;
+    else if (s[p+1] == 'b' || s[p+1] == 'B') base = 2;
+  }
+
+  for (i = start; i < end; i++) {
+    if (s[i] == '_') {
+      has_underscore = TRUE;
+      if (i == start || i + 1 >= end ||
+          !_toint_base_digit((unsigned char)s[i-1], base) ||
+          !_toint_base_digit((unsigned char)s[i+1], base))
+        croak("toint: '%" SVf "' is not a valid number", svn);
+    }
+  }
+
+  if (start == 0 && end == len && !has_underscore)
+    return svn;
+
+  tmp = sv_2mortal(newSVpvn(s + start, end - start));
+  d = SvPVX(tmp);
+  if (has_underscore) {
+    for (i = j = 0; i < end - start; i++)
+      if (d[i] != '_') d[j++] = d[i];
+    d[j] = '\0';
+    SvCUR_set(tmp, j);
+  }
+  *sp = d;
+  *lenp = SvCUR(tmp);
+  return tmp;
 }
 
 /* Copy an unknown object's string representation into a plain scalar.  This
@@ -217,8 +291,8 @@ int _validate_int(pTHX_ SV* n, int negok)
   stype = _parse_strnum(sptr, len);
   if (!(stype & SNUMFLAG_NEG) || negok) {
     switch (stype) {
-      case SNUMFLAG_UV:                    return isunknown ? 0 : 1;
-      case SNUMFLAG_NEG:                   return isunknown ? 0 : -1;
+      case SNUMFLAG_NATIVE:                return isunknown ? 0 : 1;
+      case (SNUMFLAG_NEG|SNUMFLAG_NATIVE): return isunknown ? 0 : -1;
       case SNUMFLAG_BIGINT:
       case (SNUMFLAG_NEG|SNUMFLAG_BIGINT): return 0;
       default:                             break;

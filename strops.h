@@ -60,7 +60,7 @@ extern char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen);
  * Returns 1 for UV, 2 for malloc-allocated string.  Croaks on invalid input. */
 extern int strint_fromdigitstring(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base);
 
-/* Convert a validated base 2 or 16 digit string to either a UV or decimal
+/* Convert a validated base 2, 8, or 16 digit string to either a UV or decimal
  * string.  Returns 1 for UV, 2 for malloc-allocated string. */
 extern int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base);
 

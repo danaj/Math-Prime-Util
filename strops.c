@@ -1805,13 +1805,15 @@ int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN
   b9_t R;
   UV n = 0;
   STRLEN i, start;
+  unsigned shift;
 
   if (rlen) *rlen = 0;
   if (rstr) *rstr = 0;
   while (len > 0 && *s == '0') { s++;  len--; }
-  if (base != 2 && base != 16) return 0;
+  if (base != 2 && base != 8 && base != 16) return 0;
+  shift = (base == 16) ? 4 : (base == 8) ? 3 : 1;
 
-  if (len <= BITS_PER_WORD / (base == 16 ? 4 : 1)) {
+  if (len <= BITS_PER_WORD / shift) {
     if (base == 16) {
       for (i = 0; i < len; i++)
         n = n * base + (UV)strint_digit_value((unsigned char)s[i]);
@@ -1830,17 +1832,15 @@ int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN
     uint32_t chunk = 0;
     unsigned bits;
 
-    if (base == 16 && chunk_len > 8)
-      chunk_len = 8;
-    else if (chunk_len > 32)
-      chunk_len = 32;
+    if (chunk_len > 32 / shift)
+      chunk_len = 32 / shift;
 
-    bits = (unsigned)chunk_len * ((base == 16) ? 4 : 1);
+    bits = (unsigned)chunk_len * shift;
     for (i = 0; i < chunk_len; i++) {
       if (base == 16)
         chunk = (chunk << 4) | (uint32_t)strint_digit_value((unsigned char)s[start+i]);
       else
-        chunk = (chunk << 1) | (uint32_t)(s[start+i] - '0');
+        chunk = (chunk << shift) | (uint32_t)(s[start+i] - '0');
     }
     b9_mul_2pow_chunk(&R, &R, bits);
     b9_add_u32(&R, &R, chunk);

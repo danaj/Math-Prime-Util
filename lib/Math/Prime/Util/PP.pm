@@ -421,12 +421,40 @@ sub toint {
   return 0 unless defined $n && length("$n");   # undef and "" return 0
   my $ns = "$n";
 
-  # Spiffy regex to parse decimal numbers, but we want to use Math::BigFloat
-  # $ns =~ /\A[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\z/;
-
   if (ref($n)) {
     $n = _truncate_bigfloat_to_string($n) if ref($n) eq 'Math::BigFloat';
   } else {
+    $ns =~ s/\A[ \t\r\n\f\x0b]+//;
+    $ns =~ s/[ \t\r\n\f\x0b]+\z//;
+    croak "toint: '$ns' is not a valid number" unless length($ns);
+
+    if (index($ns, '_') >= 0) {
+      my $digit = $ns =~ /\A[+-]?0[xX]/ ? '[0-9A-Fa-f]' :
+                  $ns =~ /\A[+-]?0[oO]/ ? '[0-7]' :
+                  $ns =~ /\A[+-]?0[bB]/ ? '[01]' : '[0-9]';
+      1 while $ns =~ s/($digit)_($digit)/$1$2/g;
+      croak "toint: '$ns' is not a valid number" if index($ns, '_') >= 0;
+    }
+    $n = $ns;
+
+    if ($ns =~ /\A([+-]?)0[xX]([0-9a-fA-F]+)\z/) {
+      my($sign, $digits) = ($1, $2);
+      my $r = fromdigits($digits, 16);
+      return $sign eq '-' ? negint($r) : $r;
+    }
+    if ($ns =~ /\A([+-]?)0[bB]([01]+)\z/) {
+      my($sign, $digits) = ($1, $2);
+      my $r = fromdigits($digits, 2);
+      return $sign eq '-' ? negint($r) : $r;
+    }
+    if ($ns =~ /\A([+-]?)0[oO]([0-7]+)\z/) {
+      my($sign, $digits) = ($1, $2);
+      my $r = fromdigits($digits, 8);
+      return $sign eq '-' ? negint($r) : $r;
+    }
+    croak "toint: '$ns' is not a valid number"
+      if $ns =~ /\A[+-]?0[xXbBoO]/;
+
     # Be careful with int($ns) on non-NV input, as it is limited to NV's
     # precision.  On post-5.6.2 we should be able to use 1 << _nvmantbits()
     # as the unsigned threshold, but for various reasons we are being very
@@ -439,6 +467,9 @@ sub toint {
       my $min = MPU_32BIT ? -2147483648 : -35184372088832;  # -2^45
       return int($ns) if $n > $min;
     } else {
+      croak "toint: '$ns' is not a valid number"
+        if ($ns =~ /\A[+-]?(?:[0-9]|\.)/ || $ns =~ /\A[+-]?\z/) &&
+           $ns !~ /\A[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\z/;
       $n = _truncate_bigfloat_to_string(_upgrade_to_float($ns));
     }
   }

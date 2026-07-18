@@ -3189,6 +3189,7 @@ Given integer C<n>, return C<-n>.
   $n = toint(-3.7);       # -3
   $n = toint("42");       # 42    (integer string)
   $n = toint("3.7");      # 3     (float string)
+  $n = toint("0o777");    # 511   (octal integer string)
   $n = toint($bigfloat);  # truncated, returned as native or bigint
   $n = toint($bigint);    # native if it fits, else our bigint type
 
@@ -3198,6 +3199,12 @@ Returns a native integer if the result fits in a Perl native integer
 
 Truncation toward zero is done, just like Perl's C<int(n)> or an integer
 cast in C.
+
+Strings prefixed with C<0x>, C<0b>, or C<0o> are interpreted as hexadecimal,
+binary, or octal integers respectively.  A leading zero without one of these
+prefixes does not change the base, so C<toint("0777")> returns 777.
+Single underscores may separate digits for readability, following Perl's
+numeric literal convention.  Surrounding ASCII whitespace is ignored.
 
 
 =head2 fibonacci

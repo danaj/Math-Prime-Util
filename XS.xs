@@ -1050,9 +1050,9 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
   str = SvPV_nomg(sv, len);
   stype = _parse_strnum(str, len);
 
-  if (stype == SNUMFLAG_UV)
+  if (stype == SNUMFLAG_NATIVE)
     return sv_2mortal(newSVuv((UV)PSTRTOULL(str, NULL, 10)));
-  if (stype == SNUMFLAG_NEG)
+  if (stype == (SNUMFLAG_NEG|SNUMFLAG_NATIVE))
     return sv_2mortal(newSViv((IV)PSTRTOLL(str, NULL, 10)));
   if (stype & SNUMFLAG_BIGINT)
     return xs_to_canonical_bigint(aTHX_ sv, str, len);
@@ -3549,6 +3549,7 @@ void toint(IN SV* svn)
     const char *s;
     STRLEN len;
     uint32_t stype;
+    SV *numsv;
   PPCODE:
     SvGETMAGIC(svn);
     if (!SvOK(svn)) XSRETURN_UV(0);  /* undef returns 0 without warning */
@@ -3568,13 +3569,20 @@ void toint(IN SV* svn)
     /* Get the string and determine what kind of number it is */
     s = SvPV(svn, len);
     if (s == 0 || len == 0) XSRETURN_UV(0);  /* Empty string return 0 */
+    numsv = _normalize_toint_string(aTHX_ svn, &s, &len);
     stype = _parse_strnum(s, len);
 
-    if (stype == SNUMFLAG_UV)  XSRETURN_UV(PSTRTOULL(s, NULL, 10));
-    if (stype == SNUMFLAG_NEG) XSRETURN_IV(PSTRTOLL(s,NULL,10));
+    if (stype & SNUMFLAG_INVALID)
+      croak("%s: '%" SVf "' is not a valid number", SUBNAME, svn);
+
+    if (stype == SNUMFLAG_NATIVE)
+      XSRETURN_UV(PSTRTOULL(s, NULL, 10));
+    if (stype == (SNUMFLAG_NEG|SNUMFLAG_NATIVE))
+      XSRETURN_IV(PSTRTOLL(s,NULL,10));
 
     if (stype & SNUMFLAG_RADIX) {
-      UV n, base = (stype & SNUMFLAG_HEXSTR) ? 16 : 2;
+      UV n, base = (stype & SNUMFLAG_HEXSTR) ? 16 :
+                   (stype & SNUMFLAG_OCTSTR) ?  8 : 2;
       char *rstr = 0;
       STRLEN rlen = 0;
       int sign = (stype & SNUMFLAG_NEG) ? -1 : 1;
@@ -3593,16 +3601,17 @@ void toint(IN SV* svn)
     }
 
     if (stype & SNUMFLAG_FP) {
-      NV x = SvNV(svn);  /* This might lose user precision, so check */
+      NV x = SvNV(numsv);  /* This might lose user precision, so check */
       if (x >= 0.0 && x < nvuvmaxval+1.0) XSRETURN_UV((UV)x);
       if (x <  0.0 && x > nvivminval-1.0) XSRETURN_IV((IV)x);
       /* Doesn't fit, so go through Math::BigFloat */
-      RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
+      RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", numsv) );
     }
     if (stype & SNUMFLAG_BIGINT)
-      RETURN_SV(xs_to_canonical_bigint(aTHX_ svn, s, len));
-    /* It's not clear what the input is.  Let Math::BigFloat decide. */
-    RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", svn) );
+      RETURN_SV(xs_to_canonical_bigint(aTHX_ numsv, s, len));
+    if (stype == SNUMFLAG_UNKNOWN)
+      RETURN_SV( xs_call_root_1_sv(aTHX_ "_int_from_float", numsv) );
+    croak("%s: internal numeric conversion error", SUBNAME);
 
 
 void random_factored_integer(IN SV* svn)

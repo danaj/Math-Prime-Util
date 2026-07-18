@@ -173,6 +173,14 @@ subtest 'arithmetic ops', sub {
   is("".toint(Math::BigFloat->new("-0.0000000000000000000000000000001")),
      "0",
      "toint tiny negative BigFloat truncates to zero (PP)");
+  is_deeply(
+    [map { "".toint($_) } qw/0xFF -0X10 0b1011 -0B1011 0o777 -0O10
+                               1_000 0xF_F 0o7_77
+                               0x100000000000000000000/],
+    [qw/255 -16 11 -11 511 -8 1000 255 511
+        1208925819614629174706176/],
+    "toint radix strings (PP)");
+  is(toint(" \t-42\r\n"), -42, "toint surrounding whitespace (PP)");
 
   is_deeply([allsqrtmod(4,13791)],[2,4595,9196,13789],"allsqrtmod");
   is_deeply([allrootmod(581,5,151)],[34,42,43,62,121],"allrootmod");

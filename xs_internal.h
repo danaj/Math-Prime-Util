@@ -50,14 +50,16 @@
 #define SVNUMTEST(n) \
   ((SvFLAGS(n) & (SVf_IOK | SVf_MAGTEST | SVs_GMG )) == SVf_IOK)
 
-#define SNUMFLAG_UV       0x00000000U
-#define SNUMFLAG_NEG      0x00000001U
-#define SNUMFLAG_BIGINT   0x00000002U
-#define SNUMFLAG_FP       0x00000004U
-#define SNUMFLAG_INVALID  0x00000008U
-#define SNUMFLAG_RADIX    0x00000010U
-#define SNUMFLAG_HEXSTR   0x00000020U
-#define SNUMFLAG_BINSTR   0x00000040U
+#define SNUMFLAG_UNKNOWN  0x00000000U
+#define SNUMFLAG_INVALID  0x00000001U
+#define SNUMFLAG_NEG      0x00000002U
+#define SNUMFLAG_NATIVE   0x00000004U
+#define SNUMFLAG_BIGINT   0x00000008U
+#define SNUMFLAG_FP       0x00000010U
+#define SNUMFLAG_RADIX    0x00000020U
+#define SNUMFLAG_HEXSTR   0x00000040U
+#define SNUMFLAG_BINSTR   0x00000080U
+#define SNUMFLAG_OCTSTR   0x00000100U
 
 #define IFLAG_ANY      0x00000000U
 #define IFLAG_NONNEG   0x00000001U  /* Must be non-negative */
@@ -130,6 +132,7 @@ int _sv_is_bigint(pTHX_ SV* n);
 int _sv_is_bigint_fast(pTHX_ SV* n);
 int _sv_is_math_object(pTHX_ SV* n);
 uint32_t _parse_strnum(const char* s, STRLEN len);
+SV* _normalize_toint_string(pTHX_ SV* svn, const char **sp, STRLEN *lenp);
 int _validate_int(pTHX_ SV* n, int negok);
 int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask);
 int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr);
