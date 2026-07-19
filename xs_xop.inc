@@ -293,16 +293,9 @@ static OP* pp_cmpint_custom(pTHX) {
 static OP* pp_kronecker_custom(pTHX) {
   dSP;
   SV *sva = SP[-1], *svb = SP[0];
-  int astatus, bstatus, ret;
-  UV a, b;
+  int ret;
 
-  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-  if (astatus != 0 && bstatus != 0) {
-    if (bstatus == 1)
-      ret = (astatus == 1) ? kronecker_uu(a, b) : kronecker_su((IV)a, b);
-    else
-      ret = (astatus == 1) ? kronecker_uu(a, neg_iv(b)) : -kronecker_su((IV)a, neg_iv(b));
+  if (xs_kronecker_result(aTHX_ sva, svb, &ret)) {
     SP -= 1;
     SETs(_sv_const_int(aTHX_ ret));
     RETURN;

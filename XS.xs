@@ -477,6 +477,7 @@ static SV* xs_to_bigint(pTHX_ SV* r);
 static SV* xs_to_canonical(pTHX_ SV* sv);
 static void xs_aref_to_canonical(pTHX_ SV* aref, const char* name);
 static bool xs_sv_is_perfect_square(pTHX_ SV *sv, int *ret);
+static bool xs_kronecker_result(pTHX_ SV *sva, SV *svb, int *ret);
 
 #define VCALL_ROOT 0x0
 #define VCALL_PP   0x1
@@ -1526,6 +1527,39 @@ static bool xs_factorintp128_sv(pTHX_ factored128_t *nf, SV *sv)
 }
 
 #endif
+
+/* Return true when the Kronecker symbol was handled by native C. */
+static bool xs_kronecker_result(pTHX_ SV *sva, SV *svb, int *ret)
+{
+  int astatus, bstatus;
+  UV a, b;
+
+  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+  if (astatus != 0 && bstatus != 0) {
+    if (bstatus == 1)
+      *ret = (astatus == 1) ? kronecker_uu(a, b)
+                            : kronecker_su((IV)a, b);
+    else
+      *ret = (astatus == 1) ? kronecker_uu(a, neg_iv(b))
+                            : -kronecker_su((IV)a, neg_iv(b));
+    return 1;
+  }
+
+#if HAVE_FACTOR128
+  {
+    uint128_t a128, b128;
+    int asign, bsign;
+    if (xs_sv_to_uint128_signmag(aTHX_ &a128, &asign, sva) &&
+        xs_sv_to_uint128_signmag(aTHX_ &b128, &bsign, svb)) {
+      *ret = kronecker128(a128, asign, b128, bsign);
+      return 1;
+    }
+  }
+#endif
+
+  return 0;
+}
 
 /* Return true when the square test was handled here, setting *ret. */
 static bool xs_sv_is_perfect_square(pTHX_ SV *sv, int *ret)
@@ -4950,19 +4984,10 @@ void is_powerful(IN SV* svn, IN SV* svk = 0);
 
 void kronecker(IN SV* sva, IN SV* svb)
   PREINIT:
-    int astatus, bstatus;
-    UV a, b;
+    int k;
   PPCODE:
-    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-    if (astatus != 0 && bstatus != 0) {
-      int k;
-      if (bstatus == 1)
-        k = (astatus==1) ? kronecker_uu(a,b)         :  kronecker_su((IV)a,b);
-      else
-        k = (astatus==1) ? kronecker_uu(a,neg_iv(b)) : -kronecker_su((IV)a,neg_iv(b));
+    if (xs_kronecker_result(aTHX_ sva, svb, &k))
       RETURN_NPARITY( k );
-    }
     DISPATCHPP_RETURN();
 
 void is_qr(IN SV* sva, IN SV* svn)

@@ -346,33 +346,61 @@ static bool miller_rabin128(uint128_t n, uint128_t base) {
   return 0;
 }
 
-/* Jacobi symbol (a/n), n odd > 0.  a may be any signed 128-bit value. */
-static int jacobi128(int128_t a_in, uint128_t n) {
-  uint128_t a;
-  int j = 1;
+/* Kronecker symbol (a/b), with each argument given as sign and magnitude.
+ * Keeping the signs separate permits the full unsigned 128-bit range. */
+int kronecker128(uint128_t a, int asign, uint128_t b, int bsign)
+{
+  int s = 1;
 
-  if (n == 1) return 1;
+  if (b == 0) return a == 1;
 
-  if (a_in < 0) {
-    a = (uint128_t)(-a_in) % n;
-    /* (-1/n) = (-1)^((n-1)/2); n odd so n%4 in {1,3} */
-    if ((n & 3) == 3) j = -j;
-  } else {
-    a = (uint128_t)a_in % n;
+  /* (a/-b) differs from (a/b) only when a is negative. */
+  if (asign < 0 && bsign < 0) s = -s;
+
+  if (!(b & 1)) {
+    int odd_power = 0;
+    if (!(a & 1)) return 0;
+    do {
+      b >>= 1;
+      odd_power = !odd_power;
+    } while (!(b & 1));
+    if (odd_power && ((a & 7) == 3 || (a & 7) == 5)) s = -s;
   }
+
+  /* The denominator is now positive and odd. */
+  if (asign < 0 && (b & 3) == 3) s = -s;
 
   while (a != 0) {
+    int odd_power = 0;
     while (!(a & 1)) {
       a >>= 1;
-      /* (2/n) = (-1)^((n^2-1)/8) */
-      if ((n & 7) == 3 || (n & 7) == 5) j = -j;
+      odd_power = !odd_power;
     }
-    /* Quadratic reciprocity */
-    uint128_t t = a; a = n; n = t;
-    if ((a & 3) == 3 && (n & 3) == 3) j = -j;
-    a %= n;
+    if (odd_power && ((b & 7) == 3 || (b & 7) == 5)) s = -s;
+    if ((a & 3) == 3 && (b & 3) == 3) s = -s;
+    {
+      uint128_t rem = b % a;
+      b = a;
+      a = rem;
+    }
   }
-  return (n == 1) ? j : 0;
+  return (b == 1) ? s : 0;
+}
+
+/* Jacobi symbol (a/n), n odd > 0.  a may be any signed 128-bit value. */
+static int jacobi128(int128_t a_in, uint128_t n)
+{
+  uint128_t a;
+  int asign = 1;
+
+  if (a_in < 0) {
+    /* This form is safe even if a_in is the minimum signed value. */
+    a = (uint128_t)(-(a_in + 1)) + 1;
+    asign = -1;
+  } else {
+    a = (uint128_t)a_in;
+  }
+  return kronecker128(a, asign, n, 1);
 }
 
 /* Lucas sequence mod n in Montgomery form.  Given (D, P=1, Q), index k,

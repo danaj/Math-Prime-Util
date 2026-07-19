@@ -35,6 +35,8 @@ extern bool        is_prime128(uint128_t n);
 extern bool        is_bpsw128(uint128_t n);
 extern bool        is_perfect_square128_ret(uint128_t n, uint64_t *root);
 #define is_perfect_square128(n)  is_perfect_square128_ret(n, 0)
+extern int         kronecker128(uint128_t a, int asign,
+                                uint128_t b, int bsign);
 extern signed char moebius128(uint128_t n);
 extern bool        is_semiprime128(uint128_t n);
 extern uint128_t   muladdmod128_s(uint128_t a, uint128_t b, uint128_t c,
