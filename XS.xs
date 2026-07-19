@@ -5866,7 +5866,6 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
     Size_t alen, blen;
   CODE:
     /* Must be CODE and not PPCODE */
-#if PERL_VERSION_GE(5,10,1)
     atype = arrayref_to_int_array(aTHX_ &alen, &ra, 1, sva, "setbinop arg 1");
     if (svb == 0 || atype == IARR_TYPE_BAD) {
       rb = ra;
@@ -5902,7 +5901,8 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
       GvSV(agv) = asv;
       GvSV(bgv) = bsv;
       iset_create(&s, 4UL * ((size_t)alen + (size_t)blen + 2));
-#if USE_MULTICALL
+      /* Native multicall pre-5.10.1 cannot safely redispatch with these args.*/
+#if USE_MULTICALL && (!defined(REAL_MULTICALL) || PERL_VERSION_GE(5,10,1))
       if (!CvISXSUB(subcv)) {
         SC_dMULTICALL;
         I32 gimme = G_SCALAR;
@@ -5946,7 +5946,6 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
     }
     if (rb != ra) Safefree(rb);
     Safefree(ra);
-#endif
     DISPATCHPP_RETURN();
 
 void setunion(IN SV* sva, IN SV* svb)
