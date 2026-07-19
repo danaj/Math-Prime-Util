@@ -395,6 +395,7 @@ xt/lucasuv.pl
 xt/make-perrin-data.pl
 xt/test-pcbounds.pl
 xt/xop-differential.t
+xt/xop-hardening.t
 xt/xop-table.pl
 xt/xop-shapes.t
 .travis.yml
