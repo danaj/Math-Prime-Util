@@ -13,16 +13,25 @@ use Test::More  tests => 3 + 3 + 3 + 6;
 can_ok( 'Math::Prime::Util', 'prime_get_config' );
 
 { my $x = Math::Prime::Util::_to_bigint(0); }
-my $biclass = Math::Prime::Util::prime_get_config->{bigintclass};
+my $config = Math::Prime::Util::prime_get_config();
+my $biclass = $config->{bigintclass};
 
 my $diag = "" .
-  ((Math::Prime::Util::prime_get_config->{xs}) ? "XS" : "PP") .
-  ((Math::Prime::Util::prime_get_config->{gmp})
+  (($config->{xs}) ? "XS" : "PP") .
+  (($config->{gmp})
     ? ", MPU::GMP $Math::Prime::Util::GMP::VERSION"
     : "") .
   ($biclass ? ", BI $biclass" : "") .
   ".\n";
 diag $diag;
+
+my $intdiag = "Integer types: PP UV=$config->{maxbits}";
+if ($config->{xs}) {
+  my $has_u64  = Math::Prime::Util::_XS_has_uint64()  ? "yes" : "no";
+  my $has_u128 = Math::Prime::Util::_XS_has_uint128() ? "yes" : "no";
+  $intdiag .= "; XS uint64_t=$has_u64, uint128_t=$has_u128";
+}
+diag "$intdiag.";
 
 my $init_size = prime_get_config->{'precalc_to'};
 my $bigsize = $init_size + 50_000;

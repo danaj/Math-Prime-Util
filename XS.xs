@@ -1612,6 +1612,8 @@ BOOT:
     newCONSTSUB(stash, "_nvmantbits", newSViv(NVMANTBITS));
     newCONSTSUB(stash, "_nvmantdigits", newSViv((IV)((NVMANTBITS+1) / 3.322)));
     newCONSTSUB(stash, "_XS_prime_maxbits", newSViv(BITS_PER_WORD));
+    newCONSTSUB(stash, "_XS_has_uint64", newSViv(HAVE_UINT64));
+    newCONSTSUB(stash, "_XS_has_uint128", newSViv(HAVE_UINT128));
 #if HAVE_FACTOR128
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(128));
 #else
