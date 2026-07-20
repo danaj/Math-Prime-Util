@@ -521,7 +521,7 @@ subtest 'Perl dispatch and XS re-entry' => sub {
   for my $class (qw/Math::GMPz Math::GMP/) {
     SKIP: {
       (my $module = "$class.pm") =~ s!::!/!g;
-      skip "$class is not available", 3
+      skip "$class is not available", 4
         if !eval { require $module; 1 };
 
       my $input = $class->new('184467440737095516160');
@@ -536,6 +536,9 @@ subtest 'Perl dispatch and XS re-entry' => sub {
          "addint returns through $class overloaded XS");
       is(ref($result), $class,
          "addint preserves configured $class result");
+      is_deeply(_outcome(\&x_modint, $input, 0),
+                [error => 'modint: divide by zero'],
+                "modint traps zero before calling $class overload");
     }
   }
 

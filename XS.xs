@@ -504,6 +504,9 @@ static int addint_try_native_result(pTHX_ int opix, SV* sva, SV* svb, const char
   if (astatus_out) *astatus_out = astatus;
   if (bstatus_out) *bstatus_out = bstatus;
 
+  if (bstatus != 0 && b == 0 && (opix == 3 || opix == 4 || opix == 5))
+    croak("%s: divide by zero", opname);
+
   if (opix == 7 && astatus != 0 && bstatus == 0) {
     if (astatus > 0 && (a == 0 || a == 1)) {
       *is_uv_out = 1;
@@ -533,9 +536,6 @@ static int addint_try_native_result(pTHX_ int opix, SV* sva, SV* svb, const char
   ret = overflow = postneg = 0;
   smask = ((astatus == -1) << 1) + (bstatus == -1);
   /* smask=0: +a +b  smask=1: +a -b  smask=2: -a +b  smask=3: -a -b */
-
-  if (b == 0 && (opix == 3 || opix == 4 || opix == 5))
-    croak("%s: divide by zero", opname);
 
   if (smask != 0) {
     if (smask & 2) a = neg_iv(a);

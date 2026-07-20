@@ -585,6 +585,11 @@ subtest 'canonical bigint returns', sub {
     is("".ref($got).":$got","$new_bigint:$expect","$name returns canonical bigint");
   }
 
+  my $bigint = toint("$n");
+  eval { modint($bigint, 0) };
+  like($@, qr/^modint: divide by zero/,
+       "modint traps zero before calling bigint overload");
+
   prime_set_config(bigint => $old_bigint);
 };
 
