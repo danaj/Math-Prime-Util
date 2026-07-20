@@ -347,6 +347,7 @@ xt/divisors.pl
 xt/divtest.pl
 xt/foralmostprimes.pl
 xt/moebius-mertens.pl
+xt/multicall-reentrancy.t
 xt/totient-range.pl
 xt/primality-small.pl
 xt/primality-aks.pl
@@ -371,6 +372,7 @@ xt/primes-edgecases.pl
 xt/rootmod.pl
 xt/rwh_primecount.py
 xt/rwh_primecount_numpy.py
+xt/set-differential.t
 xt/setop.pl
 xt/sort-return.pl
 xt/test-bpsw.pl

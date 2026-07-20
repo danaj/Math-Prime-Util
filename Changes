@@ -69,6 +69,11 @@ Revision history for Perl module Math::Prime::Util
 
     [FIXES]
 
+    - XS setbinop and vec callbacks preserve lexical return values.  Sparse
+      arrays passed to set functions are rejected safely.
+
+    - Do not send bigint Lucas parameters to GMP versions before 0.53.
+
     - chebyshev_theta and chebyshev_psi had tables corrected for 3 ranges.
 
     - Fix overflow handling in Farey functions on 32-bit builds.

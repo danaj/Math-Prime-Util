@@ -430,8 +430,9 @@ SV** _check_sorted_nonneg_arrayref(pTHX_ SV *sv, size_t *lenp)
   len = av_count(av);
   for (i = 0; i < len; i++) {
     SV *elem = arr[i];
-    if (!SVNUMTEST(elem) || (!SvIsUV(elem) && SvIVX(elem) < 0)) return NULL;
-    if (i > 0 && SvUVX(elem) <= SvUVX(arr[i-1]))                return NULL;
+    if (!elem || !SVNUMTEST(elem))                return NULL;
+    if (!SvIsUV(elem) && SvIVX(elem) < 0)         return NULL;
+    if (i > 0 && SvUVX(elem) <= SvUVX(arr[i-1]))  return NULL;
   }
   *lenp = len;
   return arr;

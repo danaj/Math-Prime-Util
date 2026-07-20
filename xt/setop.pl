@@ -18,7 +18,7 @@ for my $bits (3..63) {
 
     my $mp = powint(2,$bits-1);
     @a = map { subint($_,$mp) } @a;
-    @b = map { subint($_,$mp) } @a;
+    @b = map { subint($_,$mp) } @b;
     checksetops(\@a,\@b,$bits,$n);
   }
 }

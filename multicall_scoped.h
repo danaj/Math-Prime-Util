@@ -16,6 +16,8 @@
  * Keep in mind that a function that complicated is likely to take long enough
  * that our scope won't matter in performance.  We're trying to remove the
  * unnecessary scope for the majority of callbacks which are very simple.
+ * SC_MULTICALL is suitable for void context.  Non-void callers need a variant
+ * that preserves callback return values across LEAVE.
  *
  * Adds SC_ versions of dMULTICALL, PUSH_MULTICALL, and MULTICALL.
  */
