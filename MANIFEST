@@ -400,5 +400,9 @@ xt/xop-differential.t
 xt/xop-hardening.t
 xt/xop-table.pl
 xt/xop-shapes.t
+xt/integer-complexity-differential.t
+xt/rational-differential.t
+xt/urandomr-boundaries.t
+xt/vec-differential.t
 .travis.yml
 inc/Devel/CheckLib.pm
