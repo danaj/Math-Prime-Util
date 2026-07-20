@@ -8065,7 +8065,7 @@ PREINIT:
     UV ustep, usize;
     CV *subcv;
     SV **list;
-    AV *result_av;
+    AV *list_av, *result_av;
 PPCODE:
 {   /* Generalized sliding window: block, step, size, list.
        Each window of 'size' elements is passed as @_ to block;
@@ -8081,9 +8081,15 @@ PPCODE:
     size = (SSize_t)usize;
     /* ST(0)=block, ST(1)=step, ST(2)=size, ST(3..)=list */
     nlist = items - 3;
-    list  = &PL_stack_base[ax+3];
     if (nlist < size)
       RETURN_NOTHING();
+    /* Save the input SV* -- callbacks could realloc or reuse the arg stack. */
+    list_av = (AV*)sv_2mortal((SV*)newAV());
+    av_extend(list_av, nlist-1);
+    for (i = 0; i < nlist; i++)
+      av_push(list_av, SvREFCNT_inc(PL_stack_base[ax+3+i]));
+    list = AvARRAY(list_av);
+    /* result_av is where we're going to push the callback results. */
     result_av = (AV*)sv_2mortal((SV*)newAV());
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
@@ -8122,7 +8128,7 @@ PPCODE:
       AvREAL_off(result_av);          /* transfer ownership to stack mortals */
       EXTEND(SP, (EXTEND_TYPE)numret);
       for (i = 0; i < numret; i++)
-          PUSHs(sv_2mortal(res[i]));
+        PUSHs(sv_2mortal(res[i]));
       XSRETURN(numret);
     }
     XSRETURN_UV(numret);

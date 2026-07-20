@@ -523,6 +523,8 @@ subtest 'vecwindow', sub {
   # block returning multiple values (list context — G_ARRAY)
   is_deeply([vecwindow {($_[1],$_[0])} 2,2,1..4],[2,1,4,3],      "vecwindow: block returns list");
   is_deeply([vecwindow {@_}            1,2,1..3],[1,2,2,3],       "vecwindow: sliding pairs as list");
+  is_deeply([vecwindow {addint($_[0],$_[-1])} 1,2,1..3], [3,5],
+            "vecwindow: nested XS callback preserves input windows");
 
   my @w = (1..4);
   is_deeply([vecwindow { $_[0] *= 10; $_[-1] += 1; @_ } 1,2,@w],
