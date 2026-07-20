@@ -2396,6 +2396,73 @@ done:
   return ret;
 }
 
+int strint_kronecker(const char* a, STRLEN alen,
+                     const char* b, STRLEN blen)
+{
+  int aneg, bneg, odd_power, ret, s = 1;
+  b9_t A, B, R;
+
+  aneg = strint_strip(&a, &alen);
+  bneg = strint_strip(&b, &blen);
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init(&R);
+
+  if (B.n == 0) {
+    ret = (A.n == 1 && A.d[0] == 1);
+    goto done;
+  }
+
+  /* (a/-b) differs from (a/b) only when a is negative. */
+  if (aneg && bneg) s = -s;
+
+  if (!(B.d[0] & 1)) {
+    if (A.n == 0 || !(A.d[0] & 1)) {
+      ret = 0;
+      goto done;
+    }
+    odd_power = 0;
+    do {
+      b9_tdiv2(&B);
+      odd_power = !odd_power;
+    } while (!(B.d[0] & 1));
+    if (odd_power && ((A.d[0] & 7) == 3 || (A.d[0] & 7) == 5))
+      s = -s;
+  }
+
+  /* The denominator is now positive and odd. */
+  if (aneg && (B.d[0] & 3) == 3) s = -s;
+
+  /* The symbol is periodic in the numerator modulo an odd denominator. */
+  if (b9_cmp_abs(&A, &B) >= 0) {
+    b9_fdivrem(NULL, &R, &A, &B);
+    b9_swap(&A, &R);
+  }
+
+  while (A.n != 0) {
+    odd_power = 0;
+    while (!(A.d[0] & 1)) {
+      b9_tdiv2(&A);
+      odd_power = !odd_power;
+    }
+    if (odd_power && ((B.d[0] & 7) == 3 || (B.d[0] & 7) == 5))
+      s = -s;
+    if ((A.d[0] & 3) == 3 && (B.d[0] & 3) == 3)
+      s = -s;
+
+    b9_fdivrem(NULL, &R, &B, &A);
+    b9_swap(&B, &A);
+    b9_swap(&A, &R);
+  }
+  ret = (B.n == 1 && B.d[0] == 1) ? s : 0;
+
+done:
+  b9_free(&A);
+  b9_free(&B);
+  b9_free(&R);
+  return ret;
+}
+
 STRLEN strint_lshiftint(char* out, const char* a, STRLEN alen, UV k)
 {
   b9_t n, pow2;

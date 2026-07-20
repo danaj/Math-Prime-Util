@@ -110,6 +110,10 @@ extern STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k);
 /* Return true if the validated signed decimal integer string is a square. */
 extern bool strint_is_perfect_square(const char* a, STRLEN alen);
 
+/* Kronecker symbol (a/b) for validated signed decimal integer strings. */
+extern int strint_kronecker(const char* a, STRLEN alen,
+                            const char* b, STRLEN blen);
+
 /* Signed floor division and remainder.
  * Either qout or rout (and its companion length pointer) may be NULL.
  * qout needs alen+1 bytes; rout needs blen bytes.

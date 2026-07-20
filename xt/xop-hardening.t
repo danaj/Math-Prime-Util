@@ -309,9 +309,10 @@ our ($recursive_pp_remaining, $recursive_pp_calls, $recursive_pp_fail);
 
 sub _recursive_pp_kronecker {
   $recursive_pp_calls++;
+  kronecker($DISPATCH_A,97);
   if ($recursive_pp_remaining > 0) {
     $recursive_pp_remaining--;
-    return kronecker($DISPATCH_A,97);
+    return Math::Prime::Util::PP::kronecker($DISPATCH_A,97);
   }
   die "forced recursive PP dispatch failure\n" if $recursive_pp_fail;
   return kronecker(5,7);
@@ -411,12 +412,10 @@ subtest 'reentrant magic and overload callbacks' => sub {
 };
 
 ###############################################################################
-# Real and controlled XS -> Perl -> XS callback chains.
+# Fast paths and controlled Perl -> XS callback chains.
 #
-# With GMP disabled, bigint kronecker dispatches to PP.  PP validates through
-# custom ops and repeatedly calls the regular XS right-shift implementation.
-# Canonical bigint results call a Perl constructor, which we instrument to
-# re-enter another custom op.
+# With GMP disabled, bigint kronecker stays in XS through the strint path.
+# Direct PP recursion below repeatedly re-enters that custom op.
 
 subtest 'Perl dispatch and XS re-entry' => sub {
   require Math::Prime::Util::PP;
@@ -432,11 +431,8 @@ subtest 'Perl dispatch and XS re-entry' => sub {
             'PP kronecker validators and final reduction re-enter custom ops');
 
   my $original_pp_kronecker = \&Math::Prime::Util::PP::kronecker;
-  my $original_rshift = \&Math::Prime::Util::PP::Mrshiftint;
   my $original_tobigint = \&Math::Prime::Util::_to_bigint;
-  my $original_new = Math::BigInt->can('new');
-  my ($pp_calls, $shift_calls, $tobigint_calls) = (0,0,0);
-  my ($new_calls, $new_xop_calls) = (0,0);
+  my ($pp_calls, $tobigint_calls) = (0,0);
 
   SKIP: {
     skip '128-bit native factoring support is not available', 3
@@ -456,42 +452,24 @@ subtest 'Perl dispatch and XS re-entry' => sub {
     is($native_pp_calls, 0, '128-bit kronecker does not dispatch to PP');
   }
 
-  my $new_wrapper = sub {
-    $new_calls++;
-    my $sign = signint(defined($_[1]) ? $_[1] : 0);
-    $new_xop_calls++ if $sign >= 0;
-    goto &$original_new;
-  };
-  my $new_ops = _compiled_ops($new_wrapper);
-  ok($new_ops->{signint},
-     'instrumented bigint constructor contains a nested custom op');
-
   {
     no warnings qw/once redefine/;
     local *Math::Prime::Util::PP::kronecker = sub {
       $pp_calls++;
       goto &$original_pp_kronecker;
     };
-    local *Math::Prime::Util::PP::Mrshiftint = sub {
-      $shift_calls++;
-      goto &$original_rshift;
-    };
     local *Math::Prime::Util::_to_bigint = sub {
       $tobigint_calls++;
       goto &$original_tobigint;
     };
-    local *Math::BigInt::new = $new_wrapper;
 
     is(x_kronecker($DISPATCH_A,$DISPATCH_B), 1,
-       'bigint kronecker survives repeated PP and XS crossings');
+       'bigint kronecker returns through the strint path');
+    is($direct{kronecker}->($DISPATCH_A,$DISPATCH_B), 1,
+       'bigint kronecker XSUB returns through the strint path');
   }
-  is($pp_calls, 1, 'outer custom op dispatched to PP once');
-  is($shift_calls, 140, 'PP called the XS right-shift path 140 times');
-  is($tobigint_calls, 2,
-     'custom validators called Perl bigint conversion twice');
-  ok($new_calls >= 140, 'callback chain repeatedly constructed bigints');
-  is($new_xop_calls, $new_calls,
-     'every instrumented bigint constructor re-entered a custom op');
+  is($pp_calls, 0, 'strint kronecker does not dispatch to PP');
+  is($tobigint_calls, 0, 'strint kronecker does not construct bigints');
 
   my $recursive_ops = _compiled_ops(\&_recursive_pp_kronecker);
   ok($recursive_ops->{kronecker},
@@ -503,17 +481,19 @@ subtest 'Perl dispatch and XS re-entry' => sub {
 
     ($recursive_pp_remaining, $recursive_pp_calls, $recursive_pp_fail) =
       (31, 0, 0);
-    is_deeply(_outcome(\&x_kronecker, $DISPATCH_A,97),
+    is_deeply(_outcome(\&Math::Prime::Util::PP::kronecker,
+                       $DISPATCH_A,97),
               [value => '-1', ''],
-              '32-level recursive PP dispatch returns correctly');
+              '32-level recursive Perl/XS chain returns correctly');
     is($recursive_pp_calls, 32,
-       'recursive PP dispatch reached the requested depth');
+       'recursive Perl/XS chain reached the requested depth');
 
     ($recursive_pp_remaining, $recursive_pp_calls, $recursive_pp_fail) =
       (15, 0, 1);
-    is_deeply(_outcome(\&x_kronecker, $DISPATCH_A,97),
+    is_deeply(_outcome(\&Math::Prime::Util::PP::kronecker,
+                       $DISPATCH_A,97),
               [error => 'forced recursive PP dispatch failure'],
-              'deep recursive PP dispatch propagates croak');
+              'deep recursive Perl/XS chain propagates croak');
   }
   is(x_addint(x_mulint(6,7),x_sub1int(1)), 42,
      'custom ops recover after recursive PP dispatch croak');
@@ -696,16 +676,15 @@ subtest 'exception and stack recovery' => sub {
         \&x_kronecker,
         '340282366920938463463374607431768211457', 97
       );
-      push @fail, "backend round $round did not propagate croak"
-        if $bad->[0] ne 'error' ||
-           $bad->[1] ne 'forced xop backend failure';
+      push @fail, "strint round $round entered the PP backend"
+        if $bad->[0] ne 'value' || $bad->[1] ne '1';
       my $sentinel = x_addint(x_mulint(6,7),x_sub1int(1));
-      push @fail, "backend round $round corrupted following op"
+      push @fail, "strint round $round corrupted following op"
         if "$sentinel" ne '42';
     }
   }
   prime_set_config(gmp => $old_gmp ? 1 : 0);
-  is_deeply(\@fail, [], 'backend croaks preserve subsequent custom ops');
+  is_deeply(\@fail, [], 'strint bypasses PP and preserves subsequent custom ops');
 };
 
 ###############################################################################

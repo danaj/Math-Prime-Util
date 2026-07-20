@@ -1558,6 +1558,14 @@ static bool xs_kronecker_result(pTHX_ SV *sva, SV *svb, int *ret)
   }
 #endif
 
+  if (_XS_get_callgmp() < 17) {
+    STRLEN alen, blen;
+    const char *aptr = SvPV_nomg(sva, alen);
+    const char *bptr = SvPV_nomg(svb, blen);
+    *ret = strint_kronecker(aptr, alen, bptr, blen);
+    return 1;
+  }
+
   return 0;
 }
 
