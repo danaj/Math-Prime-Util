@@ -935,82 +935,6 @@ static NOINLINE int dispatch_external(pTHX_ const CV* thiscv, I32 ax,
  *  - Any helper that uses SP after call_* must SPAGAIN first.
  *  - Scalar helpers should POPs the return and PUTBACK before returning.
  */
-typedef struct {
-  SSize_t before_ix;
-  SSize_t nret;
-  SV *scalar;
-  AV *array;
-} xs_multicall_returns_t;
-
-static void xs_multicall_returns_init(pTHX_ xs_multicall_returns_t *ret,
-                                      bool preserve, I32 gimme)
-{
-  ret->before_ix = 0;
-  ret->nret = 0;
-  ret->scalar = NULL;
-  ret->array = NULL;
-  if (!preserve) return;
-  if (gimme == G_SCALAR) {
-    ret->scalar = newSV(0);
-    SAVEFREESV(ret->scalar);
-  } else if (gimme == G_ARRAY) {
-    ret->array = newAV();
-    SAVEFREESV((SV*)ret->array);
-  }
-}
-
-static void xs_multicall_returns_prepare(pTHX_ xs_multicall_returns_t *ret)
-{
-  ret->before_ix = (SSize_t)(PL_stack_sp - PL_stack_base);
-  ret->nret = 0;
-  if (ret->array) {
-    av_clear(ret->array);
-    /* pp_leavesub expects stack slot zero to remain the undef sentinel. */
-    if (ret->before_ix <= 0)
-      *PL_stack_base = &PL_sv_undef;
-  }
-}
-
-static void xs_multicall_returns_capture(pTHX_ xs_multicall_returns_t *ret)
-{
-  SSize_t i;
-  if (ret->scalar) {
-    sv_setsv(ret->scalar, *PL_stack_sp);
-  } else if (ret->array) {
-    ret->nret = (SSize_t)(PL_stack_sp - PL_stack_base) - ret->before_ix;
-    for (i = 0; i < ret->nret; i++)
-      av_push(ret->array,
-              SvREFCNT_inc(PL_stack_base[ret->before_ix + i + 1]));
-  }
-}
-
-static void xs_multicall_returns_restore(pTHX_ xs_multicall_returns_t *ret)
-{
-  SSize_t i;
-  if (ret->scalar) {
-    *PL_stack_sp = ret->scalar;
-  } else if (ret->array) {
-    SV **values = AvARRAY(ret->array);
-    PL_stack_sp = PL_stack_base + ret->before_ix;
-    for (i = 0; i < ret->nret; i++)
-      *++PL_stack_sp = values[i];
-  }
-}
-
-#define SC_MULTICALL_WITH_SAVED_RESULTS(ret) \
-  STMT_START {                               \
-    if (multicall_needs_scope_) {            \
-      xs_multicall_returns_prepare(aTHX_ (ret)); \
-      ENTER;                                 \
-    }                                        \
-    MULTICALL;                               \
-    if (multicall_needs_scope_) {            \
-      xs_multicall_returns_capture(aTHX_ (ret)); \
-      LEAVE;                                 \
-      xs_multicall_returns_restore(aTHX_ (ret)); \
-    }                                        \
-  } STMT_END
-
 static SV* xs_call_root_1_sv(pTHX_ const char* name, SV* arg) {
   dSP;
   SV* ret;
@@ -5981,17 +5905,15 @@ void setbinop(IN SV* block, IN SV* sva, IN SV* svb = 0)
 #if USE_MULTICALL && (!defined(REAL_MULTICALL) || PERL_VERSION_GE(5,10,1))
       if (!CvISXSUB(subcv)) {
         SC_dMULTICALL;
-        xs_multicall_returns_t saved_results;
+        SV *cbret;
         I32 gimme = G_SCALAR;
         SC_PUSH_MULTICALL(subcv);
-        xs_multicall_returns_init(aTHX_ &saved_results,
-                                  multicall_needs_scope_, gimme);
         for (i = 0; i < alen; i++) {
           for (j = 0; j < blen; j++) {
             FASTSETSVINT(asv, atype == IARR_TYPE_POS, ra[i]);
             FASTSETSVINT(bsv, btype == IARR_TYPE_POS, rb[j]);
-            SC_MULTICALL_WITH_SAVED_RESULTS(&saved_results);
-            status = _validate_and_set(&ret, aTHX_ *PL_stack_sp, IFLAG_ANY);
+            SC_MULTICALL_SCALAR(cbret);
+            status = _validate_and_set(&ret, aTHX_ cbret, IFLAG_ANY);
             if (status != 0)  iset_add(&s, ret, status);
             if (status == 0 || iset_is_invalid(&s)) break;
           }
@@ -8044,15 +7966,13 @@ CODE:
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       SC_dMULTICALL;
-      xs_multicall_returns_t saved_results;
+      SV *cbret;
       I32 gimme = G_SCALAR;
       SC_PUSH_MULTICALL(subcv);
-      xs_multicall_returns_init(aTHX_ &saved_results,
-                                multicall_needs_scope_, gimme);
       for (i = 2; i < items; i++) {
         SvSetMagicSV(btmp, args[i]);
-        SC_MULTICALL_WITH_SAVED_RESULTS(&saved_results);
-        SvSetMagicSV(ret, *PL_stack_sp);
+        SC_MULTICALL_SCALAR(cbret);
+        SvSetMagicSV(ret, cbret);
       }
       FIX_MULTICALL_REFCOUNT;
       SC_POP_MULTICALL;
@@ -8096,16 +8016,14 @@ CODE:
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       SC_dMULTICALL;
-      xs_multicall_returns_t saved_results;
+      SV *cbret;
       I32 gimme = G_SCALAR;
       SC_PUSH_MULTICALL(subcv);
-      xs_multicall_returns_init(aTHX_ &saved_results,
-                                multicall_needs_scope_, gimme);
       for (i = 1; i < items-1; i++) {
         SvSetMagicSV(atmp, args[i]);
         SvSetMagicSV(btmp, args[i+1]);
-        SC_MULTICALL_WITH_SAVED_RESULTS(&saved_results);
-        retsvarr[i-1] = newSVsv(*PL_stack_sp);
+        SC_MULTICALL_SCALAR(cbret);
+        retsvarr[i-1] = newSVsv(cbret);
       }
       FIX_MULTICALL_REFCOUNT;
       SC_POP_MULTICALL;
@@ -8162,23 +8080,14 @@ PPCODE:
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       SC_dMULTICALL;
-      xs_multicall_returns_t saved_results;
-      SSize_t before_ix, nret;
       I32 gimme = G_ARRAY;
       AV *av = save_ary(PL_defgv);
       SC_PUSH_MULTICALL(subcv);
-      xs_multicall_returns_init(aTHX_ &saved_results,
-                                multicall_needs_scope_, gimme);
       for (i = 0; i + size <= nlist; i += step) {
         av_clear(av);
         for (j = 0; j < size; j++)
           av_push(av, newSVsv(list[i + j]));
-        before_ix = (SSize_t)(PL_stack_sp - PL_stack_base);
-        SC_MULTICALL_WITH_SAVED_RESULTS(&saved_results);
-        nret = (SSize_t)(PL_stack_sp - PL_stack_base) - before_ix;
-        for (j = 1; j <= nret; j++)
-          av_push(result_av, newSVsv(PL_stack_base[before_ix + j]));
-        PL_stack_sp = PL_stack_base + before_ix;
+        SC_MULTICALL_ARRAY(result_av);
       }
       FIX_MULTICALL_REFCOUNT;
       SC_POP_MULTICALL;
@@ -8215,7 +8124,7 @@ void
 vecpairwise(SV* block, SV* sva, SV* svb)
 PROTOTYPE: &$$
 PREINIT:
-    SSize_t i, j, npairs, numret;
+    SSize_t i, npairs, numret;
     CV *subcv;
     AV *result_av;
     GV *agv, *bgv;
@@ -8236,8 +8145,7 @@ PPCODE:
     if (npairs <= 0)
       RETURN_NOTHING();
 
-    numret = 0;
-    result_av = (GIMME_V == G_ARRAY) ? (AV*)sv_2mortal((SV*)newAV()) : 0;
+    result_av = (AV*)sv_2mortal((SV*)newAV());
     atmp = sv_newmortal();
     btmp = sv_newmortal();
 
@@ -8250,27 +8158,14 @@ PPCODE:
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       SC_dMULTICALL;
-      xs_multicall_returns_t saved_results;
-      SSize_t before_ix, nret;
       I32 gimme = G_ARRAY;
       SC_PUSH_MULTICALL(subcv);
-      xs_multicall_returns_init(aTHX_ &saved_results,
-                                multicall_needs_scope_, gimme);
       for (i = 0; i < npairs; i++) {
         SV *a = FETCH_ARREF(arr1, i);
         SV *b = FETCH_ARREF(arr2, i);
         SvSetMagicSV(atmp, a);
         SvSetMagicSV(btmp, b);
-        before_ix = (SSize_t)(PL_stack_sp - PL_stack_base);
-        SC_MULTICALL_WITH_SAVED_RESULTS(&saved_results);
-        nret = (SSize_t)(PL_stack_sp - PL_stack_base) - before_ix;
-        if (result_av) {
-          for (j = 1; j <= nret; j++)
-            av_push(result_av, newSVsv(PL_stack_base[before_ix + j]));
-        } else {
-          numret += nret;
-        }
-        PL_stack_sp = PL_stack_base + before_ix;
+        SC_MULTICALL_ARRAY(result_av);
       }
       FIX_MULTICALL_REFCOUNT;
       SC_POP_MULTICALL;
@@ -8287,19 +8182,15 @@ PPCODE:
         PUSHMARK(SP);  PUTBACK;
         nret = call_sv((SV*)subcv, G_ARRAY);
         SPAGAIN;
-        if (result_av) {
-          for (k = 0; k < nret; k++)
-            av_push(result_av, newSVsv(SP[k + 1 - nret]));
-        } else {
-          numret += (SSize_t)nret;
-        }
+        for (k = 0; k < nret; k++)
+          av_push(result_av, newSVsv(SP[k + 1 - nret]));
         SP -= nret;  PUTBACK;
       }
     }
 
+    numret = (SSize_t)av_count(result_av);
     if (GIMME_V == G_ARRAY) {
       SV **res = AvARRAY(result_av);
-      numret = (SSize_t)av_count(result_av);
       AvREAL_off(result_av);          /* transfer ownership to stack mortals */
       EXTEND(SP, (EXTEND_TYPE)numret);
       for (i = 0; i < numret; i++)
@@ -8332,15 +8223,13 @@ PPCODE:
 #if USE_MULTICALL
     if (!CvISXSUB(subcv)) {
       SC_dMULTICALL;
-      xs_multicall_returns_t saved_results;
+      SV *cbret;
       I32 gimme = G_SCALAR;
       SC_PUSH_MULTICALL(subcv);
-      xs_multicall_returns_init(aTHX_ &saved_results,
-                                multicall_needs_scope_, gimme);
       for (index = 1; index < items; index++) {
         GvSV(PL_defgv) = args[index];
-        SC_MULTICALL_WITH_SAVED_RESULTS(&saved_results);
-        if (SvTRUEx(*PL_stack_sp) ^ invert)
+        SC_MULTICALL_SCALAR(cbret);
+        if (SvTRUEx(cbret) ^ invert)
           break;
       }
       FIX_MULTICALL_REFCOUNT;

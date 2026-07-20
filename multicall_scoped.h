@@ -16,31 +16,83 @@
  * Keep in mind that a function that complicated is likely to take long enough
  * that our scope won't matter in performance.  We're trying to remove the
  * unnecessary scope for the majority of callbacks which are very simple.
- * SC_MULTICALL is suitable for void context.  Non-void callers need a variant
- * that preserves callback return values across LEAVE.
+ * SC_MULTICALL is for void context.  SC_MULTICALL_SCALAR stores one return
+ * value in the given SV pointer; consume it before the next multicall.
+ * SC_MULTICALL_ARRAY appends owned copies of all return values to the given AV.
  *
- * Adds SC_ versions of dMULTICALL, PUSH_MULTICALL, and MULTICALL.
+ * Adds SC_dMULTICALL, SC_PUSH_MULTICALL, the three call variants above, and
+ * SC_POP_MULTICALL.
  */
 
 #ifdef dMULTICALL
 
+#ifdef DEBUGGING
+#  define SC_ASSERT_GIMME(want) assert(gimme == (want))
+#else
+#  define SC_ASSERT_GIMME(want) ((void)0)
+#endif
+
 #define SC_dMULTICALL              \
   dMULTICALL;                      \
-  bool multicall_needs_scope_ = 0;
+  bool multicall_needs_scope_ = 0; \
+  SV *multicall_scalar_ = NULL;
 
 #define SC_PUSH_MULTICALL(cv)      \
   STMT_START {                     \
     PUSH_MULTICALL(cv);            \
     multicall_needs_scope_ = sc_multicall_cv_needs_scope(aTHX_ (cv)); \
+    if (multicall_needs_scope_ && gimme == G_SCALAR) { \
+      multicall_scalar_ = newSV(0); \
+      SAVEFREESV(multicall_scalar_); \
+    }                              \
   } STMT_END
 
 #define SC_MULTICALL               \
   STMT_START {                     \
+    SC_ASSERT_GIMME(G_VOID);       \
     if (multicall_needs_scope_)    \
       ENTER;                       \
     MULTICALL;                     \
     if (multicall_needs_scope_)    \
       LEAVE;                       \
+  } STMT_END
+
+/* LEAVE may release a lexical SV returned by the callback. */
+#define SC_MULTICALL_SCALAR(sv)    \
+  STMT_START {                     \
+    SC_ASSERT_GIMME(G_SCALAR);     \
+    if (multicall_needs_scope_) {  \
+      ENTER;                       \
+      MULTICALL;                   \
+      sv_setsv(multicall_scalar_, *PL_stack_sp); \
+      LEAVE;                       \
+      (sv) = multicall_scalar_;    \
+    } else {                       \
+      MULTICALL;                   \
+      (sv) = *PL_stack_sp;         \
+    }                              \
+  } STMT_END
+
+/* Copy list results before LEAVE can release lexical return values. */
+#define SC_MULTICALL_ARRAY(av)     \
+  STMT_START {                     \
+    SSize_t sc_before_ix_ = (SSize_t)(PL_stack_sp - PL_stack_base); \
+    SSize_t sc_i_, sc_nret_;       \
+    AV *sc_av_ = (av);             \
+    SC_ASSERT_GIMME(G_ARRAY);      \
+    if (multicall_needs_scope_) {  \
+      /* pp_leavesub expects stack slot zero to remain the undef sentinel. */ \
+      if (sc_before_ix_ <= 0)      \
+        *PL_stack_base = &PL_sv_undef; \
+      ENTER;                       \
+    }                              \
+    MULTICALL;                     \
+    sc_nret_ = (SSize_t)(PL_stack_sp - PL_stack_base) - sc_before_ix_; \
+    for (sc_i_ = 1; sc_i_ <= sc_nret_; sc_i_++) \
+      av_push(sc_av_, newSVsv(PL_stack_base[sc_before_ix_ + sc_i_])); \
+    if (multicall_needs_scope_)    \
+      LEAVE;                       \
+    PL_stack_sp = PL_stack_base + sc_before_ix_; \
   } STMT_END
 
 #define SC_POP_MULTICALL  POP_MULTICALL
@@ -87,6 +139,9 @@ static bool sc_multicall_cv_needs_scope(pTHX_ const CV *cv) {
 #endif
 #if SC_PERL_AT_LEAST(37,3)
       case OP_PADSV_STORE:
+#endif
+#if SC_PERL_AT_LEAST(43,3)
+      case OP_MULTIPARAM:
 #endif
         return 1;
 

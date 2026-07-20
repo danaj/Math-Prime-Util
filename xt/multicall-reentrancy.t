@@ -24,6 +24,13 @@ our $MAXUV = prime_get_config()->{'maxbits'} == 32
               : '18446744073709551615';
 our $sum;
 
+{
+  package MPU::Test::ScopeGuard;
+  our @at_destroy;
+  sub new { bless {}, shift }
+  sub DESTROY { push @at_destroy, "$main::a,$main::b" }
+}
+
 sub big_plus {
   return ''. $ADD->($BIG, $_[0]);
 }
@@ -262,6 +269,30 @@ subtest 'scoped callback return values' => sub {
      'vecpairwise preserves a list return that extends the Perl stack');
   is("$pairwise_large[0] $pairwise_large[-1]", '1 10000',
      'vecpairwise large list return has intact endpoints');
+
+  SKIP: {
+    skip 'OP_MULTIPARAM requires Perl 5.43.3', 2
+      if $] < 5.043003;
+
+    my $signature_cb = eval q{
+      use feature 'signatures';
+      no warnings 'experimental::signatures';
+      sub ($guard = MPU::Test::ScopeGuard->new) { return $a + $b }
+    };
+    die $@ if !$signature_cb;
+
+    @MPU::Test::ScopeGuard::at_destroy = ();
+    is_deeply(
+      [&Math::Prime::Util::vecpairwise($signature_cb, [1,2], [10,20])],
+      [11,22],
+      'vecpairwise accepts a callback using the new signature opcodes'
+    );
+    is_deeply(
+      \@MPU::Test::ScopeGuard::at_destroy,
+      ['1,10', '2,20'],
+      'OP_MULTIPARAM signature pads are scoped per callback'
+    );
+  }
 
   done_testing();
 };
