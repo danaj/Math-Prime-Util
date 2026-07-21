@@ -53,7 +53,17 @@ use Math::Prime::Util::ChaCha;
 *_srand = \&Math::Prime::Util::ChaCha::srand;
 *random_bytes = \&Math::Prime::Util::ChaCha::random_bytes;
 *irand = \&Math::Prime::Util::ChaCha::irand;
-*irand64 = \&Math::Prime::Util::ChaCha::irand64;
+*irand32 = \&Math::Prime::Util::ChaCha::irand32;
+
+if (MPU_MAXBITS == 32) {
+  *irand64 = sub {
+    my ($hi, $lo) = unpack("V2", Math::Prime::Util::ChaCha::random_bytes(8));
+    return $lo unless $hi;  # Return native if possible
+    Math::Prime::Util::PP::_frombytes(pack("N2", $hi, $lo));
+  };
+} else {
+  *irand64 = \&Math::Prime::Util::ChaCha::irand64;
+}
 
 sub srand {
   my($seed) = @_;

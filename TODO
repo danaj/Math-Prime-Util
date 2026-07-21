@@ -77,8 +77,6 @@
 
 - Support FH for print_primes.  PerlIO_write is giving me fits.
 
-- Test for print_primes.  Not as easy with filenos.
-
 - divsum and divsummult as block functions.
   The latter does sum = vecprod(1 + f(p_i) + f(p_i^2) + ... f(p_i^e) for all p.
 
@@ -117,8 +115,6 @@
 - localized a/b in vecreduce, see:
   https://metacpan.org/diff/file?target=REHSACK/List-MoreUtils-XS-0.428/&source=HERMES%2FList-MoreUtils-XS-0.427_001#XS.xs
   perl #92264 (sort in 5.27.7)
-
-- consider #define PERL_REENTRANT
 
 - add back formultiperm optimization if we can get around lastfor issue.
 
@@ -165,15 +161,12 @@
 
 - multicall in forpart/forcomp.
 
-- check memory use for non-multicall.  We need enter/leave which were removed.
+- Audit temporary memory growth in result-bearing non-multicall callbacks:
+  xs_call_cv_noinput_1_sv, vecwindow, and vecpairwise.
 
 - testing:  lehman_factor, print_primes, aks
 
 - factor, factor_exp should accept negative inputs
-
-- NEGMAXINT testing in PP.
-
-- NEGMAXINT input in XS.
 
 - In theory IFLAG_ABS in _validate_and_set should allow up to neg(~0).
   Looks a bit messy but possible.
@@ -315,17 +308,7 @@
 - refactor lucas code.
   split out all the different codes, benchmark them all.
 
-- Complete reviewing docs for positive vs. non-negative, and comparing
-  to XS.xs.  Everything after modular functions was not reviewed.
-
-- PP needs a revamp of the bigint->int downgrade.  Using the babs(BMAX) is
-  wrong.  We can use max/min.  Better come up with something more consistent.
-  Possibly XS, or try "$x=$n->numify; return ($x eq $n) ? $x : $n;"
-
 - GMP
-  - hi  partitionsq
-  - hi  fubini
-  - hi  vecprefixsum
   - med smooth_count
   - med rough_count
   - low qnr
@@ -339,9 +322,10 @@
 
 - 32-bit testing
 
-- Lots of older PP code, especially factoring, is built on a bigint vs PP
-  idea.  It might be useful to write normally using Mpowmod etc. and
-  benchmark various inputs.
+- Audit auxiliary Perl modules for class-specific mutating bigint methods.
+  Prefer M* operations or call tobigint once and use overloaded
+  arithmetic.  Retain Math::BigInt method paths only in measured,
+  performance-sensitive, explicitly gated blocks.
 
 - incremental factoring.  Maybe a stateful iterator?
 
@@ -431,13 +415,6 @@ OEIS lucky numbers:
 
 - consider moving leaf PP functions to new file, so PP loads faster
 
-- find a proper BigInt workaroud for binomial with bigint n.  bnok
-  powersum uses binomial
-  stirling uses binomial
-  falling_factorial and rising_factorial uses binomial for m >= 250
-  subfactorial uses binomial
-  can use falling_factorial and factorial
-
 - factor_range.  Get rid of N[i].  Always complete sieve.
   Get the last factor when we return the value in next (n-vecprod(factors).
 
@@ -523,6 +500,7 @@ OEIS lucky numbers:
   https://mathworld.wolfram.com/HarmonicNumber.html
 
 - default bigint to better package
+
 - revisit PP factorial
 
 - t/81-bignum should try different bigint classes
@@ -565,14 +543,7 @@ OEIS lucky numbers:
   zeta     RiemannZeta
   plus Pi(n) and Schoenfeld distance
 
-- what should irand64() do on a 32-bit Perl?
-
-- I don't think 53-real.t will pass on NV = float machine
-
 - keyval.h sizes should be size_t, not long/UV.
-
-- Some more functions to add to the GMP backend:
-  fubini, partitionsq, vecprefixsum
 
 - XS.xs call/return helpers need work to handle stack correctly.  The caller
   shouldn't have to worry about how many input args there were.  There's also
@@ -594,16 +565,11 @@ OEIS lucky numbers:
   https://github.com/kimwalisch/primecount/pull/112/changes#top
   https://doi.org/10.48550/arXiv.1410.1083
 
-- toint for bigints does a redundant second parse.
-  split out into something like sv=xs_to_canonical_bigint(sv)
-
 - Check PP validation on 5.6.2.
 
 - xops in priority:
   urandomm urandomr
-  is_square
   is_congruent
-  kronecker
   addmod submod mulmod
   is_prime
   sqrtint

@@ -95,7 +95,7 @@ BEGIN {  # These should happen at compile time to take advantage of custom ops
 *Mkronecker = \&Math::Prime::Util::kronecker;
 # Mis_square
 *Mdrand = \&Math::Prime::Util::drand;
-*Mirand = \&Math::Prime::Util::irand;
+*Mirand32 = \&Math::Prime::Util::irand32;
 *Mirand64 = \&Math::Prime::Util::irand64;
 }
 
@@ -3156,7 +3156,7 @@ sub _totpred {
     my $r = Mdivint($n,$d);
     while (1) {
       return 1 if $r == $p || _totpred($r, $d);
-      my($Q,$R) = divrem($r,$p);
+      my($Q,$R) = Mdivrem($r,$p);
       last if $R != 0;
       $r = $Q;
     }
@@ -5714,11 +5714,8 @@ sub tdivrem {
   ($q,$r);
 }
 # Floored Division
-sub fdivrem {
+sub _fdivrem {
   my($a,$b) = @_;
-  validate_integer($a);
-  validate_integer($b);
-  croak "fdivrem: divide by zero" if $b == 0;
   my($q,$r);
   if (!ref($a) && !ref($b) && $a>=0 && $b>=0 && $a<SINTMAX && $b<SINTMAX) {
     use integer; $q = $a / $b;
@@ -5734,12 +5731,16 @@ sub fdivrem {
   canonicalize_integers(\$r) if ref($r);
   ($q,$r);
 }
-# Ceiling Division
-sub cdivrem {
+sub fdivrem {
   my($a,$b) = @_;
   validate_integer($a);
   validate_integer($b);
-  croak "cdivrem: divide by zero" if $b == 0;
+  croak "fdivrem: divide by zero" if $b == 0;
+  _fdivrem($a,$b);
+}
+# Ceiling Division
+sub _cdivrem {
+  my($a,$b) = @_;
   my($q,$r);
   if (!ref($a) && !ref($b) && $a>=0 && $b>=0 && $a<SINTMAX && $b<SINTMAX) {
     use integer; $q = $a / $b;
@@ -5752,6 +5753,13 @@ sub cdivrem {
   canonicalize_integers(\$q) if ref($q);
   canonicalize_integers(\$r) if ref($r);
   ($q,$r);
+}
+sub cdivrem {
+  my($a,$b) = @_;
+  validate_integer($a);
+  validate_integer($b);
+  croak "cdivrem: divide by zero" if $b == 0;
+  _cdivrem($a,$b);
 }
 # Euclidean Division
 sub divrem {
@@ -5779,33 +5787,47 @@ sub divint {
   my($a,$b) = @_;
   validate_integer($a);
   validate_integer($b);
-  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) { # Simple no-error all positive
+  croak "divint: divide by zero" if $b == 0;
+
+  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) {
     my $q;
-    if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
-      use integer; $q = $a / $b;
+    if (!ref($a) && !ref($b) && $a < SINTMAX && $b < SINTMAX) {
+      use integer;
+      $q = $a / $b;
     } else {
       $q = _tquotient($a, $b);
       $q = _bigint_to_int($q) if ref($q) && $q <= INTMAX;
     }
     return $q;
   }
-  (fdivrem($a,$b))[0];
+  (_fdivrem($a,$b))[0];
 }
-
 sub modint {
   my($a,$b) = @_;
-  my $q = Mdivint($a,$b);
-  Msubint($a, Mmulint($b, $q));
+  validate_integer($a);
+  validate_integer($b);
+  croak "modint: divide by zero" if $b == 0;
+
+  if (!OLD_PERL_VERSION &&
+      !ref($a) && !ref($b) &&
+      $a >= 0 && $b > 0 && $a < SINTMAX && $b < SINTMAX) {
+    use integer;
+    return $a % $b;
+  }
+  (_fdivrem($a,$b))[1];
 }
 
 sub cdivint {
   my($a,$b) = @_;
   validate_integer($a);
   validate_integer($b);
-  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) { # Simple no-error all positive
+  croak "cdivint: divide by zero" if $b == 0;
+
+  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) {
     my $q;
-    if (!ref($a) && !ref($b) && $a<SINTMAX && $b<SINTMAX) {
-      use integer; $q = $a / $b;
+    if (!ref($a) && !ref($b) && $a < SINTMAX && $b < SINTMAX) {
+      use integer;
+      $q = $a / $b;
       $q++ if $a != $b*$q;
     } else {
       $q = _tquotient($a, $b);
@@ -5814,7 +5836,7 @@ sub cdivint {
     }
     return $q;
   }
-  (cdivrem(@_))[0];
+  (_cdivrem($a,$b))[0];
 }
 
 sub absint {
@@ -13450,13 +13472,13 @@ sub foralmostprimes(&$$;$) { ## no critic qw(ProhibitSubroutinePrototypes)
 #       Random numbers
 ###############################################################################
 
-# PPFE:  irand irand64 drand random_bytes csrand srand _is_csprng_well_seeded
+# PPFE:  irand irand32 irand64 drand random_bytes csrand srand _is_csprng_well_seeded
 sub urandomb {
   my($n) = @_;
   validate_integer_nonneg($n);
   croak "urandomb: bits must be between 0 and ",MAX_RANDOM_BITS if $n > MAX_RANDOM_BITS;
   return 0 if $n <= 0;
-  return ( Mirand() >> (32-$n) ) if $n <= 32;
+  return ( Mirand32() >> (32-$n) ) if $n <= 32;
   return ( Mirand64() >> (64-$n) ) if MPU_MAXBITS >= 64 && $n <= 64;
   my $nbytes = ($n+7)>>3;
   croak "urandomb: input too large" if $nbytes > 2147483646;
@@ -13472,7 +13494,7 @@ sub urandomm {
   my $r;
   if ($n <= 4294967295) {
     my $rmin = (4294967295 - ($n-1)) % $n;
-    do { $r = Mirand(); } while $r < $rmin;
+    do { $r = Mirand32(); } while $r < $rmin;
   } elsif (!ref($n)) {
     my $rmin = (~0 - ($n-1)) % $n;
     do { $r = Mirand64(); } while $r < $rmin;

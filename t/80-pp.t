@@ -1668,6 +1668,7 @@ subtest 'random', sub {
   ok( defined($r) && $r >= 3 && $r <= 7, "urandomr(3,7) in range" );
 
   #  irand
+  #  irand32
   #  irand64
   #  drand
   #  random_bytes

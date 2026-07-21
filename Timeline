@@ -2,6 +2,7 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.75
+2026-07-21  irand32
 2026-07-09  reverse_digits(n[,base])
 2026-07-05  vecrsorti(\@L)
 2026-07-05  vecrsort(@L)

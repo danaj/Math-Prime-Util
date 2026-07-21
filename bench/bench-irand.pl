@@ -47,6 +47,7 @@ cmpthese($trials, {
   'PCG32 irand' => sub { Math::Random::PCG32::irand($pcg) for 1..1000; },
   'MPUGMP irand' => sub { Math::Prime::Util::GMP::irand for 1..1000; },
   'MPU irand' => sub { Math::Prime::Util::irand for 1..1000; },
+  #'MPU irand32' => sub { Math::Prime::Util::irand32 for 1..1000; },
 }) if 1;
 
 print "\n     64-bit\n\n";

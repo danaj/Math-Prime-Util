@@ -21,7 +21,7 @@ use B ();
 use Test::More;
 use Math::Prime::Util qw/
   forprimes
-  irand irand64 drand
+  irand irand32 irand64 drand
   addint subint add1int sub1int mulint divint modint cdivint powint
   is_odd is_even is_square cmpint kronecker signint
 /;
@@ -59,7 +59,7 @@ sub _scalar_shape {
     die "drand returned $d" if $d < 0 || $d >= 1;
     $digest = _mix(
       $digest,
-      irand, irand64, int($d * 1_000_000),
+      irand, irand32, irand64, int($d * 1_000_000),
       addint($a,$b), subint($a,$b), add1int($a), sub1int($a),
       mulint($a,$b), divint($a,$b), modint($a,$b), cdivint($a,$b),
       powint(($a % 11) + 2, $i % 6),
@@ -79,6 +79,7 @@ sub _void_shape {
     my ($a, $b) = _inputs($seed, $i);
 
     irand;
+    irand32;
     irand64;
     drand;
     addint($a,$b);
@@ -99,7 +100,7 @@ sub _void_shape {
 
     my $d = drand;
     die "drand returned $d after void calls" if $d < 0 || $d >= 1;
-    $digest = _mix($digest, irand, irand64, int($d * 1_000_000),
+    $digest = _mix($digest, irand, irand32, irand64, int($d * 1_000_000),
                   addint($a,$b));
   }
   return $digest;
@@ -121,6 +122,7 @@ sub _map_shape {
     } @input;
     my @random = (
       map { irand } 1 .. 3,
+      map { irand32 } 1 .. 3,
       map { irand64 } 1 .. 3,
       map { int(drand() * 1_000_000) } 1 .. 3,
     );
@@ -141,7 +143,7 @@ sub _callback_body {
     powint(($a % 5) + 2, $b % 5),
     is_odd($a), is_even($a), is_square(mulint($a,$a)),
     cmpint($a,$b), signint(subint($a,$b)),
-    irand, irand64, int($d * 1_000_000),
+    irand, irand32, irand64, int($d * 1_000_000),
   );
 }
 
@@ -173,7 +175,8 @@ sub _nested_shape {
     my $root = addint($a,$b);
     my $square = is_square(mulint($root,$root));
     my $symbol = kronecker(addint($a,2),add1int(mulint(2,$b)));
-    my $random = addint(modint(irand,997),modint(irand64,991));
+    my $random = addint(modint(irand,997),
+                        addint(modint(irand32,993),modint(irand64,991)));
     my $dclass = cmpint(int(drand() * 1_000_000),500_000);
     $digest = _mix($digest, $v, $square, $symbol, $random, $dclass);
   }
@@ -239,10 +242,11 @@ my @worker_cvs = (
   \&_bigint_clone_probe,
 );
 my @xops = qw/
-  irand irand64 drand
+  irand irand32 drand
   addint subint add1int sub1int mulint divint modint cdivint powint
   is_odd is_even is_square cmpint kronecker signint
 /;
+push @xops, 'irand64' if $Config{uvsize} >= 8;
 my $compiled = _compiled_ops(@worker_cvs);
 
 plan skip_all => 'custom ops are not available in this build'

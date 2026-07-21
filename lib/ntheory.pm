@@ -37,7 +37,7 @@ See L<Math::Prime::Util> for complete documentation.
 
 Tags:
   :all         to import all functions (other than NON-EXPORTED below)
-  :rand        to import rand, srand, irand, irand64
+  :rand        to import rand, srand, irand, irand32, irand64
 
 =head2 PRIMALITY
 
@@ -179,7 +179,8 @@ Tags:
 =head2 RANDOM NUMBERS
 
   irand()                             random 32-bit integer
-  irand64()                           random UV-bit integer (64 or 32)
+  irand32()                           random 32-bit integer
+  irand64()                           random 64-bit integer
   drand([limit])                      random NV in [0,1) or [0,limit)
   random_bytes(n)                     string with n random bytes
   entropy_bytes(n)                    string with n entropy-source bytes

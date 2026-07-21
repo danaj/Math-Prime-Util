@@ -126,7 +126,7 @@ my @functions =  qw(
       nth_stern_diatomic
       farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand urandomb urandomm urandomr csrand
+      irand irand32 irand64 drand urandomb urandomm urandomr csrand
       random_bytes entropy_bytes
 );
 can_ok( 'Math::Prime::Util', @functions);

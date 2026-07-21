@@ -220,8 +220,12 @@ sub _prng_new {
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 4;
     return unpack("V",substr($_str, 0, 4, ''));
   }
+  sub irand32 {
+    $_str .= _keystream(BUFSZ,$_state) if length($_str) < 4;
+    return unpack("V",substr($_str, 0, 4, ''));
+  }
   sub irand64 {
-    return irand() if ~0 == 4294967295;
+    croak "ChaCha irand64 called on 32-bit" if ~0 == 4294967295;
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 8;
     ($a,$b) = unpack("V2",substr($_str, 0, 8, ''));
     return ($a << 32) | $b;
@@ -282,9 +286,13 @@ With a single integer argument, seeds and returns the number.
 
 Returns a random 32-bit integer.
 
+=head2 irand32
+
+Returns a random 32-bit integer.
+
 =head2 irand64
 
-Returns a random 64-bit integer.
+Returns a random 64-bit integer as a UV on 64-bit.  Croaks on 32-bit.
 
 =head2 random_bytes
 

@@ -3,10 +3,10 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/irand irand64 drand urandomb urandomm urandomr
+use Math::Prime::Util qw/irand irand32 irand64 drand urandomb urandomm urandomr
                          random_bytes entropy_bytes
                          srand csrand powint
-                         mulmod addmod vecmin vecmax vecall/;
+                         mulmod addmod muladdint divrem vecmin vecmax vecall/;
 
 my $use64 = (~0 > 4294967295);
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
@@ -15,8 +15,8 @@ my $maxbits = $use64 ? 64 : 32;
 my $samples = $extra ? 100000 :  10000;
 
 plan tests => 1
-            + 2
-            + 2
+            + 5  # irand / irand32
+            + 3  # irand64
             + 2
             + 5  # drand range
             + 4  # identify rng and test srand/csrand
@@ -38,24 +38,39 @@ ok( Math::Prime::Util::_is_csprng_well_seeded(), "CSPRNG is being seeded properl
   my @s = map { irand } 1 .. $samples;
   is( scalar(grep { $_ > 4294967295 } @s), 0, "irand values are 32-bit" );
   is( scalar(grep { $_ != int($_) } @s), 0, "irand values are integers" );
+
+  my @s32 = map { irand32 } 1 .. $samples;
+  is( scalar(grep { $_ > 4294967295 } @s32), 0, "irand32 values are 32-bit" );
+  is( scalar(grep { $_ != int($_) } @s32), 0, "irand32 values are integers" );
 }
 
 ########
 
-SKIP: {
-  skip "Skipping irand64 on 32-bit Perl", 2 if !$use64;
-  my $bits_on  = 0;
-  my $bits_off = 0;
+{
+  # We could do this all with 64-bit masks, but our test would then depend on
+  # the bigint module's bit operations.  Instead we'll split the result into
+  # two 32-bit parts (hi,lo) and handle each one separately, all native.
+  my $wordbase = "4294967296";
+  my $wordmask = 4294967295;
+  my ($bits_on_hi,  $bits_on_lo)  = (0, 0);
+  my ($bits_off_hi, $bits_off_lo) = (0, 0);
   my $iter = 0;
+  # We expect about 9 iterations to meet both conditions.
+  # After 24 calls there is less than 0.001% chance we have not finished.
   for (1 .. 6400) {
     $iter++;
-    my $v = irand64;
-    $bits_on |= $v;
-    $bits_off |= (~$v);
-    last if ~$bits_on == 0 && ~$bits_off == 0;
+    my ($hi, $lo) = divrem(irand64, $wordbase);
+    $bits_on_hi  |= $hi;
+    $bits_on_lo  |= $lo;
+    $bits_off_hi |= $hi ^ $wordmask;
+    $bits_off_lo |= $lo ^ $wordmask;
+    last if $bits_on_hi  == $wordmask && $bits_on_lo  == $wordmask
+         && $bits_off_hi == $wordmask && $bits_off_lo == $wordmask;
   }
-  is( ~$bits_on,  0, "irand64 all bits on in $iter iterations" );
-  is( ~$bits_off, 0, "irand64 all bits off in $iter iterations" );
+  is_deeply([$bits_on_hi, $bits_on_lo], [$wordmask, $wordmask],
+            "irand64 all bits on in $iter iterations" );
+  is_deeply([$bits_off_hi, $bits_off_lo], [$wordmask, $wordmask],
+            "irand64 all bits off in $iter iterations" );
 }
 
 ########
@@ -187,6 +202,21 @@ SKIP: {
   } else {
     skip "Unknown random number generator!  Skipping deterministic tests.",4;
   }
+}
+
+{
+  srand(0x521974A3);
+  my @irand = map { irand } 1 .. 32;
+  srand(0x521974A3);
+  my @irand32 = map { irand32 } 1 .. 32;
+  is_deeply(\@irand32, \@irand, "irand32 and irand produce the same stream" );
+
+  srand(0x521974A3);
+  my $r64 = irand64;
+  srand(0x521974A3);
+  my ($hi, $lo) = (irand32, irand32);
+  is("$r64", "" . muladdint($hi, "4294967296", $lo),
+     "irand64 combines two irand32 results" );
 }
 
 srand;

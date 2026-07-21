@@ -163,7 +163,7 @@ sub mpu_public_regex {
       nth_stern_diatomic
       farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand urandomb urandomm urandomr csrand
+      irand irand32 irand64 drand urandomb urandomm urandomr csrand
       random_bytes entropy_bytes
   );
   my $pattern = '^(' . join('|', @funcs) . ')$';
@@ -204,7 +204,7 @@ sub mpu_PPM_regex {
       Mtoset Msetcontains
       Mtodigits Mtodigitstring Mfromdigits
       Mlucasumod Mfloor_sum
-      Mdrand Mirand Mirand64
+      Mdrand Mirand32 Mirand64
       Saddint Ssubint Smulint Sdivint Spowint Surandomm
       Mtoint
       validate_integer     validate_integer_nonneg

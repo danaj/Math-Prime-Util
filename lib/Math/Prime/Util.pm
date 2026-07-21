@@ -133,11 +133,11 @@ our @EXPORT_OK =
       nth_stern_diatomic
       farey next_farey farey_rank
       ExponentialIntegral LogarithmicIntegral RiemannZeta RiemannR LambertW Pi
-      irand irand64 drand urandomb urandomm urandomr csrand
+      irand irand32 irand64 drand urandomb urandomm urandomr csrand
       random_bytes entropy_bytes
   );
 our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
-                    rand => [qw/srand rand irand irand64/],
+                    rand => [qw/srand rand irand irand32 irand64/],
                    );
 
 # These are only exported if specifically asked for
@@ -720,7 +720,7 @@ __END__
 
 =encoding utf8
 
-=for stopwords Möbius Deléglise Bézout fibonacci uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader setwise
+=for stopwords Möbius Deléglise Bézout fibonacci uniqued k-tuples von SoE primesieve primegen libtommath pari yafu fonction qui compte le nombre nombres voor PhD superset sqrt(N) gcd(A^M k-th (10001st untruncated OpenPFGW gmpy2 Über Primzahl-Zählfunktion n-te und verallgemeinerte multiset compositeness GHz significand TestU01 subfactorial s-gonal XSLoader setwise whitespace
 
 =for test_synopsis use v5.14;  my($k,$x);
 
@@ -741,7 +741,7 @@ Version 0.75
   use Math::Prime::Util ':all';  # import all functions
 
   # The ':rand' tag replaces srand and rand (not done by default)
-  use Math::Prime::Util ':rand';  # import srand, rand, irand, irand64
+  use Math::Prime::Util ':rand';  # import srand, rand, irand, irand32, irand64
 
 
   # Get a big array reference of many primes
@@ -6382,7 +6382,7 @@ a more specific module is recommended.  I believe L<Crypt::PRNG>
 
 Using the C<:rand> export option will define C<rand> and C<srand> as similar
 but improved versions of the system functions of the same name, as well as
-L</irand> and L</irand64>.
+L</irand>, L</irand32>, and L</irand64>.
 
 
 =head2 irand
@@ -6391,12 +6391,24 @@ L</irand> and L</irand64>.
 
 Returns a random 32-bit integer using the CSPRNG.
 
+A better API would be returning either 32- or 64-bit depending on C<uvsize>.
+But historically CPAN modules have made integer rand be 32-bit while a
+64-bit variant is added for 64-bit returns.  When we added this function
+in 2017 we chose to follow the precedent.
+
+=head2 irand32
+
+  $n32 = irand32;     # random 32-bit integer
+
+Returns a random 32-bit integer using the CSPRNG.
+
 =head2 irand64
 
   $n64 = irand64;   # random 64-bit integer
 
-Returns a random 64-bit integer using the CSPRNG (on 64-bit Perl).
-On a 32-bit Perl, it returns the maximum UV bits, which will be only 32.
+Returns a random 64-bit integer using the CSPRNG.
+On 64-bit Perl this will be a native UV.
+On 32-bit Perl this will be a bigint if the result exceeds C<2^32-1>.
 
 =head2 drand
 
@@ -8355,7 +8367,7 @@ Different use cases would show things differently.
 
 Some functions use custom ops, set up at compile time, to reduce Perl call
 overhead for fast functions.  Current functions:
-C<irand>, C<irand64>, C<drand>,
+C<irand>, C<irand32>, C<irand64> (on 64-bit builds), C<drand>,
 C<addint>, C<subint>, C<add1int>, C<sub1int>, C<mulint>, C<divint>,
 C<modint>, C<cdivint>, C<powint>,
 C<signint>, C<is_odd>, C<is_even>, C<is_square>, C<cmpint>, C<kronecker>,

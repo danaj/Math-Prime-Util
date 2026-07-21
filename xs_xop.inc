@@ -131,17 +131,20 @@ static OP* pp_irand_custom(pTHX) {
   XPUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
   RETURN;
 }
-
+static OP* pp_irand32_custom(pTHX) {
+  dSP;
+  dMY_CXT;
+  XPUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
+  RETURN;
+}
+#if BITS_PER_WORD == 64
 static OP* pp_irand64_custom(pTHX) {
   dSP;
   dMY_CXT;
-#if BITS_PER_WORD == 32
-  XPUSHs(sv_2mortal(newSVuv(irand32(MY_CXT.randcxt))));
-#else
   XPUSHs(sv_2mortal(newSVuv(irand64(MY_CXT.randcxt))));
-#endif
   RETURN;
 }
+#endif
 
 static OP* pp_drand_custom(pTHX) {
   dSP;
@@ -309,7 +312,10 @@ static xop_registration_t xop_registrations[] = {
   { "Math::Prime::Util::_validate_integer_positive", "_validate_integer_positive", "_validate_integer_positive custom op", pp_validate_integer_positive_custom, 1, {0} },
   { "Math::Prime::Util::_validate_integer_abs", "_validate_integer_abs", "_validate_integer_abs custom op", pp_validate_integer_abs_custom, 1, {0} },
   { "Math::Prime::Util::irand", "irand", "irand custom op", pp_irand_custom, 0, {0} },
+  { "Math::Prime::Util::irand32", "irand32", "irand32 custom op", pp_irand32_custom, 0, {0} },
+#if BITS_PER_WORD == 64
   { "Math::Prime::Util::irand64", "irand64", "irand64 custom op", pp_irand64_custom, 0, {0} },
+#endif
   { "Math::Prime::Util::drand", "drand", "drand custom op", pp_drand_custom, 0, {0} },
   { "Math::Prime::Util::addint", "addint", "addint custom op", pp_addint_custom, 2, {0} },
   { "Math::Prime::Util::subint", "subint", "subint custom op", pp_subint_custom, 2, {0} },

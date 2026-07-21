@@ -8,19 +8,20 @@ use B ();
 use Test::More;
 use Math::Prime::Util qw/
   prime_get_config prime_set_config
-  irand irand64 drand
+  irand irand32 irand64 drand
   addint subint add1int sub1int mulint divint modint cdivint powint
   is_odd is_even is_square cmpint kronecker signint
 /;
 
 my @names = qw/
-  irand irand64 drand
+  irand irand32 irand64 drand
   addint subint add1int sub1int mulint divint modint cdivint powint
   is_odd is_even is_square cmpint kronecker signint
 /;
 my %direct = map { $_ => Math::Prime::Util->can($_) } @names;
 
 sub x_irand     { irand }
+sub x_irand32   { irand32 }
 sub x_irand64   { irand64 }
 sub x_drand     { drand }
 sub x_addint    { addint($_[0], $_[1]) }
@@ -46,7 +47,7 @@ sub x_validate_abs    { Math::Prime::Util::_validate_integer_abs($_[0]) }
 
 my %xop = (
   irand     => \&x_irand,
-  irand64   => \&x_irand64,
+  irand32   => \&x_irand32,
   drand     => \&x_drand,
   addint    => \&x_addint,
   subint    => \&x_subint,
@@ -68,6 +69,7 @@ my %xop = (
   _validate_integer_positive => \&x_validate_pos,
   _validate_integer_abs      => \&x_validate_abs,
 );
+$xop{irand64} = \&x_irand64 if $Config{uvsize} >= 8;
 
 sub collect_ops {
   my ($op, $found, $seen) = @_;
@@ -237,7 +239,7 @@ subtest 'magic and overloaded integer inputs' => sub {
 };
 
 subtest 'random generators match direct XSUB streams' => sub {
-  for my $name (qw/irand irand64 drand/) {
+  for my $name (grep { exists $xop{$_} } qw/irand irand32 irand64 drand/) {
     Math::Prime::Util::srand(0x5219_74A3);
     my @got = map { $xop{$name}->() } 1 .. 32;
     Math::Prime::Util::srand(0x5219_74A3);
@@ -247,26 +249,28 @@ subtest 'random generators match direct XSUB streams' => sub {
 };
 
 subtest 'a backend croak does not corrupt the following custom op' => sub {
-  require Math::Prime::Util::PP;
+  plan skip_all => 'GMP 0.47+ required to exercise a custom-op backend call'
+    if $ENV{MPU_NO_GMP} ||
+       !eval { require Math::Prime::Util::GMP;
+               Math::Prime::Util::GMP->VERSION(0.47); 1 };
   my $old_gmp = prime_get_config()->{gmp};
-  prime_set_config(gmp => 0);
+  prime_set_config(gmp => 1);
+  my $n = '340282366920938463463374607431768211456000001';
   my $bad;
   {
     no warnings qw/once redefine/;
-    local *Math::Prime::Util::PP::kronecker = sub {
+    local *Math::Prime::Util::GMP::is_square = sub {
       die "forced xop backend failure\n";
     };
-    $bad = outcome(\&x_kronecker,
-                   '340282366920938463463374607431768211457', 97);
+    $bad = outcome(\&x_is_square, $n);
   }
-  prime_set_config(gmp => $old_gmp);
   is_deeply($bad, [error => 'forced xop backend failure'],
-            'nested PP backend croak is propagated');
+            'nested GMP backend croak is propagated');
   is("" . x_addint('184467440737095516160', 17),
      '184467440737095516177', 'subsequent bigint operation succeeds');
-  is(x_kronecker('340282366920938463463374607431768211457', 97),
-     $direct{kronecker}->('340282366920938463463374607431768211457', 97),
+  is(x_is_square($n), $direct{is_square}->($n),
      'subsequent dispatched operation succeeds');
+  prime_set_config(gmp => $old_gmp);
 };
 
 done_testing();

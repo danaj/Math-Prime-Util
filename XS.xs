@@ -1735,20 +1735,24 @@ UV srand(IN UV seedval = 0)
   OUTPUT:
     RETVAL
 
-UV irand()
+void irand()
   ALIAS:
-    irand64 = 1
+    irand32 = 1
+    irand64 = 2
   PREINIT:
     dMY_CXT;
-  CODE:
-#if BITS_PER_WORD == 32
-    /* TODO: what should irand64 on 32-bit perl do? */
-    RETVAL = irand32(MY_CXT.randcxt);
+  PPCODE:
+    if (ix == 0 || ix == 1) {
+      XSRETURN_UV( irand32(MY_CXT.randcxt) );
+    } else {
+#if BITS_PER_WORD == 64
+      XSRETURN_UV( irand64(MY_CXT.randcxt) );
 #else
-    RETVAL = ix == 0  ?  irand32(MY_CXT.randcxt)  :  irand64(MY_CXT.randcxt);
+      UV hi = irand32(MY_CXT.randcxt);
+      UV lo = irand32(MY_CXT.randcxt);
+      RETURN_UV_UV(hi, lo);
 #endif
-  OUTPUT:
-    RETVAL
+    }
 
 NV drand(NV m = 0.0)
   ALIAS:
