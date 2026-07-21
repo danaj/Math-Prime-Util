@@ -135,25 +135,15 @@ extern STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* 
 /* Return a mod b as a UV.  b > 0.  For negative a, returns |a| mod b. */
 extern UV strint_moduv(const char* a, STRLEN alen, UV b);
 
-/* Extract all small prime factors (up to 47 on 64-bit, 23 on 32-bit) from a.
- * Factors found, with repetition, are appended to out_f[0..*nf); *nf is updated.
- * Returns 0 if the remaining cofactor fits in a UV (*uv_out is set).
- * Returns the cofactor string length otherwise (written to str_out, may alias a;
- * str_out needs alen+1 bytes). */
-extern STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
-                                          UV* out_f, int* nf,
-                                          const char* a, STRLEN alen);
-
-/* Trial-factor a decimal integer string by primes in primes[0..nprimes).
- * Factors found (with repetition) are appended to out_f[0..*nf); *nf is updated.
+/* Trial-factor a positive decimal integer string by primes in [first,last].
+ * Returns the number of factors found, with repetition, in out_f[0..return).
  * Caller must ensure out_f has room for at least alen*4 entries.
- * Returns 0 if the remaining cofactor fits in a UV (*uv_out is set).
- * Returns the cofactor string length otherwise (written to str_out, may alias a;
- * str_out needs alen+1 bytes). */
-extern STRLEN strint_trial_factor(char* str_out, UV* uv_out,
-                                  UV* out_f, int* nf,
-                                  const char* a, STRLEN alen,
-                                  const uint32_t* primes, uint32_t nprimes);
+ * If factors were found, *str_len is 0 when the cofactor fits in *uv_out;
+ * otherwise it is the cofactor length written to str_out.  str_out needs
+ * alen+1 bytes.  Cofactor outputs are not used when no factors were found. */
+extern int strint_trial_factor(char* str_out, STRLEN* str_len, UV* uv_out,
+                               UV* out_f, const char* a, STRLEN alen,
+                               uint32_t first, uint32_t last);
 
 /* Absolute value.  out needs alen bytes. */
 extern STRLEN strint_abs(char* out, const char* a, STRLEN alen);

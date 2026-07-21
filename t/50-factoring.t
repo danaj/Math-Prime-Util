@@ -218,6 +218,18 @@ subtest 'specific factoring algorithms', sub {
 subtest 'specific cases for factoring code coverage', sub {
   is_deeply( [Math::Prime::Util::trial_factor(5514109)], [2203,2503], "trial factor 2203 * 2503" );
   is_deeply( [Math::Prime::Util::trial_factor(1819015037140)], [2,2,5,7,7,1856137793], "trial_factor(1819015037140) fully factors");
+  is_deeply( [map { "$_" } Math::Prime::Util::trial_factor("553402322211286548450",1)],
+             [qw/2 3 3 5 5 1229782938247303441/],
+             "bigint trial_factor always removes 2, 3, and 5" );
+  is_deeply( [map { "$_" } Math::Prime::Util::trial_factor("000018446744073709551629",100)],
+             [qw/18446744073709551629/],
+             "bigint trial_factor canonicalizes an unchanged cofactor" );
+  is_deeply( [map { "$_" } Math::Prime::Util::trial_factor("74823443504107725093378623",2011)],
+             [qw/2011 37207082796672165635693/],
+             "bigint trial_factor using primes_small" );
+  is_deeply( [map { "$_" } Math::Prime::Util::trial_factor("74823443504107725093378623",2017)],
+             [qw/2011 2017 18446744073709551629/],
+             "bigint trial_factor using generated primes" );
   SKIP: {
     skip "holf_factor for 64-bit input", 1 unless $use64 || !$usexs;
     is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );

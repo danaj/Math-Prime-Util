@@ -4183,9 +4183,6 @@ factor(IN SV* svn)
         }
       }
 #endif
-      /* For 65-128 bit inputs without GMP, strint_remove_small_factors gives
-       * ~20% speedup at 72 bits by extracting small primes in C first.
-       * Leave it, the GMP backend and uint128_t above should be enough. */
       DISPATCHPP_RETURN();
     }
 
@@ -4251,30 +4248,28 @@ trial_factor(IN SV* svn, ...)
 
     /* See if we can do strint trial factoring here */
     if (ix == 0 && !_XS_get_callgmp() && nstatus == 0 && a2status == 1
-                && a1status == 1 && arg1 > 0 && arg1 <= 1000000) {
-      UV limit = arg1;
-      STRLEN slen;
+                && a1status == 1 && arg1 > 0 && arg1 <= 10000000) {
+      UV limit = (arg1 < 5) ? 5 : arg1;
+      STRLEN slen, cofactor_len;
       const char *str = SvPV_nomg(svn, slen);
-      uint32_t *primes = NULL;
-      uint32_t nprimes;
-      int nret = 0, nf = 0, fi;
-      int nf_alloc = (int)(slen * 4) + 16;
-      UV *fac_buf, cofactor_uv;
       char *cofactor_str;
-      STRLEN cofactor_len;
+      UV *fac_buf, cofactor_uv;
+      int nret = 0, nf, fi, nf_alloc = (int)(slen * 4) + 16;
       New(0, fac_buf, nf_alloc, UV);
       New(0, cofactor_str, slen + 1, char);
-      nprimes = range_prime_sieve_32(&primes, (uint32_t)limit, 0);
-      cofactor_len = strint_trial_factor(cofactor_str, &cofactor_uv,
-                                         fac_buf, &nf,
-                                         str, slen, primes, nprimes);
-      Safefree(primes);
+      nf = strint_trial_factor(cofactor_str, &cofactor_len, &cofactor_uv,
+                               fac_buf, str, slen, 2, (uint32_t)limit);
+      /* printf("strint trial through %u, found %d factors\n",
+                (uint32_t)limit, nf); */
       EXTEND(SP, nf + 1);
       for (fi = 0; fi < nf; fi++) {
         PUSHs(sv_2mortal(newSVuv(fac_buf[fi])));
         nret++;
       }
-      if (cofactor_len == 0) {
+      if (nf == 0) {
+        PUSH_SV_CANONICAL(svn);
+        nret++;
+      } else if (cofactor_len == 0) {
         if (cofactor_uv > 1) {
           PUSHs(sv_2mortal(newSVuv(cofactor_uv)));
           nret++;

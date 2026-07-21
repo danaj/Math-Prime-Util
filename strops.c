@@ -2062,98 +2062,45 @@ UV strint_moduv(const char* a, STRLEN alen, UV b)
 }
 
 /******************************************************************************/
-/*                        SMALL FACTOR EXTRACTION                             */
+/*                             TRIAL FACTORING                                */
 /******************************************************************************/
 
-STRLEN strint_remove_small_factors(char* str_out, UV* uv_out,
-                                   UV* out_f, int* nf,
-                                   const char* a, STRLEN alen)
+static uint32_t strint_trial_prime_at(const uint32_t* primes, uint32_t i)
 {
-#if BITS_PER_WORD == 64
-  static const UV P = UVCONST(614889782588491410); /* primorial(47) */
-  static const uint32_t sprimes[] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47};
-  static const int nsp = 15;
-#else
-  static const UV P = UVCONST(223092870);           /* primorial(23) */
-  static const uint32_t sprimes[] = {2,3,5,7,11,13,17,19,23};
-  static const int nsp = 9;
-#endif
-  UV g;
-  int pi;
-
-  g = gcduv(strint_moduv(a, alen, P), P);
-
-  if (g > 1) {
-    b9_t n;
-    b9_init_set_str(&n, a, alen);
-
-    for (pi = 0; pi < nsp && g > 1; pi++) {
-      uint32_t p = sprimes[pi];
-      if (g % p != 0) continue;
-
-      while (b9_mod_u32(&n, p) == 0) {
-        b9_divexact_u32(&n, p);
-        out_f[(*nf)++] = p;
-
-        /* Early UV detection: switch to UV arithmetic for the remaining tail */
-        if ((STRLEN)n.n * B9_DIGS < sizeof(UV) * 3) {
-          UV v = b9_get_uv(&n);
-          b9_free(&n);
-          while (v % p == 0) { v /= p; out_f[(*nf)++] = p; }
-          while (g % p == 0) g /= p;
-          for (pi++; pi < nsp && g > 1; pi++) {
-            uint32_t q = sprimes[pi];
-            if (g % q == 0) {
-              while (v % q == 0) { v /= q; out_f[(*nf)++] = q; }
-              while (g % q == 0) g /= q;
-            }
-          }
-          *uv_out = v;
-          return 0;
-        }
-      }
-      while (g % p == 0) g /= p;
-    }
-    {
-      STRLEN rlen = b9_get_str(str_out, &n);
-      b9_free(&n);
-      if (str_to_uv_s(str_out, rlen, uv_out)) return 0;
-      return rlen;
-    }
-  }
-
-  /* g == 1: no small factors */
-  strint_strip(&a, &alen);
-  if (str_out != a) memmove(str_out, a, alen);
-  if (str_to_uv_s(str_out, alen, uv_out)) return 0;
-  return alen;
+  return primes ? primes[i] : (uint32_t)primes_small[i+1];
 }
 
-STRLEN strint_trial_factor(char* str_out, UV* uv_out,
-                           UV* out_f, int* nf,
-                           const char* a, STRLEN alen,
-                           const uint32_t* primes, uint32_t nprimes)
+static int strint_trial_factor_list(char* str_out, STRLEN* str_len,
+                                    UV* uv_out, UV* out_f,
+                                    const char* a, STRLEN alen,
+                                    const uint32_t* primes,
+                                    uint32_t pbegin, uint32_t pend)
 {
   b9_t n;
-  int have_b9 = 0;
-  uint32_t pi = 0;
+  int have_b9 = 0, nf = 0;
+  uint32_t pi = pbegin;
 
   /* Process primes in batches whose product fits in a single integer.
    * Before b9 init: use UV-sized batches + strint_moduv (avoids b9 init
    * entirely for the common no-factor case).
    * After b9 init: cap batches at UINT32_MAX so b9_mod_u32 can be used. */
-  while (pi < nprimes) {
+  while (pi < pend) {
     UV batch_cap  = have_b9 ? (UV)UINT32_MAX : UV_MAX;
     UV batch_prod = 1;
     uint32_t j, batch_start = pi;
+    UV rem, g;
 
-    while (pi < nprimes && batch_prod <= batch_cap / primes[pi])
-      batch_prod *= (UV)primes[pi++];
+    while (pi < pend) {
+      uint32_t p = strint_trial_prime_at(primes, pi);
+      if (batch_prod > batch_cap / p) break;
+      batch_prod *= (UV)p;
+      pi++;
+    }
 
     /* Quick filter: skip batch if gcd(n mod batch_prod, batch_prod) == 1 */
-    UV rem  = have_b9 ? (UV)b9_mod_u32(&n, (uint32_t)batch_prod)
-                      : strint_moduv(a, alen, batch_prod);
-    UV g    = gcduv(rem, batch_prod);
+    rem = have_b9 ? (UV)b9_mod_u32(&n, (uint32_t)batch_prod)
+                  : strint_moduv(a, alen, batch_prod);
+    g = gcduv(rem, batch_prod);
     if (g == 1) continue;
 
     /* At least one prime in this batch divides n */
@@ -2164,32 +2111,34 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
     }
 
     for (j = batch_start; j < pi; j++) {
-      uint32_t p = primes[j];
+      uint32_t p = strint_trial_prime_at(primes, j);
       if (g % p != 0) continue;  /* not in gcd, skip */
 
       /* p divides n (guaranteed by gcd); divide it out completely */
       do {
         b9_divexact_u32(&n, p);
-        out_f[(*nf)++] = p;
+        out_f[nf++] = p;
         if ((STRLEN)n.n * B9_DIGS < sizeof(UV) * 3) {
           UV v = b9_get_uv(&n);
           b9_free(&n);
           /* p may still divide v (e.g. p^2 | original n) */
-          while (v % p == 0) { v /= p;  out_f[(*nf)++] = p; }
+          while (v % p == 0) { v /= p;  out_f[nf++] = p; }
           /* Finish current batch in UV */
           for (j++; j < pi; j++) {
-            UV q = (UV)primes[j];
+            UV q = (UV)strint_trial_prime_at(primes, j);
             if (g % q != 0) continue;
-            while (v % q == 0) { v /= q;  out_f[(*nf)++] = q; }
+            while (v % q == 0) { v /= q;  out_f[nf++] = q; }
           }
-          /* Remaining batches: plain UV loop with q*q > v termination */
-          for (; pi < nprimes; pi++) {
-            UV q = (UV)primes[pi];
-            if (q > v / q) break;
-            while (v % q == 0) { v /= q;  out_f[(*nf)++] = q; }
+          /* Remaining batches: plain UV loop.  Stop at q > sqrt(v)
+           * only if this call checked all smaller primes. */
+          for (; pi < pend; pi++) {
+            UV q = (UV)strint_trial_prime_at(primes, pi);
+            if (pbegin == 0 && q > v / q) break;
+            while (v % q == 0) { v /= q;  out_f[nf++] = q; }
           }
           *uv_out = v;
-          return 0;
+          *str_len = 0;
+          return nf;
         }
       } while (b9_mod_u32(&n, p) == 0);
 
@@ -2197,21 +2146,51 @@ STRLEN strint_trial_factor(char* str_out, UV* uv_out,
     }
   }
 
-  if (!have_b9) {
-    /* No factors found; copy the stripped input as the cofactor */
-    strint_strip(&a, &alen);
-    if (str_out != a) memmove(str_out, a, alen);
-    if (str_to_uv_s(str_out, alen, uv_out)) return 0;
-    return alen;
-  }
+  if (!have_b9) return 0;
 
   /* All primes tried; write out the remaining cofactor */
   {
     STRLEN rlen = b9_get_str(str_out, &n);
     b9_free(&n);
-    if (str_to_uv_s(str_out, rlen, uv_out)) return 0;
-    return rlen;
+    if (str_to_uv_s(str_out, rlen, uv_out)) rlen = 0;
+    *str_len = rlen;
+    return nf;
   }
+}
+
+int strint_trial_factor(char* str_out, STRLEN* str_len, UV* uv_out,
+                        UV* out_f, const char* a, STRLEN alen,
+                        uint32_t first, uint32_t last)
+{
+  const uint32_t *prime_list = 0;
+  uint32_t nprimes, pbegin, pend, *allocated = 0;
+  int nf;
+
+  *str_len = 0;
+  if (first < 2) first = 2;
+  if (last < first) return 0;
+
+  if (last <= primes_small[NPRIMES_SMALL-1]) {
+    nprimes = NPRIMES_SMALL-1;
+  } else {
+    nprimes = range_prime_sieve_32(&allocated, last, 0);
+    if (nprimes == 0 || allocated == 0) return 0;
+    prime_list = allocated;
+  }
+
+  pbegin = 0;
+  while (pbegin < nprimes && strint_trial_prime_at(prime_list, pbegin) < first)
+    pbegin++;
+
+  pend = nprimes;
+  while (pend > pbegin && strint_trial_prime_at(prime_list, pend-1) > last)
+    pend--;
+
+  nf = strint_trial_factor_list(str_out, str_len, uv_out, out_f,
+                                a, alen, prime_list, pbegin, pend);
+  if (allocated != 0)
+    free_prime_sieve_32(allocated);
+  return nf;
 }
 
 

@@ -87,6 +87,9 @@ Revision history for Perl module Math::Prime::Util
 
     - signint correctly handles positive bigint strings with leading zeroes.
 
+    - trial_factor always removes factors 2, 3, and 5 with bigint inputs,
+      including when given a smaller factor limit.  Match existing docs.
+
     - lastfor handles die/croak inside loops much better.
 
     - random_factored_integer dropped the array return for bigints.

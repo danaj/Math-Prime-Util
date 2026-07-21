@@ -91,7 +91,6 @@
 
 - More Montgomery:
    - catalan
-   - test znlog code
 
 - Generic 64-bit montgomery
 
@@ -164,7 +163,7 @@
 - Audit temporary memory growth in result-bearing non-multicall callbacks:
   xs_call_cv_noinput_1_sv, vecwindow, and vecpairwise.
 
-- testing:  lehman_factor, print_primes, aks
+- testing:  lehman_factor, aks
 
 - factor, factor_exp should accept negative inputs
 
@@ -320,7 +319,16 @@
   need: not, bnot, and, or, xor, gt, lt, geq, leq, eq, neq,
         as_bool, as_string, as_num, clone
 
-- 32-bit testing
+- Pari                 MPU::GMP
+  bitand(x,y)          bitand(x,y)
+  bitor(x,y)           bitor(x,y)
+  bitxor(x,y)          bitxor(x,y)
+  bitneg(x,{n=-1})     bitnot(x)
+  bitflip(~x,n)        notbit(x,n)
+  bitclear(~x,n)       clrbit(x,n)
+  bitset(~x,n)         setbit(x,n)
+  bittest(x,n)         tstbit(x,n)
+  bitnegimply(x,y)
 
 - Audit auxiliary Perl modules for class-specific mutating bigint methods.
   Prefer M* operations or call tobigint once and use overloaded
@@ -611,8 +619,6 @@ OEIS lucky numbers:
   RiemannZeta cannot be directly done
   Naming conversions will be an issue
 
-- inverse_sigma0 in PP should have a generator method. e.g. (5040,1<<40)
-
 - tstbit(n,k) (bitget, bit_test).
 - scan1(n,start) / scan0(n,start)
 
@@ -627,8 +633,6 @@ OEIS lucky numbers:
 - factor128: Huchalla positive-inverse REDC
 
 - trialf128.  Maybe live in factor128.
-
-- string trial factor, should bump 'limit' to 5 (see docs, always find 2/3/5).
 
 - PP sum_primes $high <= ~0  =>  Mmulint(2,Msqrtint($high)) < SINTMAX
 
