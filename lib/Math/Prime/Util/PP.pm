@@ -9206,6 +9206,10 @@ sub farey {
   if (defined $k) {
     validate_integer_nonneg($k);
     return undef if $k >= $len;
+    if ($k > Mdivint($len, 2)) {
+      ($p0, $q0, $p1, $q1) = (1, 1, Msub1int($n), $n);
+      $k = Msubint(Msub1int($len), $k);
+    }
     for (1 .. $k) {
       $j = Mdivint(Maddint($q0, $n), $q1);
       $p2 = Mmulsubint($j, $p1, $p0);

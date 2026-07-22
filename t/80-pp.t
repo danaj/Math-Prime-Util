@@ -1630,6 +1630,7 @@ subtest 'rationals', sub {
 
   is_deeply([farey(6)],[[0,1],[1,6],[1,5],[1,4],[1,3],[2,5],[1,2],[3,5],[2,3],[3,4],[4,5],[5,6],[1,1]],"farey(6)");
   is_deeply(farey(144,146),[3,125],"farey(144,146)");
+  is_deeply(farey(1000,304182),[990,991],"farey walks backward near the end");
   is(scalar farey(1445), 635141, "scalar farey(1445) = 635141");
   is_deeply(next_farey(188,[3,5]),[113,188],"next_farey");
   is_deeply([farey_rank(188,[3,5]),farey_rank(188,[113,188])],[6478,6479],"farey_rank");

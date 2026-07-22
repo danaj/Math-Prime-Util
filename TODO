@@ -461,8 +461,6 @@ OEIS lucky numbers:
 
 - trizen sigma_sum, pillai_sum, etc.
 
-- more efficient kth_farey in PP
-
 = OEIS sequence for omega k=3 counts for 10^i
 
 = taupower
