@@ -20,6 +20,9 @@ plan tests => 1
             + 2
             + 5  # drand range
             + 4  # identify rng and test srand/csrand
+            + 2  # srand UV coercion
+            + 1  # csrand(undef) entropy reseeding
+            + 4  # GMP srand/csrand synchronization
             + 4  # 0 / undef arguments to urandom*
             + 1  # urandomb native range
             + 1  # urandomb bigint range
@@ -165,6 +168,14 @@ sub try_16bit {
 
 ########
 
+# Match the UV coercion performed by the XS typemap.
+is(srand(1.75), 1, "srand truncates a fractional seed to UV");
+is("" . srand(-1), $use64 ? "18446744073709551615" : "4294967295",
+   "srand coerces a negative seed to UV");
+csrand(undef);
+ok(Math::Prime::Util::_is_csprng_well_seeded(),
+   "csrand(undef) reseeds from entropy");
+
 # Quick check to identify the RNG being used.  Should be ChaCha20.
 srand(42);
 my $rb42 = irand();
@@ -217,6 +228,45 @@ SKIP: {
   my ($hi, $lo) = (irand32, irand32);
   is("$r64", "" . muladdint($hi, "4294967296", $lo),
      "irand64 combines two irand32 results" );
+}
+
+SKIP: {
+  skip "GMP backend with seed_csprng is not available", 4
+    unless Math::Prime::Util::prime_get_config()->{'gmp'} >= 42;
+
+  srand(0x521974A3);
+  my $gmp_r = Math::Prime::Util::GMP::irand();
+  Math::Prime::Util::GMP::seed_csprng(4, pack("V", 0x521974A3));
+  is(Math::Prime::Util::GMP::irand(), $gmp_r,
+     "srand synchronizes a 32-bit seed with GMP");
+
+  my $seed = srand();
+  my $seedstr;
+  if ($seed <= 4294967295) {
+    $seedstr = pack("V", $seed);
+  } else {
+    my($hi,$lo) = divrem($seed, 4294967296);
+    $seedstr = pack("V2", $lo, $hi);
+  }
+  $gmp_r = Math::Prime::Util::GMP::irand();
+  Math::Prime::Util::GMP::seed_csprng(length($seedstr), $seedstr);
+  is(Math::Prime::Util::GMP::irand(), $gmp_r,
+     "srand without arguments synchronizes its generated seed with GMP");
+
+  my $csseed = "BLAKEGrostlJHKeccakSkein--RijndaelSerpentTwofishRC6MARS";
+  csrand($csseed);
+  $gmp_r = Math::Prime::Util::GMP::irand();
+  Math::Prime::Util::GMP::seed_csprng(length($csseed), $csseed);
+  is(Math::Prime::Util::GMP::irand(), $gmp_r,
+     "csrand synchronizes an explicit seed with GMP");
+
+  skip "64-bit srand seed requires 64-bit UV", 1 unless $use64;
+  my $seed64 = 4294967297;
+  srand($seed64);
+  $gmp_r = Math::Prime::Util::GMP::irand();
+  Math::Prime::Util::GMP::seed_csprng(8, pack("V2", 1, 1));
+  is(Math::Prime::Util::GMP::irand(), $gmp_r,
+     "srand synchronizes a 64-bit seed with GMP");
 }
 
 srand;

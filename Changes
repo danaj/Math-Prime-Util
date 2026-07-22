@@ -94,6 +94,9 @@ Revision history for Perl module Math::Prime::Util
 
     - random_factored_integer dropped the array return for bigints.
 
+    - srand synchronizes its complete, endian-independent UV seed with the
+      GMP backend, including when called without an argument.
+
     - urandomm(n) accepted n=0 even though documented as positive.  Now rejects.
 
     - all divisors for large n are properly converted to bigint if needed.

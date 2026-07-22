@@ -487,26 +487,6 @@ sub _maybe_bigint_allargs {
 
 #############################################################################
 
-# These are called by the XS code to keep the GMP CSPRNG in sync with us.
-
-sub _srand_p {
-  my($seedval) = @_;
-  return unless $_Config{'gmp'} >= 42;
-  $seedval = unpack("L",entropy_bytes(4)) unless defined $seedval;
-  Math::Prime::Util::GMP::seed_csprng(4, pack("L",$seedval));
-  $seedval;
-}
-
-sub _csrand_p {
-  my($str) = @_;
-  return unless $_Config{'gmp'} >= 42;
-  $str = entropy_bytes(256) unless defined $str;
-  Math::Prime::Util::GMP::seed_csprng(length($str), $str);
-}
-
-#############################################################################
-
-
 sub formultiperm (&$) {    ## no critic qw(ProhibitSubroutinePrototypes)
   require Math::Prime::Util::PP;
   Math::Prime::Util::PP::formultiperm(@_);
@@ -6517,11 +6497,17 @@ startup.  For best security this should be 16-128 bytes of good
 entropy.  No more than 1024 bytes will be used (and usually less,
 for example the current ChaCha CSPRNG uses only the first 40 bytes).
 
-With no argument, reseeds using system entropy, which is preferred.
+With no argument or with C<undef>, reseeds using system entropy, which is
+preferred.  An empty string is treated as an explicit seed.
 
-If the C<secure> configuration has been set, then this will croak if
-given an argument.  This allows for control of reseeding with entropy
-the module gets itself, but not user supplied.
+When the GMP backend is enabled, an explicit seed is supplied to both
+CSPRNGs.  With no argument, each CSPRNG is seeded independently from system
+entropy.  The generators use different algorithms and do not produce the
+same output stream.
+
+If the C<secure> configuration has been set, then this will croak if given a
+defined argument.  This allows for control of reseeding with entropy the
+module gets itself, but not user supplied.
 
 =head2 srand
 
@@ -6533,8 +6519,12 @@ L</csrand> is recommended, or keep using the system entropy default seed.
 
 The API is nearly identical to the system function C<srand>.  It
 uses a UV which can be 64-bit rather than always 32-bit.  The
-behaviour for C<undef>, empty string, empty list, etc. is slightly
-different (we treat these as 0).
+behaviour for C<undef> and the empty string is slightly different
+(we treat these as 0).
+
+When the GMP backend is enabled, it is given the same UV seed.  This also
+applies to the generated seed returned by a call with no argument.  The two
+generators use different algorithms and do not produce the same output stream.
 
 This function is not exported with the ":all" tag, but is with ":rand".
 

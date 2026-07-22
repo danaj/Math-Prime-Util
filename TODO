@@ -121,9 +121,6 @@
   also see:
   https://github.com/int128-libraries/curtint128/blob/master/include/cuda_uint128.h
 
-- srand with no args should be calling GMP's srand with the selected seed
-  value.  This is all a hacky artifact of having the two codebases.
-
 - Look at using Ramanujan series for PP Li.
 
 - There may be more we can get from Dusart's 2016 paper:

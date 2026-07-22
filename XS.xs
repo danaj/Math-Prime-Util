@@ -903,8 +903,18 @@ static NOINLINE int dispatch_external(pTHX_ const CV* thiscv, I32 ax,
     XSRETURN(0); \
   } while (0)
 
-#define CALLROOTSUBVOID(fn) \
-  (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_ROOT, fn, items, 0, NULL)
+#define SEED_GMP_CSPRNG(bytes, data) \
+  do { \
+    uint32_t seedgmp_bytes_ = (bytes); \
+    if (_XS_get_callgmp() >= 42) { \
+      XPUSHs(sv_2mortal(newSVuv(seedgmp_bytes_))); \
+      XPUSHs(sv_2mortal(newSVpvn((const char*)(data), seedgmp_bytes_))); \
+      PUTBACK; \
+      (void)_vcallsubn(aTHX_ G_VOID|G_DISCARD, VCALL_GMP, \
+                       "seed_csprng", 2, 42, NULL); \
+      SPAGAIN; \
+    } \
+  } while (0)
 
 /******************************************************************************/
 
@@ -1705,23 +1715,38 @@ PPCODE:
 void csrand(IN SV* seed = 0)
   PREINIT:
     dMY_CXT;
+    STRLEN size;
+    unsigned char* data;
+    unsigned char gmpseed[64];
+    volatile unsigned char* p;
+    uint32_t size32, n, i;
   PPCODE:
-    if (items == 0) {
+    if (items == 0 || !SvOK(seed)) {
       csprng_init_seed(MY_CXT.randcxt);
+      if (_XS_get_callgmp() >= 42) {
+        n = (uint32_t) sizeof(gmpseed);
+        if (get_entropy_bytes(n, gmpseed) != n)
+          croak("Failed to get entropy bytes for GMP CSPRNG seed");
+        SEED_GMP_CSPRNG(n, gmpseed);
+        p = (volatile unsigned char*) gmpseed;
+        i = n;
+        while (i-- > 0) *p++ = 0;
+      }
     } else if (_XS_get_secure()) {
       croak("secure option set, manual seeding disabled");
     } else {
-      STRLEN size;
-      unsigned char* data = (unsigned char*) SvPV(seed, size);
-      uint32_t size32 = size > (STRLEN)UINT32_MAX ? UINT32_MAX : (uint32_t)size;
+      data = (unsigned char*) SvPV(seed, size);
+      size32 = size > (STRLEN)UINT32_MAX ? UINT32_MAX : (uint32_t)size;
       csprng_seed(MY_CXT.randcxt, size32, data);
+      SEED_GMP_CSPRNG(size32, data);
     }
-    if (_XS_get_callgmp() >= 42) CALLROOTSUBVOID("_csrand_p");
     XSRETURN(0);
 
 UV srand(IN UV seedval = 0)
   PREINIT:
     dMY_CXT;
+    unsigned char seed[8];
+    uint32_t seedbytes;
   CODE:
     if (_XS_get_secure())
       croak("secure option set, manual seeding disabled");
@@ -1729,8 +1754,8 @@ UV srand(IN UV seedval = 0)
       if (get_entropy_bytes(sizeof(UV),(unsigned char*)&seedval) != sizeof(UV))
         croak("Failed to get entropy bytes for srand");
     }
-    csprng_srand(MY_CXT.randcxt, seedval);
-    if (_XS_get_callgmp() >= 42) CALLROOTSUBVOID("_srand_p");
+    seedbytes = csprng_srand(MY_CXT.randcxt, seedval, seed);
+    SEED_GMP_CSPRNG(seedbytes, seed);
     RETVAL = seedval;
   OUTPUT:
     RETVAL

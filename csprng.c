@@ -168,23 +168,23 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
   secure_bzero(seed, sizeof(seed));
 }
 
-extern void csprng_srand(void* ctx, UV insecure_seed)
+extern uint32_t csprng_srand(void* ctx, UV insecure_seed,
+                             unsigned char seed[8])
 {
+  uint32_t bytes = 4;
 #if BITS_PER_WORD == 32
-  unsigned char seed[4] = {0};
   U32TO8_LE(seed, insecure_seed);
-  csprng_seed(ctx, 4, seed);
 #else
-  unsigned char seed[8] = {0};
   if (insecure_seed <= UVCONST(4294967295)) {
     U32TO8_LE(seed, insecure_seed);
-    csprng_seed(ctx, 4, seed);
   } else {
     U32TO8_LE(seed, insecure_seed);
     U32TO8_LE(seed + 4, (insecure_seed >> 32));
-    csprng_seed(ctx, 8, seed);
+    bytes = 8;
   }
 #endif
+  csprng_seed(ctx, bytes, seed);
+  return bytes;
 }
 
 void csprng_rand_bytes(void* ctx, uint32_t bytes, unsigned char* data)

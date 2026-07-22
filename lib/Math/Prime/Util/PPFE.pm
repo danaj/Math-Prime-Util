@@ -66,23 +66,44 @@ if (MPU_MAXBITS == 32) {
 }
 
 sub srand {
-  my($seed) = @_;
+  my $has_seed = @_ > 0;
+  my $seed = $has_seed ? $_[0] : undef;
   croak "secure option set, manual seeding disabled" if prime_get_config()->{'secure'};
-  if (!defined $seed) {
+  if (!$has_seed) {
     my $nbytes = (~0 == 4294967295) ? 4 : 8;
     $seed = entropy_bytes( $nbytes );
     $seed = unpack(($nbytes==4) ? "L" : "Q", $seed);
+  } else {
+    $seed = 0 if !defined $seed || (!ref($seed) && $seed eq '');
+    my $uvpack = MPU_MAXBITS == 32 ? "L" : "Q";
+    $seed = unpack($uvpack, pack($uvpack, $seed));
   }
-  Math::Prime::Util::GMP::seed_csprng(8,pack("LL",$seed))
-    if $Math::Prime::Util::_GMPfunc{"seed_csprng"};
-  Math::Prime::Util::_srand($seed);
+  my $seedstr;
+  if ($seed <= 4294967295) {
+    $seedstr = pack("V", $seed);
+  } else {
+    my($hi,$lo) = divrem($seed, 4294967296);
+    $seedstr = pack("V2", $lo, $hi);
+  }
+  if ($Math::Prime::Util::_GMPfunc{"seed_csprng"}) {
+    Math::Prime::Util::GMP::seed_csprng(length($seedstr), $seedstr);
+  }
+  Math::Prime::Util::_csrand($seedstr);
+  $seed;
 }
 sub csrand {
   my($seed) = @_;
   croak "secure option set, manual seeding disabled" if defined $seed && prime_get_config()->{'secure'};
-  $seed = entropy_bytes( 64 ) unless defined $seed;
-  Math::Prime::Util::GMP::seed_csprng(length($seed),$seed)
-    if $Math::Prime::Util::_GMPfunc{"seed_csprng"};
+  if (defined $seed) {
+    Math::Prime::Util::GMP::seed_csprng(length($seed),$seed)
+      if $Math::Prime::Util::_GMPfunc{"seed_csprng"};
+  } else {
+    $seed = entropy_bytes(64);
+    if ($Math::Prime::Util::_GMPfunc{"seed_csprng"}) {
+      my $gmpseed = entropy_bytes(64);
+      Math::Prime::Util::GMP::seed_csprng(length($gmpseed),$gmpseed);
+    }
+  }
   Math::Prime::Util::_csrand($seed);
   1; # Don't return the seed
 }
