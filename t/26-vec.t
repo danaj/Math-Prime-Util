@@ -457,6 +457,45 @@ subtest 'vecsort', sub {
     is_deeply(\@L, [3,3,1,0,-1,-5], "vecrsorti sorts in place");
   }
 
+  # We crossover from quicksort to radix sort at some implementation-defined point.
+  # This is probably somewhere between 100 and 800.
+  # We'll use 1024 here, so it should be well in the radix-sort range.
+  # Test the optimized paths for one varying byte, constant bytes between varying
+  # bytes, effective signed widths, and already ordered input.
+  my @radix_cases = (
+    [ "one varying byte",
+      [map { 0x12003456 | ((($_ * 73) & 255) << 16) } 0 .. 1023] ],
+    [ "separated varying bytes",
+      [map { 0x12003400 | (($_ * 73) & 255)
+                        | ((($_ * 151) & 255) << 16) } 0 .. 1023] ],
+    [ "mixed signed 8-bit",
+      [map { (($_ * 73) & 0xFF) - 0x80 } 0 .. 1023] ],
+    [ "mixed signed 16-bit",
+      [map { (($_ * 15401) & 0xFFFF) - 0x8000 } 0 .. 1023] ],
+    [ "mixed signed 24-bit",
+      [map { (($_ * 11863279) & 0xFFFFFF) - 0x800000 } 0 .. 1023] ],
+    [ "signed top byte",
+      [map { my $h = ($_ * 73) & 255;
+             my $u = ($h << 24) | 0x345678;
+             $h < 128 ? $u : addint($u, "-4294967296") } 0 .. 1023] ],
+    [ "mixed signed values",
+      [map { $_ & 1 ? -($_ * 7919) : $_ * 6151 } 0 .. 1023] ],
+    [ "already ascending", [0 .. 1023] ],
+    [ "already descending", [reverse 0 .. 1023] ],
+  );
+  if ($use64) {
+    push @radix_cases, [ "full signed width",
+      [map { $_ & 1
+               ? addint("-9223372036854775808", $_ * 7919)
+               : addint( "9223372036854775807", -($_ * 6151)) } 0 .. 1023] ];
+  }
+  for my $r (@radix_cases) {
+    my($name, $input) = @$r;
+    my @expected = sort { $a <=> $b } @$input;
+    vecsorti($input);
+    is_deeply($input, \@expected, "vecsorti radix: $name");
+  }
+
   # Both of these should be "string".  XS doesn't copy for validation.
   if ($extra) {
     diag "vecsort input:   $in0_beg => $in0_end" if $in0_beg ne $in0_end;

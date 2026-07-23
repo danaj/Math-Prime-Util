@@ -118,64 +118,118 @@ static void shellsort_iv(IV *array, size_t len) {
 #define RADIX     (1u<<RADIX_BIT)
 static bool _radixsort(UV *array, size_t n, bool is_iv)
 {
-  size_t i, count[RADIX];
-  unsigned r;
+  size_t i, j, count[RADIX];
+  unsigned r, pass, npass = 0, signshift, shifts[sizeof(UV)];
   UV *a, *b, *ptr[RADIX];
-  UV passmask = 0;
-  int sh;
+  UV first, prev, varymask = 0, widthmask = 0;
+  bool ascending = 1, descending = 1;
 
+  if (n < 2) return 1;
+
+  first = array[0];
+  prev = first;
   memset(count, 0, sizeof count);
   for (i = 0; i < n; i++) {
     UV d = array[i];
-    passmask |= d ^ (d >> RADIX_BIT);
-    count[d % RADIX]++;
+    varymask |= d ^ first;
+    count[d & (RADIX-1)]++;
+    if (is_iv) {
+      /* Complement negative values so repeated sign bits do not add width. */
+      widthmask |= d ^ ((UV)0 - (d >> (BITS_PER_WORD-1)));
+      ascending  &= (IV)prev <= (IV)d;
+      descending &= (IV)prev >= (IV)d;
+    } else {
+      ascending  &= prev <= d;
+      descending &= prev >= d;
+    }
+    prev = d;
   }
-  if (passmask < RADIX) { /* If all values < RADIX, Use *fast* counting sort */
-    if (passmask) {
-      size_t j = 0, lim = 0;
-      for (r = 0; r < RADIX; r++)
-        for (lim += count[r]; j < lim; j++)
-          array[j] = r;
+  if (ascending) return 1;
+  if (descending) {
+    for (i = 0, j = n-1; i < j; i++, j--) {
+      UV t = array[i]; array[i] = array[j]; array[j] = t;
     }
     return 1;
   }
+
+  /* Signed values only need enough bytes to include their effective sign
+   * bit.  This avoids sorting redundant sign-extension bytes. */
+  signshift = BITS_PER_WORD-RADIX_BIT;
+  if (is_iv) {
+    signshift = 0;
+    while (signshift < BITS_PER_WORD-RADIX_BIT &&
+           (widthmask >> (signshift + RADIX_BIT-1)) != 0)
+      signshift += RADIX_BIT;
+  }
+
+  /* Constant radix digits do not affect ordering. */
+  for (r = 0; r <= signshift; r += RADIX_BIT)
+    if ((varymask >> r) & (RADIX-1))
+      shifts[npass++] = r;
+  if (npass == 0) return 1;  /* All equal; normally caught by ascending. */
+
+  /* The initial scan counted byte zero.  Recount if it is constant and the
+   * first varying byte is elsewhere. */
+  if (shifts[0] != 0) {
+    unsigned sh = shifts[0];
+    memset(count, 0, sizeof count);
+    for (i = 0; i < n; i++)
+      count[(array[i] >> sh) & (RADIX-1)]++;
+  }
+
+  /* With one varying byte, reconstruct directly from its histogram.  Keep
+   * narrowed signed values on the normal path so their original sign
+   * extension is preserved. */
+  if (npass == 1 && (!is_iv || signshift == BITS_PER_WORD-RADIX_BIT)) {
+    unsigned sh = shifts[0];
+    unsigned signbit = is_iv && sh == signshift
+                     ? RADIX >> 1 : 0;
+    UV base = first & ~((UV)(RADIX-1) << sh);
+    size_t lim = 0;
+    j = 0;
+    for (r = 0; r < RADIX; r++) {
+      unsigned d = r ^ signbit;
+      UV v = base | ((UV)d << sh);
+      for (lim += count[d]; j < lim; j++)
+        array[j] = v;
+    }
+    return 1;
+  }
+
   /* Allocate second ping-pong buffer */
   a = array;
   b = (UV*)malloc(n * sizeof(UV));
   if (b == 0) return 0;
-  /* Each pass radix-sorts and counts for next pass */
-  for (sh = 0; UV_MAX >> sh >= RADIX; sh += RADIX_BIT) {
+
+  /* Each pass radix-sorts and counts the next varying byte. */
+  for (pass = 0; pass < npass; pass++) {
+    unsigned sh = shifts[pass];
+    unsigned signbit = is_iv && sh == signshift
+                     ? RADIX >> 1 : 0;
     UV *p = b;
-    if ((passmask >> sh) % RADIX == 0)
-      continue;
     for (r = 0; r < RADIX; r++) {
-      ptr[r] = p;
-      p += count[r];
+      unsigned d = r ^ signbit;
+      ptr[d] = p;
+      p += count[d];
     }
     /* assert(p == b + n); */
-    memset(count, 0, sizeof count);
-    for (i = 0; i < n; i++) {
-      UV d = a[i];
-      *(ptr[(d>>sh) % RADIX]++) = d;
-      count[(d >> (sh + RADIX_BIT)) % RADIX]++;
+    if (pass+1 < npass) {
+      unsigned nextsh = shifts[pass+1];
+      memset(count, 0, sizeof count);
+      for (i = 0; i < n; i++) {
+        UV d = a[i];
+        *(ptr[(d >> sh) & (RADIX-1)]++) = d;
+        count[(d >> nextsh) & (RADIX-1)]++;
+      }
+    } else {
+      for (i = 0; i < n; i++) {
+        UV d = a[i];
+        *(ptr[(d >> sh) & (RADIX-1)]++) = d;
+      }
     }
     p = b; b = a; a = p;
   }
-  /* Last pass does no more counting */
-  if (passmask >> sh) {
-    UV *p = b;
-    unsigned signbit = is_iv ? 1 << (BITS_PER_WORD-1)%RADIX_BIT : 0;
-    for (r = 0; r < RADIX; r++) {
-      ptr[r^signbit] = p;
-      p += count[r^signbit];
-    }
-    /* assert(p == b + n); */
-    for (i = 0; i < n; i++) {
-      UV d = a[i];
-      *(ptr[(d>>sh) % RADIX]++) = d;
-    }
-    p = b; b = a; a = p;
-  }
+
   /* Move back to input array if necessary */
   if (a != array) {
     memcpy(array, a, n * sizeof *array);
@@ -394,7 +448,7 @@ void sort_iv_array(IV* L, size_t len) { quadsort_iv(L, len, 0); }
 
 void sort_uv_array(UV* L, size_t len)
 {
-  if (len < 800) {
+  if (len < 400) {
     quicksort_uv(L, len);
   } else {
     /* We could use an in-place radix sort like Ska Sort.  Our radix sort
@@ -407,7 +461,7 @@ void sort_uv_array(UV* L, size_t len)
 
 void sort_iv_array(IV* L, size_t len)
 {
-  if (len < 800) {
+  if (len < 400) {
     quicksort_iv(L, len);
   } else {
     if (!radixsort_iv(L, len))   /* radixsort could fail aux allocation */
@@ -432,4 +486,3 @@ void sort_dedup_uv_array(UV* L, bool data_is_signed, size_t *len)
     *len = i+1;
   }
 }
-

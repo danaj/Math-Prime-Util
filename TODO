@@ -316,16 +316,20 @@
   need: not, bnot, and, or, xor, gt, lt, geq, leq, eq, neq,
         as_bool, as_string, as_num, clone
 
-- Pari                 MPU::GMP
-  bitand(x,y)          bitand(x,y)
-  bitor(x,y)           bitor(x,y)
-  bitxor(x,y)          bitxor(x,y)
-  bitneg(x,{n=-1})     bitnot(x)
-  bitflip(~x,n)        notbit(x,n)
-  bitclear(~x,n)       clrbit(x,n)
-  bitset(~x,n)         setbit(x,n)
-  bittest(x,n)         tstbit(x,n)
-  bitnegimply(x,y)
+- Pari                MPU::GMP            Maybe MPU
+  bitand(x,y)         bitand(x,y)         bitand(x,y)
+  bitor(x,y)          bitor(x,y)          bitor(x,y)
+  bitxor(x,y)         bitxor(x,y)         bitxor(x,y)
+  bitnegimply(x,y)                        bitandnot(x,y)
+  bitneg(x,{n=-1})    bitnot(x)           bitnot(x,width)
+  bitflip(~x,n)       notbit(x,n)         bitflip(x,k)
+  bitclear(~x,n)      clrbit(x,n)         bitclear(x,k)
+  bitset(~x,n)        setbit(x,n)         bitset(x,k)
+  bittest(x,n)        tstbit(x,n)         bittest(x,k)
+
+- Also add:
+  bitscan1(n[,start=0])    valuation(absint(n),2)
+  bitscan0(n[,start=0])    valuation(add1int(absint(n)),2)
 
 - Audit auxiliary Perl modules for class-specific mutating bigint methods.
   Prefer M* operations or call tobigint once and use overloaded
@@ -637,3 +641,4 @@ OEIS lucky numbers:
 
 - send mail about Sort::DJB (av_fetch/av_store overhead)
   we're only testing vs the generic version, not the SIMD one.
+  calling already sorted array, CORE::rand source, sint64 range
