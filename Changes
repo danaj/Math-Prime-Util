@@ -147,6 +147,8 @@ Revision history for Perl module Math::Prime::Util
     - vecreduce, vecslide, and vecwindow block values are no longer aliases
       of input values in XS, matching the PP implementations and vecpairwise.
 
+    - random_ndigit_prime(3) was undersampling 101 (since v0.62).
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

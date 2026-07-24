@@ -80,8 +80,8 @@ static UV sieve_pairs(UV* L, UV n) {
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(n/2, n-11, &segment);
     while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      size_t qbeg  = n-seg_high,  qend  = n-seg_low;
-      UV     qdbeg = qbeg/30,     qdend = (qend+29)/30;
+      UV qbeg  = n-seg_high,  qend  = n-seg_low;
+      UV qdbeg = qbeg/30,     qdend = (qend+29)/30;
       unsigned char* lowsieve;
       New(0, lowsieve, qdend-qdbeg+1, unsigned char);
       sieve_segment(lowsieve, qdbeg, qdend);
