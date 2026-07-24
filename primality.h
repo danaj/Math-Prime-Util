@@ -15,7 +15,7 @@ extern bool is_frobenius_underwood_pseudoprime(UV n);
 extern bool is_frobenius_khashin_pseudoprime(UV n) ISCONSTFUNC;
 extern bool is_perrin_pseudoprime(UV n, uint32_t restricted);
 
-extern bool miller_rabin(UV const n, const UV *bases, int nbases);
+extern bool miller_rabin(UV const n, const UV *bases, size_t nbases);
 
 /* 2^p-1:  0 composite, 1 prime, -1 don't know */
 extern int is_mersenne_prime(UV p) ISCONSTFUNC;

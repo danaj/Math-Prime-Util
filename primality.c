@@ -19,7 +19,7 @@
 
 static int jacobi_iu(IV in, UV m) {
   int j = 1;
-  UV n = (in < 0) ? -in : in;
+  UV n = (in < 0) ? (UV)0 - (UV)in : in;
 
   if (m <= 0 || (m%2) == 0) return 0;
   if (in < 0 && (m%4) == 3) j = -j;
@@ -35,7 +35,7 @@ static int jacobi_iu(IV in, UV m) {
   return (m == 1) ? j : 0;
 }
 
-static UV select_extra_strong_parameters(UV n, UV increment) {
+static bool select_extra_strong_parameters(UV *Pout, UV n, UV increment) {
   int j;
   UV D, P = 3;
   while (1) {
@@ -48,8 +48,8 @@ static UV select_extra_strong_parameters(UV n, UV increment) {
     if (P > 65535)
       croak("lucas_extrastrong_params: P exceeded 65535");
   }
-  if (P >= n)  P %= n;   /* Never happens with increment < 4 */
-  return P;
+  *Pout = P % n;
+  return 1;
 }
 
 /* Fermat pseudoprime */
@@ -190,9 +190,9 @@ bool is_strong_pseudoprime(UV const n, UV a)
  * Returns 1 if probably prime relative to the bases, 0 if composite.
  * Bases must be between 2 and n-2
  */
-bool miller_rabin(UV const n, const UV *bases, int nbases)
+bool miller_rabin(UV const n, const UV *bases, size_t nbases)
 {
-  int i;
+  size_t i;
   /* For best performance, especially with montmath, we would do as much
    * as possible up front, then do the per-base loop.  This code used to
    * do that, but we never actually used it with more than one base. */
@@ -233,8 +233,7 @@ bool BPSW(UV const n)
         return 0;
     }
     /* AES Lucas test */
-    P = select_extra_strong_parameters(n, 1);
-    if (P == 0) return 0;
+    if (!select_extra_strong_parameters(&P, n, 1))  return 0;
 
     d = n+1;
     s = 0;
@@ -291,6 +290,7 @@ bool is_lucas_pseudoprime(UV n, int strength)
   IV P, Q, D;
   UV U, V, Pu, Qu, Qk, d, s;
 
+  MPUassert(strength >= 0 && strength <= 3, "is_lucas_pseudoprime: strength must be one of 0, 1, 2, 3");
   if (n < 5) return (n == 2 || n == 3);
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
@@ -299,11 +299,12 @@ bool is_lucas_pseudoprime(UV n, int strength)
     IV sign = 1;
     int j;
     while (1) {
-      D = Du * sign;
+      D = (sign > 0) ? (IV)Du : -(IV)Du;
       j = jacobi_iu(D, n);
       if (j != 1 && Du != n) break;
       if (Du == 21 && is_perfect_square(n)) return 0;
       Du += 2;
+      if (Du > 1000000) croak("is_lucas_pseudoprime: D exceeded 1e6");
       sign = -sign;
     }
     if (j != -1) return 0;
@@ -311,11 +312,11 @@ bool is_lucas_pseudoprime(UV n, int strength)
     Q = (1 - D) / 4;
     if (strength == 2 && Q == -1) P=Q=D=5;  /* Method A* */
     /* Check gcd(n,2QD). gcd(n,2D) already done. */
-    Qk = (Q >= 0)  ?  Q % n  :  n-(((UV)(-Q)) % n);
+    Qk = ivmod(Q,n);
     if (gcd_ui(Qk,n) != 1) return 0;
   } else {
-    P = select_extra_strong_parameters(n, 1);
-    if (P == 0) return 0;
+    if (!select_extra_strong_parameters(&Pu, n, 1))  return 0;
+    P = Pu;
     Q = 1;
     D = P*P - 4;
   }
@@ -448,7 +449,7 @@ return is_euler_pseudoprime(n,Qk);
     if (U == 0)
       return 1;
     /* Now check to see if V_{d*2^r} == 0 for any 0 <= r < s */
-    Qk = powmod(Qu, d, n);
+    Qk = (Q == -1) ? n-1 : powmod(Qu, d, n);
     while (s--) {
       if (V == 0)
         return 1;
@@ -462,7 +463,7 @@ return is_euler_pseudoprime(n,Qk);
     int qjacobi, is_slpsp = 0;
     if (U == 0)
       is_slpsp = 1;
-    Qk = powmod(Qu, d, n);
+    Qk = (Q == -1) ? n-1 : powmod(Qu, d, n);
     while (s--) {
       if (V == 0)
         is_slpsp = 1;
@@ -503,24 +504,24 @@ return is_euler_pseudoprime(n,Qk);
  *
  * increment:  1 for Baillie OEIS, 2 for Pari.
  *
- * With increment = 1, these results will be a subset of the extra-strong
+ * With increment = 1, these results will be a superset of the extra-strong
  * Lucas pseudoprimes.  With increment = 2, we produce Pari's results.
  */
 bool is_almost_extra_strong_lucas_pseudoprime(UV n, UV increment)
 {
   UV P, V, W, d, s, b;
 
-  if (n < 13) return (n == 2 || n == 3 || n == 5 || n == 7 || n == 11);
-  if ((n % 2) == 0 || n == UV_MAX) return 0;
   if (increment < 1 || increment > 256)
     croak("is_almost_extra_strong_lucas_pseudoprime: invalid increment: %"UVuf, increment);
+  if (n < 13) return (n == 2 || n == 3 || n == 5 || n == 7 || n == 11);
+  if ((n % 2) == 0 || n == UV_MAX) return 0;
 
   /* Ensure small primes work with large increments. */
   if ( (increment >= 16 && n <= 331) || (increment > 148 && n <= 631) )
-    return is_prob_prime(n);
+    if (is_prob_prime(n))
+      return 1;
 
-  P = select_extra_strong_parameters(n, increment);
-  if (P == 0) return 0;
+  if (!select_extra_strong_parameters(&P, n, increment))  return 0;
 
   d = n+1;
   s = 0;

@@ -2420,7 +2420,7 @@ void is_pseudoprime(IN SV* svn, ...)
   PPCODE:
     status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (status == 1) {
-      if (n < 4) {
+      if (n < 3) {
         ret = (n >= 2);
       } else if (ix >= 1 && !(n&1)) {
         ret = 0;

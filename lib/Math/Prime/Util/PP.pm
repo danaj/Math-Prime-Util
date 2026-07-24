@@ -8375,7 +8375,7 @@ sub is_pseudoprime {
   validate_integer($n);
   return 0 if $n < 0;
   @bases = (2) if scalar(@bases) == 0;
-  return 0+($n >= 2) if $n < 4;
+  return 0+($n >= 2) if $n < 3;
 
   foreach my $a (@bases) {
     validate_integer_nonneg($a);
@@ -8391,7 +8391,7 @@ sub is_euler_pseudoprime {
   validate_integer($n);
   return 0 if $n < 0;
   @bases = (2) if scalar(@bases) == 0;
-  return 0+($n >= 2) if $n < 4;
+  return 0+($n >= 2) if $n < 3;
   return 0 if ($n % 2) == 0;
 
   foreach my $a (@bases) {
@@ -8481,7 +8481,7 @@ sub is_strong_pseudoprime {
   return 0 if $n < 0;
   return _miller_rabin_2($n) if scalar(@bases) == 0;
 
-  return 0+($n >= 2) if $n < 4;
+  return 0+($n >= 2) if $n < 3;
   return 0 if ($n % 2) == 0;
 
   my @newbases;
@@ -10162,8 +10162,13 @@ sub is_almost_extra_strong_lucas_pseudoprime {
     croak "is_almost_extra_strong_lucas_pseudoprime: invalid increment: $incr"
       if $incr<1 || $incr>256;
   }
-  return 0+($n >= 2) if $n < 4;
+  return 0+($n == 2 || $n == 3 || $n == 5 || $n == 7 || $n == 11)
+    if $n < 13;
   return 0 if ($n % 2) == 0 || _is_perfect_square($n);
+
+  return 1
+    if (($incr >= 16 && $n <= 331) || ($incr > 148 && $n <= 631))
+       && is_prob_prime($n);
 
   my ($P, $Q, $D) = _lucas_extrastrong_params($n, $incr);
   return 0 if $D == 0;  # We found a divisor in the sequence

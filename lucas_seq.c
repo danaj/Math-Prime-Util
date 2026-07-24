@@ -123,9 +123,8 @@ void lucasuvmod(UV* Uret, UV* Vret, UV P, UV Q, UV k, UV n)
   { UV v = k; b = 0; while (v >>= 1) b++; }
   U = 1;
   V = P;
-  invD = modinverse(D, n);
 
-  if (Q == 1 && invD != 0) { /* Inverting D: 2 mulmods/bit instead of 2-5 */
+  if (Q == 1 && (invD = modinverse(D, n)) != 0) {  /* Only 2 mulmods/bit */
     U = mulsubmod(P,P,2,n);
     while (b--) {
       UV T = mulsubmod(U, V, P, n);

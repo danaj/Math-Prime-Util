@@ -395,6 +395,15 @@ subtest 'pseudoprime tests', sub {
   is( is_strong_pseudoprime(1, 2), 0, "MR with 0 shortcut composite");
   is( is_strong_pseudoprime(2, 2), 1, "MR with 2 shortcut prime");
   is( is_strong_pseudoprime(3, 2), 1, "MR with 3 shortcut prime");
+  is( is_pseudoprime(3, 3), 0, "Fermat with base 0 mod n");
+  is( is_euler_pseudoprime(3, 3), 0, "Euler with base 0 mod n");
+  is( is_strong_pseudoprime(3, 3), 1, "MR with base 0 mod n");
+  ok(!eval { is_pseudoprime(3,1); 1 } && $@ =~ /invalid base: 1/,
+     "Fermat n=3 validates base");
+  ok(!eval { is_euler_pseudoprime(3,1); 1 } && $@ =~ /invalid base: 1/,
+     "Euler n=3 validates base");
+  ok(!eval { is_strong_pseudoprime(3,1); 1 } && $@ =~ /invalid base: 1/,
+     "MR n=3 validates base");
 
   my @psp = ([2,341],[2,561],[2,29341],[2,4259905],
              [3, 91],[3,121],[3,44287],[3,4252381]);
