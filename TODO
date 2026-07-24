@@ -641,4 +641,4 @@ OEIS lucky numbers:
 
 - send mail about Sort::DJB (av_fetch/av_store overhead)
   we're only testing vs the generic version, not the SIMD one.
-  calling already sorted array, CORE::rand source, sint64 range
+  CORE::rand source, sint64 range

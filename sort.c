@@ -307,14 +307,14 @@ sift_done:
 /*                              QUICK SORT                                    */
 /******************************************************************************/
 
-static size_t _mid3_uv_val(UV* L, size_t a, size_t b, size_t c) {
+static UV _mid3_uv_val(UV* L, size_t a, size_t b, size_t c) {
   const UV s[3] = {L[a],L[b],L[c]};  /* Scandum's branchless method */
   int x = s[0] > s[1];
   int y = s[0] > s[2];
   int z = s[1] > s[2];
   return s[(x == y) + (y ^ z)];
 }
-static size_t _mid3_iv_val(IV* L, size_t a, size_t b, size_t c) {
+static IV _mid3_iv_val(IV* L, size_t a, size_t b, size_t c) {
   const IV s[3] = {L[a],L[b],L[c]};  /* Scandum's branchless method */
   int x = s[0] > s[1];
   int y = s[0] > s[2];
@@ -346,13 +346,13 @@ static size_t _partition_uv(UV* L, size_t lo, size_t hi) {
   size_t i = lo-1, j = hi+1, len = hi-lo+1;
   UV pivot;
   if (len <= 7) {
-    pivot = L[len/2];
+    pivot = L[lo + len/2];
   } else if (len <= 40) {
     pivot = _mid3_uv_val(L, lo, lo+(hi-lo)/2, hi);
   } else { /* Fluxsort's median_of_nine */
-    UV swap[9], *X = L+lo;
+    UV swap[9], *Llo = L+lo;
     size_t x, step = (len-1)/8;
-    for (x = 0; x < 9; x++) { swap[x] = *X; X += step; }
+    for (x = 0; x < 9; x++) { swap[x] = Llo[x*step]; }
     _mid2_of_4_uv(swap);     /* [X v v X v v v v v] */
     _mid2_of_4_uv(swap+4);   /* [X v v X X v v X v] */
     swap[0] = swap[5];  swap[3] = swap[8];
@@ -370,13 +370,13 @@ static size_t _partition_iv(IV* L, size_t lo, size_t hi) {
   size_t i = lo-1, j = hi+1, len = hi-lo+1;
   IV pivot;
   if (len <= 7) {
-    pivot = L[len/2];
+    pivot = L[lo + len/2];
   } else if (len <= 40) {
     pivot = _mid3_iv_val(L, lo, lo+(hi-lo)/2, hi);
   } else { /* Fluxsort's median_of_nine */
-    IV swap[9], *X = L+lo;
+    IV swap[9], *Llo = L+lo;
     size_t x, step = (len-1)/8;
-    for (x = 0; x < 9; x++) { swap[x] = *X; X += step; }
+    for (x = 0; x < 9; x++) { swap[x] = Llo[x*step]; }
     _mid2_of_4_iv(swap);     /* [X v v X v v v v v] */
     _mid2_of_4_iv(swap+4);   /* [X v v X X v v X v] */
     swap[0] = swap[5];  swap[3] = swap[8];
