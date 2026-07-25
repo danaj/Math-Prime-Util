@@ -642,3 +642,8 @@ OEIS lucky numbers:
 - send mail about Sort::DJB (av_fetch/av_store overhead)
   we're only testing vs the generic version, not the SIMD one.
   CORE::rand source, sint64 range
+
+- GMP is_perrin_pseudoprime should validate that the restriction is 0..3
+  before converting it to the internal int argument.
+
+- We should call GMP is_frobenius_khashin_pseudoprime(n) only for 0.54+.

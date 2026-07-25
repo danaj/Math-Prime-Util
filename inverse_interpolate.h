@@ -3,6 +3,8 @@
 
 #include "ptypes.h"
 
+/* Passing a zero hi to either function asks it to find an upper bracket.
+ * It returns zero if no representable upper bracket exists. */
 extern UV inverse_interpolate(UV lo, UV hi, UV n, UV (*func)(UV mid), UV threshold);
 
 extern UV inverse_interpolate_k(UV lo, UV hi, UV n, UV k, UV (*func)(UV mid, UV k), UV threshold);
@@ -12,7 +14,7 @@ extern UV inverse_interpolate_k(UV lo, UV hi, UV n, UV k, UV (*func)(UV mid, UV 
  * We need to be given:
  *   n          we're trying to find nth_xxx(n)
  *   gcount     we'll fill this in with the exact count at the return value
- *   tol        how close we care about getting
+ *   tol        how close we care about getting (must be positive)
  *   fnth(n)    a callback for nth_xxx_approx(n) (approx nth)
  *   fcnt(g)    a callback for xxx_count(g)      (exact count at g)
  *   fis(g)     a callback for is_xxx(g)

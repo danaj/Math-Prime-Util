@@ -4563,7 +4563,7 @@ void nth_omega_prime(IN SV* svk, IN SV* svn)
       max = max_omega_prime_count(k);
       if (max > 0  &&  n <= max) {
         ret = nth_omega_prime(k, n);
-        XSRETURN_UV(ret);
+        if (ret != 0) XSRETURN_UV(ret);
       }
     }
     DISPATCHPP_RETURN();

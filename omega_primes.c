@@ -268,6 +268,7 @@ UV nth_omega_prime(uint32_t k, UV n) {
     hi = 0;        /* Let the interpolation routine find it */
   }
   hi = inverse_interpolate_k(lo, hi, n, k, &opce, 600);
+  if (hi == 0) return 0;
 
   while (!is_omega_prime(k,hi))
     hi--;
