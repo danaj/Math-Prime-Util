@@ -5,9 +5,9 @@
 #define FUNC_isqrt 1
 #include "ptypes.h"
 #include "constants.h"
-#include "util.h"
-#include "cache.h"
 #include "sieve.h"
+#include "cache.h"
+#include "util.h"
 #include "prime_sums.h"
 
 /******************************************************************************/
@@ -77,8 +77,31 @@ static UV _sum_primes64(UV n) {
 
 #if HAVE_SUM_PRIMES128
 
-/* Simplified Legendre method giving pisum(n) for any 64-bit input n,
- * assuming the uint128_t type is available. */
+#if BITS_PER_WORD == 64
+static void _sum_primes_range128(UV low, UV high, uint128_t *sum)
+{
+  uint128_t s = 0;
+
+  if (low <= 2 && high >= 2) s += 2;
+  if (low <= 3 && high >= 3) s += 3;
+  if (low <= 5 && high >= 5) s += 5;
+  if (low < 7) low = 7;
+
+  if (low <= high) {
+    unsigned char *segment;
+    UV seg_base, seg_low, seg_high;
+    void *ctx = start_segment_primes(low, high, &segment);
+
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME(segment, seg_base, seg_low, seg_high) {
+        s += p;
+      } END_DO_FOR_EACH_SIEVE_PRIME;
+    }
+    end_segment_primes(ctx);
+  }
+  *sum = s;
+}
+#endif
 
 static uint32_t isqrt64(uint64_t n)
 {
@@ -87,6 +110,9 @@ static uint32_t isqrt64(uint64_t n)
   while ((uint128_t)r * r > n) r--;
   return (uint32_t)r;
 }
+
+/* Simplified Legendre method giving pisum(n) for any 64-bit input n,
+ * assuming the uint128_t type is available. */
 
 static bool _sum_primes128(uint64_t n, uint128_t *sum) {
   uint128_t *S;
@@ -110,15 +136,17 @@ static bool _sum_primes128(uint64_t n, uint128_t *sum) {
   New(0, V, r2+1, uint64_t);
   S = (uint128_t*)mpu_aligned_alloc((UV)(r2+1), sizeof(uint128_t),
                                     sizeof(uint128_t));
-  for (k = 0; k <= r2; k++) {
+  V[0] = 0;  S[0] = 0;
+  for (k = 1; k <= r2; k++) {
     uint64_t v = (k <= r)  ?  k  :  n/(r2-k+1);
     V[k] = v;
     S[k] = ((uint128_t)v+1)/2 * (v|1) - 1;   /* (v*(v+1))/2-1 */
   }
 
-  for (p = 2; p <= r; p++) {
-    if (S[p] > S[p-1]) { /* For each prime p from 2 to r */
-      uint128_t sp = S[p-1], p2 = ((uint128_t)p) * p;
+  for (p = 2; p <= r; p++) { /* For each prime p from 2 to r */
+    if (S[p] > S[p-1]) {
+      uint128_t sp = S[p-1];
+      uint64_t p2 = p * p;
       for (j = r2; j > 1 && V[j] >= p2; j--) {
         uint64_t a = V[j], b = a/p;
         if (a > r) a = r2 - n/a + 1;
@@ -136,7 +164,19 @@ static bool _sum_primes128(uint64_t n, uint128_t *sum) {
 bool sum_primes128(uint64_t lo, uint64_t hi, uint128_t *sum)
 {
   uint128_t hisum, losum = 0;
+
+  if (hi > MPU_MAX_PRIME64)
+    hi = MPU_MAX_PRIME64;
   if (hi < lo || hi < 2) { *sum = 0; return 1; }
+
+#if BITS_PER_WORD == 64
+  /* Avoid two enormous prefix arrays for a modest high-valued range. */
+  if (lo > 2 && hi-lo < UINT64_C(50000000)) {
+    _sum_primes_range128((UV)lo, (UV)hi, sum);
+    return 1;
+  }
+#endif
+
   if (!_sum_primes128(hi, &hisum)) return 0;
   if (lo > 2 && !_sum_primes128(lo-1, &losum)) return 0;
   *sum = hisum - losum;
