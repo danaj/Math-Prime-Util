@@ -414,7 +414,7 @@ Tags:
   lucasuv(P, Q, k)                    (U_k,V_k) for Lucas(P,Q)
   lucasumod(P, Q, k, n)               U_k for Lucas(P,Q) mod n
   lucasvmod(P, Q, k, n)               V_k for Lucas(P,Q) mod n
-  lucasuvmod(P, Q, k, n)              (U_k,V_k,Q^k) for Lucas(P,Q) mod n
+  lucasuvmod(P, Q, k, n)              (U_k,V_k) for Lucas(P,Q) mod n
   lucas_sequence(n,P,Q,k)             deprecated, use lucasuvmod instead
   fibonacci(k)                        The k-th Fibonacci number
   lucas_number(k)                     The k-th Lucas number

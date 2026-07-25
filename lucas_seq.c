@@ -185,7 +185,7 @@ UV lucasvmod(UV P, UV Q, UV k, UV n)
 {
   UV D, b, U, V, Qk;
 
-  MPUassert(n > 0, "lucas_sequence:  modulus n must be > 0");
+  MPUassert(n > 0, "lucasvmod:  modulus n must be > 0");
   if (n == 1) return 0;
   if (k == 0) return 2 % n;
   if (P >= n) P = P % n;

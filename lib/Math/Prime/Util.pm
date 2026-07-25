@@ -5701,8 +5701,10 @@ This is the L<OEIS series A000670|http://oeis.org/A000670>.
 
 =head2 integer_complexity
 
-  say integer_complexity(6);   # 5,  since 6 = (1+1)*(1+1+1)
-  say integer_complexity(100); # 13, since 100 = ((1+1+1)*(1+1+1)+1)*(1+1+1+1+1)
+  # 6 = (1+1) * (1+1+1)
+  say integer_complexity(6);   # 5
+  # 100 = (1+1) * (1+1) * ((1+1)*(1+1)+1) * ((1+1)*(1+1)+1)
+  say integer_complexity(100); # 14
 
 Given a non-negative integer C<n>, returns the integer complexity of C<n>:
 the minimum number of 1s needed to represent C<n> using addition and

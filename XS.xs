@@ -1638,6 +1638,7 @@ BOOT:
     newCONSTSUB(stash, "_XS_factor_bits", newSViv(BITS_PER_WORD));
 #endif
 
+    (void) integer_complexity(0);  /* Initialize the shared cache lock. */
     boot_register_custom_ops(aTHX);
 
     {

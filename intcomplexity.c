@@ -55,7 +55,7 @@ static uint8_t* ic_cache_data = 0;
 static UV       ic_cache_size = 0;
 
 /* This runs during a write lock, so modify iccache without concern */
-void expand_ic(UV to) {
+static void expand_ic(UV to) {
   uint8_t *A;
   UV G[128];
   UV i, j, ij, first;
@@ -80,7 +80,7 @@ void expand_ic(UV to) {
   for (i = 0; i <= 127; i++)   G[i] = _calcg(i);
 
   /* Multiplication loop for new data */
-  for (i = 2; i < first; i++) {
+  for (i = 2; i < first && i <= to/2; i++) {
     for (j = 2, ij = 2*i;  j <= i && ij <= to;  j++, ij+=i)
       if (ij >= first && A[i]+A[j] < A[ij])
         A[ij] = A[i] + A[j];
@@ -98,9 +98,11 @@ void expand_ic(UV to) {
         A[i] = A[j] + A[i-j];
 
     /* Multiplications */
-    for (j = 2, ij = 2*i;  j <= i && ij <= to;  j++, ij+=i)
-      if (A[i]+A[j] < A[ij])
-        A[ij] = A[i] + A[j];
+    if (i <= to/2) {
+      for (j = 2, ij = 2*i;  j <= i && ij <= to;  j++, ij+=i)
+        if (A[i]+A[j] < A[ij])
+          A[ij] = A[i] + A[j];
+    }
   }
 
   ic_cache_size = to;
@@ -108,7 +110,7 @@ void expand_ic(UV to) {
 
 UV integer_complexity(UV n) { /* A005425 based on Martin N. Fuller's solution */
   UV res;
-  if (!mutex_init) {  /* This needs to be done at boot */
+  if (!mutex_init) {  /* Standalone fallback; XS initializes this during BOOT. */
     MUTEX_INIT(&iccache_mutex);
     COND_INIT(&iccache_turn);
     mutex_init = 1;
