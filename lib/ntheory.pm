@@ -64,7 +64,7 @@ Tags:
   is_extra_strong_lucas_pseudoprime(n)     extra strong Lucas test
   is_frobenius_pseudoprime(n, [a,b])       Frobenius quadratic test
   is_frobenius_underwood_pseudoprime(n)    combined PSP and Lucas
-  is_frobenius_khashin_pseudoprime(n)      Khashin's 2013 Frobenius test
+  is_frobenius_khashin_pseudoprime(n)      Khashin's 2018 Frobenius test
   is_perrin_pseudoprime(n [,r])            Perrin test
   is_catalan_pseudoprime(n)                Catalan test
   is_bpsw_prime(n)                         combined SPSP-2 and ES Lucas

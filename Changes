@@ -149,6 +149,11 @@ Revision history for Perl module Math::Prime::Util
 
     - random_ndigit_prime(3) was undersampling 101 (since v0.62).
 
+    - Frobenius (P,Q) uses gcd(n,2QD) and checks disc a square, not |disc|.
+
+    - Fix PP Frobenius-Khashin parameter selection, document 2018 algorithm.
+
+
     [FUNCTIONALITY AND PERFORMANCE]
 
     - Some functions now have custom op support.  This means in Perl 5.14+

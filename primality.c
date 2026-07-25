@@ -801,12 +801,11 @@ bool is_frobenius_pseudoprime_pq(UV n, IV P, IV Q)
   if ((n % 2) == 0 || n == UV_MAX) return 0;
 
   _frob_params_to_d(P, Q, &D, &Du);
-  if (D != 5 && is_perfect_square(Du))
+  if (D >= 0 && is_perfect_square(Du))
     croak("is_frobenius_pseudoprime: invalid P,Q: (%"IVdf",%"IVdf")", P, Q);
   Pu = ivmod(P,n);
   Qu = ivmod(Q,n);
 
-  t = gcd_ui(n, Pu);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
   t = gcd_ui(n, Qu);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
   t = gcd_ui(n, Du);  if (t != 1) { return (t == n) ? is_prob_prime(n) : 0; }
 

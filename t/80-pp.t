@@ -450,6 +450,8 @@ subtest 'pseudoprime tests', sub {
   is(is_perrin_pseudoprime(517697641), 1, "517697641 is a Perrin pseudoprime");
   is(is_perrin_pseudoprime(102690901,3), 1, "102690901 is a Perrin pseudoprime (Grantham)");
   is(is_frobenius_pseudoprime(517697641), 0, "517697641 is not a Frobenius pseudoprime");
+  is(is_frobenius_pseudoprime(4181,4182,-1),1,"PP Frobenius parameters may exceed n");
+  is(is_frobenius_khashin_pseudoprime(1009),1,"PP Frobenius-Khashin parameter search skips composite c");
   is(is_frobenius_khashin_pseudoprime(517697659),1,"517697659 is prime via Frobenius-Khashin test");
   SKIP: {
     # TODO: 2026 does this still happen?

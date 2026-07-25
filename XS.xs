@@ -2509,35 +2509,37 @@ void is_prime(IN SV* svn)
     DISPATCHPP_RETURN();
 
 void
-is_perrin_pseudoprime(IN SV* svn, IN UV k = 0)
+is_perrin_pseudoprime(IN SV* svn, IN SV* svk = 0)
   ALIAS:
     is_almost_extra_strong_lucas_pseudoprime = 1
     is_delicate_prime = 2
   PREINIT:
-    int status, ret;
-    UV n;
+    int nstatus, kstatus, ret = -1;
+    UV n, k;
   PPCODE:
-    /* k is a UV, so always positive. */
-    /*  ix = 0    k = 0 - 3       n below 2 returns 0 for all k
-     *  ix = 1    k = 0 - 256     n below 2 returns 0 for all k
-     *  ix = 2    k = 0 - 2^32    n below 2 returns 0 for all k
-     */
-    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    ret = 0;
-    if (status == 1) {
-      switch (ix) {
-        case 0:  if (items == 1) k = 0;
-                 ret = is_perrin_pseudoprime(n, k); break;
-        case 1:  if (items == 1) k = 1;
-                 ret = is_almost_extra_strong_lucas_pseudoprime(n, k); break;
-        case 2:  if (items == 1) k = 10;
-                 ret = is_delicate_prime(n, k);
-                 if (ret < 0) status = 0; break;
-        default: break;
-      }
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (items == 1) {
+      kstatus = 1;
+      k = (ix == 0) ? 0 : (ix == 1) ? 1 : 10;
+    } else {
+      kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
     }
-    if (status != 0) RETURN_NPARITY(ret);
-    DISPATCHPP_RETURN();
+    if (kstatus == 1 && ix == 0) {
+      if (k > 3) croak("%s: restriction must be between 0 and 3", SUBNAME);
+      if (nstatus == 1) ret = is_perrin_pseudoprime(n, k);
+    }
+    if (kstatus == 1 && ix == 1) {
+      if (k < 1 || k > 256) croak("%s: invalid increment: %"UVuf, SUBNAME, k);
+      if (nstatus == 1) ret = is_almost_extra_strong_lucas_pseudoprime(n, k);
+    }
+    if (kstatus == 1 && ix == 2 && k <= UINT32_MAX) {
+      if (k < 2) croak("%s: invalid base: %"UVuf, SUBNAME, k);
+      if (nstatus == 1) ret = is_delicate_prime(n, (uint32_t)k);
+    }
+    if (kstatus == 1 && nstatus == -1)  ret = 0;  /* Negative n => 0 return */
+    if (ret >= 0)
+      RETURN_NPARITY(ret);
+    DISPATCHPP_RETURN_GMPIF(kstatus == 1);
 
 void
 is_frobenius_pseudoprime(IN SV* svn, IN SV* svp = 0, IN SV* svq = 0)

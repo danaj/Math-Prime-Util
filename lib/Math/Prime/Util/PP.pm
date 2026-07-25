@@ -3101,8 +3101,9 @@ sub is_practical {
 
 sub is_delicate_prime {
   my($n, $b) = _parse_base_args("is_delicate_prime", SINTMAX, @_);
-  validate_integer_nonneg($n);
+  validate_integer($n);
 
+  return 0 if $n < 0;
   return 0 if $b == 10 && $n < 100;   # Easy shown.
   return 1 if $b ==  3 && $n == 2;
   return 0 unless Mis_prime($n);
@@ -10212,11 +10213,12 @@ sub is_frobenius_khashin_pseudoprime {
   if    ($n % 4 == 3) { $c = $n-1; }
   elsif ($n % 8 == 5) { $c = 2; }
   else {
-    do {
+    $k = 1;
+    while ($k == 1) {
       $c += 2;
       next if $c == 9 || ($c >= 15 && (!($c%3) || !($c%5) || !($c%7) || !($c%11) || !($c%13)));
       $k = Mkronecker($c, $n);
-    } while $k == 1;
+    }
   }
   return 0 if $k == 0 || ($k == 2 && !($n % 3));
 
@@ -10308,6 +10310,8 @@ sub _perrin_signature {
 sub is_perrin_pseudoprime {
   my($n, $restrict) = _parse_k_args("is_perrin_pseudoprime", 0, @_);
   validate_integer($n);
+  croak "is_perrin_pseudoprime: restriction must be between 0 and 3"
+    if $restrict > 3;
   return 0+($n >= 2) if $n < 4;
   return 0 if $restrict > 2 && ($n % 2) == 0;
 
@@ -10388,6 +10392,8 @@ sub is_frobenius_pseudoprime {
     validate_integer($Q);
   }
 
+  return 0+($n == 2 || $n == 3 || $n == 5 || $n == 7)
+    if @_ == 1 && $n < 11;
   return 0+($n >= 2) if $n < 4;
   return 0 if Mis_even($n);
 
@@ -10400,7 +10406,6 @@ sub is_frobenius_pseudoprime {
       $P = 5 if $P == 3;  # Skip 3
       $D = Mmulsubint($P,$P,Mmulint(4,$Q));
       $Du = Mabsint($D);
-      last if $P >= $n || $Du >= $n;   # TODO: remove?
       $k = Mkronecker($D, $n);
       return 0 if $k == 0;
       return 0 if $P == 10001 && _is_perfect_square($n);
@@ -10408,14 +10413,11 @@ sub is_frobenius_pseudoprime {
   } else {
     $D = Mmulsubint($P,$P,Mmulint(4,$Q));
     $Du = Mabsint($D);
-    croak "is_frobenius_pseudoprime: invalid P,Q: ($P,$Q)" if _is_perfect_square($Du);
+    croak "is_frobenius_pseudoprime: invalid P,Q: ($P,$Q)"
+      if $D >= 0 && _is_perfect_square($Du);
   }
 
-  if (Mcmpint($n,$Du) <= 0 || Mcmpint($n,Mabsint($Q)) <= 0 || Mcmpint($n,Mabsint($P)) <= 0) {
-    return (Mis_prime($n) ? 1 : 0)
-  }
-
-  for my $CMP (Mabsint($P), Mabsint($Q), $Du) {
+  for my $CMP (Mabsint($Q), $Du) {
     my $t = Mgcd($n, $CMP);
     return (is_prob_prime($n) ? 1 : 0) if $t == $n;
     return 0 if $t > 1;

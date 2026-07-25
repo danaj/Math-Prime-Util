@@ -2169,6 +2169,8 @@ Adams/Shanks doubling method.  This is significantly more efficient than
 other known implementations.
 
 An optional second argument C<r> indicates whether to run additional tests.
+C<r> must be an integer between 0 and 3.
+With C<r=0>, the normal tests are done, same as no second argument.
 With C<r=1>, C<P(-n) = -1 mod n> is also verified,
 creating the "minimal restricted" test.
 With C<r=2>, the full signature is also tested using the Adams and Shanks (1982)
@@ -2247,8 +2249,10 @@ Performance at 1e12 is about 60% slower than BPSW.
 Given an integer C<n>, returns 1 if C<n> is positive and
 passes the Frobenius test of Sergey Khashin, and returns 0 otherwise.
 The test verifies C<n> is not a perfect square,
-selects the parameter C<c> as the smallest odd prime such that C<(c|n)=-1>,
-then verifies that C<(1+D)^n = (1-D) mod n> where C<D = sqrt(c) mod n>.
+selects C<c> as the first value in C<-1, 2, 3, 4, ...> for which
+C<(c|n) != 1>, and returns 0 if the symbol is zero.  It then verifies
+C<(2+D)^n = (2-D) mod n> for C<c = -1> or C<c = 2>, and
+C<(1+D)^n = (1-D) mod n> otherwise, where C<D = sqrt(c) mod n>.
 
 There are no known pseudoprimes to this test and Khashin (2018) shows
 there are no counterexamples under C<2^64>.
