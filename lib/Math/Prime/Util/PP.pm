@@ -10449,7 +10449,7 @@ sub is_mersenne_prime {
 
   # Use the known Mersenne primes
   return 1 if exists $_mersenne_primes{$p};
-  return 0 if $p < 80253427; # GIMPS has tested and verified all below
+  return 0 if $p < 81307409; # GIMPS has tested and verified all below
   # Past this we do a generic Mersenne prime test
 
   return 1 if $p == 2;
