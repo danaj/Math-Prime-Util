@@ -423,6 +423,7 @@ void* start_segment_primes(UV low, UV high, unsigned char** segmentmem)
     /* Evenly split the range into segments */
     div = (range+size-1)/size;
     size = (div <= 1)  ?  range  :  (range+div-1)/div;
+    size = ((size + sizeof(UV)-1) / sizeof(UV)) * sizeof(UV);
     ctx->segment_size = size;
     New(0, ctx->segment, size, unsigned char);
   } else
@@ -491,6 +492,10 @@ bool next_segment_primes(void* vctx, UV* base, UV* low, UV* high)
     sieve_segment_wheel(ctx->segment, ctx->lod, seghigh_d, ctx->warray, ctx->wsize);
   else
     sieve_segment(ctx->segment, ctx->lod, seghigh_d);
+
+  /* Prime extraction reads whole UV words.  Mark final padding composite. */
+  if (range_d % sizeof(UV))
+    memset(ctx->segment + range_d, 0xFF, sizeof(UV) - range_d % sizeof(UV));
 
   ctx->lod += range_d;
   ctx->low = *high + 2;
