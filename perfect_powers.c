@@ -37,18 +37,16 @@ static UV _next_perfect_power(UV n, bool only_oddpowers) {
   if (n == 0) return 1;
   if (n == 1) return only_oddpowers ? 8 : 4;
   if (n >= MPU_MAX_PERFECT_POW) return 0; /* Overflow */
-  /* Should check for n >= max odd-power perfect power */
-
   log2n = log2floor(n);
   kinit = only_oddpowers ? 3 : 2;
   kinc  = only_oddpowers ? 2 : 1;
 
-  best = ipow( rootint(n,kinit)+1, kinit);
+  best = ipowsafe( rootint(n,kinit)+1, kinit);
   for (k = kinit+kinc; k <= 1+log2n; k += kinc) {
-    UV c = ipow( rootint(n,k)+1, k);
-    if (c < best && c > n) best = c;
+    UV c = ipowsafe( rootint(n,k)+1, k);
+    if (c != UV_MAX && c < best && c > n) best = c;
   }
-  return best;
+  return (best == UV_MAX) ? 0 : best;
 }
 static UV _prev_perfect_power(UV n, bool only_oddpowers) {
   uint32_t k, kinit, kinc, log2n;

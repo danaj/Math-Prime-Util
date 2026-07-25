@@ -36,7 +36,7 @@ my @uviv = ( [qw/-18446745128696702936 -18446724184312856125/],
 
 plan tests => 0
             + 4    # is_perfect_power
-            + 8    # next / prev
+            + 10   # next / prev
             + 4    # count  basic tests
             + 1    # count  large value
             + 2    # count  ranges
@@ -75,6 +75,13 @@ is_deeply( [map { next_perfect_power($_) } @pp100],
 is_deeply( [map { prev_perfect_power($_) } @pp100],
            [-125, @pp100[0..$#pp100-1]],
            "prev_perfect_power on perfect powers -100 to 100" );
+
+is( "".next_perfect_power("12044602655621644287"),
+    "12044602656624111289",
+    "next_perfect_power ignores an overflowing power candidate" );
+is( "".prev_perfect_power("-8922003266371364726"),
+    "-8922009701755003112",
+    "negative prev_perfect_power ignores an overflowing power candidate" );
 
 {
   my(@gotprev, @expprev,  @gotnext, @expnext);
