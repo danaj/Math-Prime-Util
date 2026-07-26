@@ -152,7 +152,16 @@ sub entropy_bytes {
     if ($nvbits <= 32) {
       *drand = sub { my $d = irand() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
     } elsif ($nvbits <= 64) {
-      *drand = sub { my $d = ((irand() >> 5) * 67108864.0 + (irand() >> 6)) / 9007199254740992.0;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub {
+        my $d;
+        do {
+          my $a = irand();
+          my $b = irand();
+          $d = $a * $_tonv_32 + $b * $_tonv_64;
+        } while ($d >= 1.0);
+        $d *= $_[0] if $_[0];
+        $d;
+      };
     } else {
       *drand = sub { my $d = irand() * $_tonv_32 + irand() * $_tonv_64 + irand() * $_tonv_96 + irand() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; };
     }

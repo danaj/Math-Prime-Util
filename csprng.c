@@ -262,27 +262,41 @@ bool is_csprng_well_seeded(void *ctx)
  * As of C99 or MSVC 15.6, we could better write these as e.g. 0x1.0p-64.
  * E.g.  (CIRAND64(ctx) >> 11) * 0x1.0p-53
  */
-#define TO_NV_32    2.3283064365386962890625000000000000000E-10L
-#define TO_NV_64    5.4210108624275221700372640043497085571E-20L
-#define TO_NV_96    1.2621774483536188886587657044524579675E-29L
-#define TO_NV_128   2.9387358770557187699218413430556141945E-39L
-
-#define DRAND_32_32  (CIRAND32(ctx) * TO_NV_32)
-#define DRAND_64_32  (((CIRAND32(ctx)>>5) * 67108864.0 + (CIRAND32(ctx)>>6)) / 9007199254740992.0)
-#define DRAND_64_64  (CIRAND64(ctx) * TO_NV_64)
-#define DRAND_128_32 (CIRAND32(ctx) * TO_NV_32 + CIRAND32(ctx) * TO_NV_64 + CIRAND32(ctx) * TO_NV_96 + CIRAND32(ctx) * TO_NV_128)
-#define DRAND_128_64 (CIRAND64(ctx) * TO_NV_64 + CIRAND64(ctx) * TO_NV_128)
+#define TO_NV_32    ((NV)LNVCONST(2.3283064365386962890625000000000000000E-10))
+#define TO_NV_64    ((NV)LNVCONST(5.4210108624275221700372640043497085571E-20))
+#define TO_NV_96    ((NV)LNVCONST(1.2621774483536188886587657044524579675E-29))
+#define TO_NV_128   ((NV)LNVCONST(2.9387358770557187699218413430556141945E-39))
 
 NV drand64(void* ctx)
 {
   NV r;
+
   do {
 #if NVMANTBITS <= 32
-    r = DRAND_32_32;
-#elif NVMANTBITS <= 64
-    r = (BITS_PER_WORD <= 32)  ?  DRAND_64_32  :  DRAND_64_64;
+    uint32_t a = CIRAND32(ctx);
+    r = (NV)a * TO_NV_32;
+#elif BITS_PER_WORD <= 32
+  #if NVMANTBITS <= 64
+    uint32_t a = CIRAND32(ctx);
+    uint32_t b = CIRAND32(ctx);
+    r = (NV)a * TO_NV_32 + (NV)b * TO_NV_64;
+  #else
+    uint32_t a = CIRAND32(ctx);
+    uint32_t b = CIRAND32(ctx);
+    uint32_t c = CIRAND32(ctx);
+    uint32_t d = CIRAND32(ctx);
+    r = (NV)a * TO_NV_32  +  (NV)b * TO_NV_64
+      + (NV)c * TO_NV_96  +  (NV)d * TO_NV_128;
+  #endif
 #else
-    r = (BITS_PER_WORD <= 32)  ?  DRAND_128_32 :  DRAND_128_64;
+  #if NVMANTBITS <= 64
+    UV a = CIRAND64(ctx);
+    r = (NV)a * TO_NV_64;
+  #else
+    UV a = CIRAND64(ctx);
+    UV b = CIRAND64(ctx);
+    r = (NV)a * TO_NV_64 + (NV)b * TO_NV_128;
+  #endif
 #endif
   } while (r >= 1.0);
   return r;
