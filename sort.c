@@ -48,7 +48,7 @@
  *    quicksort is choosing bad partitions.
  *
  * 6) quicksort.  Yes, yet another quicksort implementation.  Fast for small
- *    inputs, competitive for larger.  This uses true median of 9
+ *    inputs, competitive for larger.  This uses quasi-median of 9
  *    partitioning, insertion sort for small partitions, and will switch to
  *    heapsort after enough bad partitions, so there is no O(n^2) disaster.
  *

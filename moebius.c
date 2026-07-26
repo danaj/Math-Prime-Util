@@ -88,7 +88,7 @@ static bool _moebius_by_hand(UV lo, UV hi)
          (hi > (UVCONST(1)<<25) && width < icbrt(hi)/4);
 }
 
-/* Return a char array with lo-hi+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
+/* Return a char array with hi-lo+1 elements. mu[k-lo] = µ(k) for k = lo .. hi.
  * It is the callers responsibility to call Safefree on the result. */
 signed char* range_moebius(UV lo, UV hi)
 {

@@ -60,7 +60,7 @@ static int const verbose = 0;
 static UV P2_with_primes(UV n, UV a, UV b, const uint32_t *primes, uint32_t lastidx)
 {
   UV P2, lastw, lastwpc, i;
-  UV lastpc = 6 * primes[lastidx];
+  UV lastpc = (UV)6 * primes[lastidx];
   void* pcache = prime_count_cache_create(lastpc);
 
   /* Ensure we have a large enough base sieve */
@@ -239,7 +239,7 @@ UV LMOS_prime_count(UV n)
   memset(mu, 1, sizeof(signed char) * (n13+1));
   Newz(0, lpf, n13+1, uint32_t);
   mu[0] = 0;
-  for (i = 1; i <= n13; i++) {
+  for (i = 1; i <= a; i++) {
     UV primei = primes[i];
     for (j = primei; j <= n13; j += primei) {
       mu[j] = -mu[j];
