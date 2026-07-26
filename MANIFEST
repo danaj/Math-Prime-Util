@@ -349,6 +349,7 @@ xt/divtest.pl
 xt/foralmostprimes.pl
 xt/moebius-mertens.pl
 xt/multicall-reentrancy.t
+xt/omega-prime-count.t
 xt/totient-range.pl
 xt/primality-small.pl
 xt/primality-aks.pl

@@ -7,6 +7,7 @@ use Math::Prime::Util qw/omega_primes omega_prime_count nth_omega_prime/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
 my @small_kops = (
   [],
@@ -20,6 +21,7 @@ my @counts_at_1e6 = (1,78734,288726,379720,208034,42492,2285,8,0,0,0,0,0,0,0,0,0
 my @counts_at_1e4 = (1,1280,4097,3695,894,33,0,0,0,0,0);
 
 plan tests =>   6   # omega_primes sieve
+              + 2   # omega_primes recursive and chunked construction
               + 7   # count
               + 9   # nth_omega_prime
                 ;
@@ -31,6 +33,20 @@ for my $k (1..5) {
   is_deeply(omega_primes($k,$kop->[-1]), $kop, "small $k-omega-primes");
 }
 is_deeply(omega_primes(0,1,200000002), [1], "omega_primes(0,1,200000002)");
+SKIP: {
+  skip "native recursive construction requires 64-bit XS", 2
+    unless $usexs && $use64;
+  is_deeply(
+    omega_primes(10, "6469693230", "9469693230"),
+    [qw/6469693230 6915878970 8254436190 8720021310 9146807670/],
+    "recursive omega_primes prefix construction"
+  );
+  is_deeply(
+    omega_primes(10, "1000000000000", "1000005000001"),
+    [qw/1000001596440 1000003774770/],
+    "chunked omega_primes construction on a high narrow range"
+  );
+}
 
 ###### omega_prime_count
 

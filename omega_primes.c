@@ -7,7 +7,6 @@
 #include <string.h>
 #include <math.h>
 
-#define FUNC_isqrt 1
 #include "ptypes.h"
 #include "constants.h"
 #include "cache.h"
@@ -45,8 +44,88 @@ static UV opce(UV mid, UV k) { return omega_prime_count(k, mid); }
 
 /*********************************  Construction  *****************************/
 
+static void _omega_prime_push(UV** kop, UV* skop, UV* nkop, UV v)
+{
+  UV *l = *kop, lsize = *skop, n = *nkop;
+
+  if (n >= lsize) {
+    UV nsize = lsize + lsize/5 + 1;
+    if (nsize <= lsize || nsize > (UV)(MAX_SIZET / sizeof(UV)))
+      croak("omega prime list is too large");
+    Renew(l, nsize, UV);
+    *kop = l;
+    *skop = nsize;
+  }
+  l[n++] = v;
+  *nkop = n;
+}
+
+static void _omega_prime_gen_one(UV** kop, UV* skop, UV* nkop,
+                                 uint32_t e, UV lo, UV hi, UV m, UV p)
+{
+  UV ppow, v;
+
+  if ((m % p) == 0) return;
+  ppow = (e == 1) ? p : ipowsafe(p, e);
+  if (ppow > hi/m) return;
+  v = m * ppow;
+  if (v >= lo)
+    _omega_prime_push(kop, skop, nkop, v);
+}
+
+static void _omega_prime_gen_pow(UV** kop, UV* skop, UV* nkop, uint32_t e,
+                                 UV lo, UV hi, UV m, UV pmin, UV pmax)
+{
+  const UV cache_limit = UVCONST(100000000);
+
+  if (pmax < pmin) return;
+
+  if (pmax <= cache_limit || pmax <= get_prime_cache(0, 0)) {
+    START_DO_FOR_EACH_PRIME(pmin, pmax) {
+      _omega_prime_gen_one(kop, skop, nkop, e, lo, hi, m, p);
+    } END_DO_FOR_EACH_PRIME
+  } else {
+    if (pmin <= 2 && pmax >= 2)
+      _omega_prime_gen_one(kop, skop, nkop, e, lo, hi, m, 2);
+    if (pmin <= 3 && pmax >= 3)
+      _omega_prime_gen_one(kop, skop, nkop, e, lo, hi, m, 3);
+    if (pmin <= 5 && pmax >= 5)
+      _omega_prime_gen_one(kop, skop, nkop, e, lo, hi, m, 5);
+    if (pmin < 7) pmin = 7;
+
+    if (pmin <= pmax) {
+      unsigned char *segment;
+      UV seg_base, seg_low, seg_high;
+      void *ctx = start_segment_primes(pmin, pmax, &segment);
+
+      while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+        START_DO_FOR_EACH_SIEVE_PRIME(segment, seg_base, seg_low, seg_high) {
+          _omega_prime_gen_one(kop, skop, nkop, e, lo, hi, m, p);
+        } END_DO_FOR_EACH_SIEVE_PRIME;
+      }
+      end_segment_primes(ctx);
+    }
+  }
+}
+
+static void _omega_prime_gen_last(UV** kop, UV* skop, UV* nkop,
+                                  UV lo, UV hi, UV m, UV pstart)
+{
+  UV minpow = lo/m + ((lo % m) != 0);
+  UV maxpow = hi/m;
+  uint32_t e;
+
+  for (e = 1; ; e++) {
+    UV pmin, pmax = rootint(maxpow, e);
+    if (pmax <= pstart) break;
+    pmin = crootint(minpow, e);
+    if (pmin < pstart) pmin = pstart;
+    _omega_prime_gen_pow(kop, skop, nkop, e, lo, hi, m, pmin, pmax);
+  }
+}
+
 static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo, UV hi, UV m, UV pstart) {
-  UV v, *l = *kop, lsize = *skop, n = *nkop;
+  UV v;
 
   if (k > 1) {
     SIMPLE_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
@@ -58,20 +137,7 @@ static void _omega_prime_gen_rec(UV** kop, UV* skop, UV* nkop, uint32_t k, UV lo
     return;
   }
 
-  START_DO_FOR_EACH_PRIME(pstart, rootint(hi/m, k)) {
-    if ((m % p) == 0) continue;
-    for (v = m; UV_MAX/v >= p && v*p <= hi; ) {
-      v *= p;
-      if (v >= lo) { /* Add v to kop list */
-        if (n >= lsize) {
-          lsize = 1 + lsize * 1.2;
-          Renew(l, lsize, UV);
-        }
-        l[n++] = v;
-      }
-    }
-  } END_DO_FOR_EACH_PRIME
-  *kop = l;  *skop = lsize;  *nkop = n;
+  _omega_prime_gen_last(kop, skop, nkop, lo, hi, m, pstart);
 }
 
 static UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
@@ -85,6 +151,30 @@ static UV rec_omega_primes(UV** ret, uint32_t k, UV lo, UV hi) {
   _omega_prime_gen_rec(ret, &skop, &nkop, k, lo, hi, 1, 2);
   sort_uv_array(*ret, nkop);
   return nkop;
+}
+
+static UV sieve_omega_primes(UV** ret, uint32_t k, UV lo, UV hi)
+{
+  const UV chunk_size = UVCONST(5000000);
+  UV *l, lsize = 1000, n = 0;
+
+  New(0, l, lsize, UV);
+  while (lo <= hi) {
+    UV i, chi, range;
+    unsigned char *nf;
+
+    chi = (hi-lo >= chunk_size) ? lo+chunk_size-1 : hi;
+    range = chi-lo+1;
+    nf = range_nfactor_sieve(lo, chi, 0);
+    for (i = 0; i < range; i++)
+      if (nf[i] == k)
+        _omega_prime_push(&l, &lsize, &n, lo+i);
+    Safefree(nf);
+    if (chi == hi) break;
+    lo = chi+1;
+  }
+  *ret = l;
+  return n;
 }
 
 
@@ -114,28 +204,14 @@ UV range_omega_prime_sieve(UV** ret, uint32_t k, UV lo, UV hi) {
 
   if (k == 1) return prime_power_sieve(ret, lo, hi);
 
-  /* TODO: The recursive routine should compute primes like the count does */
-  if ( ((hi-lo) > 100000000UL) || (k >= 10 && (hi-lo) > 5000000UL) )
+  /* Recursion efficiently constructs a prefix.  It does substantial work below
+   * lo, so use bounded factor-sieve chunks for arbitrary ranges. */
+  if (lo == min &&
+      (((hi-lo) > 100000000UL) || (k >= 10 && (hi-lo) > 5000000UL)))
     return rec_omega_primes(ret, k, lo, hi);
 
-  {
-    UV i, n, lmax;
-    unsigned char *nf = range_nfactor_sieve(lo, hi, 0);
-
-    New(0, l, lmax = 1000, UV);
-    for (i = 0, n = 0; i < hi-lo+1; i++) {
-      if (nf[i] != k) continue;
-      if (n >= lmax)  { lmax = 1 + lmax * 1.2;  Renew(l, lmax, UV); }
-      l[n] = lo+i;
-      n++;
-    }
-    Safefree(nf);
-    *ret = l;
-    return n;
-  }
+  return sieve_omega_primes(ret, k, lo, hi);
 }
-
-/* TODO: Should make a single construct routine that calls sieve or recurse */
 
 
 /*********************************  Counting  *********************************/
@@ -178,29 +254,17 @@ static UV _omega_prime_count_rec2(uint32_t k, UV n, UV m, UV p, UV s, UV j, uint
   UV t, r, count = 0;
 
   if (k == 2) {
-    UV r2, w, u, k, rlim;
+    UV r2, w;
+    uint32_t e;
     for (;  p <= s;  j++, p = r) {
       r = (j < numprimes)  ?  pr[j]  :  next_prime(p);
       for (t = m*p, w = n/t;  t <= n && w >= r;  t *= p, w = n/t) {
-#if 1
         count += prime_count(w) - j;
-        for (k = j, r2 = r, rlim = isqrt(w);
-             r2 <= rlim;
-             r2 = (++k < numprimes) ? pr[k] : rlim+1) {
-          u = t * r2;
-          do {  u *= r2;  count++;  } while (n/r2 >= u);
+        for (e = 2; ; e++) {
+          r2 = rootint(w, e);
+          if (r2 < r) break;
+          count += prime_count(r2) - j;
         }
-#else
-        /* This is the basic method from the definition, before optimizing */
-        UV q;
-        count += prime_power_count(w);
-        rlim = prev_prime(r);
-        for (k = 1, q = 2;
-             q <= rlim;
-             q = (++k < numprimes) ? pr[k-1] : nth_prime(k)) {
-          count -= logint(w, q);
-        }
-#endif
         if (t > n/p) break;
       }
     }
