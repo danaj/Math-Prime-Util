@@ -130,6 +130,13 @@ uint32_t csprng_context_size(void)
 {
   return sizeof(chacha_context_t);
 }
+
+void csprng_clear(void *ctx)
+{
+  if (ctx != 0)
+    secure_bzero(ctx, csprng_context_size());
+}
+
 static char _has_selftest_run = 0;
 
 void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
@@ -161,8 +168,9 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
   }
 
   if (!_has_selftest_run) {
+    if (!CSELFTEST())
+      croak("CSPRNG self-test failed");
     _has_selftest_run = 1;
-    CSELFTEST();
   }
   CSEED(ctx, SEED_BYTES, seed, (bytes >= 16));
   secure_bzero(seed, sizeof(seed));

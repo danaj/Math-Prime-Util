@@ -29,6 +29,7 @@ plan tests => 1
             + 3  # urandomm
             + 5  # urandomr
             + 7  # random_bytes / entropy_bytes
+            + 2  # irand stream continuity across buffer boundaries
             + 0;
 
 ########
@@ -228,6 +229,36 @@ SKIP: {
   my ($hi, $lo) = (irand32, irand32);
   is("$r64", "" . muladdint($hi, "4294967296", $lo),
      "irand64 combines two irand32 results" );
+}
+
+SKIP: {
+  skip "buffer-boundary tests require ChaCha", 2
+    unless $csprng =~ /^ChaCha/;
+
+  my (@got32, @exp32);
+  for my $tail (1 .. 3) {
+    srand(0x521974A3);
+    random_bytes(1024-$tail);
+    push @got32, irand32;
+    srand(0x521974A3);
+    random_bytes(1024-$tail);
+    push @exp32, unpack("V", random_bytes(4));
+  }
+  is_deeply(\@got32, \@exp32,
+            "irand32 preserves partial buffered words");
+
+  my (@got64, @exp64);
+  for my $tail (1 .. 7) {
+    srand(0x521974A3);
+    random_bytes(1024-$tail);
+    push @got64, "" . irand64;
+    srand(0x521974A3);
+    random_bytes(1024-$tail);
+    my($hi,$lo) = unpack("V2", random_bytes(8));
+    push @exp64, "" . muladdint($hi, "4294967296", $lo);
+  }
+  is_deeply(\@got64, \@exp64,
+            "irand64 preserves partial buffered words");
 }
 
 SKIP: {

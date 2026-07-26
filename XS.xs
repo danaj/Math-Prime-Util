@@ -1705,6 +1705,7 @@ PPCODE:
     MY_CXT.const_int[i] = NULL;
     SvREFCNT_dec_NN(sv);
   } /* stashes are owned by stash tree, no refcount on them in MY_CXT */
+  csprng_clear(MY_CXT.randcxt);
   Safefree(MY_CXT.randcxt); MY_CXT.randcxt = 0;
   MY_CXT.forcount = 0;
   MY_CXT.forexit = 0;

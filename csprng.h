@@ -7,6 +7,9 @@
 
 extern uint32_t csprng_context_size(void);
 
+/* Clear all sensitive state.  The caller still owns the context memory. */
+extern void csprng_clear(void *ctx);
+
 /* Seed and init if needed */
 extern void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data);
 
