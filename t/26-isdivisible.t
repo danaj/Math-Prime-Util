@@ -58,7 +58,6 @@ my $ntests = $extra && $use64 && $usexs ? 10000
            :                                100;
 my @r32 = map { irand() } 0..$ntests;
 my @r64 = map { irand64() } 0..$ntests;
-@r64 = map { "$_" } @r64 if 18446744073709550592 == ~0;  # broken64
 
 ###### is_divisible
 

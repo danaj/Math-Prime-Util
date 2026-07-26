@@ -173,7 +173,6 @@ BEGIN {
 
   # Separate lines to keep compatible with default from 5.6.2.
   # We could alternately use Config's $Config{uvsize} for MAXBITS
-  use constant OLD_PERL_VERSION=> $] < 5.008;
   use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
   use constant MPU_32BIT       => MPU_MAXBITS == 32;
   use constant MPU_MAXPARAM    => MPU_32BIT ? 4294967295 : 18446744073709551615;
@@ -181,7 +180,7 @@ BEGIN {
   use constant MPU_MAXPRIME    => MPU_32BIT ? 4294967291 : 18446744073709551557;
   use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :   425656284035217743;
   use constant UVPACKLET       => MPU_32BIT ?        'L' : 'Q';
-  use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
+  use constant INTMAX          => ~0;
   use constant INTMIN          => -(INTMAX >> 1) - 1;
 
   eval {
@@ -367,8 +366,7 @@ sub _load_bigint {
 }
 
 sub _bigint_to_int {
-  return (OLD_PERL_VERSION && $_[0] >= 0) ? unpack(UVPACKLET,pack(UVPACKLET,"$_[0]"))
-                            : int("$_[0]");
+  return int("$_[0]");
 }
 sub _int_from_float {
   my $rs = "$_[0]";
@@ -3017,8 +3015,7 @@ B<Perl native operations.>  This is fine with small numbers, but once
 large enough, values will be converted to floating point (NV).  This
 means incorrect results.  Values larger than 64-bit are completely
 unsupported.  One might expect C<2^53> to be the usual point for
-"large enough", but not only is the NV type platform dependent, but
-very old 64-bit Perl will aggressively convert values to NV starting
+"large enough", but some platforms and operations will convert to NV starting
 at C<2^49> even with NV being a IEEE-754 double.
 
 =item *
@@ -7622,14 +7619,6 @@ will I<still> be much faster.
 
 
 =head1 LIMITATIONS
-
-Perl versions earlier than 5.8.0 have problems doing exact integer math.
-Some operations will flip signs, and many operations will convert intermediate
-or output results to doubles, which loses precision on 64-bit systems.
-This causes numerous functions to not work properly.  The test suite will
-try to determine if your Perl is broken (this only applies to really old
-versions of Perl compiled for 64-bit when using numbers larger than
-C<~ 2^49>).  The best solution is updating to a more recent Perl.
 
 The module is thread-safe and should allow good concurrency on all platforms
 that support Perl threads except Win32.  With Win32, either don't use threads

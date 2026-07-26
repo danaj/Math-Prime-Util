@@ -120,13 +120,7 @@ sub mul {
   my $a = $self->{'a'};
   my $n = $self->{'n'};
   my $f = $self->{'f'};
-  if (ref($k) eq 'Math::BigInt' && $k < ''.~0) {
-    if ($] >= 5.008 || ~0 == 4294967295) {
-      $k = int($k->bstr);
-    } elsif ($] < 5.008 && ~0 > 4294967295 && $k < 562949953421312) {
-      $k = unpack('Q',pack('Q',$k->bstr));
-    }
-  }
+  $k = int($k->bstr) if ref($k) eq 'Math::BigInt' && $k < ''.~0;
 
   my $Bx = $n->copy->bzero;
   my $By = $n->copy->bone;

@@ -45,7 +45,6 @@ use Math::Prime::Util qw/vecreduce addint
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my @vecmins = (
   [ ],

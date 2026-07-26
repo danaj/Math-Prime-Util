@@ -1,6 +1,19 @@
+use 5.008001;
 use ExtUtils::MakeMaker;
 use lib 'inc'; # load our bundled version of Devel::CheckLib
 use Devel::CheckLib;
+
+my $broken64 = (18446744073709550592 == ~0);
+if ($broken64) {
+  die <<EOW;
+
+Your Perl, version $], has a broken 64-bit implementation.
+Perl's arithmetic operations on numbers larger than 2^53 are wrong.
+
+This should not happen with Perl 5.8 or later.
+
+EOW
+}
 
 my %require_mpugmp;
 my $have_gmp = check_lib(lib => 'gmp', header => 'gmp.h');
@@ -10,21 +23,6 @@ if ($have_gmp) {
   $require_mpugmp{'Math::Prime::Util::GMP'} = '0.53';
 } else {
   warn "\n  It looks like you don't have the GMP library.  Sad face.\n";
-}
-
-my $broken64 = (18446744073709550592 == ~0);
-if ($broken64) {
-  warn <<EOW;
-
-Your Perl, version $], has a broken 64-bit implementation.
-Perl's arithmetic operations on numbers larger than 2^53 are wrong.
-
-Much core functionality will work, and we try to work around this in
-our functions, but there are still exceptions.
-
-I highly recommend upgrading to a newer version of Perl.
-
-EOW
 }
 
 WriteMakefile1(
@@ -94,7 +92,7 @@ WriteMakefile1(
     PREREQ_PM    => {
                       'Exporter'         => '5.57',
                       'XSLoader'         => '0.01',
-                      'Carp'             => ($] < 5.008) ? '1.17' : 0,
+                      'Carp'             => 0,
                       'Scalar::Util'     => '1.01',
                       'Tie::Array'       => 0,
                       'base'             => 0,
@@ -165,7 +163,7 @@ WriteMakefile1(
                },
              },
 
-    MIN_PERL_VERSION => 5.006002,
+    MIN_PERL_VERSION => 5.008001,
 );
 
 sub WriteMakefile1 {   # Cribbed from eumm-upgrade by Alexandr Ciornii

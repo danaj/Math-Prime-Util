@@ -9,7 +9,6 @@ use Math::Prime::Util qw/chinese chinese2/;
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
-#$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my @crts = (
   [ [], 0, 0 ],

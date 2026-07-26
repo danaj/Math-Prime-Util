@@ -22,7 +22,7 @@ BEGIN {
   $ENV{MPU_NO_GMP} = 1;
 }
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
-my $use64 = ~0 > 4294967295 && ~0 != 18446744073709550592;
+my $use64 = ~0 > 4294967295;
 use Test::More;
 
 my @small_primes = qw/
@@ -453,11 +453,7 @@ subtest 'pseudoprime tests', sub {
   is(is_frobenius_pseudoprime(4181,4182,-1),1,"PP Frobenius parameters may exceed n");
   is(is_frobenius_khashin_pseudoprime(1009),1,"PP Frobenius-Khashin parameter search skips composite c");
   is(is_frobenius_khashin_pseudoprime(517697659),1,"517697659 is prime via Frobenius-Khashin test");
-  SKIP: {
-    # TODO: 2026 does this still happen?
-    skip "Old Perl+bigint segfaults in F-U code", 1 if $] < 5.008;
-    ok(is_frobenius_underwood_pseudoprime(517697659), "517697659 is prime via Frobenius-Underwood test" );
-  }
+  ok(is_frobenius_underwood_pseudoprime(517697659), "517697659 is prime via Frobenius-Underwood test" );
 
   is(is_euler_pseudoprime(703, 3), 1, "703 is a base 3 Euler pseudoprime");
   is(is_euler_plumb_pseudoprime(3277), 1, "3277 is a Euler-Plumb pseudoprime");
@@ -1023,7 +1019,7 @@ subtest 'primality proofs', sub {
   is_deeply( [Math::Prime::Util::PrimalityProving::primality_proof_lucas(100003)],
              [2, "[MPU - Primality Certificate]\nVersion 1.0\n\nProof for:\nN 100003\n\nType Lucas\nN 100003\nQ[1] 2\nQ[2] 3\nQ[3] 7\nQ[4] 2381\nA 2\n"],
              "primality_proof_lucas(100003)" );
-  # Had to reduce these to make borked up Perl 5.6.2 work.
+  # We used to have this example, but reduced it to the ones below
   #is_deeply( [Math::Prime::Util::PP::primality_proof_bls75("210596120454733723")],
   #           [2, ["210596120454733723", "n-1", [2, 3, 82651, "47185492693"], [2, 2, 2, 2]]],
   #           "primality_proof_bls75(210596120454733723)" );

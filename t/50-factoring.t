@@ -13,19 +13,6 @@ my $use64  = prime_get_config->{'maxbits'} > 32;
 my $usexs  = prime_get_config->{'xs'};
 my $usegmp = prime_get_config->{'gmp'};
 
-if ($use64) {
-  # Simple test:  perl -e 'die if 18446744073709550592 == ~0'
-  my $broken = (18446744073709550592 == ~0);
-  if ($broken) {
-    if ($] < 5.008) {
-      diag "Perl pre-5.8.0 has broken 64-bit.  Skipping 64-bit tests.";
-    } else {
-      diag "Eek!  Your 64-bit Perl $] is **** BROKEN ****.  Skipping 64-bit tests.";
-    }
-    $use64 = 0;
-  }
-}
-
 my @testn = qw/7 8 16 57 64 377 9592 78498 664579 5761455
                114256942 2214143 999999929 50847534 455052511 2147483647
                4118054813

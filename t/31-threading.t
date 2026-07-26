@@ -8,7 +8,7 @@ BEGIN {
     print("1..0 # Skip only in release or extended testing\n");
     exit(0);
   }
-  if (! $Config{useithreads} || $] < 5.008) {
+  if (!$Config{useithreads}) {
     print("1..0 # Skip perl isn't compiled with threading support\n");
     exit(0);
   }

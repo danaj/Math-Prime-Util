@@ -9,7 +9,7 @@ use Math::Prime::Util qw/addint subint add1int sub1int mulint/;
 use Math::BigInt;
 
 # Integer forms:
-#   1) native (IV or UV).  Good for all 32-bit and all 64-bit post 5.6.
+#   1) native (IV or UV).  Good for all 32-bit and all 64-bit.
 #   2) bigint.  Good but horribly slow in most cases.
 #   3) string.  We don't have strong typing so it's dodgy how these get
 #      converted if using standard Perl operations.  This is one thing
@@ -24,15 +24,10 @@ use Math::BigInt;
 # Bigint outputs are canonicalized to the configured bigint class rather than
 # preserving the input object's class.
 
-# Expect all the 5.6 workarounds to be deprecated in 2026.
-
-my $isoldperl   = $] < 5.008;
 my $is32bit     = ~0 == 4294967295;
-my $is64bit     = ~0  > 4294967295;
-my $isbroken64  = 18446744073709550592 == ~0;
 
-my $intmax = (!$isoldperl || $is32bit) ? ~0 : 562949953421312;
-my $intmin = $is32bit ? -2147483648 : !$isoldperl ? -9223372036854775808 : -562949953421312;
+my $intmax = ~0;
+my $intmin = $is32bit ? -2147483648 : -9223372036854775808;
 
 diag "Perl safe min: $intmin";
 diag "Perl safe max: $intmax";
@@ -41,8 +36,6 @@ my($mm1, $m, $mp1, $mp2);  #  ~0-1,  ~0,  ~0+1,  ~0+2
 
 if ($is32bit) {
   ($mm1,$m,$mp1,$mp2) = (4294967294, 4294967295, 4294967296, 4294967297);
-} elsif ($isbroken64) {
-  ($mm1,$m,$mp1,$mp2) = (562949953421311,562949953421312,"562949953421313","562949953421314");
 } else {
   ($mm1,$m,$mp1,$mp2) = (18446744073709551614,18446744073709551615,"18446744073709551616","18446744073709551617");
 }
@@ -58,11 +51,7 @@ my @tests = (
   [-1, $mp1, $m],
 );
 
-if ($isbroken64) {
-  plan skip_all => "Broken 64-bit Perl, skipping all tests";
-} else {
-  plan tests => 4 + scalar(@tests) + 1 + 1;
-}
+plan tests => 4 + scalar(@tests) + 1 + 1;
 
 is(should_be_ref($mm1), 0, "$mm1 should be a UV");
 is(should_be_ref($m),   0, "$m should be a UV");

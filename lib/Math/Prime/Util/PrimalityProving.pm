@@ -20,7 +20,7 @@ BEGIN {
 }
 
 my $_smallval = Math::BigInt->new("18446744073709551615");
-my $_maxint = Math::BigInt->new( (~0 > 4294967296 && $] < 5.008) ? "562949953421312" : ''.~0 );
+my $_maxint = Math::BigInt->new(''.~0);
 my $_cached_xs_factor_limit;
 
 

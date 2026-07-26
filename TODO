@@ -537,8 +537,6 @@ OEIS lucky numbers:
 - sqrtmod_prime
   https://eprint.iacr.org/2025/2083.pdf
 
-- move to 5.10.1 minimum
-
 - second parameter for Real functions, and/or default precision.
   Get rid of looking at input accuracy.
 
@@ -571,8 +569,6 @@ OEIS lucky numbers:
 - Better psi(x) and Riemann(psi(x))
   https://github.com/kimwalisch/primecount/pull/112/changes#top
   https://doi.org/10.48550/arXiv.1410.1083
-
-- Check PP validation on 5.6.2.
 
 - xops in priority:
   urandomm urandomr

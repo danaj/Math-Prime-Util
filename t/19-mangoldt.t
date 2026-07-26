@@ -9,7 +9,6 @@ use Math::Prime::Util qw/exp_mangoldt/;
 #my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 #my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-#$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my %mangoldt = (
 #-13 => 1,    # Non-negative inputs

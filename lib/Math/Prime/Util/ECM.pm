@@ -9,10 +9,9 @@ BEGIN {
 }
 
 BEGIN {
-  use constant OLD_PERL_VERSION=> $] < 5.008;
   use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
   use constant MPU_32BIT       => MPU_MAXBITS == 32;
-  use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
+  use constant INTMAX          => ~0;
   use constant SINTMAX         => (INTMAX >> 1);
 }
 

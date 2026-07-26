@@ -26,7 +26,6 @@ BEGIN {
 # code for more detailed comments, including references to papers.
 
 BEGIN {
-  use constant OLD_PERL_VERSION=> $] < 5.008;
   use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
   use constant MPU_64BIT       => MPU_MAXBITS == 64;
   use constant MPU_32BIT       => MPU_MAXBITS == 32;
@@ -34,11 +33,11 @@ BEGIN {
  #use constant MPU_MAXDIGITS   => MPU_32BIT ? 10 : 20;
   use constant MPU_MAXPRIME    => MPU_32BIT ? 4294967291 : 18446744073709551557;
   use constant MPU_MAXPRIMEIDX => MPU_32BIT ?  203280221 :  425656284035217743;
-  use constant MPU_HALFWORD    => MPU_32BIT ? 65536 : OLD_PERL_VERSION ? 33554432 : 4294967296;
+  use constant MPU_HALFWORD    => MPU_32BIT ? 65536 : 4294967296;
   use constant UVPACKLET       => MPU_32BIT ? 'L' : 'Q';
   use constant MPU_INFINITY    => (65535 > 0+'inf') ? 20**20**20 : 0+'inf';
-  use constant INTMAX          => (!OLD_PERL_VERSION || MPU_32BIT) ? ~0 : 562949953421312;
-  use constant INTMIN          => (MPU_32BIT ? -2147483648 : !OLD_PERL_VERSION ? -9223372036854775808 : -562949953421312);
+  use constant INTMAX          => ~0;
+  use constant INTMIN          => MPU_32BIT ? -2147483648 : -9223372036854775808;
   use constant SINTMAX         => (INTMAX >> 1);
   use constant B_PRIM235       => Math::BigInt->new("30");
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
@@ -282,10 +281,6 @@ sub _canonicalized_integer {
 }
 
 sub _validate_integer {
-  if (OLD_PERL_VERSION && defined $_[0] && !ref($_[0])) {
-    no warnings 'numeric';
-    $_[0] = "$_[0]" if "$_[0]" > 1e15 || "$_[0]" < -1e15;
-  }
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -311,10 +306,6 @@ sub _validate_integer {
   1;
 }
 sub _validate_integer_nonneg {
-  if (OLD_PERL_VERSION && defined $_[0] && !ref($_[0])) {
-    no warnings 'numeric';
-    $_[0] = "$_[0]" if "$_[0]" > 1e15;
-  }
   my($n) = @_;
   croak "Parameter must be defined" if !defined $n;
 
@@ -456,9 +447,8 @@ sub toint {
       if $ns =~ /\A[+-]?0[xXbBoO]/;
 
     # Be careful with int($ns) on non-NV input, as it is limited to NV's
-    # precision.  On post-5.6.2 we should be able to use 1 << _nvmantbits()
-    # as the unsigned threshold, but for various reasons we are being very
-    # conservative.
+    # precision.  We should be able to use 1 << _nvmantbits() as the unsigned
+    # threshold, but for various reasons we are being very conservative.
     # In XS we can safely and efficiently discover the full values.
     if ($ns !~ tr/0-9//c) {
       my $max = MPU_32BIT ?  4294967295 :  70368744177664;  # 2^46
@@ -1544,7 +1534,7 @@ sub primorial {
   croak "primorial: n must fit in native signed integer" if $n > SINTMAX;
 
   my @plist = @{Mprimes($n)};
-  my $max = (MPU_32BIT) ? 29 : (OLD_PERL_VERSION) ? 43 : 53;
+  my $max = (MPU_32BIT) ? 29 : 53;
 
   # If small enough, multiply the small primes.
   if ($n < $max) {
@@ -1923,7 +1913,6 @@ sub is_odd {
   my $R = ref($n);
   return $n->is_odd() ? 1 : 0 if $R eq 'Math::BigInt';
   return Math::GMPz::Rmpz_odd_p($n) ? 1 : 0 if $R eq 'Math::GMPz';
-  return (my $k = substr("$n",-1,1)) =~ tr/13579/13579/ if OLD_PERL_VERSION;
   return $n % 2 ? 1 : 0;
 }
 sub is_even {
@@ -1932,7 +1921,6 @@ sub is_even {
   my $R = ref($n);
   return $n->is_even() ? 1 : 0 if $R eq 'Math::BigInt';
   return Math::GMPz::Rmpz_even_p($n) ? 1 : 0 if $R eq 'Math::GMPz';
-  return (my $k = substr("$n",-1,1)) =~ tr/02468/02468/ if OLD_PERL_VERSION;
   return $n % 2 ? 0 : 1;
 }
 
@@ -2570,7 +2558,7 @@ sub _next_perfect_power {
   for (my $k = $kinit+$kinc; $k <= 1+$log2n; $k += $kinc) {
     my $r = Mrootint($n,$k);
     my $c = Mpowint(Madd1int($r),$k);
-    $best = addint($c,0) if $c < $best && $c > $n;  # OLD_PERL_VERSION
+    $best = $c if $c < $best && $c > $n;
   }
   $best;
 }
@@ -2591,7 +2579,7 @@ sub _prev_perfect_power {
     if ($r > 1) {
       my $c = Mpowint($r,$k);
       $c = Mpowint(Msub1int($r),$k) if $c >= $n;
-      $best = addint($c,0) if $c > $best && $c < $n;  # OLD_PERL_VERSION
+      $best = $c if $c > $best && $c < $n;
     }
   }
   $best;
@@ -5493,7 +5481,6 @@ sub _addmod {
   $x + $y;
 }
 
-# Note that Perl 5.6.2 with largish 64-bit numbers will break.  As usual.
 sub _native_powmod {
   my($n, $power, $m) = @_;
   my $t = 1;
@@ -5790,7 +5777,7 @@ sub divint {
   validate_integer($b);
   croak "divint: divide by zero" if $b == 0;
 
-  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) {
+  if ($b > 0 && $a >= 0) {
     my $q;
     if (!ref($a) && !ref($b) && $a < SINTMAX && $b < SINTMAX) {
       use integer;
@@ -5809,8 +5796,7 @@ sub modint {
   validate_integer($b);
   croak "modint: divide by zero" if $b == 0;
 
-  if (!OLD_PERL_VERSION &&
-      !ref($a) && !ref($b) &&
+  if (!ref($a) && !ref($b) &&
       $a >= 0 && $b > 0 && $a < SINTMAX && $b < SINTMAX) {
     use integer;
     return $a % $b;
@@ -5824,7 +5810,7 @@ sub cdivint {
   validate_integer($b);
   croak "cdivint: divide by zero" if $b == 0;
 
-  if (!OLD_PERL_VERSION && $b > 0 && $a >= 0) {
+  if ($b > 0 && $a >= 0) {
     my $q;
     if (!ref($a) && !ref($b) && $a < SINTMAX && $b < SINTMAX) {
       use integer;
@@ -5848,7 +5834,7 @@ sub absint {
 sub negint {
   my($n) = @_;
   validate_integer($n);
-  return 0 if $n == 0;  # Perl 5.6 has to have this: if $n=0 => -$n = -0
+  return 0 if $n == 0;  # Prevents possibility of '-0' being returned.
   return canonicalized_integer(-$n) if ref($n);
   return -$n if $n < SINTMAX;
   if ($n > 0) { $n = "-$n"; }
@@ -6052,7 +6038,6 @@ sub chinese2 {
     return (undef,undef) if $n == 0;
     $n = Mabsint($n);
     $a = Mmodint($a,$n);
-    if (OLD_PERL_VERSION) { ($a,$n) = ("$a","$n"); }
     push @items, [$a,$n];
   }
   return @{$items[0]} if scalar @items == 1;
@@ -6102,7 +6087,6 @@ sub vecsum {
   return canonicalized_integer($_[0]) if @_ == 1;
 
   my $sum = 0;
-  if (OLD_PERL_VERSION) { $_="$_" for @_ };
   foreach my $v (@_) {
     $sum += $v;
     if ($sum > (INTMAX-513) || $sum < (INTMIN+513)) {
@@ -6127,7 +6111,6 @@ sub vecprefixsum {
   my @psum;
   my $sum = 0;
   my $need_post = 0;
-  if (OLD_PERL_VERSION) { $_="$_" for @v };  # TODO: still needed?
 
   foreach my $v (@v) {
     validate_integer($v);
@@ -6161,12 +6144,6 @@ sub _product_mult {
 sub vecprod {
   return 1 unless @_;
   return canonicalized_integer($_[0]) if @_ == 1;
-
-  # Argh, Perl 5.6.2.
-  if (OLD_PERL_VERSION) {
-    my $prod = _product_mult(0, $#_, [map { tobigint($_) } @_]);
-    return canonicalized_integer($prod);
-  }
 
   # Try native for non-negative/non-zero inputs
   if ($_[0] > 0 && $_[0] <= INTMAX && $_[1] > 0 && $_[1] <= INTMAX) {
@@ -10683,7 +10660,6 @@ sub _remove_factor {
   #  push @$flist, map { $f } 1..$k;
   #}
 
-  $n = addint($n,0) if OLD_PERL_VERSION;
   $n;
 }
 sub trial_factor {
@@ -11106,11 +11082,10 @@ sub _factor_pbrent {
 
     my($inner,$r,$saveXi,$f) = (64,1);
 
-    my $direct_arith = $refn && !OLD_PERL_VERSION
-                    && ( $refn ne 'Math::BigInt'
-                      || (!getconfig()->{'xs'}
-                          && !$Math::Prime::Util::_GMPfunc{"muladdmod"}
-                          && !$Math::Prime::Util::_GMPfunc{"mulmod"})   );
+    my $direct_arith = $refn && ($refn ne 'Math::BigInt' ||
+                                 (!getconfig()->{'xs'}
+                                  && !$Math::Prime::Util::_GMPfunc{"muladdmod"}
+                                  && !$Math::Prime::Util::_GMPfunc{"mulmod"})   );
 
     while ($rounds > 0) {
       my $rleft = ($r > $rounds) ? $rounds : $r;
@@ -11188,7 +11163,6 @@ sub _factor_pminus1 {
   my($n, $B1, $B2) = @_;
 
   return ($n) if defined $B1 && $B1 < 7;
-  $n = tobigint($n) if OLD_PERL_VERSION && !ref($n) && $n > INTMAX;
 
   if (!ref($n)) {
     # Stage 1 only

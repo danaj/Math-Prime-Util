@@ -27,7 +27,6 @@ BEGIN {
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); }
     unless defined $Math::BigInt::VERSION;
 
-  use constant OLD_PERL_VERSION=> $] < 5.008;
   use constant MPU_MAXBITS     => (~0 == 4294967295) ? 32 : 64;
   use constant MPU_64BIT       => MPU_MAXBITS == 64;
   use constant MPU_32BIT       => MPU_MAXBITS == 32;
@@ -186,9 +185,6 @@ my $_random_prime = sub {
 
     # We're going to look at the odd numbers only.
     my $oddrange = (($high - $low) >> 1) + 1;
-
-    croak "Large random primes not supported on old Perl"
-      if OLD_PERL_VERSION && MPU_64BIT && $oddrange > 4294967295;
 
     # If $low is large (e.g. >10 digits) and $range is small (say ~10k), it
     # would be fastest to call primes in the range and randomly pick one.  I'm
@@ -449,9 +445,6 @@ sub random_nbit_prime {
     return _random_xscount_prime($bits,$_d_bits);
   }
 
-  croak "Mid-size random primes not supported on broken old Perl"
-    if OLD_PERL_VERSION && MPU_64BIT && $bits > 49 && $bits <= 64;
-
   # Fouque and Tibouchi (2011) Algorithm 1 (basic)
   # Modified to make sure the nth bit is always set.
   #
@@ -471,7 +464,6 @@ sub random_nbit_prime {
   #
   if (1 && $bits > MPU_MAXBITS) {
     my $l = (MPU_64BIT && $bits > 79)  ?  63  :  31;
-    $l = 49 if $l == 63 && OLD_PERL_VERSION;  # Fix for broken Perl 5.6
     $l = $bits-2 if $bits-2 < $l;
     my $lbits = $bits - $l - 1;
 
@@ -577,7 +569,7 @@ sub random_maurer_prime {
   croak "random_maurer_prime, bits must be >= 2" unless $k >= 2;
   $k = int("$k");
 
-  return random_nbit_prime($k)  if $k <= MPU_MAXBITS && !OLD_PERL_VERSION;
+  return random_nbit_prime($k)  if $k <= MPU_MAXBITS;
 
   my ($n, $cert) = random_maurer_prime_with_cert($k);
   croak "maurer prime $n failed certificate verification!"
@@ -595,7 +587,6 @@ sub random_maurer_prime_with_cert {
 
   # Results for random_nbit_prime are proven for all native bit sizes.
   my $p0 = MPU_MAXBITS;
-  $p0 = 49 if OLD_PERL_VERSION && MPU_MAXBITS > 49;
 
   if ($k <= $p0) {
     my $n = random_nbit_prime($k);
@@ -942,9 +933,6 @@ sub random_strong_prime {
   my $t = shift;
   croak "random_strong_prime, bits must be >= 128" unless $t >= 128;
   $t = int("$t");
-
-  croak "Random strong primes must be >= 173 bits on old Perl"
-    if OLD_PERL_VERSION && MPU_64BIT && $t < 173;
 
   my $l   = (($t+1) >> 1) - 2;
   my $lp  = ($t >> 1) - 20;

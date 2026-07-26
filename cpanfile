@@ -1,5 +1,7 @@
 requires 'ExtUtils::MakeMaker';
 
+requires 'perl', '5.008001';
+
 requires 'Exporter', '5.57';
 requires 'XSLoader', '0.01';
 requires 'Carp';

@@ -9,7 +9,6 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 #my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my @liouville_pos = (qw/24 51 94 183 294 629 1488 3684 8006 8510 32539 57240
    103138 238565 444456 820134 1185666 3960407 4429677 13719505 29191963

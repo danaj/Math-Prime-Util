@@ -19,7 +19,6 @@ use Math::Prime::Util qw/random_prime random_ndigit_prime random_nbit_prime
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $usegmp = Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $broken64 = (18446744073709550592 == ~0);
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $maxbits = $use64 ? 64 : 32;
 
@@ -80,12 +79,9 @@ subtest 'random_prime(lo,hi)', sub {
   is_deeply([map { random_prime($_->[0],$_->[1]) } ([0,0],[0,1],[2,1],[3,2],[1294268492,1294268778],[3842610774,3842611108])],
             [undef,undef,undef,undef,undef,undef],
             "random_prime(lo,hi) returns undef when no primes in range");
-  SKIP: {
-    skip "Broken 64-bit Perl high-end range behavior", 2 if $use64 && $broken64;
-    my $maxprime = Math::Prime::Util::prime_get_config()->{'maxprime'};
-    is(random_prime($maxprime+1, ~0), undef, "random_prime(maxprime+1,UV_MAX) is undef");
-    is(random_prime(~0, ~0), undef, "random_prime(UV_MAX,UV_MAX) is undef");
-  }
+  my $maxprime = Math::Prime::Util::prime_get_config()->{'maxprime'};
+  is(random_prime($maxprime+1, ~0), undef, "random_prime(maxprime+1,UV_MAX) is undef");
+  is(random_prime(~0, ~0), undef, "random_prime(UV_MAX,UV_MAX) is undef");
 
   my @edges = ( [0,2,2,2], [2,2,2,2], [2,3,2,3], [3,5,3,5],
                 [10,20,11,19], [8,12,11,11], [10,12,11,11],
@@ -135,11 +131,8 @@ subtest 'random_ndigit_prime', sub {
 
   my @T = $use64 ? (1..11,15,19,20) : (1..10);
   foreach my $digits (@T) {
-    SKIP: {
-      skip "Broken 64-bit, skipping random_ndigit_prime($digits)",1 if $use64 && $broken64 && $digits >= 10;
-      my $n = random_ndigit_prime($digits);
-      ok(!ref($n) && length($n) == $digits && is_prime($n), "($digits) is a $digits-digit prime (got $n)");
-    }
+    my $n = random_ndigit_prime($digits);
+    ok(!ref($n) && length($n) == $digits && is_prime($n), "($digits) is a $digits-digit prime (got $n)");
   }
   prime_set_config(nobigint=>0);  # Turn this back off
 };
@@ -150,10 +143,7 @@ subtest 'random_nbit_prime', sub {
         : $use64 ? (2..10,15..17,28,32,34)
         :          (2..10,15..17,28,32);
   foreach my $bits (@T) {
-    SKIP: {
-      skip "Broken 64-bit, skipping random_nbit_prime($bits)",1 if $use64 && $broken64 && $bits >= 50;
-      check_bits( random_nbit_prime($bits), $bits, "nbit" );
-    }
+    check_bits( random_nbit_prime($bits), $bits, "nbit" );
   }
 };
 
@@ -170,12 +160,9 @@ subtest 'large random nbit/ndigit', sub {
   ok( 1+logint($n,2) == 80, "random 80-bit prime '$n' is in range" );
 
   my $D = $use64 ? 30 : 16;
-  SKIP: {
-    skip "Skipping $D-digit random prime with broken 64-bit Perl", 2 if $broken64;
-    my $n = random_ndigit_prime($D);
-    ok( ref($n) =~ /^Math::/, "random $D-digit prime returns a BigInt" );
-    ok( 1+logint($n,10) == $D, "random $D-digit prime '$n' is in range" );
-  }
+  $n = random_ndigit_prime($D);
+  ok( ref($n) =~ /^Math::/, "random $D-digit prime returns a BigInt" );
+  ok( 1+logint($n,10) == $D, "random $D-digit prime '$n' is in range" );
 };
 
 
@@ -194,11 +181,8 @@ subtest 'semiprimes', sub {
   ok($n >= 33554432 && $n < 67108864 && scalar(factor($n)) == 2, "random_semiprime(26) is a 26-bit semiprime");
   $n = random_semiprime(81);
   ok( 1+logint($n,2) == 81, "random_semiprime(81) is 81 bits");
-  SKIP: {
-    skip "Skipping 81-bit semiprime with broken 64-bit Perl", 1 if $broken64;
-    $n = random_unrestricted_semiprime(81);
-    ok( 1+logint($n,2) == 81, "random_unrestricted_semiprime(81) is 81 bits");
-  }
+  $n = random_unrestricted_semiprime(81);
+  ok( 1+logint($n,2) == 81, "random_unrestricted_semiprime(81) is 81 bits");
 };
 
 
@@ -207,7 +191,7 @@ subtest 'safe primes', sub {
   # This can be very slow over 65 bits
   for my $bits (3, 5, 8, 40, 70) {
     SKIP: {
-    skip "Skip larger safe prime on 32-bit",1 if $bits > 50 && !$use64;
+      skip "Skip larger safe prime on 32-bit",1 if $bits > 50 && !$use64;
       my $p = random_safe_prime($bits);
       ok ( is_nbit($p, $bits) && is_safe_prime($p),
            "random_safe_prime($bits) is in range and is a safe prime");

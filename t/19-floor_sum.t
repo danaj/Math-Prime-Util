@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Math::Prime::Util qw/floor_sum/;
 
-my $use64 = ~0 > 4294967295 && ~0 != 18446744073709550592;
+my $use64 = ~0 > 4294967295;
 
 my @tests = (
   [ 0, 7, 3, 4, 0 ],

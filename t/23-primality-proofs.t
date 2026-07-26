@@ -16,13 +16,12 @@ BEGIN {
 
 my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 my $use64 = ~0 > 4294967295;
-my $broken64 = (18446744073709550592 == ~0);
 # Do some tests only if EXTENDED_TESTING is on, or if Math::BigInt has a
 # fast backend.  These are incredibly slow on 32-bit with Calc.
 use Math::BigInt try=>"GMP,GMPz,Pari";
 my $fast_bigint = Math::BigInt->config()->{lib} =~ /^Math::BigInt::GMP/;
 my $doexpensive = $extra ? 1 : 0;
-$doexpensive = 0 unless $use64 && !$broken64;
+$doexpensive = 0 unless $use64;
 $doexpensive = 1 if $fast_bigint;
 my $doextra_proof = $extra && $doexpensive;
 
@@ -55,7 +54,6 @@ plan tests => 0
                                    #  hand-done proofs
             + 1*$doexpensive       #  n-1 for 2^521-1
             + 1*$doextra_proof     #  n-1 for 2^607-1
-            #+ (($doexpensive && !$broken64) ? 1 : 0)  # n-1 proof
             + (($doexpensive) ? 1 : 0)  # n-1 proof
             + 2                    #  Pratt and ECPP
             + 28 # borked up certificates generate warnings
@@ -70,27 +68,22 @@ is( is_provable_prime(871139809), 0, "871139809 is composite" );
 is( is_provable_prime(1490266103), 2, "1490266103 is provably prime" );
 
 foreach my $p (@plist) {
-
-  SKIP: {
-    skip "Broken 64-bit causes trial factor to barf", 6
-      if $broken64 && $p > 2**60;
-    ok( is_prime($p), "$p is prime" );
-    my($isp, $cert) = is_provable_prime_with_cert($p);
-    is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
-    ok( defined($cert) && $cert =~ /^Type/m,
-        "   certificate is non-null" );
-    prime_set_config(verbose=>1);
-    ok( verify_prime($cert), "   verification of certificate for $p done" );
-    prime_set_config(verbose=>0);
-    # Note, in some cases the certs could be non-equal (but both must be valid!)
-    my $cert2 = prime_certificate($p);
-    ok( defined($cert2) && $cert2 =~ /^Type/m,
-        "   prime_certificate is also non-null" );
-    if ($cert2 eq $cert) {
-      ok(1, "   certificate is identical to first");
-    } else {
-      ok( verify_prime($cert2), "   different cert, verified" );
-    }
+  ok( is_prime($p), "$p is prime" );
+  my($isp, $cert) = is_provable_prime_with_cert($p);
+  is( $isp, 2, "   is_provable_prime_with_cert returns 2" );
+  ok( defined($cert) && $cert =~ /^Type/m,
+      "   certificate is non-null" );
+  prime_set_config(verbose=>1);
+  ok( verify_prime($cert), "   verification of certificate for $p done" );
+  prime_set_config(verbose=>0);
+  # Note, in some cases the certs could be non-equal (but both must be valid!)
+  my $cert2 = prime_certificate($p);
+  ok( defined($cert2) && $cert2 =~ /^Type/m,
+      "   prime_certificate is also non-null" );
+  if ($cert2 eq $cert) {
+    ok(1, "   certificate is identical to first");
+  } else {
+    ok( verify_prime($cert2), "   different cert, verified" );
   }
 }
 

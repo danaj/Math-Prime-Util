@@ -7,7 +7,6 @@ use Math::Prime::Util qw/prime_iterator prime_iterator_object/;
 use Math::BigInt try => "GMP,GMPz";
 
 my $use64 = 4294967295 < ~0;
-my $broken64 = (18446744073709550592 == ~0);
 
 subtest 'prime_iterator' => sub {
   ok(!eval { prime_iterator(-2); }, "iterator -2");
@@ -93,19 +92,16 @@ subtest 'prime_iterator_object methods' => sub {
   $it->rewind(0);
   is( $it->value(), 2, "iterator object rewind(0) goes to 2");
 
-  SKIP: {
-    skip "This Perl can't add large numbers correctly",4 if $broken64;
-    my $top_prime = $use64 ? "18446744073709551557" : "4294967291";
-    my $big_prime = $use64 ? "18446744073709551629" : "4294967311";
-    $it->rewind($top_prime);
-    is( $it->value(), $top_prime, "iterator object can rewind to $top_prime");
-    $it->next;
-    is( "".$it->value(), $big_prime, "iterator object next is $big_prime");
-    $it->rewind(~0);
-    is( "".$it->value(), $big_prime, "iterator object rewound to ~0 is $big_prime");
-    $it->prev;
-    is( $it->value(), $top_prime, "iterator object prev goes back to $top_prime");
-  }
+  my $top_prime = $use64 ? "18446744073709551557" : "4294967291";
+  my $big_prime = $use64 ? "18446744073709551629" : "4294967311";
+  $it->rewind($top_prime);
+  is( $it->value(), $top_prime, "iterator object can rewind to $top_prime");
+  $it->next;
+  is( "".$it->value(), $big_prime, "iterator object next is $big_prime");
+  $it->rewind(~0);
+  is( "".$it->value(), $big_prime, "iterator object rewound to ~0 is $big_prime");
+  $it->prev;
+  is( $it->value(), $top_prime, "iterator object prev goes back to $top_prime");
 
   $it->rewind;
   do { $it->next } for 1..100;

@@ -2,8 +2,7 @@
 use strict;
 use warnings;
 
-# If you're not using ancient perl 5.6.2 with super early releases of bigint,
-# then you can define bigint up here and not have to quote every number.
+# We could 'use bigint' up here and not have to quote every number.
 
 # Note: In 5.16.0 (and perhaps others?), using labels like "SKIP:" will create
 # a small memory leak.  So running the test suite through valgrind will show
@@ -11,7 +10,6 @@ use warnings;
 
 my $extra = 0+(defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING});
 my $use64 = ~0 > 4294967295;
-my $broken64 = (18446744073709550592 == ~0);
 
 use Test::More;
 
@@ -19,33 +17,28 @@ use Test::More;
 #   primality        very little we can do about it, we must test
 #   factoring        also must test though maybe can make faster?
 
-if ($broken64) {
-  # Perl from before 2002, built for 64-bit.  Not supported.
-  plan skip_all => "Broken 64-bit Perl, skipping all tests";
-} else {
-  plan tests =>  0
-               + 1   # basic int
-               + 1   # basic mod
-               + 1   # other mod
-               + 1   # gcd and lcm
-               + 1   # gcdext and chinese
-               + 1   # primality
-               + 1   # primes, twin primes, semiprimes, almost primes, etc.
-               + 1   # next/prev prime
-               + 1   # prime_iterator
-               + 1   # primecount and lower/upper/approx
-               + 1   # factoring
-               + 1   # znorder znprimroot znlog
-               + 1   # divisor_sum
-               + 5   # moebius, euler_phi, kronecker, valuation, etc.
-               + 1   # jordan_totient
-               + 1   # liouville
-               + 1   # ispower
-               + 1   # random primes
-               + 1   # canonical bigint returns
-               + 1   # vecequal
-               + 1;  # $_ didn't get changed
-}
+plan tests =>  0
+             + 1   # basic int
+             + 1   # basic mod
+             + 1   # other mod
+             + 1   # gcd and lcm
+             + 1   # gcdext and chinese
+             + 1   # primality
+             + 1   # primes, twin primes, semiprimes, almost primes, etc.
+             + 1   # next/prev prime
+             + 1   # prime_iterator
+             + 1   # primecount and lower/upper/approx
+             + 1   # factoring
+             + 1   # znorder znprimroot znlog
+             + 1   # divisor_sum
+             + 5   # moebius, euler_phi, kronecker, valuation, etc.
+             + 1   # jordan_totient
+             + 1   # liouville
+             + 1   # ispower
+             + 1   # random primes
+             + 1   # canonical bigint returns
+             + 1   # vecequal
+             + 1;  # $_ didn't get changed
 
 use Math::Prime::Util qw/
   prime_set_config
@@ -585,7 +578,7 @@ subtest 'canonical bigint returns', sub {
     is("".ref($got).":$got","$new_bigint:$expect","$name returns canonical bigint");
   }
 
-  my $bigint = toint("$n");
+  my $bigint = $n->copy;
   eval { modint($bigint, 0) };
   like($@, qr/^modint: divide by zero/,
        "modint traps zero before calling bigint overload");

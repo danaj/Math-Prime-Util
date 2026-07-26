@@ -7,7 +7,6 @@ use Math::Prime::Util qw/is_smooth is_rough smooth_count rough_count
                          factor vecnone/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-$use64 = 0 if 18446744073709550592 == ~0;
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 

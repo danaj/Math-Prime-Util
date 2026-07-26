@@ -68,7 +68,6 @@ eval { next_prime(""); };
 like($@, $qrnn, "Gives Error:  next_prime('')");
 
 foreach my $v (@incorrect) {
-  $v = "$v" if $] < 5.008 && ref($v) eq 'Math::BigFloat';
   eval { next_prime($v); };
   like($@, $qrnn, "Gives Error:  next_prime($v)");
 }
@@ -230,8 +229,7 @@ my $bigint_class = Math::Prime::Util::_load_bigint();
 }
 
 
-SKIP: {
-  skip "Perl $], Carp $Carp::VERSION.  We need a minimum of 5.8 or Carp 1.17 to avoid segfaults.", 1 if $] < 5.008 && $Carp::VERSION < 1.17;
+{
   eval { next_prime("11111111111111111111111111111111111111111x"); };
   like($@, $qrnn, "Gives Error:  next_prime('111...111x')");
 }

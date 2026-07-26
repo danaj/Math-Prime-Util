@@ -6,7 +6,6 @@ use Test::More;
 use Math::Prime::Util qw/is_prime/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-my $broken64 = (18446744073709550592 == ~0);
 
 my @small_primes = qw/
 2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97

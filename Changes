@@ -2,6 +2,12 @@ Revision history for Perl module Math::Prime::Util
 
 0.75 2026-?
 
+    - Requires Perl 5.8.1 or later.  Dropping Perl 5.6 support has been
+      considered for years.  Supporting very old Perl builds with broken
+      64-bit integer handling was increasingly time-consuming, especially
+      as modern compiler and testing infrastructure no longer supports
+      such old Perl versions.
+
     [API Changes]
 
     - When a function returns an integer result larger than native type size,
@@ -17,7 +23,7 @@ Revision history for Perl module Math::Prime::Util
 
     - irand64 always returns a random integer in [0 .. 2^64-1].  On 32-bit this
       means it will likely return a bigint.
- 
+
     - random_ndigit_prime is limited to 2^32-1 digits.
 
     - jordan_totient(k,n) and powersum(n,k) now require exponent k to fit

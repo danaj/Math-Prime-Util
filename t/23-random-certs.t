@@ -11,7 +11,6 @@ use Math::Prime::Util qw/is_prime logint verify_prime
 
 my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
-$use64 = 0 if $use64 && 18446744073709550592 == ~0;
 
 my $do_st = 1;
 $do_st = 0 unless eval { require Digest::SHA;
