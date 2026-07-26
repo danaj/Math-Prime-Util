@@ -227,7 +227,7 @@ static bitmask126_t* _bitmask126_sieve(UV* size, UV n) {
     if (_verbose) printf("bitmask lucky pre-sieve using %u lucky numbers up to %u\n", lend, _small_lucky[lend]);
 
     /* Construct the initial list */
-    for (i = 1, m = 0; i <= n; i += 2, m += 1) {
+    for (i = 1, m = 0; i <= n; m += 1) {
       if (m >= 819) m -= 819;  /* m = (i>>1) % 819 */
       if (_lmask5[m >> 5] & (1U << (m & 0x1F))) {
         for (ln = lbeg; ln <= lend; ln++) {
@@ -239,6 +239,8 @@ static bitmask126_t* _bitmask126_sieve(UV* size, UV n) {
         if (ln > lend)
           bitmask126_append(pl,i);
       }
+      if (n-i < 2) break;
+      i += 2;
     }
     init_level = lend+1;
   }
@@ -337,7 +339,8 @@ UV* lucky_sieve_cgen(UV *size, UV n) {
   lsize = 1;
   c3 = 2;
 
-  for (i = 3; i <= n; i += 2) {
+  /* The i >= 3 guard stops UV_MAX wrapping to 1. */
+  for (i = 3; i >= 3 && i <= n; i += 2) {
     if (!--c3) { c3 = 3; continue; }  /* Shortcut count[1] */
     for (j = 2; j < lindex; j++) {
       if (--count[j] == 0) {

@@ -63,8 +63,8 @@ SKIP: {
   my(@expect,@got);
   for my $lo (0 .. 40) {
     for my $hi (0 .. 40) {
-      #push @expect, [$lo,$hi,grep { $_ >= $lo && $_ <= $hi } @lucky];
-      #push @got,    [$lo,$hi,@{lucky_numbers($lo,$hi)}];
+      push @expect, [$lo,$hi,grep { $_ >= $lo && $_ <= $hi } @lucky];
+      push @got,    [$lo,$hi,@{lucky_numbers($lo,$hi)}];
     }
   }
   is_deeply( \@got, \@expect, "all lucky numbers ranges 0 .. 40" );

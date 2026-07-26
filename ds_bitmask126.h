@@ -87,7 +87,7 @@ static bitmask126_t* bitmask126_create(BMTYPE n) {
 
   bm->n = n;
   bm->nelems = 0;
-  bm->nwords = (n+125)/126;
+  bm->nwords = n/126 + (n % 126 != 0);
   nblocks = (bm->nwords + 7) / 8;
   Newz(0, bm->data, bm->nwords, uint32_t);
   Newz(0, bm->size, bm->nwords, uint8_t);
