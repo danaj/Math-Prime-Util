@@ -1246,7 +1246,7 @@ sub prev_prime {
 
 sub next_prime_power {
   my($n) = @_;
-  validate_integer_nonneg($n);
+  validate_integer_abs($n);
   return (2,2,3,4,5,7,7,8,9)[$n] if $n <= 8;
   while (1) {
     $n = Madd1int($n);
@@ -1255,7 +1255,7 @@ sub next_prime_power {
 }
 sub prev_prime_power {
   my($n) = @_;
-  validate_integer_nonneg($n);
+  validate_integer_abs($n);
   return (undef,undef,undef,2,3,4,5,5,7)[$n] if $n <= 8;
   while (1) {
     $n = Msub1int($n);

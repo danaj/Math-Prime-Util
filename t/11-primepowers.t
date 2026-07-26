@@ -36,7 +36,7 @@ $samples{47490104}  =  930475697 if $usexs || $extra;
 
 
 plan tests =>   0   # is_prime_power (not tested here)
-              + 5   # prime_powers
+              + 6   # prime_powers
               + 3   # next_prime_power
               + 4   # prev_prime_power
               + 6   # prime_power_count (first set)
@@ -44,6 +44,7 @@ plan tests =>   0   # is_prime_power (not tested here)
               + 4   # prime_power_count bounds
               + 3   # nth_prime_power
               + $extra * scalar(keys %samples)
+              + 1   # nth_prime_power on 32-bit boundary
               + 9   # nth_prime_power bounds
               + 0;
 
@@ -70,6 +71,13 @@ my $base1 = 1441897;
 is_deeply( prime_powers($base1,$base1+1000),
            [map { $base1+$_ } (34,36,52,66,84,106,112,120,156,160,172,174,190,246,262,276,294,312,330,354,370,382,402,420,424,430,436,444,454,480,496,504,514,532,540,556,562,612,616,630,634,652,682,694,702,714,724,730,736,744,756,760,772,820,826,834,846,886,900,930,952,966,972,976,990,1000)],
            "prime_powers($base1, $base1 + 1000)" );
+
+is_deeply(
+  [map { "$_" } @{prime_powers("1000000014000000045",
+                               "1000000014000000053")}],
+  ["1000000014000000049"],
+  "prime_powers in a narrow high range"
+);
 
 ###### next_prime_power
 
@@ -151,6 +159,15 @@ if ($extra) {
     is( nth_prime_power($n), $npp, "nth_prime_power($n) = $npp" );
   }
 }
+
+SKIP: {
+  skip "nth_prime_power on 32-bit boundary only with XS EXTENDED",1
+    unless $usexs && $extra;
+  is(nth_prime_power(203280221),
+     4294811177,
+     "nth_prime_power at the 32-bit prime-index boundary");
+}
+
 
 ###### nth_prime_power{upper,lower,approx}
 is( nth_prime_power_lower(0), undef, "nth_prime_power_lower(0) returns undef" );

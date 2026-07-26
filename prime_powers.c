@@ -8,6 +8,7 @@
 #define FUNC_ctz 1
 #define FUNC_log2floor 1
 #define FUNC_ipow 1
+#define FUNC_isqrt 1
 #include "util.h"
 #include "sort.h"
 #include "cache.h"
@@ -137,9 +138,22 @@ UV prime_power_sieve2(UV** list, UV lo, UV hi) {
 
 /* The prime powers with the primes */
 UV prime_power_sieve(UV** list, UV lo, UV hi) {
-  UV npower, nprime, ipower, iprime, ntotal, i, *powers, *primes, *tot;
+  UV scanlim, npower, nprime, ipower, iprime, ntotal, i, *powers, *primes, *tot;
 
   if (hi < 2 || lo > hi) { *list = 0; return 0; }
+
+  /* Avoid sieving through sqrt(hi) for a tiny interval near a large hi. */
+  scanlim = hi < 7929856 ? 10 : (isqrt(hi) >> 8);
+  if (hi-lo < scanlim) {
+    ntotal = 0;
+    New(0, tot, hi-lo+1, UV);
+    for (i = lo; ; i++) {
+      if (is_prime_power(i)) tot[ntotal++] = i;
+      if (i == hi) break;
+    }
+    *list = tot;
+    return ntotal;
+  }
 
   /* For better performance / memory:
    *   1) realloc primes, use reverse merge to add powers in with one pass
@@ -255,7 +269,7 @@ UV nth_prime_power_approx(UV n) {
 }
 UV nth_prime_power(UV n) {
   if (n <= 7) return (n==0) ? 0 : n+1+(n/5);
-  if (n >= MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
+  if (n > MPU_MAX_PRIME_IDX) return MPU_MAX_PRIME;
 
 #if 0    /* Bilinear interpolation.  Not bad, but not great. */
   UV lo, hi, pp;
