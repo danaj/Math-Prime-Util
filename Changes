@@ -160,6 +160,9 @@ Revision history for Perl module Math::Prime::Util
     - omega_prime_count no longer misses some large 7- and 8-omega primes.
       omega_primes uses bounded memory for large non-prefix ranges.
 
+    - binomialmod avoids native overflow with negative n and very large k,
+      and is much faster for small k with large prime-power moduli.
+
     - Frobenius (P,Q) uses gcd(n,2QD) and checks disc a square, not |disc|.
 
     - Fix PP Frobenius-Khashin parameter selection, document 2018 algorithm.

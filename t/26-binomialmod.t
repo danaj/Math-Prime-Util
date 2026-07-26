@@ -9,6 +9,7 @@ use Math::Prime::Util qw/binomialmod/;
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $config = Math::Prime::Util::prime_get_config;
 my $usexs  = $config->{'xs'};
+my $use64  = $config->{'maxbits'} > 32;
 
 my @tests = (
   [0,0,7, 1],
@@ -38,12 +39,15 @@ my @tests = (
 );
 
 if ($usexs) {
+  my $uvmax = $use64 ? "18446744073709551615" : "4294967295";
   push @tests, [100000000,87654321,1005973, 937361],
                [100000000,7654321,1299709, 582708],
                [100000000,7654321,12345678, 4152168],
                [100000,7654,32768, 12288],
                [100000,7654,196608, 110592],
-               [100000,7654,101223721, 5918452];
+               [100000,7654,101223721, 5918452],
+               [-2,$uvmax,3, 2],
+               [$uvmax,2,1018081, $use64 ? 741111 : 355291];
 }
 
 if ($usexs && $extra) {

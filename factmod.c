@@ -174,6 +174,8 @@ UV factorialmod(UV n, UV m) {  /*  n! mod m */
 /*                          BINOMIAL(N,K) MOD M                               */
 /******************************************************************************/
 
+#define BINOMIALMOD_SMALLK_MAX UVCONST(100000)
+
 static UV _factorial_valuation(UV n, UV p) {
   UV k = 0;
   while (n >= p) {
@@ -249,20 +251,22 @@ static UV _binomial_mod_prime_power(UV n, UV k, UV p, UV e) {
     if (m & 1) {
       const uint64_t npi = mont_inverse(m),  mont1 = mont_get1(m);
       num = mont1;
-      for (i = n-k+1, ires = (i-1)%p; i <= n; i++) {
+      for (i = n-k+1, ires = (i-1)%p; ; i++) {
         ip = i;
         if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
         num = mont_mulmod(num, mont_geta(ip, m), m);
+        if (i == n) break;
       }
       num = mont_recover(num, m);
     } else
 #endif
     {
       num = 1;
-      for (i = n-k+1, ires = (i-1) % p; i <= n; i++) {
+      for (i = n-k+1, ires = (i-1) % p; ; i++) {
         ip = i;
         if (++ires == p) { ires = 0; do { ip /= p; } while ((ip % p) == 0); }
         num = mulmod(num, ip, m);
+        if (i == n) break;
       }
     }
   }
@@ -362,18 +366,18 @@ bool binomialmod(UV *res, UV n, UV k, UV m) {
   }
   {
     UV bin[MPU_MAX_DFACTORS], mod[MPU_MAX_DFACTORS];
+    UV smallk = (k > n/2) ? n-k : k;
     uint32_t i;
     factored_t mf = factorint(m);
 
     for (i = 0; i < mf.nfactors; i++) {
+      mod[i] = ipow(mf.f[i], mf.e[i]);
       if (mf.e[i] == 1) {
         bin[i] = _binomial_lucas_mod_prime(n, k, mf.f[i]);
-        mod[i] = mf.f[i];
+      } else if (smallk <= BINOMIALMOD_SMALLK_MAX && smallk < mod[i]) {
+        bin[i] = _binomial_mod_prime_power(n, k, mf.f[i], mf.e[i]);
       } else {
-        /* bin[i] = _binomial_mod_prime_power(n, k, mf.f[i], mf.e[i]); */
-        /* Use generalized Lucas */
         bin[i] = _binomial_lucas_mod_prime_power(n, k, mf.f[i], mf.e[i]);
-        mod[i] = ipow(mf.f[i], mf.e[i]);
       }
     }
     /* chinese with p^e as modulos, so should never get -1 back */

@@ -4745,7 +4745,13 @@ void binomialmod(IN SV* svn, IN SV* svk, IN SV* svm)
            (nstatus ==-1 && (kstatus == -1 && k > n)) )
          XSRETURN_UV(0);
       if (kstatus == -1) k = n - k;
-      if (nstatus == -1) n = neg_iv(n) + k - 1;
+      if (nstatus == -1) {
+        UV nabs = neg_iv(n);
+        if (k == 0) XSRETURN_UV(1);
+        if (nabs > UV_MAX - k + 1)
+          DISPATCHPP_RETURN();
+        n = nabs + k - 1;
+      }
       if (binomialmod(&ret, n, k, m)) {
         if ((nstatus == -1) && (k & 1) && ret != 0) ret = m-ret;
         XSRETURN_UV(ret);
