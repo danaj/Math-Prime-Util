@@ -119,6 +119,13 @@ subtest 'nth_powerful', sub {
     is(nth_powerful(100,6),43046721,"43046721 is the 100th 6-powerful number");
     is(nth_powerful(12,15),16777216,"16777216 is the 12th 15-powerful number");
   }
+  SKIP: {
+    skip "64-bit native nth_powerful upper boundary", 2 unless $usexs && $use64;
+    is("".nth_powerful(10999963,3), "14457985928257375288",
+       "nth_powerful handles the first failed k=3 upper estimate");
+    is("".nth_powerful(11938035,3), "18446743506341057373",
+       "nth_powerful reaches the largest native 3-powerful number");
+  }
 };
 
 
@@ -179,6 +186,16 @@ subtest 'powerful_numbers', sub {
              "powerful_numbers(1e12,1e12+1e10,5)");
   is_deeply( [map{"$_"} @{powerful_numbers(~0, ~0, 1)}], [~0],
              "powerful_numbers(UV_MAX,UV_MAX,1)");
+  my $largek = $use64 ? "9223372036854775809" : "2147483649";
+  is_deeply( powerful_numbers(1,121,$largek), [1],
+             "powerful_numbers handles very large native k");
+  is_deeply( powerful_numbers(2,121,$largek), [],
+             "large-k powerful_numbers range excludes 1");
+  is_deeply( powerful_numbers(0,3,1), [1,2,3],
+             "powerful_numbers ignores 0 for k <= 1");
+  ok(!eval { powerful_numbers(1,121,-1); 1 },
+     "powerful_numbers rejects negative k");
+  like($@, qr/non-negative integer/, "negative k error");
 };
 
 

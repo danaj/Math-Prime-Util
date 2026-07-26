@@ -2332,13 +2332,18 @@ void goldbach_pairs(IN SV* svn)
     }
     DISPATCHPP_RETURN();
 
-void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN UV k = 2)
+void powerful_numbers(IN SV* svlo, IN SV* svhi = 0, IN SV* svk = 0)
   PREINIT:
+    int kstatus = 1;
     AV* av;
-    UV lo = 1, hi, i, npowerful, *powerful;
+    UV lo = 1, hi, i, k = 2, npowerful, *powerful;
   PPCODE:
-    if ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
-        (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
+    if (items >= 3)
+      kstatus = _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG);
+    if (kstatus == 1 &&
+        ((items == 1 && _validate_and_set(&hi, aTHX_ svlo, IFLAG_NONNEG)) ||
+         (items >= 2 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) &&
+                        _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG)))) {
       CREATE_RETURN_AV(av);
       powerful = powerful_numbers_range(&npowerful, lo, hi, k);
       for (i = 0; i < npowerful; i++)

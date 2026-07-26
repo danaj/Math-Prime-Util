@@ -2245,6 +2245,7 @@ sub powerful_numbers {
   validate_integer_nonneg($hi);
   validate_integer_nonneg($k);
 
+  $lo = 1 if $lo < 1;
   return [] if $hi < $lo;
   return [$lo .. $hi] if $k <= 1 && Mcmpint($hi, SINTMAX) <= 0;
 
@@ -2256,6 +2257,7 @@ sub powerful_numbers {
     }
     return $pn;
   }
+  return $lo == 1 ? [1] : [] if $k > Mlogint($hi,2);
   _pcg($lo, $hi, $k, 1, 2*$k-1, $pn);
   Mvecsorti($pn);
 }

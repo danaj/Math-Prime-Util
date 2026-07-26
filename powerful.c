@@ -187,7 +187,7 @@ UV nth_powerful(UV n, UV k) {
     } else {
       nest = .02209 * pow(n, 2.955);
       dlo = 0.987 * (nc + nest);
-      dhi = 1.020 * (nc + nest);
+      dhi = 1.025 * (nc + nest);
     }
     lo = (UV) dlo;
     if (n < 900) dhi *= 1.3;
@@ -318,6 +318,15 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
     for (i = lo; ; i++) {
       pn[i-lo] = i;
       if (i == hi) break;
+    }
+  } else if (k > log2floor(hi)) {
+    /* 2^k > hi, so 1 is the only possible k-powerful number. */
+    npn = (lo == 1);
+    if (npn) {
+      New(0, pn, 1, UV);
+      pn[0] = 1;
+    } else {
+      pn = 0;
     }
   } else if ((lo+single_thresh) > hi || lo > (UV_MAX-single_thresh)) {
     New(0, pn, hi-lo+1, UV);
