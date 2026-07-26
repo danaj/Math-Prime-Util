@@ -128,7 +128,7 @@ plan tests => 0 + 1
                 + scalar(keys %intervals)
                 + 1
                 + 9 + 2*$extra # prime count specific methods
-                + 3 + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0) # twin pc
+                + 3 + $isxs + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0) # twin pc
                 + 2 + (($isxs && $use64) ? 2+1*scalar(keys %spcs) : 0) # semi pc
                 + 2 + (($isxs && $use64) ? 2+1*scalar(keys %rpcs) : 0) # ram pc
                 + 0;
@@ -222,6 +222,10 @@ if ($extra) {
 is(twin_prime_count(13,31), 2, "twin prime count 13 to 31");
 is(twin_prime_count(10**8,10**8+34587), 137, "twin prime count 10^8 to +34587");
 is(twin_prime_count(654321), 5744, "twin prime count 654321");
+if ($isxs) {
+  my $uvmax = $use64 ? "18446744073709551615" : "4294967295";
+  is(twin_prime_count($uvmax,$uvmax), 0, "twin prime count at UV_MAX");
+}
 if ($isxs && $use64) {
   is(twin_prime_count(1000000000123456), 1177209242446, "twin prime count 1000000000123456");
   while (my($n, $tpc) = each (%tpcs)) {

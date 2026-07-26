@@ -55,6 +55,9 @@ UV twin_prime_count_range(UV beg, UV end)
   unsigned char* segment;
   UV sum = 0;
 
+  if (end > MPU_MAX_TWIN_PRIME) end = MPU_MAX_TWIN_PRIME;
+  if (end < beg) return 0;
+
   /* First use the tables of #e# from 1e7 to 4e18. */
   if (beg <= 3 && end >= 10000000) {
     UV mult, exp, step = 0, base = 10000000;
@@ -75,13 +78,13 @@ UV twin_prime_count_range(UV beg, UV end)
     beg |= 1;
     end = (end-1) | 1;
     /* Cheesy way of counting the partial-byte edges */
-    while ((beg % 30) != 1) {
-      if (is_prime(beg) && is_prime(beg+2) && beg <= end) sum++;
+    while (beg <= end && (beg % 30) != 1) {
+      if (is_prime(beg) && is_prime(beg+2)) sum++;
       beg += 2;
     }
-    while ((end % 30) != 29) {
-      if (is_prime(end) && is_prime(end+2) && beg <= end) sum++;
-      end -= 2;  if (beg > end) break;
+    while (beg <= end && (end % 30) != 29) {
+      if (is_prime(end) && is_prime(end+2)) sum++;
+      end -= 2;
     }
   }
   if (beg <= end) {
@@ -182,17 +185,27 @@ UV nth_twin_prime(UV n)
     }
   }
   if (beg == 2) { beg = 31; n -= 5; }
+  else            beg++;
 
   {
     UV seg_base, seg_low, seg_high;
     void* ctx = start_segment_primes(beg, end, &segment);
     while (n && next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
-      UV p, bytes = seg_high/30 - seg_low/30 + 1;
-      UV s = ((UV)segment[0]) << 8;
+      UV p, lowm, highm, bytes = seg_high/30 - seg_low/30 + 1;
+      UV s;
+      /* The segment contains complete wheel bytes.  Mask candidates before
+       * low and twin-prime starts after high, preserving their p+2 partners. */
+      lowm = seg_low - seg_base;
+      highm = seg_high - (seg_base + (bytes-1)*30);
+      segment[0] |= clearprev30[lowm];
+      if (highm < 29)
+        segment[bytes-1] |=
+          ((unsigned char)~clearprev30[highm+1]) & 0x94;
+      s = ((UV)segment[0]) << 8;
       for (p = 0; p < bytes; p++) {
         s >>= 8;
         if (p+1 < bytes)                    s |= (((UV)segment[p+1]) << 8);
-        else if (!is_prime(seg_high+2)) s |= 0xFF00;
+        else if (highm < 29 || !is_prime(seg_high+2)) s |= 0xFF00;
         if (!(s & 0x000C) && !--n) { nth=seg_base+p*30+11; break; }
         if (!(s & 0x0030) && !--n) { nth=seg_base+p*30+17; break; }
         if (!(s & 0x0180) && !--n) { nth=seg_base+p*30+29; break; }

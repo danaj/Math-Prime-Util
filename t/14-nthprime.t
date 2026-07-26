@@ -159,6 +159,12 @@ subtest 'nth_twin_prime and approx', sub {
   is( nth_twin_prime(17), 239, "239 = 17th twin prime" );
   is( nth_twin_prime(1234), 101207, "101207 = 1234'th twin prime" );
 
+  SKIP: {
+    skip "64-bit XS twin-prime table boundary", 1 unless $usexs && $use64;
+    is("".nth_twin_prime("12866256871"), "8000000000537",
+       "nth_twin_prime skips the preceding table interval");
+  }
+
   while (my($n, $nthtpc) = each (%ntpcs)) {
     cmp_within(nth_twin_prime_approx($n), $nthtpc, 2, "nth_twin_prime_approx($n)");
   }
