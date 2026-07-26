@@ -2401,12 +2401,12 @@ sub nth_powerfree {
 
   my($count, $diff);
   # In practice this converges very rapidly, usually needing only one iteration.
-  for (1 .. 10) {
+  for my $iter (1 .. 10) {
     # 2. Get the actual count at qk and the difference from our goal.
     $count = Math::Prime::Util::powerfree_count($qk,$k);
     $diff = ($count >= $n)  ?  $count-$n  :  $n-$count;
-    print "nth_powerfree: iter $_, count $count diff $diff\n" if $verbose;
-    last if $diff <= 300;   # Threshold could be improved.
+    print "nth_powerfree: iter $iter, count $count diff $diff\n" if $verbose;
+    last if $diff <= 300 || $iter == 10;  # Threshold could be improved.
 
     # 3. If not close, update the estimate using the expected density zm.
     my $delta = Mtoint($zm * "$diff");
