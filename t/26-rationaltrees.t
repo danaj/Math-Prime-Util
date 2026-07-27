@@ -75,6 +75,11 @@ subtest 'Stern-Brocot tree' => sub {
   my @s=([1,1]);
   push @s, [next_stern_brocot($s[-1]->[0],$s[-1]->[1])] for 1..99;
   is_deeply( \@s, \@SB, "next_stern_brocot first 100 terms" );
+  is_deeply(
+    [map { "$_" } next_stern_brocot("228909276746","645603216423")],
+    [qw/246711520031 695811690661/],
+    "next_stern_brocot dispatches when the index exceeds a UV"
+  );
 
   # stern_brocot_n: index of first 100 terms
   my @idx;
@@ -189,6 +194,8 @@ subtest 'Farey sequences' => sub {
   is( farey_rank(5,[0,1]), 0, "farey_rank(5,[0,1]) = 0" );
   is( farey_rank(5,[1,1]), 10, "farey_rank(5,[1,1]) = last" );
   is( farey_rank(5,[2,1]), 11, "farey_rank(5,[2,1]) = length" );
+  ok( !defined(farey(5,"10000000000")),
+      "farey returns undef for oversized native index" );
   ok( !defined(next_farey(5,[1,1])), "next_farey(5,[1,1]) = undef" );
   is_deeply( next_farey(1,[1,3]), [1,1],
              "next_farey handles non-entry fraction in F_1" );

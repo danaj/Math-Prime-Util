@@ -85,7 +85,7 @@ bool next_calkin_wilf(UV* num, UV* den)
 }
 bool next_stern_brocot(UV* num, UV* den)
 {
-  UV n, d;
+  UV n, d, index;
   if (num == 0 || den == 0) return 0;
   n = *num;
   d = *den;
@@ -107,7 +107,9 @@ bool next_stern_brocot(UV* num, UV* den)
    * then back down.  That is, from the right, invert all L/R from the end
    * to and including the right L.  This really isn't a huge savings over
    * doing the full process.  Doing nth(n(F)+1) is clean. */
-  return nth_stern_brocot(num, den, 1+stern_brocot_n(*num, *den));
+  index = stern_brocot_n(*num, *den);
+  if (index == 0 || index == UV_MAX) return 0;
+  return nth_stern_brocot(num, den, index+1);
 }
 
 
@@ -345,29 +347,43 @@ int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
   return 1;
 }
 #else
-static bool _walk_to_k(uint32_t a, uint32_t n, uint32_t k, uint32_t* p, uint32_t* q)
+static int _walk_to_k(uint32_t a, uint32_t n, UV k, uint32_t* p, uint32_t* q)
 {
-  uint32_t g, j, p0, q0, p1, q1, p2, q2;
+  uint32_t g, up1, uq1;
+  UV j, p0, q0, p1, q1, p2, q2;
 
   g = gcd_ui(a,n);
   p0 = a/g;
   q0 = n/g;
 
-  if (k == 0) { *p = p0;  *q = q0;  return 1; }
+  if (k == 0) {
+    *p = (uint32_t)p0;
+    *q = (uint32_t)q0;
+    return 1;
+  }
 
   /* From the single point, use extgcd to get the exact next fraction */
-  p1 = p0; q1 = q0;
-  next_farey(n, &p1, &q1);
+  up1 = (uint32_t)p0;
+  uq1 = (uint32_t)q0;
+  if (!next_farey(n, &up1, &uq1)) return -1;
+  p1 = up1;
+  q1 = uq1;
 
   /* Now we have two fractions, so quick step through */
   while (--k) {
+    if (q0 > UV_MAX - (UV)n) return -1;
     j = (q0 + n) / q1;
-    p2 = j * p1 - p0;
-    q2 = j * q1 - q0;
+    if (j == 0 || p1 > UV_MAX/j || q1 > UV_MAX/j) return -1;
+    p2 = j * p1;
+    q2 = j * q1;
+    if (p2 < p0 || q2 < q0) return -1;
+    p2 -= p0;
+    q2 -= q0;
     p0 = p1; p1 = p2;  q0 = q1; q1 = q2;
   }
-  *p = p1;
-  *q = q1;
+  if (p1 > UINT32_MAX || q1 > UINT32_MAX) return -1;
+  *p = (uint32_t)p1;
+  *q = (uint32_t)q1;
   return 1;
 }
 int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
@@ -392,9 +408,12 @@ int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
   if (n >= 5) {
     uint32_t const ginc = ((UV)n+8191)>>13;
     double   const dlen  = 1 + (0.304*(double)n*n + .29*(double)n + 0.95);
-    uint32_t guess = k * ((double)n/dlen);
+    double   const dguess = (double)k * ((double)n/dlen);
+    uint32_t guess;
     UV gcnt = 0;
-    if (guess <= lo) guess = lo+1; else if (guess >= hi) guess = hi-1;
+    if (dguess <= (double)lo)      guess = lo+1;
+    else if (dguess >= (double)hi) guess = hi-1;
+    else                           guess = (uint32_t)dguess;
 
     if (lo < hi) {
       gcnt = farey_rank(n, guess, n);
@@ -437,15 +456,17 @@ int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
 bool bestrational(UV* n, UV* d, NV x, UV dbound)
 {
   UV a, p0, q0, p1, q1, p2, q2, qlimit, ps, qs;
-  NV xabs, rem, invrem;
+  NV xabs, rem, invrem, pserr, p1err;
   xabs = x < 0.0 ? -x : x;
   if (xabs >= (NV)UV_MAX)
     return 0;
   p0 = 1;  q0 = 0;
   p1 = (UV)xabs;  q1 = 1;
   rem = xabs - (NV)p1;
-  while (rem > 1e-15) {
+  while (rem > 0.0) {
     invrem = 1.0 / rem;
+    /* Converting a floating value outside the UV range is undefined. */
+    if (!(invrem < (NV)UV_MAX)) return 0;
     a      = (UV)invrem;
     rem    = invrem - (NV)a;
     if (a == 0) return 0;
@@ -455,11 +476,15 @@ bool bestrational(UV* n, UV* d, NV x, UV dbound)
     qlimit = (dbound - q0) / q1;
     if (a > qlimit) {
       /* q2 > dbound: check best semiconvergent */
-      if (qlimit >= 1 && qlimit <= (UV_MAX - p0) / (p1 + 1)) {
+      if (qlimit >= 1) {
+        if (p1 != 0 && qlimit > (UV_MAX - p0) / p1) return 0;
         ps = qlimit * p1 + p0;
         qs = qlimit * q1 + q0;
-        if (fabs((NV)ps - xabs*(NV)qs) * (NV)q1 <
-            fabs((NV)p1 - xabs*(NV)q1) * (NV)qs) {
+        pserr = (NV)ps - xabs*(NV)qs;
+        p1err = (NV)p1 - xabs*(NV)q1;
+        if (pserr < 0.0) pserr = -pserr;
+        if (p1err < 0.0) p1err = -p1err;
+        if (pserr * (NV)q1 < p1err * (NV)qs) {
           p1 = ps;  q1 = qs;
         }
       }

@@ -9091,7 +9091,17 @@ sub bestrational {
       if ($m >= 1) {
         my($ps,$qs)=(Mmuladdint($m,$p1,$p0),Mmuladdint($m,$q1,$q0));
         # Is ps/qs closer than p1/q1?  Compare cross-multiplied absolute errors.
-        if (abs($ps - $ax*$qs)*$q1 < abs($p1 - $ax*$q1)*$qs) {
+        my($pserr,$p1err);
+        if (ref($ax)) {
+          $pserr = abs($ax*$qs - $ps) * $q1;
+          $p1err = abs($ax*$q1 - $p1) * $qs;
+        } else {
+          my($nps,$nqs,$np1,$nq1) =
+            map { 0.0 + "$_" } ($ps,$qs,$p1,$q1);
+          $pserr = abs($nps - $ax*$nqs) * $nq1;
+          $p1err = abs($np1 - $ax*$nq1) * $nqs;
+        }
+        if ($pserr < $p1err) {
           ($p1,$q1) = ($ps,$qs);
         }
       }

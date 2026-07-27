@@ -194,6 +194,17 @@ subtest 'bestrational' => sub {
   # Negative
   is_deeply( [bestrational(-0.5, 10)], [-1, 2], "bestrational(-0.5,10)" );
   is_deeply( [bestrational(-2.5, 10)], [-5, 2], "bestrational(-2.5,10)" );
+
+  is_deeply( [map { "$_" } bestrational(2147483647.4, 3)],
+             [qw/6442450942 3/],
+             "bestrational dispatches on native numerator overflow" );
+  is_deeply( [map { "$_" } bestrational(2**-50, "1000000000000000")],
+             [qw/1 1000000000000000/],
+             "bestrational keeps significant small remainder" );
+  is_deeply( [map { "$_" } bestrational(1e-10, "4294967295")],
+             [qw/0 1/],
+             "bestrational avoids oversized partial quotient" );
+
   ok( !eval { bestrational("abc", 10); 1 } && $@ =~ /first argument must be numeric/,
       "bestrational rejects nonnumeric string" );
   ok( !eval { bestrational("NaN", 10); 1 },
