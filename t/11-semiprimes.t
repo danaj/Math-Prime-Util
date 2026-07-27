@@ -9,6 +9,7 @@ use Math::Prime::Util qw/semi_primes
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
+my $use64 = ~0 > 4294967295;
 
 my @small_semis = (4,6,9,10,14,15,21,22,25,26,33,34,35,38,39,46,49,51,55,57,58,62,65,69,74,77,82,85,86,87,91,93,94,95);
 
@@ -71,7 +72,7 @@ plan tests => 2
             + scalar(keys %range_counts)
             + scalar(keys %big_counts)
             + scalar(keys %big_semis)
-            + 1;
+            + 3;
 
 is_deeply( semi_primes($small_semis[-1]), \@small_semis, "semi_primes($small_semis[-1])" );
 
@@ -112,6 +113,24 @@ while (my($n, $spc) = each (%big_counts)) {
 while (my($n, $nth) = each (%big_semis)) {
   # XS routine is within 0.00001.  PP within 0.001.
   cmp_closeto( nth_semiprime_approx($n), $nth, 0.001 * abs($nth), "nth_semiprime_approx($n) ~ $nth");
+}
+
+SKIP: {
+  skip "native semiprime boundaries require XS", 2 unless $usexs;
+  my($maxsemi,$above,$uvmax,$maxidxm1) = $use64
+    ? qw/18446744073709551601 18446744073709551602 18446744073709551615
+         1701748900850019776/
+    : qw/4294967294 4294967295 4294967295 658662064/;
+  is_deeply( semi_primes($above,$uvmax), [],
+             "semi_primes above the largest native semiprime is empty" );
+  my $approx = nth_semiprime_approx($maxidxm1);
+  my $acount = semiprime_count_approx($approx);
+  my $bracketed = $acount == $maxidxm1
+                ? semiprime_count_approx($approx-1) < $maxidxm1
+                : $acount < $maxidxm1
+                  && semiprime_count_approx($approx+1) > $maxidxm1;
+  ok( $approx > 0 && $approx <= $maxsemi && $bracketed,
+      "near-maximum nth_semiprime approximation brackets its count" );
 }
 
 SKIP: {

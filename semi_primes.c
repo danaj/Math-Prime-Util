@@ -144,8 +144,10 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
 {
   UV *S, i, count = 0;
 
+  if (semis != 0) *semis = 0;
   if (lo < 4) lo = 4;
   if (hi > MPU_MAX_SEMI_PRIME) hi = MPU_MAX_SEMI_PRIME;
+  if (lo > hi) return 0;
 
   if (hi <= _semiprimelist[NSEMIPRIMELIST-1]) {
     if (semis == 0) {
@@ -362,7 +364,7 @@ UV semiprime_count_approx(UV n) {
 }
 
 UV nth_semiprime_approx(UV n) {
-  double logn,log2n,log3n,log4n, err_lo, err_md, err_hi, err_factor, est;
+  double logn,log2n,log3n,log4n, err_lo, err_md, err_hi, err_factor, est, dhi;
   UV lo, hi;
 
   if (n < NSEMIPRIMELIST)
@@ -404,7 +406,10 @@ UV nth_semiprime_approx(UV n) {
 
   /* Use inverse interpolation to improve the result. */
   lo = 0.979 * est - 5;
-  hi = 1.03 * est;
+  dhi = 1.03 * est;
+  hi = (dhi >= (double)MPU_MAX_SEMI_PRIME)
+     ? MPU_MAX_SEMI_PRIME
+     : (UV)dhi;
   return inverse_interpolate(lo, hi, n, &semiprime_count_approx, 0);
 }
 
@@ -420,7 +425,7 @@ static UV _prev_semiprime(UV n) {
 }
 UV nth_semiprime(UV n)
 {
-  UV guess, spcnt, sptol, gn, ming = 0, maxg = UV_MAX;
+  UV guess, spcnt, sptol, gn, an, ac, adjust, ming = 0, maxg = UV_MAX;
 
   if (n < NSEMIPRIMELIST)
     return _semiprimelist[n];
@@ -433,20 +438,29 @@ UV nth_semiprime(UV n)
 
   /* Make successive interpolations until small enough difference */
   for (gn = 2; gn < 20; gn++) {
-    IV adjust;
     while (!is_semiprime(guess)) guess++;  /* Guess is a semiprime */
     MPUverbose(2, "  %"UVuf"-th semiprime is around %"UVuf" ... ", n, guess);
     /* Compute exact count at our nth-semiprime guess */
     spcnt = semiprime_count(guess);
-    MPUverbose(2, "(%"IVdf")\n", (IV)(n-spcnt));
+    if (n >= spcnt) { MPUverbose(2, "(%"UVuf")\n", n-spcnt); }
+    else            { MPUverbose(2, "(-%"UVuf")\n", spcnt-n); }
     /* Stop guessing if within our tolerance */
     if (n==spcnt || (n>spcnt && n-spcnt < sptol) || (n<spcnt && spcnt-n < sptol)) break;
     /* Determine how far off we think we are */
-    adjust = (IV) (nth_semiprime_approx(n) - nth_semiprime_approx(spcnt));
+    an = nth_semiprime_approx(n);
+    ac = nth_semiprime_approx(spcnt);
     /* When computing new guess, ensure we don't overshoot.  Rarely used. */
     if (spcnt <= n && guess > ming) ming = guess;   /* Previous guesses */
     if (spcnt >= n && guess < maxg) maxg = guess;
-    guess += adjust;
+    if (an >= ac) {
+      adjust = an-ac;
+      guess = (adjust > MPU_MAX_SEMI_PRIME-guess)
+            ? MPU_MAX_SEMI_PRIME
+            : guess+adjust;
+    } else {
+      adjust = ac-an;
+      guess = (adjust > guess) ? 0 : guess-adjust;
+    }
     if (guess <= ming || guess >= maxg) MPUverbose(2, "  fix min/max for %"UVuf"\n",n);
     if (guess <= ming) guess = ming + sptol - 1;
     if (guess >= maxg) guess = maxg - sptol + 1;
@@ -454,15 +468,24 @@ UV nth_semiprime(UV n)
 
   /* If we have far enough to go, sieve for semiprimes */
   if (n > spcnt && (n-spcnt) > SP_SIEVE_THRESH) {         /* sieve forwards */
-    UV *S, count, i, range;
+    UV *S, count, i, range, end;
     while (n > spcnt) {
-      range = nth_semiprime_approx(n) - nth_semiprime_approx(spcnt);
-      range = 1.10 * range + 100;
-      if (range > guess) range = guess;          /* just in case */
-      if (range > 125000000) range = 125000000;  /* Not too many at a time */
+      an = nth_semiprime_approx(n);
+      ac = nth_semiprime_approx(spcnt);
+      range = (an > ac) ? an-ac : 0;
+      range = (range > 113636272) ? 125000000 : range + range/10 + 100;
+      if (range > MPU_MAX_SEMI_PRIME-guess)
+        range = MPU_MAX_SEMI_PRIME-guess;
+      if (range == 0) return 0;
+      end = guess+range;
       /* Get a bunch of semiprimes */
       MPUverbose(2, "  sieving forward %"UVuf"\n", range);
-      count = range_semiprime_sieve(&S, guess+1, guess+range);
+      count = range_semiprime_sieve(&S, guess+1, end);
+      if (count == 0) {
+        guess = end;
+        Safefree(S);
+        continue;
+      }
       if (spcnt+count <= n) {
         guess = S[count-1];
         spcnt += count;
@@ -475,15 +498,23 @@ UV nth_semiprime(UV n)
       Safefree(S);
     }
   } else if (n < spcnt && (spcnt-n) > SP_SIEVE_THRESH) {  /* sieve backwards */
-    UV *S, count, range;
+    UV *S, count, range, beg;
     while (n < spcnt) {
-      range = nth_semiprime_approx(spcnt) - nth_semiprime_approx(n);
-      range = 1.10 * range + 100;
+      ac = nth_semiprime_approx(n);
+      an = nth_semiprime_approx(spcnt);
+      range = (an > ac) ? an-ac : 0;
+      range = (range > 113636272) ? 125000000 : range + range/10 + 100;
       if (range > guess) range = guess;          /* just in case */
-      if (range > 125000000) range = 125000000;  /* Not too many at a time */
+      if (range == 0) return 0;
+      beg = guess-range;
       /* Get a bunch of semiprimes */
       MPUverbose(2, "  sieving backward %"UVuf"\n", range);
-      count = range_semiprime_sieve(&S, guess-range, guess-1);
+      count = range_semiprime_sieve(&S, beg, guess-1);
+      if (count == 0) {
+        guess = beg;
+        Safefree(S);
+        continue;
+      }
       if (spcnt-count >= n) {
         guess = S[0];
         spcnt -= count;

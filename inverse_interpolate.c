@@ -17,9 +17,6 @@ static const int _dbgprint = 0;
  *    2.  v(x) < n   and v(x+1) > n
  */
 
-#define LINEAR_INTERP(n, lo, hi, rlo, rhi) \
-  (lo + (UV) (((double)(n-rlo) * (double)(hi-lo) / (double)(rhi-rlo))+0.5))
-
 #define MPU_CALLBACK(n)  ((funck) ? funck(n,k) : func(n))
 
 #if 0   /* Debugging return, checking the conditions above. */
@@ -42,6 +39,31 @@ static const int _dbgprint = 0;
 #else
   #define RETURNI(x) { return x; }
 #endif
+
+/* Return a point strictly inside [lo,hi], interpolating the monotonic values
+ * [rlo,rhi].  Subtract before converting to double: large UVs that differ by
+ * only a few units can become the same double. */
+static UV _linear_interpolate(UV lo, UV hi, UV rlo, UV rhi, UV n)
+{
+  UV rdiff, rspan, xspan, move;
+  double dmove;
+
+  MPUassert(hi-lo > 1, "interpolation: no interior point");
+  MPUassert(rlo <= n && n <= rhi, "interpolation: target outside range");
+
+  if (n == rlo) return lo+1;
+  if (n == rhi) return hi-1;
+
+  rdiff = n-rlo;
+  rspan = rhi-rlo;
+  xspan = hi-lo;
+  dmove = (double)rdiff * (double)xspan / (double)rspan + 0.5;
+  move = (dmove >= (double)xspan) ? xspan : (UV)dmove;
+
+  if (move == 0)     return lo+1;
+  if (move >= xspan) return hi-1;
+  return lo+move;
+}
 
 static UV _inverse_interpolate(UV lo, UV hi, UV n,
                                UV k, UV (*funck)(UV mid, UV k),
@@ -91,16 +113,15 @@ static UV _inverse_interpolate(UV lo, UV hi, UV n,
   /* Step 1.  Linear interpolation until rhi is correct. */
   if(_dbgprint)printf("  1  lo %"UVuf" hi %"UVuf"\n", lo, hi);
 
-  mid = (n == rhi)  ?  hi-1  :  LINEAR_INTERP(n,lo,hi,rlo,rhi);
-  if (mid == lo) mid++;  else if (mid == hi) mid--;
+  mid = _linear_interpolate(lo, hi, rlo, rhi, n);
 
   for (iloopc = 1;  (hi-lo) > 1 && rhi > n;  iloopc++) {
     MPUassert(lo < mid && mid < hi, "interpolation: assume 3 unique points");
     rmid = MPU_CALLBACK(mid);
     if (rmid >= n) { hi = mid;  rhi = rmid; }
     else           { lo = mid;  rlo = rmid; }
-    if (rhi == n) break;
-    mid += (IV)(((double)n-(double)rmid)*(double)(hi-lo) / (double)(rhi-rlo));
+    if (rhi == n || (hi-lo) <= 1) break;
+    mid = _linear_interpolate(lo, hi, rlo, rhi, n);
     /* Sometimes we get stuck getting closer and closer but not bracketing.
      * We could do Ridder's method of alternating bisection, or using a
      * multiplier on mid on alternate iterations to reflect about n.
