@@ -13,7 +13,7 @@ static const int _dbgprint = 0;
 
 
 /* Return x with v(x)=func(x,k) s.t. either of:
- *    1.  v(x) == n  and v(x-1-threshold) < n
+ *    1.  v(x) == n  and v(x-1-threshold) < n  [within supplied bounds]
  *    2.  v(x) < n   and v(x+1) > n
  */
 
@@ -27,7 +27,10 @@ static const int _dbgprint = 0;
     /* printf("v  %"UVuf"    rv %"UVuf"   n %"UVuf"\n",v,rv,n); */\
     MPUassert( rv <= n, "BAD INTERP  v > n" ); \
     if (rv == n) { \
-      if (v > threshold) { \
+      /* Approximation callbacks may not be monotonic, so we must only    */ \
+      /* check inside the caller-supplied bounds.                         */ \
+      /* We lose the ability to detect lower bounds that were too high.   */ \
+      if (v > bound_lo && v-bound_lo > threshold) { \
         /* printf("threshold %"UVuf" v %"UVuf"    func(%"UVuf") = %"UVuf"\n", threshold, v, v-1-threshold, MPU_CALLBACK(v-1-threshold)); */\
         MPUassert( MPU_CALLBACK(v-1-threshold) < n, "BAD INTERP  v-1-thresh >= n" ); \
       } \
@@ -40,7 +43,7 @@ static const int _dbgprint = 0;
   #define RETURNI(x) { return x; }
 #endif
 
-/* Return a point strictly inside [lo,hi], interpolating the monotonic values
+/* Return a point strictly inside [lo,hi], interpolating the endpoint values
  * [rlo,rhi].  Subtract before converting to double: large UVs that differ by
  * only a few units can become the same double. */
 static UV _linear_interpolate(UV lo, UV hi, UV rlo, UV rhi, UV n)
@@ -65,11 +68,11 @@ static UV _linear_interpolate(UV lo, UV hi, UV rlo, UV rhi, UV n)
   return lo+move;
 }
 
-static UV _inverse_interpolate(UV lo, UV hi, UV n,
+static UV _inverse_interpolate(UV bound_lo, UV bound_hi, UV n,
                                UV k, UV (*funck)(UV mid, UV k),
                                UV (*func)(UV mid),
                                UV threshold) {
-  UV mid, rlo, rhi, rmid, iloopc;
+  UV mid, rlo, rhi, rmid, iloopc, lo = bound_lo, hi = bound_hi;
 
   if (hi != 0) {
     /* Given both lo and hi, halve the range on start. */

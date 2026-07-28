@@ -153,6 +153,7 @@ UV nth_ramanujan_prime_approx(UV n)
   /* Interpolating using ramanujan prime count approximation */
   lo = nth_ramanujan_prime_lower(n) - 1;
   hi = nth_ramanujan_prime_upper(n);
+  /* Note that ramanujan_prime_count_approx is not monotonic */
   return inverse_interpolate(lo, hi, n, &ramanujan_prime_count_approx, 0);
 }
 
