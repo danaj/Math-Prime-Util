@@ -121,19 +121,28 @@ UV nth_ramanujan_prime_lower(UV n) {
 /* For Ramanujan prime count bounds, use binary searches on the inverses. */
 
 UV ramanujan_prime_count_lower(UV n) {
-  UV lo, hi;
+  UV lo, hi, rlo, rhi;
   FAST_SMALL_COUNT(n);
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
+  rlo = nth_ramanujan_prime_upper(lo);
+  rhi = nth_ramanujan_prime_upper(hi);
+  /* Near UV_MAX, the nth-prime bounds may not bracket a native result. */
+  if (rlo > n || rhi < n) return lo;
   return inverse_interpolate(lo, hi, n, &nth_ramanujan_prime_upper, 0);
 }
 UV ramanujan_prime_count_upper(UV n) {
-  UV lo, hi;
+  UV lo, hi, rlo, rhi;
   FAST_SMALL_COUNT(n);
   /* We know we're between p_2n and p_3n, probably close to the former. */
   lo = prime_count_lower(n)/3;
   hi = prime_count_upper(n) >> 1;
+  rlo = nth_ramanujan_prime_lower(lo);
+  rhi = nth_ramanujan_prime_lower(hi);
+  /* Near UV_MAX, the nth-prime bounds may not bracket a native result. */
+  if (rlo > n) return lo;
+  if (rhi < n) return hi;
   return inverse_interpolate(lo, hi, n, &nth_ramanujan_prime_lower, 0);
 }
 
@@ -270,7 +279,12 @@ UV range_ramanujan_prime_sieve(UV** list, UV lo, UV hi)
 {
   UV first, last, *L;
   L = ramanujan_primes(&first, &last, lo, hi);
-  if (L == 0 || first > last) { *list = 0; return 0; }
+  if (L == 0) { *list = 0; return 0; }
+  if (first > last) {
+    Safefree(L);
+    *list = 0;
+    return 0;
+  }
   if (first > 0)
     memmove( L + 0,  L + first,  (last-first+1) * sizeof(UV) );
   *list = L;
@@ -300,6 +314,7 @@ static UV* _ramanujan_prime_window(UV n, UV* winsize, UV* npos) {
           break;
       if (i < wlen) break;
     }
+    Safefree(L);
     winmult *= 2;
     MPUverbose(1, "  %s increasing window\n", "ramanujan_prime_count");
   }

@@ -31,7 +31,7 @@ my %small_range = (
   "10000 to 10100" => [10061,10067,10079,10091,10093],
 );
 
-plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 2 + 3 + 3;
+plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 2 + 3 + 3 + 2;
 
 is_deeply( ramanujan_primes($a104272[-1]), \@a104272, "ramanujan_primes($a104272[-1])" );
 
@@ -74,6 +74,20 @@ is(cmp_rn(5964377,225792607), 225792607, "ramanujan prime limits for 5964377");
 is(approx_in_range(85,1151,.04), 1151, "ramanujan prime approx for 85");
 is(approx_in_range(59643,1673993,.02), 1673993, "ramanujan prime approx for 59643");
 is(approx_in_range(5964377,225792607,.02), 225792607, "ramanujan prime approx for 5964377");
+
+SKIP: {
+  skip "UV_MAX bound fallback requires XS", 2 unless $usexs;
+  my $uvmax = Math::Prime::Util::prime_get_config->{'maxbits'} > 32
+            ? "18446744073709551615" : "4294967295";
+  my $lo = Math::Prime::Util::divint(
+             Math::Prime::Util::prime_count_lower($uvmax), 3);
+  my $hi = Math::Prime::Util::rshiftint(
+             Math::Prime::Util::prime_count_upper($uvmax), 1);
+  is(ramanujan_prime_count_lower($uvmax), $lo,
+     "ramanujan prime count lower at UV_MAX");
+  is(ramanujan_prime_count_upper($uvmax), $hi,
+     "ramanujan prime count upper at UV_MAX");
+}
 
 sub cmp_rn {
   my($n,$rn) = @_;
