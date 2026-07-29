@@ -10534,7 +10534,7 @@ sub _log_gamma {
 }
 sub _log_binomial {
   my($n,$k) = @_;
-  return 0 if $n < $k;
+  return -1e300 if $n < $k;
   return _log_gamma($n+1) - _log_gamma($k+1) - _log_gamma($n-$k+1);
 }
 sub _log_bern41_binomial {
@@ -10553,7 +10553,8 @@ sub _bern41_acceptable {
   $d = $r-2 if $d > $r-2;
   $i = $d if $i > $d;
   $j = $r-2-$d if $j > ($r-2-$d);
-  return _log_bern41_binomial($r,$d,$i,$j,$s) >= $scmp;
+  # Bias approximation error toward selecting a larger, always-safe s.
+  return _log_bern41_binomial($r,$d,$i,$j,$s) >= $scmp + 1e-7;
 }
 
 sub is_aks_prime {
@@ -10580,8 +10581,9 @@ sub is_aks_prime {
   }
 
   {
-    my $bi = 1;
+    my $bi = int(0.475 * ($r-1));
     my $bj = $rmult * ($r-1);
+    $bi = 1 if $bi < 1;
     while ($bi < $bj) {
       $s = $bi + (($bj-$bi) >> 1);
       if (!_bern41_acceptable($n, $r, $s)) { $bi = $s+1; }

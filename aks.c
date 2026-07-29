@@ -88,7 +88,7 @@ static double log_gamma(double x)
 #if IMPL_BERN41
 static double log_binomial(UV n, UV k)
 {
-  if (n < k) return 0;
+  if (n < k) return -DBL_MAX;
   return log_gamma(n+1) - log_gamma(k+1) - log_gamma(n-k+1);
 }
 static double log_bern41_binomial(UV r, UV d, UV i, UV j, UV s)
@@ -107,7 +107,8 @@ static int bern41_acceptable(UV n, UV r, UV s)
   if (d > r-2)     d = r-2;
   if (i > d)       i = d;
   if (j > (r-2-d)) j = r-2-d;
-  return (log_bern41_binomial(r,d,i,j,s) >= scmp);
+  /* Bias approximation error toward selecting a larger, always-safe s. */
+  return (log_bern41_binomial(r,d,i,j,s) >= scmp + 1e-7);
 }
 #endif
 
@@ -146,7 +147,7 @@ static void poly_mod_mul(UV* px, UV* py, UV* res, UV r, UV mod)
   /* We can sum at least j values at once */
   j = (mod >= HALF_WORD) ? 0 : (UV_MAX / ((mod-1)*(mod-1)));
 
-  if (j >= degpx || j >= degpy) {
+  if (j > degpx || j > degpy) {
     /* res will be written completely, so no need to set */
     for (rindex = 0; rindex < r; rindex++) {
       UV sum = 0;
@@ -392,9 +393,10 @@ bool is_aks_prime(UV n)
     while ( !is_primitive_root(n,r,1) || !bern41_acceptable(n,r,rmult*(r-1)) )
       r = next_prime(r);
 
-    { /* Binary search for first s in [1,slim] where conditions met */
-      UV bi = 1;
+    { /* Binary search for first s in [bi,bj] where conditions met */
+      UV bi = (UV)(0.475 * (r-1));
       UV bj = rmult * (r-1);
+      if (bi < 1) bi = 1;
       while (bi < bj) {
         s = bi + (bj-bi)/2;
         if (!bern41_acceptable(n, r, s))  bi = s+1;
