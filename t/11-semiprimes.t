@@ -72,7 +72,7 @@ plan tests => 2
             + scalar(keys %range_counts)
             + scalar(keys %big_counts)
             + scalar(keys %big_semis)
-            + 3;
+            + 4;
 
 is_deeply( semi_primes($small_semis[-1]), \@small_semis, "semi_primes($small_semis[-1])" );
 
@@ -131,6 +131,15 @@ SKIP: {
                   && semiprime_count_approx($approx+1) > $maxidxm1;
   ok( $approx > 0 && $approx <= $maxsemi && $bracketed,
       "near-maximum nth_semiprime approximation brackets its count" );
+}
+
+SKIP: {
+  skip "large native semiprime range requires 64-bit XS", 1
+    unless $usexs && $use64;
+  is_deeply(
+    semi_primes("20019396133340429", "20019396133340431"), [],
+    "semi_primes handles a decreasing range-count approximation"
+  );
 }
 
 SKIP: {

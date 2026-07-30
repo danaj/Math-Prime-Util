@@ -86,7 +86,6 @@ UV semiprime_count(UV n)
             xend = next_prime(xend);
             xoff = prime_count(xbeg);
             xsize = range_prime_sieve(&xarr, xbeg, xend);
-            xend = xarr[xsize-1];
           }
           cnt = xoff + _bs_count(np, xarr, xsize-1);
         } else {
@@ -186,7 +185,10 @@ UV range_semiprime_sieve(UV** semis, UV lo, UV hi)
         if (nfacs[i-lo] == 1)
           count++;
     } else {
-      UV cn = 50 + 1.01 * (semiprime_count_approx(hi) - semiprime_count_approx(lo));
+      UV ac_lo = semiprime_count_approx(lo);
+      UV ac_hi = semiprime_count_approx(hi);
+      UV delta = (ac_hi > ac_lo) ? ac_hi-ac_lo : 0;
+      UV cn = 50 + delta + delta/100;
       New(0, S, cn, UV);
       for (i = lo; i <= hi; i++) {
         if (nfacs[i-lo] == 1) {
