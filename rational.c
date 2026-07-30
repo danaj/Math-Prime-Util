@@ -136,8 +136,14 @@ UV calkin_wilf_n(UV num, UV den)
   uint32_t bit, d = 1, shift = 0;
   int i, steps = contfrac(&cf, &rem, num, den);
 
-  if (rem != 1)   croak("Rational must be reduced");
-  if (steps == 0) return 0;
+  if (rem != 1) {
+    Safefree(cf);
+    croak("Rational must be reduced");
+  }
+  if (steps == 0) {
+    Safefree(cf);
+    return 0;
+  }
 
   cf[steps-1]--;
   for (i = 0; i < steps; i++) {
@@ -254,6 +260,8 @@ UV farey_array(uint32_t n, uint32_t **rnum, uint32_t **rden)
 
   if (n < 1 || len < 2 || len >= UVCONST(4294967295))
     return 0;
+  if (len > MAX_SIZET / sizeof(*num))
+    return 0;
 
   New(0, num, len, uint32_t);
   New(0, den, len, uint32_t);
@@ -294,6 +302,7 @@ UV farey_array(uint32_t n, uint32_t **rnum, uint32_t **rden)
 UV farey_rank(uint32_t n, uint32_t p, uint32_t q)
 {
   uint32_t *count, i, g;
+  Size_t count_len;
   UV sum;
 
   if (n == 0 || q == 0 || p == 0) return 0;
@@ -303,7 +312,9 @@ UV farey_rank(uint32_t n, uint32_t p, uint32_t q)
   if (g != 1) { p /= g;  q /= g; }
   if ((UV)n > UV_MAX / (UV)p) return UV_MAX;
 
-  New(0, count, (size_t)n+1, uint32_t);
+  count_len = (Size_t)n + 1;
+  if (count_len > MAX_SIZET / sizeof(*count)) return UV_MAX;
+  New(0, count, count_len, uint32_t);
 
   for (i = 2; i <= n; i++)
     count[i] = ((UV)i * p - 1) / q;
@@ -391,6 +402,7 @@ int kth_farey(uint32_t n, UV k, uint32_t* p, uint32_t* q)
   uint32_t lo = 1, hi = n;
   UV cnt = 1;
 
+  if (n == 0) return 0;
   if (k < 2) {
     if (k == 0) { *p = 0;  *q = 1; }
     else        { *p = 1;  *q = n; }
@@ -458,7 +470,7 @@ bool bestrational(UV* n, UV* d, NV x, UV dbound)
   UV a, p0, q0, p1, q1, p2, q2, qlimit, ps, qs;
   NV xabs, rem, invrem, pserr, p1err;
   xabs = x < 0.0 ? -x : x;
-  if (xabs >= (NV)UV_MAX)
+  if (dbound == 0 || !(xabs < (NV)UV_MAX))
     return 0;
   p0 = 1;  q0 = 0;
   p1 = (UV)xabs;  q1 = 1;
