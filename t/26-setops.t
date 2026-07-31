@@ -127,6 +127,7 @@ my @set2 = (
 
 plan tests => 2        # specific tests
             + 1        # empty-set non-aliasing
+            + 1        # set results do not share input values
             + 1        # mutating set ops preserve second arg
             + 1        # toset
             + 4        # union etc. on sets and lists
@@ -169,6 +170,24 @@ subtest 'empty-set ops return new refs', sub {
   isnt($r4, $d, 'setminus normalized result does not alias input');
   isnt($r5, $d, 'setdelta right empty normalized result does not alias input');
   isnt($r6, $e, 'setdelta left empty normalized result does not alias input');
+};
+
+subtest 'set operation results do not share input values', sub {
+  my @cases = (
+    [setunion     => \&setunion,     [1,3],   [2,4]],
+    [setintersect => \&setintersect, [1,2,3], [2,3,4]],
+    [setminus     => \&setminus,     [1,2,3], [2]],
+    [setdelta     => \&setdelta,     [1,3],   [2,4]],
+  );
+  for my $case (@cases) {
+    my($name, $code, $a, $b) = @$case;
+    my @orig_a = @$a;
+    my @orig_b = @$b;
+    my $result = $code->($a,$b);
+    $_ += 100 for @$result;
+    is_deeply($a, \@orig_a, "$name result does not share first input values");
+    is_deeply($b, \@orig_b, "$name result does not share second input values");
+  }
 };
 
 subtest 'mutating set ops preserve second arg', sub {

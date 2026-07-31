@@ -100,7 +100,7 @@ bool xs_set_relation(pTHX_ SV* sva, SV* svb, set_relation_op_t op, int *ret, con
 {
   int atype, btype;
   UV *ra, *rb;
-  size_t alen, blen, inalen, inblen;
+  size_t alen, blen;
 
   if (op < SET_REL_DISJOINT || op > SET_REL_PROPER_INTERSECTION)
     croak("%s: unknown set relation", name);
@@ -109,11 +109,10 @@ bool xs_set_relation(pTHX_ SV* sva, SV* svb, set_relation_op_t op, int *ret, con
    * is_in_set().  We'll keep things simple and slurp in both sets. */
 
   /* THIS ASSUMES THE INPUT LISTS HAVE NO DUPLICATES */
-  inalen = inblen = 0;
   if (SvROK(sva) && SvTYPE(SvRV(sva)) == SVt_PVAV && SvROK(svb) && SvTYPE(SvRV(svb)) == SVt_PVAV) {
     /* Shortcut on length if we can to skip intersection. */
-    inalen = av_count((AV*) SvRV(sva));
-    inblen = av_count((AV*) SvRV(svb));
+    size_t inalen = av_count((AV*) SvRV(sva));
+    size_t inblen = av_count((AV*) SvRV(svb));
     if ( (op == SET_REL_EQUAL           && inalen != inblen) ||
          (op == SET_REL_SUBSET          && inalen <  inblen) ||
          (op == SET_REL_PROPER_SUBSET   && inalen <= inblen) ||
@@ -196,7 +195,9 @@ static SV* set_arrayref_from_sv_merge(pTHX_ SV **aa, size_t alen, SV **bb, size_
   int inc_eq = (op == SET_OP_UNION || op == SET_OP_INTERSECT);
   int inc_lt = (op != SET_OP_INTERSECT);
   int inc_gt = (op == SET_OP_UNION || op == SET_OP_DELTA);
-  size_t maxlen = (op == SET_OP_INTERSECT) ? (alen < blen ? alen : blen) : alen + blen;
+  size_t maxlen = (op == SET_OP_INTERSECT) ? (alen < blen ? alen : blen)
+                : (op == SET_OP_MINUS)     ? alen
+                                           : alen + blen;
   AV *av = newAV();
   size_t rlen = 0, ia = 0, ib = 0;
   SV **ar;
@@ -207,22 +208,23 @@ static SV* set_arrayref_from_sv_merge(pTHX_ SV **aa, size_t alen, SV **bb, size_
   }
   ar = AvARRAY(av);
 
+  /* This function is only called when all values are unsigned. */
   while (ia < alen && ib < blen) {
     UV va = SvUVX(aa[ia]), vb = SvUVX(bb[ib]);
     if (va == vb) {
-      if (inc_eq) ar[rlen++] = SvREFCNT_inc(aa[ia]);
+      if (inc_eq) ar[rlen++] = newSVuv(va);
       ia++;
       ib++;
     } else if (va < vb) {
-      if (inc_lt) ar[rlen++] = SvREFCNT_inc(aa[ia]);
+      if (inc_lt) ar[rlen++] = newSVuv(va);
       ia++;
     } else {
-      if (inc_gt) ar[rlen++] = SvREFCNT_inc(bb[ib]);
+      if (inc_gt) ar[rlen++] = newSVuv(vb);
       ib++;
     }
   }
-  if (inc_lt) while (ia < alen) ar[rlen++] = SvREFCNT_inc(aa[ia++]);
-  if (inc_gt) while (ib < blen) ar[rlen++] = SvREFCNT_inc(bb[ib++]);
+  if (inc_lt) while (ia < alen) ar[rlen++] = newSVuv(SvUVX(aa[ia++]));
+  if (inc_gt) while (ib < blen) ar[rlen++] = newSVuv(SvUVX(bb[ib++]));
   av_fill(av, (SSize_t)rlen - 1);
 
   return newRV_noinc((SV*)av);
@@ -238,8 +240,8 @@ bool xs_set_op(pTHX_ SV* sva, SV* svb, set_op_t op, SV **ret, const char *name)
     croak("%s: unknown set operation", name);
 
   /* Fast path: both inputs are non-magical arrayrefs of native non-negative
-   * sorted unique integers.  Merge SV* directly, preserving existing values
-   * and skipping intermediate UV arrays and per-element newSVuv calls. */
+   * sorted unique integers.  Merge directly from the input SVs, skipping
+   * intermediate UV arrays and input conversion and sorting. */
   {
     size_t fa, fb;
     SV **aa = _check_sorted_nonneg_arrayref(aTHX_ sva, &fa);
