@@ -6140,7 +6140,7 @@ void setinsert(IN SV* sva, ...)
       }
       _sc_clear_cache(&svcache);
       /* Get hi and lo values of set. */
-      if (_sc_set_lohi(aTHX_ AvARRAY(ava), &svcache, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
+      if (_sc_set_lohi(aTHX_ ava, &svcache, alen, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
         if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0) {
           Safefree(rb);
           croak("%s: expected numerically ascending sorted input", SUBNAME);

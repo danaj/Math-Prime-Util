@@ -77,7 +77,20 @@ use Math::Prime::Util qw/setunion setintersect setminus setdelta
                          powint addint subint negint/;
 use Math::BigInt;
 
+{
+  package Math::Prime::Util::TestMutatingSetInteger;
+  use overload q{""} => sub {
+    my($self) = @_;
+    if (!$self->{mutated}++) {
+      push @{$self->{array}}, @{$self->{append}};
+    }
+    $self->{value};
+  }, fallback => 1;
+}
+package main;
+
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 
 my $bi1 = Math::BigInt->new("59724578844314338843734830435499460367");
 my $bi2 = Math::BigInt->new("98198086365677506205371483123156488634");
@@ -395,6 +408,28 @@ subtest 'setcontains', sub {
     my @odd  = map { 2*$_+1 } 0..300;
     is( setcontains(\@odd,[2,4,8,16,32,64,128]), 0, "odds < 600 does not contain an even set");
     is( setcontains(\@odd,[1,3,7,15,31,63,127]), 1, "odds < 600 contains an odd set");
+  }
+
+  SKIP: {
+    skip "XS set array cache refresh", 2 unless $usexs;
+    {
+      my @set;
+      my $object = bless {
+        array => \@set, append => [3..10_002], value => 1
+      }, "Math::Prime::Util::TestMutatingSetInteger";
+      @set = ($object, 2);
+      ok(setcontains(\@set, 2),
+         "setcontains handles endpoint validation changing array storage");
+    }
+    {
+      my @set;
+      my $object = bless {
+        array => \@set, append => [6..10_005], value => 3
+      }, "Math::Prime::Util::TestMutatingSetInteger";
+      @set = (1, 2, $object, 4, 5);
+      ok(setcontains(\@set, 3),
+         "setcontains handles midpoint validation changing array storage");
+    }
   }
 };
 

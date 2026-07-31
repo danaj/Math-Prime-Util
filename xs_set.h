@@ -30,7 +30,7 @@ typedef struct { /* lo in 0, hi in 1, cached values in rest */
 } set_data_t;
 
 void _sc_clear_cache(set_data_t *cache);
-int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival);
+int _sc_set_lohi(pTHX_ AV* av, set_data_t *cache, Size_t len, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival);
 
 SSize_t insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val);
 SSize_t index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val);

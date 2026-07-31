@@ -51,21 +51,28 @@ void _sc_clear_cache(set_data_t *cache) {
   memset(cache->status, 0, sizeof(signed char) * (2+MPU_SC_SIZE));
 }
 
-#define _SC_GET_VALUE(statvar, var, arr, i) \
-  statvar = _validate_and_set(&var, aTHX_ arr[i], IFLAG_ANY); \
-  if (statvar == 0) return -1;
+#define _SC_GET_VALUE(statvar, var, av, len, i) \
+  do { \
+    Size_t len_ = (len), index_ = (i); \
+    SV **arr_; \
+    if (index_ >= len_ || av_count(av) != len_) return -1; \
+    arr_ = AvARRAY(av); \
+    if (arr_[index_] == 0) return -1; \
+    statvar = _validate_and_set(&var, aTHX_ arr_[index_], IFLAG_ANY); \
+    if (statvar == 0 || av_count(av) != len_) return -1; \
+  } while (0)
 
-#define SC_SET_MID_VALUE(statvar, var, arr, i, cache) \
+#define SC_SET_MID_VALUE(statvar, var, av, len, i, cache) \
   do { \
     if (cache == 0) { \
-      _SC_GET_VALUE(statvar, var, arr, i) \
+      _SC_GET_VALUE(statvar, var, av, len, i); \
     } else { \
       unsigned int imod_ = 2 + ((i) % MPU_SC_SIZE); \
       if (cache->status[imod_] != 0 && cache->index[imod_] == i) { \
         statvar = cache->status[imod_]; \
         var     = cache->value[imod_]; \
       } else { \
-        _SC_GET_VALUE(statvar, var, arr, i) \
+        _SC_GET_VALUE(statvar, var, av, len, i); \
         cache->status[imod_] = statvar; \
         cache->value[imod_]  = var; \
         cache->index[imod_]  = i; \
@@ -73,12 +80,12 @@ void _sc_clear_cache(set_data_t *cache) {
     } \
   } while (0)
 
-int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
+int _sc_set_lohi(pTHX_ AV* av, set_data_t *cache, Size_t len, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
 {
   if (cache && cache->status[0] != 0) {
     *lostatus = cache->status[0];  *loval = cache->value[0];
   } else {
-    _SC_GET_VALUE(*lostatus, *loval, avarr, loindex);
+    _SC_GET_VALUE(*lostatus, *loval, av, len, loindex);
     if (cache) {
       cache->status[0] = *lostatus;
       cache->value[0]  = *loval;
@@ -87,7 +94,7 @@ int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, Size_t loindex, Size_t hii
   if (cache && cache->status[1] != 0) {
     *histatus = cache->status[1];  *hival = cache->value[1];
   } else {
-    _SC_GET_VALUE(*histatus, *hival, avarr, hiindex);
+    _SC_GET_VALUE(*histatus, *hival, av, len, hiindex);
     if (cache) {
       cache->status[1] = *histatus;
       cache->value[1] = *hival;
@@ -414,7 +421,6 @@ static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, 
   Size_t len, lo, hi;
   int lostatus, histatus, midstatus, cmp;
   UV  rlo, rhi, rmid;
-  SV** arr;
 
   if (sign != 1 && sign != -1)
     return -1;
@@ -425,11 +431,10 @@ static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, 
   }
   if (len >= (Size_t)MAX_SSIZET)
     return -1;
-  arr = AvARRAY(av);
 
   lo = 0;
   hi = len-1;
-  if (_sc_set_lohi(aTHX_ arr, cache, lo, hi, &lostatus, &histatus, &rlo, &rhi) < 0)
+  if (_sc_set_lohi(aTHX_ av, cache, len, lo, hi, &lostatus, &histatus, &rlo, &rhi) < 0)
     return -1;
 
   cmp = _sign_cmp(sign, val, lostatus, rlo);
@@ -441,7 +446,7 @@ static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, 
 
   while (hi-lo > 1) {
     Size_t mid = lo + ((hi-lo) >> 1);
-    SC_SET_MID_VALUE(midstatus, rmid, arr, mid, cache);
+    SC_SET_MID_VALUE(midstatus, rmid, av, len, mid, cache);
     cmp = _sign_cmp(midstatus, rmid, sign, val);
     if (cmp == 0) { *eq = 1; return mid; }
     if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
