@@ -3620,7 +3620,7 @@ This is the reverse-order equivalent of L</vecsorti>.
 Compare two arrays for equality, including nested arrays.  The values inside
 the two input array references must be either an array reference, a scalar,
 or undef.  Simple integers are tested with integer comparison, while other
-scalars use string comparison.
+scalars use string comparison.  Sparse array holes are treated as undef.
 
 This is a vector comparison, not set comparison, so ordering is important.
 For the sake of wider applicability, non-integers are allowed.  Types other

@@ -15,6 +15,16 @@ use Math::Prime::Util qw/vecreduce addint
                          vecsort vecsorti vecrsort vecrsorti
                          vecany vecall vecnotall vecnone vecfirst vecfirstidx/;
 
+{
+  package Math::Prime::Util::TestMutatingString;
+  use overload q{""} => sub {
+    my($self) = @_;
+    push @{$self->{array}}, (3) x 10_000;
+    2;
+  }, fallback => 1;
+}
+package main;
+
 # vecmex      in t/26-mex.t
 # vecpmex     in t/26-mex.t
 # vecsample   in t/26-randperm.t
@@ -44,6 +54,7 @@ use Math::Prime::Util qw/vecreduce addint
 # vecsorti and vecrsorti modify and return the input array reference by design.
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
+my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
 my @vecmins = (
@@ -283,6 +294,29 @@ subtest 'vecequal', sub {
   is(vecequal([1,2,3],[3,2,1]), 0, "vecequal([1,2,3],[3,2,1]) = 0");
   is(vecequal([-1,2,3],[-1,2,3]), 1, "vecequal([-1,2,3],[-1,2,3]) = 1");
   is(vecequal([undef,[1,2],"a"],[undef,[1,2],"a"]), 1, "vecequal([undef,[1,2],\"a\"],[undef,[1,2],\"a\"] = 1");
+  my $uvmax = addint($use64 ? "18446744073709551615" : "4294967295", 0);
+  is(vecequal([-1],[$uvmax]), 0, "vecequal distinguishes -1 from UV_MAX");
+  is(vecequal(["a\0x"],["a\0y"]), 0, "vecequal compares strings after embedded NULs");
+  {
+    my $utf8 = "\x{e9}";
+    my $bytes = "\xe9";
+    utf8::upgrade($utf8);
+    is(vecequal([$utf8],[$bytes]), 1, "vecequal uses Perl UTF-8 string semantics");
+  }
+  {
+    my $a = bless [1,[2,3]], "Math::Prime::Util::TestArray";
+    my $b = bless [1,[2,3]], "Math::Prime::Util::TestArray";
+    is(vecequal([$a],[$b]), 1, "vecequal recurses into blessed array references");
+  }
+  {
+    my (@a, @b);
+    $#a = $#b = 1;
+    $b[1] = undef;
+    is(vecequal(\@a,\@a), 1, "vecequal accepts matching sparse arrays");
+    is(vecequal(\@a,\@b), 1, "vecequal treats holes as undef");
+    $b[1] = 1;
+    is(vecequal(\@a,\@b), 0, "vecequal distinguishes holes from defined values");
+  }
   eval { vecequal([[1,2]],[{a=>1}]) };
   like($@, qr/scalar or array reference/, "vecequal rejects hashrefs");
   eval { my $x = 1; vecequal([\$x],[\$x]) };
@@ -444,6 +478,16 @@ subtest 'vecsort', sub {
 
   is_deeply([[@s],[@t]], [[5,2,1,3,4],[1,2,3,4,5]], "vecsort sorts without modifying input");
   is_deeply([[vecrsort(\@s)],[@s]], [[5,4,3,2,1],[5,2,1,3,4]], "vecrsort sorts without modifying input");
+
+  SKIP: {
+    skip "XS array cache refresh", 1 unless $usexs;
+    my @input;
+    my $object = bless {array => \@input}, "Math::Prime::Util::TestMutatingString";
+    @input = ($object, 1);
+    is_deeply([vecsort(\@input)], [1,2],
+              "vecsort refreshes array storage after overloaded validation");
+    delete $object->{array};
+  }
 
   my @ivd = (qw/-3937 4322 -3619 -390 2039 2123 -1614 -879 -4372 1793 4404 4229 286 -3613 2707 -4166 4025 2450 -2003 3390 4498 -3094 -4854 3441 3501 -2871 -1206 315 71 -2101 4881 -3141 10 -2545 -2825 -519 3534 -4904 -3523 -1170 -3 3 -2 2 -1 1 0/);
   my @sivd = (qw/-4904 -4854 -4372 -4166 -3937 -3619 -3613 -3523 -3141 -3094 -2871 -2825 -2545 -2101 -2003 -1614 -1206 -1170 -879 -519 -390 -3 -2 -1 0 1 2 3 10 71 286 315 1793 2039 2123 2450 2707 3390 3441 3501 3534 4025 4229 4322 4404 4498 4881/);

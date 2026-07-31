@@ -1083,6 +1083,7 @@ static void xs_aref_to_canonical(pTHX_ SV* aref, const char* name) {
     out = xs_to_canonical(aTHX_ elem);
     if (out != elem)
       sv_setsv(elem, out);
+    REFRESH_ARREF(input);
   }
 }
 
@@ -2793,7 +2794,9 @@ vecextract(IN SV* x, IN SV* svm)
       DECL_ARREF(mav);
       USE_ARREF(mav, svm, SUBNAME, AR_READ);
       for (j = 0; (Size_t)j < len_mav; j++) {
-        if (_validate_and_set(&mask, aTHX_ FETCH_ARREF(mav,j), IFLAG_IV) != 0) {
+        int status = _validate_and_set(&mask, aTHX_ FETCH_ARREF(mav,j), IFLAG_IV);
+        REFRESH_ARREF(mav);
+        if (status != 0) {
           SV** VV = av_fetch(av, (SSize_t)mask, 0);
           XPUSHs( VV ? *VV : &PL_sv_undef );
         } else {
@@ -6065,6 +6068,7 @@ void setcontains(IN SV* sva, ...)
       for (i = 0; i < blen && subset == findall; i++) {
         bstatus = _validate_and_set(&b, aTHX_ FETCH_ARREF(arb,i), IFLAG_ANY);
         subset = is_in_set(aTHX_ ava, &svcache, bstatus, b);
+        REFRESH_ARREF(arb);
       }
     } else {
       UV *rb;
@@ -6531,7 +6535,9 @@ void permtonum(IN SV* svp)
       int V[21], A[21] = {0};
       for (i = 0; i < plen; i++) {
         SV *iv = FETCH_ARREF(avp,i);
-        if (_validate_and_set(&val, aTHX_ iv, IFLAG_NONNEG) != 1)
+        int status = _validate_and_set(&val, aTHX_ iv, IFLAG_NONNEG);
+        REFRESH_ARREF(avp);
+        if (status != 1)
           break;
         if (val >= plen || A[val] != 0) break;
         A[val] = i+1;
@@ -7766,6 +7772,7 @@ void forsetproduct (SV* block, ...)
       for (j = 0; j < (SSize_t)len_inav; j++) {
         SV* v = FETCH_ARREF(inav,j);
         arsvs[i][j] = v ? newSVsv(v) : newSV(0);
+        REFRESH_ARREF(inav);
       }
     }
     START_FORCOUNT;
@@ -8219,6 +8226,8 @@ PPCODE:
         SvSetMagicSV(atmp, a);
         SvSetMagicSV(btmp, b);
         SC_MULTICALL_ARRAY(result_av);
+        REFRESH_ARREF(arr1);
+        REFRESH_ARREF(arr2);
       }
       FIX_MULTICALL_REFCOUNT;
       SC_POP_MULTICALL;
@@ -8238,6 +8247,8 @@ PPCODE:
         for (k = 0; k < nret; k++)
           av_push(result_av, newSVsv(SP[k + 1 - nret]));
         SP -= nret;  PUTBACK;
+        REFRESH_ARREF(arr1);
+        REFRESH_ARREF(arr2);
       }
     }
 

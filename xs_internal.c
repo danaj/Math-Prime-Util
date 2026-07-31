@@ -350,6 +350,10 @@ SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i) {
     SV **svp = av_fetch(av, i, 0);
     return svp ? *svp : &PL_sv_undef;
   }
+#ifdef DEBUGGING
+  MPUassert(svarr == AvARRAY(av), "_fetch_arref has stale AvARRAY");
+  MPUassert(i < av_count(av), "_fetch_arref index exceeds array");
+#endif
   return svarr[i] ? svarr[i] : &PL_sv_undef;
 }
 
@@ -390,6 +394,10 @@ int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sv
       r[i] = (UV)n;
     } else {
       READ_UV_IARR(r[i], iv, itype);
+      /* After the validate, it's possible that an overload has caused
+       * arbitrary Perl to run, meaning we need to protect against
+       * pathological cases where the array reference is modified. */
+      REFRESH_ARREF(avp);
     }
   }
   if (i < len) {
@@ -542,9 +550,8 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
     SV *sva, *svb;
     int res;
 
-    if (!iva || !ivb)  return -1;
-    sva = *iva;
-    svb = *ivb;
+    sva = (iva && *iva) ? *iva : &PL_sv_undef;
+    svb = (ivb && *ivb) ? *ivb : &PL_sv_undef;
 
     if (!SvOK(sva) && !SvOK(svb))  /* Two undefs are fine. */
       continue;
@@ -554,39 +561,49 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
     if (SvTYPE(sva) >= SVt_PVAV || SvTYPE(svb) >= SVt_PVAV)
       return -1;
 
-    /* One of them is a non-object reference */
-    if ( (SvROK(sva) && !sv_isobject(sva)) ||
-         (SvROK(svb) && !sv_isobject(svb)) ) {
-      /* Always error if either one is not an array reference. */
-      if ( (SvROK(sva) && SvTYPE(SvRV(sva)) != SVt_PVAV) ||
-           (SvROK(svb) && SvTYPE(SvRV(svb)) != SVt_PVAV) )
+    {
+      int a_is_ref = SvROK(sva), b_is_ref = SvROK(svb);
+      int a_is_array = a_is_ref && SvTYPE(SvRV(sva)) == SVt_PVAV;
+      int b_is_array = b_is_ref && SvTYPE(SvRV(svb)) == SVt_PVAV;
+
+      if (a_is_array || b_is_array) {
+        if (a_is_array && b_is_array) {
+          res = _compare_array_refs(aTHX_ sva, svb);
+          if (res == 1) continue;
+          return res;
+        }
+        /* An array and scalar differ; an array and other reference is invalid. */
+        return (!a_is_ref || !b_is_ref) ? 0 : -1;
+      }
+      /* Non-object references other than arrays are invalid. */
+      if ( (a_is_ref && !sv_isobject(sva)) ||
+           (b_is_ref && !sv_isobject(svb)) )
         return -1;
-      /* One reference, one non-reference = not equal */
-      if (SvROK(sva) != SvROK(svb))
-        return 0;
-      /* Now we know both are array references.  Compare. */
-      res = _compare_array_refs(aTHX_ sva, svb);
-      if (res == 1) continue;
-      return res;
     }
 
     /* Common case: two simple integers */
     if (    SVNUMTEST(sva) && SVNUMTEST(svb)
          && (SvTYPE(sva) == SVt_IV || SvTYPE(sva) == SVt_PVIV)
          && (SvTYPE(svb) == SVt_IV || SvTYPE(svb) == SVt_PVIV) ) {
-      UV va = my_svuv(sva), vb = my_svuv(svb);
-      if (va != vb) return 0;
+      if (SvIsUV(sva)) {
+        if (SvIsUV(svb)) {
+          if (SvUVX(sva) != SvUVX(svb)) return 0;
+        } else {
+          IV vb = SvIVX(svb);
+          if (vb < 0 || SvUVX(sva) != (UV)vb) return 0;
+        }
+      } else if (SvIsUV(svb)) {
+        IV va = SvIVX(sva);
+        if (va < 0 || (UV)va != SvUVX(svb)) return 0;
+      } else if (SvIVX(sva) != SvIVX(svb)) {
+        return 0;
+      }
       continue;
     }
 
     /* This function is more useful if we allow more than strictly integers */
-    {  /* Compare the string representation */
-      STRLEN alen, blen;
-      const char* stra = SvPV(sva, alen);
-      const char* strb = SvPV(svb, blen);
-      if (alen != blen || strcmp(stra,strb) != 0)
-        return 0;
-    }
+    if (!sv_eq(sva, svb))  /* Compare using Perl string semantics. */
+      return 0;
   }
   return 1;
 }

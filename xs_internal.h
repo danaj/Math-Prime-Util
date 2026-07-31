@@ -120,6 +120,15 @@
   } while(0)
 
 #define FETCH_ARREF(name,i) _fetch_arref(aTHX_ avp_ ## name, svarr_ ## name, i)
+#define REFRESH_ARREF(name) \
+  do { \
+    if (svarr_ ## name != 0) { \
+      if (len_ ## name == av_count(avp_ ## name)) \
+        svarr_ ## name = AvARRAY(avp_ ## name); \
+      else \
+        svarr_ ## name = 0; \
+    } \
+  } while (0)
 
 /* This is NEGATE_2UV(iv) from handy.h */
 #define neg_iv(n) ((UV)-((n)+1) + 1U)
