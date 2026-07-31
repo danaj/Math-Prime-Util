@@ -6157,7 +6157,7 @@ void setinsert(IN SV* sva, ...)
           New(0, insert_idx, nmidcheck, size_t);
           New(0, insert_sv,  nmidcheck, SV*);
           for (i = nbeg; bstatus != 0 && i < blen-nend; i++) {
-            int index = insert_index_in_set(aTHX_ ava,&svcache,bstatus,rb[i]);
+            SSize_t index = insert_index_in_set(aTHX_ ava,&svcache,bstatus,rb[i]);
             if (index < 0) {
               for (j = 0; j < nmid; j++)
                 SvREFCNT_dec(insert_sv[j]);
@@ -6167,16 +6167,16 @@ void setinsert(IN SV* sva, ...)
               croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
             }
             if (index > 0) {
-              insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]);/* Value to insert */
-              insert_idx[nmid] = index-1;                /* Where to insert */
+              insert_sv[nmid]  = NEWSVINT(bstatus,rb[i]); /* Value to insert */
+              insert_idx[nmid] = (Size_t)index-1;         /* Where to insert */
               nmid++;
             }
           }
           av_extend(ava, alen + nmid + nbeg + nend);
           if (nmid > 0) {
             SV** arr;
-            unsigned long index_lastorig = alen-1;
-            unsigned long index_moveto   = index_lastorig + nmid;
+            Size_t index_lastorig = alen-1;
+            Size_t index_moveto   = index_lastorig + nmid;
 
             /* Push new values on end so Perl calculates array correctly. */
             for (i = 0; i < nmid; i++)
@@ -6257,14 +6257,14 @@ void setremove(IN SV* sva, ...)
         /* Create index list to remove */
         New(0, del_idx, blen, Size_t);
         for (i = 0; i < blen; i++) {
-          int index = index_in_set(aTHX_ ava, &svcache, bstatus, rb[i]);
+          SSize_t index = index_in_set(aTHX_ ava, &svcache, bstatus, rb[i]);
           if (index < 0) {
             Safefree(del_idx);
             Safefree(rb);
             croak("%s: expected sorted input, found bigint value in interior", SUBNAME);
           }
           if (index > 0)
-            del_idx[ndel++] = index-1;
+            del_idx[ndel++] = (Size_t)index-1;
         }
         Safefree(rb);
         if (ndel > 0) {

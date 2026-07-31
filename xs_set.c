@@ -73,7 +73,7 @@ void _sc_clear_cache(set_data_t *cache) {
     } \
   } while (0)
 
-int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, int loindex, int hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
+int _sc_set_lohi(pTHX_ SV** avarr, set_data_t *cache, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
 {
   if (cache && cache->status[0] != 0) {
     *lostatus = cache->status[0];  *loval = cache->value[0];
@@ -208,7 +208,7 @@ static SV* set_arrayref_from_sv_merge(pTHX_ SV **aa, size_t alen, SV **bb, size_
   }
   ar = AvARRAY(av);
 
-  /* This function is only called when all values are unsigned. */
+  /* This function is only called when all values are non-negative. */
   while (ia < alen && ib < blen) {
     UV va = SvUVX(aa[ia]), vb = SvUVX(bb[ib]);
     if (va == vb) {
@@ -409,10 +409,10 @@ bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret)
  *     n nth-position (0 .. count-1)
  *  eq will be set to 1 if the element in that position is the input value.
  */
-static int index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int *eq)
+static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int *eq)
 {
-  Size_t len;
-  int lo, hi, lostatus, histatus, midstatus, cmp;
+  Size_t len, lo, hi;
+  int lostatus, histatus, midstatus, cmp;
   UV  rlo, rhi, rmid;
   SV** arr;
 
@@ -423,6 +423,8 @@ static int index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int 
     *eq = 0;
     return 0;
   }
+  if (len >= (Size_t)MAX_SSIZET)
+    return -1;
   arr = AvARRAY(av);
 
   lo = 0;
@@ -438,8 +440,8 @@ static int index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int 
   /* val < rhi */
 
   while (hi-lo > 1) {
-    int mid = lo + ((hi-lo) >> 1);
-    SC_SET_MID_VALUE(midstatus, rmid, arr, (size_t)mid, cache);
+    Size_t mid = lo + ((hi-lo) >> 1);
+    SC_SET_MID_VALUE(midstatus, rmid, arr, mid, cache);
     cmp = _sign_cmp(midstatus, rmid, sign, val);
     if (cmp == 0) { *eq = 1; return mid; }
     if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
@@ -457,9 +459,9 @@ static int index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int 
  *    0  already in set
  *    n  should be in n-th position (1 means should be first element)
  */
-int insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
+SSize_t insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
   int eq = 0;
-  int index = index_for_set(aTHX_ av, cache, sign, val, &eq);
+  SSize_t index = index_for_set(aTHX_ av, cache, sign, val, &eq);
   return (index < 0) ? index : eq ? 0 : index+1;
 }
 
@@ -468,9 +470,9 @@ int insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
  *    0  not in set
  *    n  in n-th position (1 means first element)
  */
-int index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
+SSize_t index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
   int eq = 0;
-  int index = index_for_set(aTHX_ av, cache, sign, val, &eq);
+  SSize_t index = index_for_set(aTHX_ av, cache, sign, val, &eq);
   return (index < 0) ? index : eq ? index+1 : 0;
 }
 
@@ -479,19 +481,19 @@ int index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
 int is_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
 {
   int eq = 0;
-  int index = index_for_set(aTHX_ av, cache, sign, val, &eq);
+  SSize_t index = index_for_set(aTHX_ av, cache, sign, val, &eq);
   return (index < 0) ? index : eq ? 1 : 0;
 }
 
 /* 1 if deleted, 0 if not deleted, -1 if need to punt to PP */
 int del_from_set(pTHX_ AV* ava, int bstatus, UV b) {
-  int index = index_in_set(aTHX_ ava, 0, bstatus, b);
+  SSize_t index = index_in_set(aTHX_ ava, 0, bstatus, b);
   if (index <= 0)
-    return index;
+    return index < 0 ? -1 : 0;
   {
+    Size_t pos = (Size_t)index, alen = av_count(ava);
     SV **arr = AvARRAY(ava);
-    SV *savep = arr[index-1];
-    Size_t pos = index, alen = av_count(ava);
+    SV *savep = arr[pos-1];
     if (pos > alen/2) {
       if (pos < alen) {
         memmove(arr+pos-1, arr+pos, sizeof(SV*) * (alen-pos));
@@ -511,29 +513,29 @@ int del_from_set(pTHX_ AV* ava, int bstatus, UV b) {
 
 /* 1 if inserted, 0 if not inserted, -1 if need to punt to PP */
 int ins_into_set(pTHX_ AV* ava, int bstatus, UV b) {
-  int index = insert_index_in_set(aTHX_ ava, 0, bstatus, b);
+  SSize_t index = insert_index_in_set(aTHX_ ava, 0, bstatus, b);
   if (index <= 0)
-    return index;
+    return index < 0 ? -1 : 0;
   {
     SV *newb, **arr;
     SV* newsvb = NEWSVINT(bstatus, b);
-    Size_t alen = av_count(ava);
-    if ((Size_t)index > alen/2) {
+    Size_t pos = (Size_t)index, alen = av_count(ava);
+    if (pos > alen/2) {
       av_push(ava, newsvb);
-      if ((Size_t)index <= alen) {
+      if (pos <= alen) {
         arr = AvARRAY(ava);
         newb = arr[alen];
-        memmove(arr+index, arr+index-1, sizeof(SV*) * (alen-(index-1)));
-        arr[index-1] = newb;
+        memmove(arr+pos, arr+pos-1, sizeof(SV*) * (alen-(pos-1)));
+        arr[pos-1] = newb;
       }
     } else {
       av_unshift(ava, 1);
       av_store(ava, 0, newsvb);
-      if (index > 1) {
+      if (pos > 1) {
         arr = AvARRAY(ava);
         newb = arr[0];
-        memmove(arr+0, arr+1, sizeof(SV*) * index);
-        arr[index-1] = newb;
+        memmove(arr+0, arr+1, sizeof(SV*) * pos);
+        arr[pos-1] = newb;
       }
     }
   }
