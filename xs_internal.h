@@ -134,7 +134,25 @@
 #define neg_iv(n) ((UV)-((n)+1) + 1U)
 
 void _mod_with(UV *a, int astatus, UV n);
-int _sign_cmp(int xsign, UV x, int ysign, UV y);
+/* Given values and a sign indicating IV or UV, returns -1 (<), 0 (eq), 1 (>). */
+MAYBE_UNUSED static INLINE int _sign_cmp(int xsign, UV x, int ysign, UV y)
+{
+  /* Matching statuses already identify a common IV or UV representation. */
+  if (xsign == ysign) {
+    if (x == y) return 0;
+    if (xsign < 0) return (IV)x < (IV)y ? -1 : 1;
+    return x < y ? -1 : 1;
+  }
+  /* Convert sign to -1 (neg), 0 (small pos), 1 (big pos). */
+  if (x <= (UV)IV_MAX) xsign = 0;
+  if (y <= (UV)IV_MAX) ysign = 0;
+  if (xsign == ysign && x == y) return 0;
+  /* neg < small pos < big pos */
+  if (xsign != ysign) return (xsign < ysign) ? -1 : 1;
+  /* Numerical comparison as IV or UV. */
+  return ((xsign == -1 && (IV)x < (IV)y) ||
+          (xsign != -1 && x < y)) ? -1 : 1;
+}
 SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i);
 
 int _sv_is_bigint(pTHX_ SV* n);

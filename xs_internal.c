@@ -23,18 +23,6 @@ void _mod_with(UV *a, int astatus, UV n) {
   }
 }
 
-/* Given values and a sign indicating IV or UV, returns -1 (<), 0 (eq), 1 (>) */
-int _sign_cmp(int xsign, UV x, int ysign, UV y) {
-  /* Convert sign to -1 (neg), 0 (small pos), 1 (big pos) */
-  if (x <= (UV)IV_MAX) xsign = 0;
-  if (y <= (UV)IV_MAX) ysign = 0;
-  if (xsign == ysign && x == y) return 0;
-  /* neg < small pos < big pos */
-  if (xsign != ysign) return (xsign < ysign) ? -1 : 1;
-  /* Numerical comparison as IV or UV */
-  return ((xsign == -1 && (IV)x < (IV)y) || (xsign != -1 && x < y)) ? -1 : 1;
-}
-
 int _sv_is_bigint(pTHX_ SV* n) {
   if (SvROK(n) && SvOBJECT(SvRV(n))) {
     const char *hvname = HvNAME_get(SvSTASH(SvRV(n)));

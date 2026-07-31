@@ -22,19 +22,31 @@ bool xs_set_op(pTHX_ SV* sva, SV* svb, set_op_t op, SV **ret, const char *name);
 bool xs_is_sidon_set(pTHX_ SV* sva, int *ret);
 bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret);
 
-#define MPU_SC_SIZE  257   /* Choose 131, 257, 521, 1031, 2053 */
-typedef struct { /* lo in 0, hi in 1, cached values in rest */
-  UV     value[2+MPU_SC_SIZE];
-  size_t index[2+MPU_SC_SIZE];
-  signed char status[2+MPU_SC_SIZE];
-} set_data_t;
+#define MPU_SC_TREE_SIZE  511  /* Top nine levels of the binary-search tree. */
+#define MPU_SC_TAIL_SIZE   64  /* Power-of-two cache for deeper tree nodes. */
+#if MPU_SC_TAIL_SIZE == 0 || \
+    (MPU_SC_TAIL_SIZE & (MPU_SC_TAIL_SIZE-1)) != 0
+#error "MPU_SC_TAIL_SIZE must be a power of two"
+#endif
+typedef struct {
+  AV *av;
+  Size_t len;
+  UV lo_value, hi_value;
+  signed char lo_status, hi_status;
+  UV tree_value[MPU_SC_TREE_SIZE];
+  signed char tree_status[MPU_SC_TREE_SIZE];
+  UV tail_value[MPU_SC_TAIL_SIZE];
+  Size_t tail_index[MPU_SC_TAIL_SIZE];
+  signed char tail_status[MPU_SC_TAIL_SIZE];
+} set_cache_t;
 
-void _sc_clear_cache(set_data_t *cache);
-int _sc_set_lohi(pTHX_ AV* av, set_data_t *cache, Size_t len, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival);
+void _sc_init_cache(set_cache_t *cache);
+int _sc_set_bounds(pTHX_ AV* av, set_cache_t *cache, Size_t len,
+                   int *lostatus, int *histatus, UV *loval, UV *hival);
 
-SSize_t insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val);
-SSize_t index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val);
-int is_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val);
+SSize_t insert_index_in_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val);
+SSize_t index_in_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val);
+int is_in_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val);
 int del_from_set(pTHX_ AV* ava, int bstatus, UV b);
 int ins_into_set(pTHX_ AV* ava, int bstatus, UV b);
 int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bmax);

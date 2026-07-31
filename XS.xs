@@ -6052,7 +6052,7 @@ void setcontains(IN SV* sva, ...)
       DISPATCHPP_RETURN();
     findall = ix == 0 ? 1 : 0;
     if (items == 2 && SvROK(ST(1)) && SvTYPE(SvRV(ST(1))) == SVt_PVAV) {
-      set_data_t svcache;
+      set_cache_t svcache;
       USE_ARREF(arb, ST(1), SUBNAME, AR_READ);
       /* If setcontainsany and B is bigger than A, swap them for performance. */
       if (ix == 1 && len_arb > alen && svarr_arb != 0) {
@@ -6062,7 +6062,7 @@ void setcontains(IN SV* sva, ...)
       }
       blen = len_arb;
       subset = ix == 0 && blen > alen  ?  0  :  findall;
-      _sc_clear_cache(&svcache);
+      _sc_init_cache(&svcache);
       /* setcontains:    if we find anything that is NOT in SETA, return 0
        * setcontainsany: if we find anything that IS     in SETA, return 1  */
       for (i = 0; i < blen && subset == findall; i++) {
@@ -6079,8 +6079,8 @@ void setcontains(IN SV* sva, ...)
         for (i = 0; i < blen && subset == findall; i++)
           subset = is_in_set(aTHX_ ava, 0, bstatus, rb[i]);
       } else {
-        set_data_t svcache;
-        _sc_clear_cache(&svcache);
+        set_cache_t svcache;
+        _sc_init_cache(&svcache);
         for (i = 0; i < blen && subset == findall; i++)
           subset = is_in_set(aTHX_ ava, &svcache, bstatus, rb[i]);
       }
@@ -6128,7 +6128,7 @@ void setinsert(IN SV* sva, ...)
       size_t nbeg, nmid, nend, nmidcheck;
       int alostatus, ahistatus;
       UV  alo, ahi;
-      set_data_t svcache;
+      set_cache_t svcache;
 
       /* 1. ava is empty.  push everything and we're done. */
       if (alen == 0) {
@@ -6138,9 +6138,10 @@ void setinsert(IN SV* sva, ...)
         Safefree(rb);
         RETURN_NPARITY(blen);
       }
-      _sc_clear_cache(&svcache);
+      _sc_init_cache(&svcache);
       /* Get hi and lo values of set. */
-      if (_sc_set_lohi(aTHX_ ava, &svcache, alen, 0, alen-1, &alostatus, &ahistatus, &alo, &ahi) >= 0) {
+      if (_sc_set_bounds(aTHX_ ava, &svcache, alen,
+                         &alostatus, &ahistatus, &alo, &ahi) >= 0) {
         if (_sign_cmp(alostatus,alo,ahistatus,ahi) > 0) {
           Safefree(rb);
           croak("%s: expected numerically ascending sorted input", SUBNAME);
@@ -6256,8 +6257,8 @@ void setremove(IN SV* sva, ...)
         if (res >= 0) { Safefree(rb); RETURN_NPARITY(ndel); }
       } else if (blen < 500 || (blen*100) < alen) { /* ONE PASS DELETE */
         Size_t *del_idx, ndel = 0;
-        set_data_t svcache;
-        _sc_clear_cache(&svcache);
+        set_cache_t svcache;
+        _sc_init_cache(&svcache);
         /* Create index list to remove */
         New(0, del_idx, blen, Size_t);
         for (i = 0; i < blen; i++) {

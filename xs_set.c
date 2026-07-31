@@ -47,57 +47,118 @@ int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bmax) {
   return IARR_TYPE_NEG;
 }
 
-void _sc_clear_cache(set_data_t *cache) {
-  memset(cache->status, 0, sizeof(signed char) * (2+MPU_SC_SIZE));
+void _sc_init_cache(set_cache_t *cache)
+{
+  cache->av = 0;
+  cache->len = 0;
+  cache->lo_status = cache->hi_status = 0;
+  memset(cache->tree_status, 0, sizeof(cache->tree_status));
+  memset(cache->tail_status, 0, sizeof(cache->tail_status));
 }
 
-#define _SC_GET_VALUE(statvar, var, av, len, i) \
-  do { \
-    Size_t len_ = (len), index_ = (i); \
-    SV **arr_; \
-    if (index_ >= len_ || av_count(av) != len_) return -1; \
-    arr_ = AvARRAY(av); \
-    if (arr_[index_] == 0) return -1; \
-    statvar = _validate_and_set(&var, aTHX_ arr_[index_], IFLAG_ANY); \
-    if (statvar == 0 || av_count(av) != len_) return -1; \
-  } while (0)
-
-#define SC_SET_MID_VALUE(statvar, var, av, len, i, cache) \
-  do { \
-    if (cache == 0) { \
-      _SC_GET_VALUE(statvar, var, av, len, i); \
-    } else { \
-      unsigned int imod_ = 2 + ((i) % MPU_SC_SIZE); \
-      if (cache->status[imod_] != 0 && cache->index[imod_] == i) { \
-        statvar = cache->status[imod_]; \
-        var     = cache->value[imod_]; \
-      } else { \
-        _SC_GET_VALUE(statvar, var, av, len, i); \
-        cache->status[imod_] = statvar; \
-        cache->value[imod_]  = var; \
-        cache->index[imod_]  = i; \
-      } \
-    } \
-  } while (0)
-
-int _sc_set_lohi(pTHX_ AV* av, set_data_t *cache, Size_t len, Size_t loindex, Size_t hiindex, int *lostatus, int *histatus, UV *loval, UV *hival)
+static INLINE int _sc_bind_cache(set_cache_t *cache, AV *av, Size_t len)
 {
-  if (cache && cache->status[0] != 0) {
-    *lostatus = cache->status[0];  *loval = cache->value[0];
-  } else {
-    _SC_GET_VALUE(*lostatus, *loval, av, len, loindex);
-    if (cache) {
-      cache->status[0] = *lostatus;
-      cache->value[0]  = *loval;
+  if (cache == 0)
+    return 1;
+  if (cache->av == 0) {
+    cache->av = av;
+    cache->len = len;
+    return 1;
+  }
+  return cache->av == av && cache->len == len;
+}
+
+static INLINE int _sc_read_value(pTHX_ AV *av, Size_t len, Size_t index,
+                                 int *status, UV *value)
+{
+  SV **arr;
+  SV *sv;
+
+  if (index >= len || av_count(av) != len)
+    return 0;
+  arr = AvARRAY(av);
+  sv = arr[index];
+  if (sv == 0)
+    return 0;
+
+  if (SVNUMTEST(sv)) {
+    IV n = SvIVX(sv);
+    *value = (UV)n;
+    *status = (n < 0 && !SvIsUV(sv)) ? -1 : 1;
+    return 1;
+  }
+
+  *status = _validate_and_set(value, aTHX_ sv, IFLAG_ANY);
+  return *status != 0 && av_count(av) == len;
+}
+
+/* Cache the top of the search tree exactly.  Deeper, less commonly shared
+ * midpoints use a small direct-mapped cache keyed by their array index. */
+static INLINE int _sc_cached_value(pTHX_ AV *av, set_cache_t *cache,
+                                   Size_t len, Size_t index, Size_t node,
+                                   int *status, UV *value)
+{
+  Size_t tail_slot = 0;
+
+  if (cache != 0) {
+    if (node < MPU_SC_TREE_SIZE) {
+      if (cache->tree_status[node] != 0) {
+        *status = cache->tree_status[node];
+        *value = cache->tree_value[node];
+        return 1;
+      }
+    } else {
+      tail_slot = index & (MPU_SC_TAIL_SIZE-1);
+      if (cache->tail_status[tail_slot] != 0 &&
+          cache->tail_index[tail_slot] == index) {
+        *status = cache->tail_status[tail_slot];
+        *value = cache->tail_value[tail_slot];
+        return 1;
+      }
     }
   }
-  if (cache && cache->status[1] != 0) {
-    *histatus = cache->status[1];  *hival = cache->value[1];
+  if (!_sc_read_value(aTHX_ av, len, index, status, value))
+    return 0;
+  if (cache != 0) {
+    if (node < MPU_SC_TREE_SIZE) {
+      cache->tree_status[node] = (signed char)*status;
+      cache->tree_value[node] = *value;
+    } else {
+      cache->tail_status[tail_slot] = (signed char)*status;
+      cache->tail_value[tail_slot] = *value;
+      cache->tail_index[tail_slot] = index;
+    }
+  }
+  return 1;
+}
+
+int _sc_set_bounds(pTHX_ AV* av, set_cache_t *cache, Size_t len,
+                   int *lostatus, int *histatus, UV *loval, UV *hival)
+{
+  if (len == 0 || av_count(av) != len || !_sc_bind_cache(cache, av, len))
+    return -1;
+
+  if (cache != 0 && cache->lo_status != 0) {
+    *lostatus = cache->lo_status;
+    *loval = cache->lo_value;
   } else {
-    _SC_GET_VALUE(*histatus, *hival, av, len, hiindex);
-    if (cache) {
-      cache->status[1] = *histatus;
-      cache->value[1] = *hival;
+    if (!_sc_read_value(aTHX_ av, len, 0, lostatus, loval))
+      return -1;
+    if (cache != 0) {
+      cache->lo_status = (signed char)*lostatus;
+      cache->lo_value = *loval;
+    }
+  }
+
+  if (cache != 0 && cache->hi_status != 0) {
+    *histatus = cache->hi_status;
+    *hival = cache->hi_value;
+  } else {
+    if (!_sc_read_value(aTHX_ av, len, len-1, histatus, hival))
+      return -1;
+    if (cache != 0) {
+      cache->hi_status = (signed char)*histatus;
+      cache->hi_value = *hival;
     }
   }
   return 1;
@@ -416,9 +477,9 @@ bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret)
  *     n nth-position (0 .. count-1)
  *  eq will be set to 1 if the element in that position is the input value.
  */
-static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, int *eq)
+static SSize_t index_for_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val, int *eq)
 {
-  Size_t len, lo, hi;
+  Size_t len, lo, hi, node;
   int lostatus, histatus, midstatus, cmp;
   UV  rlo, rhi, rmid;
 
@@ -434,7 +495,7 @@ static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, 
 
   lo = 0;
   hi = len-1;
-  if (_sc_set_lohi(aTHX_ av, cache, len, lo, hi, &lostatus, &histatus, &rlo, &rhi) < 0)
+  if (_sc_set_bounds(aTHX_ av, cache, len, &lostatus, &histatus, &rlo, &rhi) < 0)
     return -1;
 
   cmp = _sign_cmp(sign, val, lostatus, rlo);
@@ -444,13 +505,21 @@ static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, 
   if (cmp >= 0) { *eq = cmp==0; return hi + (cmp>0); }
   /* val < rhi */
 
+  node = 0;
   while (hi-lo > 1) {
     Size_t mid = lo + ((hi-lo) >> 1);
-    SC_SET_MID_VALUE(midstatus, rmid, av, len, mid, cache);
+    if (!_sc_cached_value(aTHX_ av, cache, len, mid, node,
+                          &midstatus, &rmid))
+      return -1;
     cmp = _sign_cmp(midstatus, rmid, sign, val);
     if (cmp == 0) { *eq = 1; return mid; }
-    if (cmp < 0) { lo = mid; rlo = rmid; lostatus = midstatus; }
-    else         { hi = mid; rhi = rmid; histatus = midstatus; }
+    if (cmp < 0) {
+      lo = mid; rlo = rmid; lostatus = midstatus;
+      node = 2*node + 2;
+    } else {
+      hi = mid; rhi = rmid; histatus = midstatus;
+      node = 2*node + 1;
+    }
   }
   if (sign == histatus && rhi == val)
     *eq = 1;
@@ -464,7 +533,7 @@ static SSize_t index_for_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val, 
  *    0  already in set
  *    n  should be in n-th position (1 means should be first element)
  */
-SSize_t insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
+SSize_t insert_index_in_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val) {
   int eq = 0;
   SSize_t index = index_for_set(aTHX_ av, cache, sign, val, &eq);
   return (index < 0) ? index : eq ? 0 : index+1;
@@ -475,7 +544,7 @@ SSize_t insert_index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
  *    0  not in set
  *    n  in n-th position (1 means first element)
  */
-SSize_t index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
+SSize_t index_in_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val) {
   int eq = 0;
   SSize_t index = index_for_set(aTHX_ av, cache, sign, val, &eq);
   return (index < 0) ? index : eq ? index+1 : 0;
@@ -483,7 +552,7 @@ SSize_t index_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val) {
 
 /* See if an element is in a set (array ref of sorted unique integers) */
 /* -1 = bigint, 0 = not found, 1 = found */
-int is_in_set(pTHX_ AV* av, set_data_t *cache, int sign, UV val)
+int is_in_set(pTHX_ AV* av, set_cache_t *cache, int sign, UV val)
 {
   int eq = 0;
   SSize_t index = index_for_set(aTHX_ av, cache, sign, val, &eq);
