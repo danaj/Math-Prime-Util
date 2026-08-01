@@ -149,7 +149,8 @@ static UV phi_recurse_small(UV x, UV a) {
   UV sum, i, xp, p, npa;
 
   if (x < 1 || a >= x) return (x > 0);
-  if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
+  if (a <= PHIS) return phi_small(x, (uint32_t)a);
+  if (x <= PHIS_XMIN) return 1;
 
   npa = (a <= 25) ? _snth[a] : nth_prime(a);
   sum = phi_small(x, PHIS);
@@ -259,6 +260,12 @@ static void phidata_destroy(phidata_t *d)
 #define PHI_PRIMECOUNT(x) \
   prime_count_cache_lookup(d->cachepc, (x))
 
+/* All unsigned terms passed here are known to fit in an IV. */
+static IV _signed_phi_value(UV value, int sign)
+{
+  return (sign < 0) ? -(IV)value : (IV)value;
+}
+
 /* The recursive cached phi routine, given the struct with primes and cache */
 
 static IV _phi3(UV x, UV a, int sign, phidata_t *d)
@@ -267,12 +274,14 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
   phi_cache_t* pcache = d->cachephi;
   UV mapx;
 
-  if (x < primes[a+1])
+  if (x < 1)
+    return 0;
+  else if (x < primes[a+1])
     return sign;
   else if (a <= PHIC)
-    return sign * tablephi(x,a);
+    return _signed_phi_value(tablephi(x,(uint32_t)a), sign);
   else if (PHI_IS_X_SMALL(x,a))
-    return sign * (PHI_PRIMECOUNT(x) - a + 1);
+    return _signed_phi_value(PHI_PRIMECOUNT(x) - a + 1, sign);
 
   /* Choose a mapping:   x,  (x+1)>>1,  _toindex30(x),  _toindex210(x) */
   mapx = (a < PHICACHEA)  ?  _toindex210(x)  :  0;
@@ -280,17 +289,19 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
   if (a < PHICACHEA && mapx < pcache->siz[a]) {
     IV v = pcache->val[a][mapx];
     if (v != 0)
-      return sign * v;
+      return _signed_phi_value((UV)v, sign);
   }
   {
     UV xp, i, iters = ((UV)a*a > x)  ?  PHI_PRIMECOUNT(isqrt(x))  :  a;
     UV c = (iters > PHIC) ? PHIC : iters;
-    IV sum = sign * (iters - a + tablephi(x,c));
+    IV sum = _signed_phi_value(tablephi(x,(uint32_t)c), sign)
+           + _signed_phi_value(a-iters, -sign);
 
     /* for (i=c; i<iters; i++)  sum += _phi3(x/primes[i+1], i, -sign, d); */
 
     if (c < iters)
-      sum += -sign * tablephi(FAST_DIV(x,primes[c+1]), c);
+      sum += _signed_phi_value(tablephi(FAST_DIV(x,primes[c+1]),
+                                        (uint32_t)c), -sign);
     for (i = c+1; i < iters; i++) {
       xp = FAST_DIV(x,primes[i+1]);
       if (PHI_IS_X_SMALL(xp,i))
@@ -301,10 +312,10 @@ static IV _phi3(UV x, UV a, int sign, phidata_t *d)
       xp = FAST_DIV(x,primes[i+1]);
       if (xp < primes[i+1])
         break;
-      sum += -sign * (PHI_PRIMECOUNT(xp) - i + 1);
+      sum += _signed_phi_value(PHI_PRIMECOUNT(xp) - i + 1, -sign);
     }
     if (i < iters)
-      sum += -sign * (iters - i);
+      sum += _signed_phi_value(iters - i, -sign);
 
     if (a < PHICACHEA && mapx <= pcache->xlim)
       phi_cache_insert(mapx, a, sum, pcache);
@@ -319,7 +330,8 @@ static UV phi_recurse(UV x, UV a)
   UV primes_to_n, sum = 1;
 
   if (x < 1 || a >= x) return (x > 0);
-  if (a <= PHIS || x <= PHIS_XMIN)  return phi_small(x, a);
+  if (a <= PHIS) return phi_small(x, (uint32_t)a);
+  if (x <= PHIS_XMIN) return 1;
   if (a > 203280221) croak("64-bit phi out of range");
 
   primes_to_n = nth_prime_upper(a);
@@ -389,7 +401,8 @@ static void vcarray_insert(vcarray_t* l, UV val, IV count)
       arr[n-1].c += count;
       return;
     }
-    croak("Previous value was %lu, inserting %lu out of order\n", arr[n-1].v, val);
+    croak("Previous value was %"UVuf", inserting %"UVuf" out of order\n",
+          arr[n-1].v, val);
   }
   if (n >= l->size) {
     UV new_size;
@@ -558,7 +571,7 @@ static UV phi_walk(UV x, UV a)
         UV j = a1.n - 1 - i;
         IV count = arr[j].c;
         if (count != 0) {
-          sum += count * _phi3( arr[j].v, a-1, 1, d );
+          sum += (UV)count * (UV)_phi3(arr[j].v, a-1, 1, d);
           arr[j].c = 0;
         }
       }
