@@ -644,12 +644,16 @@ UV nth_prime(UV n)
      * being higher (requiring going backwards) or biased and then far too
      * low.  Using the inverse Li is easier and more consistent. */
     UV lower_limit = inverse_li(n);
+    UV correction = inverse_li(isqrt(n))/4;
     /* For even better performance, add in half the usual correction, which
      * will get us even closer, so even less sieving required.  However, it
      * is now possible to get a result higher than the value, so we'll need
      * to handle that case.  It still ends up being a better deal than R,
      * given that we don't have a fast backward sieve. */
-    lower_limit += inverse_li(isqrt(n))/4;
+    if (lower_limit >= upper_limit || correction > upper_limit-lower_limit)
+      lower_limit = upper_limit;
+    else
+      lower_limit += correction;
     segment_size = lower_limit / 30;
     lower_limit = 30 * segment_size - 1;
     count = prime_count(lower_limit);
@@ -658,7 +662,10 @@ UV nth_prime(UV n)
     /* printf("Our limit %lu %s a prime\n", lower_limit, is_prime(lower_limit) ? "is" : "is not"); */
 
     if (count >= n) { /* Too far.  Walk backwards */
-      if (is_prime(lower_limit)) count--;
+      if (is_prime(lower_limit)) {
+        if (count == n) return lower_limit;
+        count--;
+      }
       for (p = 0; p <= (count-n); p++)
         lower_limit = prev_prime(lower_limit);
       return lower_limit;

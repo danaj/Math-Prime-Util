@@ -382,8 +382,10 @@ static long double ld_inverse_R(long double lx) {
 }
 
 UV inverse_R(UV x) {
+  long double r;
   if (x < 2) return x + (x > 0);
-  return (UV) ceill( ld_inverse_R( (long double) x) );
+  r = ceill( ld_inverse_R( (long double) x) );
+  return (r >= (long double)UV_MAX) ? UV_MAX : (UV)r;
 }
 
 
@@ -982,5 +984,4 @@ static long double dickman_rho(long double u) {
   return expl(-u*zeta+Ei(zeta)) / (zeta * sqrtl(2*3.1415926535*u));
 }
 #endif
-
 

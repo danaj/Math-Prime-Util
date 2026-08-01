@@ -121,6 +121,12 @@ subtest 'nth_prime', sub {
             [7919,104729,1299709,15485863,179424673],
             "nth_prime(n) 1k,10k,100k,1M,10M");
 
+  SKIP: {
+    skip "native nth_prime exact-estimate regression", 1 unless $usexs;
+    is(nth_prime(55834886), 1103587319,
+       "nth_prime returns an estimated lower limit that is the nth prime");
+  }
+
   # Test an nth prime value that uses the binary-search-on-R(n) algorithm
   SKIP: {
     # TODO: Can we use the NV R to solve this with PP?
@@ -151,6 +157,11 @@ subtest 'nth_prime upper/lower/approx', sub {
   cmp_ok(nth_prime_lower($maxindex),'<=',$maxprime, "nth_prime_lower(maxindex) <= maxprime");
   cmp_ok(nth_prime_upper($maxindex),'>=',$maxprime, "nth_prime_upper(maxindex) >= maxprime");
   cmp_ok(nth_prime_lower($maxindexp1),'>=',nth_prime_lower($maxindex), "nth_prime_lower(maxindex+1) >= nth_prime_lower(maxindex)");
+  SKIP: {
+    skip "64-bit XS nth_prime_approx boundary", 1 unless $usexs && $use64;
+    is("".nth_prime_approx($maxindex), "18446744073709551615",
+       "nth_prime_approx(maxindex) saturates at UV_MAX");
+  }
 };
 
 ####################################

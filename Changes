@@ -79,6 +79,8 @@ Revision history for Perl module Math::Prime::Util
 
     [FIXES]
 
+    - Fix rare nth_prime hangs and native overflow near the 64-bit limit.
+
     - XS setbinop and vec callbacks preserve lexical return values.  Sparse
       arrays passed to set functions are rejected safely.
 
