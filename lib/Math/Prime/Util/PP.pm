@@ -2,7 +2,7 @@ package Math::Prime::Util::PP;
 use strict;
 use warnings;
 use Carp qw/carp croak confess/;
-use Scalar::Util qw/looks_like_number reftype/;
+use Scalar::Util qw/looks_like_number refaddr reftype/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
@@ -6201,9 +6201,18 @@ sub vecextract {
 }
 
 sub vecequal {
-  my($aref, $bref) = @_;
+  _vecequal($_[0], $_[1], undef);
+}
+
+sub _vecequal {
+  my($aref, $bref, $path) = @_;
   croak "vecequal element not scalar or array reference"
     unless _is_aref($aref) && _is_aref($bref);
+  my($aaddr, $baddr) = (refaddr($aref), refaddr($bref));
+  for (my $p = $path; defined $p; $p = $p->[2]) {
+    return 1 if $p->[0] == $aaddr && $p->[1] == $baddr;
+  }
+  my $current = [$aaddr, $baddr, $path];
   return 0 unless $#$aref == $#$bref;
   my $i = 0;
   for my $av (@$aref) {
@@ -6216,7 +6225,7 @@ sub vecequal {
       if ($av_is_array || $bv_is_array) {
         # arrayref + arrayref: recurse
         if ($av_is_array && $bv_is_array) {
-          next if vecequal($av, $bv);
+          next if _vecequal($av, $bv, $current);
           return 0;
         }
         # arrayref + scalar: return 0

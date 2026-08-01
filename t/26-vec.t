@@ -337,6 +337,34 @@ subtest 'vecequal', sub {
     is(vecequal([\@a],[\@b]), 0, "vecequal distinguishes nested tied arrays");
     $b[2] = 3;
     is(vecequal(\@a,\@b), 1, "vecequal accepts equal tied arrays");
+    @a = (\@a, 1);
+    @b = (\@b, 1);
+    is(vecequal(\@a,\@b), 1, "vecequal accepts equal tied cycles");
+    @a = @b = ();
+  }
+  {
+    my (@a, @b);
+    @a = (\@a, 1);
+    @b = (\@b, 1);
+    is(vecequal(\@a,\@b), 1, "vecequal accepts equal self-referential arrays");
+    $b[1] = 2;
+    is(vecequal(\@a,\@b), 0, "vecequal finds differences after a repeated pair");
+    @a = @b = ();
+  }
+  {
+    my (@self, @a, @b);
+    $self[0] = \@self;
+    $a[0] = \@b;
+    $b[0] = \@a;
+    is(vecequal(\@self,\@a), 1, "vecequal compares cycles by unfolded values");
+    @self = @a = @b = ();
+  }
+  {
+    my (@cyclic, @finite);
+    $cyclic[0] = \@cyclic;
+    $finite[0] = [];
+    is(vecequal(\@cyclic,\@finite), 0, "vecequal distinguishes cyclic and finite arrays");
+    @cyclic = @finite = ();
   }
   eval { vecequal([[1,2]],[{a=>1}]) };
   like($@, qr/scalar or array reference/, "vecequal rejects hashrefs");

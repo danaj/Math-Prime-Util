@@ -93,7 +93,7 @@ WriteMakefile1(
                       'Exporter'         => '5.57',
                       'XSLoader'         => '0.01',
                       'Carp'             => 0,
-                      'Scalar::Util'     => '1.01',
+                      'Scalar::Util'     => '1.09',
                       'Tie::Array'       => 0,
                       'base'             => 0,
                       'constant'         => 0,

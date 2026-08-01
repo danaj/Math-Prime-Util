@@ -5,7 +5,7 @@ requires 'perl', '5.008001';
 requires 'Exporter', '5.57';
 requires 'XSLoader', '0.01';
 requires 'Carp';
-requires 'Scalar::Util', '1.01';
+requires 'Scalar::Util', '1.09';
 requires 'Tie::Array';
 requires 'base';
 requires 'constant';

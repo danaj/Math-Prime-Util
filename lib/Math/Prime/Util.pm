@@ -3627,7 +3627,10 @@ For the sake of wider applicability, non-integers are allowed.  Types other
 than integers and strings (e.g. floating point values) are not guaranteed
 to have consistent results.
 
-No circular reference detection is performed.
+Circular array references are supported.  If the same pair of array references
+is encountered again on the active comparison path, that branch is considered
+equal.  Comparison therefore follows recursively unfolded values rather than
+requiring identical reference topology.
 
 Performance with XS is 3x to 100x faster than perl looping or modules like
 Array::Compare, Data::Cmp, match::smart, List::Compare, and Algorithm::Diff.

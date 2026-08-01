@@ -177,6 +177,8 @@ Revision history for Perl module Math::Prime::Util
     - Native integer sorting with vecsort/vecsorti detects ordered input and
       skips unnecessary radix passes, especially useful for narrow signed values.
 
+    - vecequal handles circular array references without unbounded recursion.
+
     - On platforms with support for 128-bit integers, but without the GMP
       backend, we factor 128-bit integers in C.
       This includes 32-bit Perl with modern compilers.

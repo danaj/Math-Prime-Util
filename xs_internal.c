@@ -532,9 +532,18 @@ bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, UV base)
   return 1;
 }
 
-int _compare_array_refs(pTHX_ SV* a, SV* b)
+typedef struct aref_cmp_path {
+  const AV *a;
+  const AV *b;
+  const struct aref_cmp_path *parent;
+} aref_cmp_path;
+
+static int _compare_array_refs_recurse(pTHX_ SV* a, SV* b,
+                                       const aref_cmp_path *path)
 {
   AV *ava, *avb;
+  const aref_cmp_path *p;
+  aref_cmp_path current;
   Size_t i, alen, blen;
   if ( ((!SvROK(a)) || (SvTYPE(SvRV(a)) != SVt_PVAV)) ||
        ((!SvROK(b)) || (SvTYPE(SvRV(b)) != SVt_PVAV)) )
@@ -545,6 +554,14 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
    * across another fetch.  Let PP handle all magical array semantics. */
   if (SvMAGICAL(ava) || SvMAGICAL(avb))
     return AREF_CMP_DISPATCH;
+  /* A repeated active pair has already had its shape checked by an outer
+   * frame.  Treat that branch as equal and let the outer frame continue. */
+  for (p = path; p != NULL; p = p->parent)
+    if (p->a == ava && p->b == avb)
+      return 1;
+  current.a = ava;
+  current.b = avb;
+  current.parent = path;
   alen = av_count(ava);
   blen = av_count(avb);
   if (alen != blen)
@@ -573,7 +590,7 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
 
       if (a_is_array || b_is_array) {
         if (a_is_array && b_is_array) {
-          res = _compare_array_refs(aTHX_ sva, svb);
+          res = _compare_array_refs_recurse(aTHX_ sva, svb, &current);
           if (res == 1) continue;
           return res;
         }
@@ -611,6 +628,11 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
       return 0;
   }
   return 1;
+}
+
+int _compare_array_refs(pTHX_ SV* a, SV* b)
+{
+  return _compare_array_refs_recurse(aTHX_ a, b, NULL);
 }
 
 bool xs_is_sv_scalar_ref(SV *sv)
