@@ -369,14 +369,17 @@ static void bsgs_hash_put(bsgs_page_top_t* pagetop, UV v, UV i) {
   }
 }
 
-static UV bsgs_hash_get(bsgs_page_top_t* pagetop, UV v) {
+static bool bsgs_hash_get(bsgs_page_top_t* pagetop, UV v, UV* i) {
   bsgs_hash_t* entry = pagetop->table[v % pagetop->size];
   while (entry && entry->V != v)
     entry = entry->next;
-  return (entry) ? entry->M : 0;
+  if (!entry) return 0;
+  *i = entry->M;
+  return 1;
 }
 
-static UV bsgs_hash_put_get(bsgs_page_top_t* pagetop, UV v, UV i) {
+static bool bsgs_hash_put_get(bsgs_page_top_t* pagetop, UV v, UV i,
+                              UV* old_i) {
   UV idx = v % pagetop->size;
   bsgs_hash_t** table = pagetop->table;
   bsgs_hash_t* entry = table[idx];
@@ -384,8 +387,10 @@ static UV bsgs_hash_put_get(bsgs_page_top_t* pagetop, UV v, UV i) {
   while (entry && entry->V != v)
     entry = entry->next;
 
-  if (entry)
-    return entry->M;
+  if (entry) {
+    *old_i = entry->M;
+    return 1;
+  }
 
   entry = get_entry(pagetop);
   entry->M = i;
@@ -400,6 +405,7 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent) {
   UV i, m, maxm, hashmap_count;
   UV aa, S, gm, T, gs_i, bs_i;
   UV result = 0;
+  bool found = 0;
   int const verbose = _XS_get_verbose();
 
   if (n <= 2) return 0;   /* Shouldn't be here with gorder this low */
@@ -430,32 +436,41 @@ static UV dlp_bsgs(UV a, UV g, UV p, UV n, UV maxent) {
   S = mulmod(S, g, p);
   /* Interleaved Baby Step Giant Step */
   for (i = 1; i <= m; i++) {
-    gs_i = bsgs_hash_put_get(&PAGES, S, i);
-    if (gs_i) { bs_i = i; break; }
+    if (bsgs_hash_put_get(&PAGES, S, i, &gs_i)) {
+      bs_i = i;
+      found = 1;
+      break;
+    }
     S = mulmod(S, g, p);
     if (S == aa) {  /* S = a*g^(i+1).  If S == a^2 then g^(i+1) == a. */
       if (verbose) printf("  dlp bsgs: solution at BS step %"UVuf"\n", i+1);
       result = i+1;
       break;
     }
-    bs_i = bsgs_hash_put_get(&PAGES, T, i);
-    if (bs_i) { gs_i = i; break; }
+    if (bsgs_hash_put_get(&PAGES, T, i, &bs_i)) {
+      gs_i = i;
+      found = 1;
+      break;
+    }
     T = mulmod(T, gm, p);
   }
 
   if (!result) {
     /* Extend Giant Step search */
-    if (!(gs_i || bs_i)) {
+    if (!found) {
       UV b = n/m + ((n % m) != 0);
       if (m < maxm && b > 8*m) b = 8*m;
-      for (i = m+1; i < b; i++) {
-        bs_i = bsgs_hash_get(&PAGES, T);
-        if (bs_i) { gs_i = i; break; }
+      for (i = m+1; i <= b; i++) {
+        if (bsgs_hash_get(&PAGES, T, &bs_i)) {
+          gs_i = i;
+          found = 1;
+          break;
+        }
         T = mulmod(T, gm, p);
       }
     }
 
-    if (gs_i || bs_i) {
+    if (found) {
       result = submod(mulmod(gs_i, m, n), bs_i, n);
     }
   }
@@ -477,8 +492,8 @@ UV znlog_solve(UV a, UV g, UV p, UV n) {
   UV k;
   const int verbose = _XS_get_verbose();
 
-  if (a >= p) a %= p;
-  if (g >= p) g %= p;
+  if (a >= p && p != 0) a %= p;
+  if (g >= p && p != 0) g %= p;
 
   if (a == 1 || g == 0 || p <= 2)
     return 0;
@@ -503,7 +518,7 @@ UV znlog_solve(UV a, UV g, UV p, UV n) {
       return k;
     }
     k = dlp_trial(a, g, p, DLP_TRIAL_NUM);
-    if (verbose) printf("  dlp trial 10k %s\n", (k!=0 || p <= DLP_TRIAL_NUM) ? "success" : "failure");
+    if (verbose) printf("  dlp trial %uk %s\n", (unsigned)(DLP_TRIAL_NUM/1000), (k!=0 || p <= DLP_TRIAL_NUM) ? "success" : "failure");
     return k;
   }
 
@@ -668,8 +683,8 @@ UV znlog(UV a, UV g, UV p) {
   UV k, gorder;
   const int verbose = _XS_get_verbose();
 
-  if (a >= p) a %= p;
-  if (g >= p) g %= p;
+  if (a >= p && p != 0) a %= p;
+  if (g >= p && p != 0) g %= p;
 
   if (a == 1 || g == 0 || p <= 2)
     return 0;
