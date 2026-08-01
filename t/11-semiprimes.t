@@ -127,10 +127,12 @@ SKIP: {
   my $acount = semiprime_count_approx($approx);
   my $bracketed = $acount == $maxidxm1
                 ? semiprime_count_approx($approx-1) < $maxidxm1
-                : $acount < $maxidxm1
+                : $approx < $maxsemi && $acount < $maxidxm1
                   && semiprime_count_approx($approx+1) > $maxidxm1;
-  ok( $approx > 0 && $approx <= $maxsemi && $bracketed,
-      "near-maximum nth_semiprime approximation brackets its count" );
+  # The unconstrained approximation can exceed the native integer range.
+  my $saturated = $approx == $maxsemi && $acount < $maxidxm1;
+  ok( $approx > 0 && $approx <= $maxsemi && ($bracketed || $saturated),
+      "near-maximum nth_semiprime approximation brackets or saturates" );
 }
 
 SKIP: {
