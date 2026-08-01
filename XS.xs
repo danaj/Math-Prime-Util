@@ -5516,9 +5516,9 @@ dedekind_psi(IN SV* svn)
   PPCODE:
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
     if (nstatus != 0) {
-      if (nstatus == -1 || n == 0) XSRETURN_UV(0);
+      if (nstatus == -1) XSRETURN_UV(0);
       r = dedekind_psi(n);
-      if (r > 0) XSRETURN_UV(r);
+      if (n == 0 || r > 0) XSRETURN_UV(r);
     }
     DISPATCHPP_RETURN();
 

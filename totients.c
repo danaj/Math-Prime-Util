@@ -54,8 +54,10 @@ UV totient(UV n) {
 UV* range_totient(UV lo, UV hi) {
   UV i, count = hi-lo+1, *totients;
 
-  if (hi < lo || count == 0 || count > (UV)MAX_SIZET)
+  if (hi < lo)
     croak("range_totient error hi %"UVuf" < lo %"UVuf"\n", hi, lo);
+  if (count == 0 || count > (UV)(MAX_SIZET / sizeof(*totients)))
+    croak("range_totient range %"UVuf"..%"UVuf" is too large\n", lo, hi);
 
   if (hi < 16) {
     static const uint8_t small_totients[] = {0,1,1,2,2,4,2,6,4,6,4,10,4,12,6,8};
@@ -474,7 +476,10 @@ UV carmichael_lambda(UV n) {
 UV dedekind_psi(UV n) {
   UV factors[MPU_MAX_FACTORS+1];
   UV result = 1, lastf = 0;
-  uint32_t i, nfactors = factor(n, factors);
+  uint32_t i, nfactors;
+
+  if (n < 4) return n + (n>1);
+  nfactors = factor(n, factors);
   for (i = 0; i < nfactors; i++) {
     UV f = factors[i];
     if (f == lastf) {
