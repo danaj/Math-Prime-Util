@@ -180,28 +180,41 @@ typedef struct {
   uint8_t  index;
 } wheel_t;
 
+#define CROSS_CASE(v, bit, bset, mult, iadd) \
+  case (v + bit): if (pos >= bytes) { w->index = v + bit; break;} \
+                  set_bit(s + pos, bset); \
+                  pos += (UV)r * mult + iadd
+
 #define CROSS_INDEX(v, b0,b1,b2,b3,b4,b5,b6,b7,  i0,i1,i2,i3,i4,i5,i6,i7, it) \
   while (1) { \
-    case (v+0): if(s>=send){w->index=v+0;break;} set_bit(s,b0); s += r*6+i0; \
-    case (v+1): if(s>=send){w->index=v+1;break;} set_bit(s,b1); s += r*4+i1; \
-    case (v+2): if(s>=send){w->index=v+2;break;} set_bit(s,b2); s += r*2+i2; \
-    case (v+3): if(s>=send){w->index=v+3;break;} set_bit(s,b3); s += r*4+i3; \
-    case (v+4): if(s>=send){w->index=v+4;break;} set_bit(s,b4); s += r*2+i4; \
-    case (v+5): if(s>=send){w->index=v+5;break;} set_bit(s,b5); s += r*4+i5; \
-    case (v+6): if(s>=send){w->index=v+6;break;} set_bit(s,b6); s += r*6+i6; \
-    case (v+7): if(s>=send){w->index=v+7;break;} set_bit(s,b7); s += r*2+i7; \
-    while (s + r*28 + it-1 < send) { \
-      set_bit(s + r *  0 +  0, b0); \
-      set_bit(s + r *  6 + i0, b1); \
-      set_bit(s + r * 10 + i0+i1, b2); \
-      set_bit(s + r * 12 + i0+i1+i2, b3); \
-      set_bit(s + r * 16 + i0+i1+i2+i3, b4); \
-      set_bit(s + r * 18 + i0+i1+i2+i3+i4, b5); \
-      set_bit(s + r * 22 + i0+i1+i2+i3+i4+i5, b6); \
-      set_bit(s + r * 28 + i0+i1+i2+i3+i4+i5+i6, b7); \
-      s += r*30 + it; \
+    CROSS_CASE(v, 0, b0, 6, i0); \
+    CROSS_CASE(v, 1, b1, 4, i1); \
+    CROSS_CASE(v, 2, b2, 2, i2); \
+    CROSS_CASE(v, 3, b3, 4, i3); \
+    CROSS_CASE(v, 4, b4, 2, i4); \
+    CROSS_CASE(v, 5, b5, 4, i5); \
+    CROSS_CASE(v, 6, b6, 6, i6); \
+    CROSS_CASE(v, 7, b7, 2, i7); \
+    { \
+      UV span = (UV)r*28 + it; \
+      if (span <= bytes) { \
+        UV lastpos = bytes - span; \
+        while (pos <= lastpos) { \
+          unsigned char* m = s + pos; \
+          set_bit(m + r *  0 +  0, b0); \
+          set_bit(m + r *  6 + i0, b1); \
+          set_bit(m + r * 10 + i0+i1, b2); \
+          set_bit(m + r * 12 + i0+i1+i2, b3); \
+          set_bit(m + r * 16 + i0+i1+i2+i3, b4); \
+          set_bit(m + r * 18 + i0+i1+i2+i3+i4, b5); \
+          set_bit(m + r * 22 + i0+i1+i2+i3+i4+i5, b6); \
+          set_bit(m + r * 28 + i0+i1+i2+i3+i4+i5+i6, b7); \
+          pos += (UV)r*30 + it; \
+        } \
+      } \
     } \
   }
+
 static wheel_t create_wheel(UV startp, uint32_t prime)
 {
   wheel_t w;
@@ -229,12 +242,11 @@ static wheel_t create_wheel(UV startp, uint32_t prime)
 
 static void mark_primes(unsigned char* s, UV bytes, wheel_t* w)
 {
-  if (w->offset >= bytes) {
-    w->offset -= bytes;
+  UV pos = w->offset;
+  if (pos >= bytes) {
+    w->offset = pos - bytes;
   } else {
-    const unsigned char* send = s + bytes;
     uint32_t r = w->prime / 30;
-    s += w->offset;
     switch (w->index) {
       CROSS_INDEX( 0, 0,1,2,3,4,5,6,7, 0,0,0,0,0,0,0,1,  1); break;
       CROSS_INDEX( 8, 1,5,4,0,7,3,2,6, 1,1,1,0,1,1,1,1,  7); break;
@@ -245,7 +257,7 @@ static void mark_primes(unsigned char* s, UV bytes, wheel_t* w)
       CROSS_INDEX(48, 6,2,3,7,0,4,5,1, 5,3,1,4,1,3,5,1, 23); break;
       CROSS_INDEX(56, 7,6,5,4,3,2,1,0, 6,4,2,4,2,4,6,1, 29); break;
     }
-    w->offset = s - send;
+    w->offset = pos - bytes;
   }
 }
 
