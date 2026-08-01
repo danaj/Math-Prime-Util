@@ -174,7 +174,9 @@ static LNV _ei_chebyshev_pos24(const LNV x) {
   for (n = 0; n <= 8; n++)
     frac = Q2[n] / (P2[n] + x + frac);
   frac += P2[9];
-  return explnv(x) * (invx + invx*invx*frac);
+  if (x < LNVCONST(700))
+    return explnv(x) * (invx + invx*invx*frac);
+  return explnv(x-loglnv(x)) * (LNV_ONE + invx*frac);
 }
 #if 0
 /* Continued fraction, good for x < -1 */
@@ -253,10 +255,12 @@ static LNV _ei_series_divergent(LNV const x) {
   }
   SUM_ADD(sum, invx);
   SUM_ADD(sum, LNV_ONE);
-  return explnv(x) * SUM_FINAL(sum) * invx;
+  if (x < LNVCONST(700))
+    return explnv(x) * SUM_FINAL(sum) * invx;
+  return explnv(x-loglnv(x)) * SUM_FINAL(sum);
 }
 
-NV Ei(NV x) {
+static LNV _Ei(LNV x) {
   bool nv_is_quad = LNV_IS_QUAD;  /* make C2X happy */
   if (x == 0) croak("Invalid input to ExponentialIntegral:  x must be != 0");
   /* Protect against messed up rounding modes */
@@ -274,12 +278,19 @@ NV Ei(NV x) {
   }
 }
 
-NV Li(NV x) {
+NV Ei(NV x) {
+  return (NV) _Ei((LNV)x);
+}
+
+static LNV _Li(LNV x) {
   if (x == 0) return 0;
   if (x == 1) return -INFINITY;
   if (x == 2) return li2;
   if (x < 0) croak("Invalid input to LogarithmicIntegral:  x must be >= 0");
-  if (x >= NV_MAX) return INFINITY;
+
+  /* Ramanujan's series overflows for large x.  Ei(log(x)) uses a scaled
+   * asymptotic expansion that retains finite results near the type limit. */
+  if (x > LNVCONST(1e16)) return _Ei(loglnv(x));
 
   /* Calculate directly using Ramanujan's series. */
   if (x > 1) {
@@ -303,7 +314,11 @@ NV Li(NV x) {
     return euler_mascheroni + loglnv(logx) + sqrtlnv(x) * sum;
   }
 
-  return Ei(loglnv(x));
+  return _Ei(loglnv(x));
+}
+
+NV Li(NV x) {
+  return (NV) _Li((LNV)x);
 }
 
 long double ld_inverse_li(long double lx, UV *ierr) {
@@ -314,7 +329,7 @@ long double ld_inverse_li(long double lx, UV *ierr) {
   } else          { long double L=logl(lx);  t = lx * (L+logl(L)); }
   /* Iterate Halley's method until error grows. */
   for (i = 0; i < 4; i++) {
-    long double dn = Li(t) - lx;
+    long double dn = _Li(t) - lx;
     term = dn*logl(t) / (1.0L + dn/(2*t));
     if (i > 0 && fabsl(term) >= fabsl(old_term)) break;
     old_term = term;
@@ -331,14 +346,14 @@ UV inverse_li(UV x) {
   if (x <= 2) return x + (x > 0);
   r = (UV) ceill( ld_inverse_li(lx,&i) ); /* 'i' set to about expected error */
   /* Meet our more stringent goal of an exact answer. */
-  if (Li(r-1) >= lx) {
-    while (Li(r-i) >= lx) r -= i;
+  if (_Li((LNV)(r-1)) >= lx) {
+    while (_Li((LNV)(r-i)) >= lx) r -= i;
     for (i = i/2; i > 0; i /= 2)
-      if (Li(r-i) >= lx) r -= i;
-  } else if (Li(r) < lx) {
-    while (Li(r+i-1) < lx) r += i;
+      if (_Li((LNV)(r-i)) >= lx) r -= i;
+  } else if (_Li((LNV)r) < lx) {
+    while (_Li((LNV)(r+i-1)) < lx) r += i;
     for (i = i/2; i > 0; i /= 2)
-      if (Li(r+i-1) < lx) r += i;
+      if (_Li((LNV)(r+i-1)) < lx) r += i;
   }
   return r;
 }
@@ -355,7 +370,7 @@ static long double ld_inverse_R(long double lx) {
     if      (lx <   50) { t *= 1.2; }
     else if (lx < 1000) { t *= 1.15; }
     else {   /* use inverse Li (one iteration) for first inverse R approx */
-      dn = Li(t) - lx;
+      dn = _Li(t) - lx;
       term = dn * logl(t) / (1.0L + dn/(2*t));
       t -= term;
     }
@@ -473,11 +488,8 @@ long double ld_riemann_zeta(long double x) {
   if (x < 0)  croak("Invalid input to RiemannZeta:  x must be >= 0");
   if (x == 1) return INFINITY;
 
-  if (x == (unsigned int)x) {
-    int k = x - 2;
-    if ((k >= 0) && (k < (int)NPRECALC_ZETA))
-      return riemann_zeta_table[k];
-  }
+  if (x >= 2 && x < 2 + (long double)NPRECALC_ZETA && x == floorl(x))
+    return riemann_zeta_table[(size_t)x-2];
 
   /* Cody / Thacher rational Chebyshev approximation for small values */
   if (x >= 0.5 && x <= 5.0) {
@@ -584,13 +596,16 @@ long double RiemannR(long double x, long double eps) {
 
   if (x > 1e19) {
     const signed char* amob = range_moebius(0, 100);
-    SUM_ADD(sum, Li(x));
+    SUM_ADD(sum, _Li(x));
     for (k = 2; k <= 100; k++) {
       if (amob[k] == 0) continue;
       ki = 1.0L / (long double) k;
       part_term = powl(x,ki);
-      if (part_term > LDBL_MAX) return INFINITY;
-      term = amob[k] * ki * Li(part_term);
+      if (part_term > LDBL_MAX) {
+        Safefree(amob);
+        return INFINITY;
+      }
+      term = amob[k] * ki * _Li(part_term);
       old_sum = SUM_FINAL(sum);
       SUM_ADD(sum, term);
       if (fabslnv(SUM_FINAL(sum) - old_sum) <= eps) break;
@@ -680,11 +695,14 @@ static long double _lambertw_approx(long double x) {
 }
 
 NV lambertw(NV x) {
+  const NV branch_point = (NV)(-LNV_ONE / explnv(LNV_ONE));
   long double w;
   int i;
 
-  if (x < -0.36787944117145L)
+  if (isnan(x)) return x;
+  if (x < branch_point)
     croak("Invalid input to LambertW:  x must be >= -1/e");
+  if (x == INFINITY) return x;
   if (x == 0.0L) return 0.0L;
 
   /* Estimate initial value */
@@ -715,7 +733,7 @@ NV lambertw(NV x) {
     long double en = (zn/w1) * (qn-zn)/(qn-2.0L*zn);
     /* w *= 1.0L + en;  if (fabsl(en) <= 16*LDBL_EPSILON) break; */
     long double wen = w * en;
-    if (isnan(wen)) return 0;
+    if (isnan(wen)) return (NV)wen;
     w += wen;
     if (fabsl(wen) <= 64*LDBL_EPSILON) break;
   }
@@ -984,4 +1002,3 @@ static long double dickman_rho(long double u) {
   return expl(-u*zeta+Ei(zeta)) / (zeta * sqrtl(2*3.1415926535*u));
 }
 #endif
-

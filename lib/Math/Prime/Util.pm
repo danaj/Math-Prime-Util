@@ -573,6 +573,7 @@ sub RiemannZeta {
   croak "Parameter must be defined" if !defined $n;
   croak("Invalid input to RiemannZeta:  x must be >= 0") if $n < 0;
 
+  return 0 if $n == $_Infinity;
   return $n-$n if $n > 10_000_000;   # Over 3M leading zeros
 
   return _XS_RiemannZeta($n) if !ref($n) && $_Config{'xs'};

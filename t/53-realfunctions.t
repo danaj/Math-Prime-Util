@@ -29,6 +29,7 @@ my %eivals = (
          40  =>  6039718263611241.5783592,
          41  =>  16006649143245041.110700,
          79  =>  2.61362206325045575150640392249037e+32,
+        710  =>  3.150915688206201214938641191687680520546e+305,
 );
 
 my %livals = (  # In pari these are:  -eint1(-log($n))
@@ -41,8 +42,9 @@ my %livals = (  # In pari these are:  -eint1(-log($n))
          100000 =>  9629.8090010507982050343,
       100000000 =>  5762209.3754480314675691,
      4294967295 =>  203284081.95454158906409,
-    10000000000 =>  455055614.58662307560953,
-   100000000000 =>  4118066400.6216115150394,
+   10000000000 =>  455055614.58662307560953,
+  100000000000 =>  4118066400.6216115150394,
+          1e60 =>  7.291408921503191900242427108042848947022e57,
 );
 
 # Values from T. R. Nicely for comparison
@@ -56,6 +58,7 @@ my %rvals = (
      4294967295 =>  203280697.51326064541983,
     10000000000 =>  455050683.30684692446315,
 18446744073709551615 => 4.25656284014012122706963685602e17,
+          1e60 => 7.291408921503191900242427108035502747572e57,
 );
 
 my %rzvals = (
@@ -80,7 +83,7 @@ my %lamvals = (
 );
 
 
-plan tests => 3 + 6 + 1
+plan tests => 3 + 6 + 6 + 1
               + scalar(keys(%eivals))
               + scalar(keys(%livals))
               + scalar(keys(%rvals))
@@ -103,6 +106,17 @@ cmp_ok( ExponentialIntegral($infinity), '>=', $infinity, "Ei(inf) is infinity");
 cmp_ok( LogarithmicIntegral(0),         '==', 0,         "li(0) is 0");
 cmp_ok( LogarithmicIntegral(1),         '<=',-$infinity, "li(1) is -infinity");
 cmp_ok( LogarithmicIntegral($infinity), '>=', $infinity, "li(inf) is infinity");
+
+eval { LambertW("-0.367879441171445"); };
+like($@, qr/x must be >= -1\/e/, "LambertW rejects values below -1/e");
+cmp_ok( LambertW($infinity), '>=', $infinity, "LambertW(inf) is infinity");
+cmp_ok( RiemannR($infinity), '>=', $infinity, "R(inf) is infinity");
+cmp_ok( RiemannZeta($infinity), '==', 0, "Zeta(inf) is 0");
+my $nan = $infinity-$infinity;
+my $zeta_nan = RiemannZeta($nan);
+ok($zeta_nan != $zeta_nan, "Zeta(NaN) is NaN");
+my $lambert_nan = LambertW($nan);
+ok($lambert_nan != $lambert_nan, "LambertW(NaN) is NaN");
 
 # Example used in Math::Cephes
 cmp_closeto( ExponentialIntegral(2.2), 5.732614700, 1e-06, "Ei(2.2)");

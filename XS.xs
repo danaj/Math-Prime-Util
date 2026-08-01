@@ -3304,7 +3304,12 @@ void inverse_li(IN SV* svn)
     UV n;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
-      if (n < MPU_MAX_PRIME_IDX) /* Fall through to Perl if out of range. */
+#if BITS_PER_WORD == 64
+      /* Larger values need more precision to identify the exact integer. */
+      if (n <= UVCONST(1000000000000) && n < MPU_MAX_PRIME_IDX)
+#else
+      if (n < MPU_MAX_PRIME_IDX)
+#endif
         XSRETURN_UV(inverse_li(n));
     }
     DISPATCHPP_RETURN();

@@ -211,6 +211,31 @@ subtest 'inverse_li and inverse_li_nv', sub {
   # Allow +/- 2 for floating point differences in LogarithmicIntegral
   like(inverse_li(1000000000), qr/^2280162741[34567]$/, "inverse_li(1e9)");
   like(inverse_li(1100000000000), qr/^3310443690704[01234]$/, "inverse_li(11e11)");
+  SKIP: {
+    skip "large inverse_li exactness on 64-bit builds", 1 unless $use64;
+    is("".inverse_li("1000000000000000"), "37124507851936145",
+       "inverse_li distinguishes adjacent large integers");
+  }
+  {
+    require Math::BigFloat;
+    my $oldacc = Math::BigFloat->accuracy;
+    Math::BigFloat->accuracy(10);
+    my $got;
+    {
+      local $Math::Prime::Util::_GMPfunc{"li"} = 0;
+      $got = "".inverse_li("1234567890123456");
+    }
+    Math::BigFloat->accuracy($oldacc);
+    is($got, "46100277989963825",
+       "inverse_li ignores global Math::BigFloat accuracy");
+  }
+  SKIP: {
+    skip "extended large inverse_li series", 1 unless $extra && $use64;
+    local $Math::Prime::Util::_GMPfunc{"li"} = 0;
+    is("".inverse_li("1" . "0" x 80),
+       "18844022416372637964706578482119317307161920748467460578975668612761459942569065796",
+       "inverse_li convergent series reaches its tolerance");
+  }
 
   cmp_within(inverse_li_nv(4), 5.60927669305089, .001, "inverse_li_nv(4)");
   cmp_within(inverse_li_nv(64.2731216921018), 277, .001, "inverse_li_nv(64.2731216921018)");

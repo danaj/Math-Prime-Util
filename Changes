@@ -169,6 +169,9 @@ Revision history for Perl module Math::Prime::Util
 
     - Fix PP Frobenius-Khashin parameter selection, document 2018 algorithm.
 
+    - Real functions avoid intermediate overflow for large finite inputs,
+      handle special values correctly, and preserve exact inverse_li results.
+
 
     [FUNCTIONALITY AND PERFORMANCE]
 

@@ -4085,6 +4085,38 @@ sub inverse_li_nv {
   $t;
 }
 
+sub _inverse_li_bigfloat_value {
+  my($x, $acc) = @_;
+  my $workacc = $acc + 5;
+
+  # Explicit construction accuracy avoids losing digits to a user-set
+  # Math::BigFloat class accuracy before we can raise it here.
+  my $bx = _upgrade_to_float("$x", $workacc);
+  my $logx = $bx->copy->blog(undef, $workacc);
+
+  if ($Math::Prime::Util::_GMPfunc{"li"}) {
+    my $li = Math::BigFloat->new(
+      Math::Prime::Util::GMP::li("$x", $workacc), $workacc
+    );
+    return ($li, $logx);
+  }
+
+  # The asymptotic Li series cannot distinguish adjacent large integers.
+  # This convergent Ei(log(x)) series is slower, but gives the needed digits.
+  my $tol = Math::BigFloat->new("1e-" . ($acc + 2), $workacc);
+  my $fact_n = Math::BigFloat->new(1, $workacc);
+  my $sum = Math::BigFloat->new(0, $workacc);
+  for (my $k = 1; ; $k++) {
+    $fact_n->bmul($logx)->bdiv($k, $workacc);
+    my $term = $fact_n->copy->bdiv($k, $workacc);
+    $sum->badd($term);
+    last if $term < $tol;
+  }
+  $sum->badd(Math::BigFloat->new(_Euler($workacc), $workacc));
+  $sum->badd($logx->copy->blog(undef, $workacc));
+  return ($sum, $logx);
+}
+
 sub inverse_li {
   my($n) = @_;
   validate_integer_nonneg($n);
@@ -4094,21 +4126,72 @@ sub inverse_li {
 
   $t = Mtoint($t + 0.5);
 
-  # Make it an exact answer
-  my $inc = ($n > 4e16) ? 2048 : 128;
-  if (int(MLi($t-1)) >= $n) {
-    $t -= $inc while int(MLi($t-$inc)) >= $n;
-    for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
-      $t -= $inc if int(MLi($t-$inc)) >= $n;
+  # Native Li has enough precision to distinguish adjacent values here.
+  if ($n <= 1_000_000_000_000) {
+    my $inc = 128;
+    if (int(MLi($t-1)) >= $n) {
+      $t -= $inc while int(MLi($t-$inc)) >= $n;
+      for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
+        $t -= $inc if int(MLi($t-$inc)) >= $n;
+      }
+    } elsif (int(MLi($t)) < $n) {
+      $t += $inc while int(MLi($t+$inc-1)) < $n;
+      for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
+        $t += $inc if int(MLi($t+$inc-1)) < $n;
+      }
     }
-  } elsif (int(MLi($t)) < $n) {
-    $t += $inc while int(MLi($t+$inc-1)) < $n;
-    for ($inc = $inc >> 1;  $inc > 0;  $inc >>= 1) {
-      $t += $inc if int(MLi($t+$inc-1)) < $n;
+    return $t;
+  }
+
+  no warnings 'once';
+  local $Math::BigFloat::accuracy = undef;
+  local $Math::BigFloat::precision = undef;
+
+  my $acc = length("$n") + 20;
+  my $target = _upgrade_to_float("$n", $acc);
+
+  # Native floating point starts with about 15 useful digits.  Repeated
+  # high-precision Newton corrections recover accuracy for much larger input.
+  for (1 .. 10) {
+    my($li, $logt) = _inverse_li_bigfloat_value($t, $acc);
+    my $move = $li->copy->bsub($target)->bmul($logt)->bint;
+    last if $move->is_zero;
+    $t = Msubint($t, _truncate_bigfloat_to_string($move));
+  }
+
+  my($li) = _inverse_li_bigfloat_value($t, $acc);
+  my $cmp = $li->bcmp($target);
+  my $cmp_at = sub {
+    my($v) = _inverse_li_bigfloat_value($_[0], $acc);
+    $v->bcmp($target);
+  };
+  my($lo, $hi, $step);
+  if ($cmp >= 0) {
+    $hi = $t;
+    $step = 1;
+    $lo = Msubint($t, $step);
+    while ($cmp_at->($lo) >= 0) {
+      $hi = $lo;
+      $step = Mmulint($step, 2);
+      $lo = Msubint($t, $step);
+    }
+  } else {
+    $lo = $t;
+    $step = 1;
+    $hi = Maddint($t, $step);
+    while ($cmp_at->($hi) < 0) {
+      $lo = $hi;
+      $step = Mmulint($step, 2);
+      $hi = Maddint($t, $step);
     }
   }
 
-  $t;
+  while (Msubint($hi, $lo) > 1) {
+    my $mid = Mdivint(Maddint($lo, $hi), 2);
+    if ($cmp_at->($mid) >= 0) { $hi = $mid; }
+    else                      { $lo = $mid; }
+  }
+  $hi;
 }
 sub _inverse_R {
   # uncoverable subroutine
@@ -4139,8 +4222,10 @@ sub nth_prime_approx {
   return undef if $n <= 0;  ## no critic qw(ProhibitExplicitReturnUndef)
   return $_primes_small[$n] if $n <= 0+$#_primes_small;
 
-  # Once past 10^12 or so, inverse_li gives better results.
-  return Math::Prime::Util::inverse_li($n) if $n > 1e12;
+  # Once past 10^12 or so, inverse Li gives better results.  The floating
+  # version is sufficient here; inverse_li also pays to identify the exact k.
+  return Mtoint(Math::Prime::Util::inverse_li_nv(0.0+"$n") + 0.5)
+    if $n > 1e12;
 
   $n = _upgrade_to_float($n) if ref($n) || $n >= MPU_MAXPRIMEIDX;
 
@@ -11764,7 +11849,8 @@ sub ExponentialIntegral {
         last;
       }
     }
-    $val = exp($x) * $invx * $sum;
+    $val = ($x < 700) ? exp($x) * $invx * $sum
+                      : exp($x-log($x)) * $sum;
   }
   $val;
 }
@@ -12013,6 +12099,8 @@ sub RiemannZeta {
 sub RiemannR {
   my($x) = @_;
 
+  return $x           if $x != $x;
+  return MPU_INFINITY if $x == MPU_INFINITY;
   croak "RiemannR: x must be > 0" if $x <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"riemannr"}) {
@@ -12060,6 +12148,8 @@ sub RiemannR {
 
 sub LambertW {
   my($x) = @_;
+  return $x           if $x != $x;
+  return MPU_INFINITY if $x == MPU_INFINITY;
   croak "LambertW: x must be >= -1/e"
     if $x < '-0.36787944117144232159552377016146086745';
 
