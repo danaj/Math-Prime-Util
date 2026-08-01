@@ -185,7 +185,7 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
    *     n = {5,6,7} mod 8   =>  n is a congruent number
    * also follows from the weak BSD conjecture.
    */
-  if (n % 8 == 5 || n % 8 == 6 || n % 8 == 7)  return 1;
+  if ((n % 8) >= 5) return 1;
 
   /* No filter here handles more than 4 odd factors */
   if (nf->nfactors-iseven > 4)  return -1;
