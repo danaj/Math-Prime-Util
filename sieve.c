@@ -175,8 +175,8 @@ static const unsigned char qinit30[30] =
     {0,0,1,1,1,1,1,1,2,2,2,2,3,3,4,4,4,4,5,5,6,6,6,6,7,7,7,7,7,7};
 
 typedef struct {
-  uint32_t prime;
   UV       offset;
+  uint32_t prime;
   uint8_t  index;
 } wheel_t;
 
@@ -209,7 +209,7 @@ static wheel_t create_wheel(UV startp, uint32_t prime)
   UV p2 = q*q;
 
   if (startp == 0) {
-    wheel_t ws = { prime, p2/30, qinit30[q % 30]  +  8*masknum30[prime % 30] };
+    wheel_t ws = { p2/30, prime, qinit30[q % 30]  +  8*masknum30[prime % 30] };
     return ws;
   }
 
@@ -337,14 +337,15 @@ bool sieve_segment(unsigned char* mem, UV startd, UV endd)
   return 1;
 }
 
-bool sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray, uint32_t wsize)
+static bool sieve_segment_wheel(unsigned char* mem, UV startd, UV endd, wheel_t *warray, uint32_t wsize)
 {
-  uint32_t i = 0, limit, start_base_prime;
-  uint32_t segsize = endd - startd + 1;
+  uint32_t i = 0, limit, start_base_prime, segsize;
   UV startp = 30*startd;
   UV endp = (endd >= (UV_MAX/30))  ?  UV_MAX-2  :  30*endd+29;
-  MPUassert(mem != 0 && endd >= startd && endp >= startp && wsize > 0,
-            "sieve_segment bad arguments");
+  MPUassert(mem != 0 && wsize > 0 &&
+            endd >= startd && endp >= startp && endd-startd < UINT32_MAX,
+            "sieve_segment_wheel bad arguments");
+  segsize = (uint32_t)(endd - startd + 1);
 
   /* possibly use primary cache directly */
 
@@ -548,10 +549,15 @@ UV range_prime_sieve(UV**list, UV lo, UV hi)
 
 uint32_t range_prime_sieve_32(uint32_t** list, uint32_t n, uint32_t offset)
 {
-  uint32_t *P, i = offset;
+  uint32_t *P, np, i = offset;
+  Size_t maxoffset = MAX_SIZET / sizeof(uint32_t);  /* Max allocation */
 
   if (n < 2) { *list = 0; return 0; }
-  New(0, P, max_nprimes(n) + offset + 3, uint32_t);         /* Allocate list */
+  np = max_nprimes(n);
+  maxoffset = (maxoffset > UINT32_MAX ? UINT32_MAX : maxoffset) - np - 3;
+  MPUassert( offset <= maxoffset,
+             "range_prime_sieve_32 cannot fit primes with large offset");
+  New(0, P, np + offset + 3, uint32_t);                     /* Allocate list */
   if (offset > 0)  memset(P, 0, offset * sizeof(uint32_t)); /* Zero to offset */
   P[i++] = 2;  P[i++] = 3;  P[i++] = 5;                     /* Fill in 2/3/5 */
 
