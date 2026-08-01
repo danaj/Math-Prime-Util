@@ -327,6 +327,17 @@ subtest 'vecequal', sub {
     $b[1] = 1;
     is(vecequal(\@a,\@b), 0, "vecequal distinguishes holes from defined values");
   }
+  {
+    require Tie::Array;
+    tie my @a, 'Tie::StdArray';
+    tie my @b, 'Tie::StdArray';
+    @a = (1,2,3);
+    @b = (1,2,4);
+    is(vecequal(\@a,\@b), 0, "vecequal distinguishes tied arrays");
+    is(vecequal([\@a],[\@b]), 0, "vecequal distinguishes nested tied arrays");
+    $b[2] = 3;
+    is(vecequal(\@a,\@b), 1, "vecequal accepts equal tied arrays");
+  }
   eval { vecequal([[1,2]],[{a=>1}]) };
   like($@, qr/scalar or array reference/, "vecequal rejects hashrefs");
   eval { my $x = 1; vecequal([\$x],[\$x]) };

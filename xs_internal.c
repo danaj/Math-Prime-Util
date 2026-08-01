@@ -538,9 +538,13 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
   Size_t i, alen, blen;
   if ( ((!SvROK(a)) || (SvTYPE(SvRV(a)) != SVt_PVAV)) ||
        ((!SvROK(b)) || (SvTYPE(SvRV(b)) != SVt_PVAV)) )
-    return -1;
+    return AREF_CMP_INVALID;
   ava = (AV*) SvRV(a);
   avb = (AV*) SvRV(b);
+  /* Tied array fetches return magical proxies that cannot safely be held
+   * across another fetch.  Let PP handle all magical array semantics. */
+  if (SvMAGICAL(ava) || SvMAGICAL(avb))
+    return AREF_CMP_DISPATCH;
   alen = av_count(ava);
   blen = av_count(avb);
   if (alen != blen)
@@ -560,7 +564,7 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
       return 0;
     /* Hashes, I/O, etc. are not ok. */
     if (SvTYPE(sva) >= SVt_PVAV || SvTYPE(svb) >= SVt_PVAV)
-      return -1;
+      return AREF_CMP_INVALID;
 
     {
       int a_is_ref = SvROK(sva), b_is_ref = SvROK(svb);
@@ -574,12 +578,12 @@ int _compare_array_refs(pTHX_ SV* a, SV* b)
           return res;
         }
         /* An array and scalar differ; an array and other reference is invalid. */
-        return (!a_is_ref || !b_is_ref) ? 0 : -1;
+        return (!a_is_ref || !b_is_ref) ? 0 : AREF_CMP_INVALID;
       }
       /* Non-object references other than arrays are invalid. */
       if ( (a_is_ref && !sv_isobject(sva)) ||
            (b_is_ref && !sv_isobject(svb)) )
-        return -1;
+        return AREF_CMP_INVALID;
     }
 
     /* Common case: two simple integers */

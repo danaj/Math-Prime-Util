@@ -2822,7 +2822,9 @@ vecequal(IN SV* a, IN SV* b)
     int res;
   PPCODE:
     res = _compare_array_refs(aTHX_ a, b);
-    if (res == -1)
+    if (res == AREF_CMP_DISPATCH)
+      DISPATCHPP_RETURN();
+    if (res == AREF_CMP_INVALID)
       croak("vecequal: expected scalar or array reference");
     RETURN_NPARITY(res);
 

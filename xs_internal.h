@@ -166,6 +166,8 @@ int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sv
 SV** _check_sorted_nonneg_arrayref(pTHX_ SV *sv, size_t *lenp);
 int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svbase, size_t len);
 bool arrayref_to_digit_array(pTHX_ size_t *retlen, UV** ret, SV* sva, UV base);
+#define AREF_CMP_DISPATCH -2
+#define AREF_CMP_INVALID  -1
 int _compare_array_refs(pTHX_ SV* a, SV* b);
 
 bool xs_is_sv_scalar_ref(SV *sv);
