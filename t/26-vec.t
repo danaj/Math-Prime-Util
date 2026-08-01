@@ -23,7 +23,17 @@ use Math::Prime::Util qw/vecreduce addint
     2;
   }, fallback => 1;
 }
+
+{
+  package Math::Prime::Util::TestStackGrowingString;
+  use overload q{""} => sub {
+    main::grow_test_stack((0) x 100_000);
+    2;
+  }, fallback => 1;
+}
 package main;
+
+sub grow_test_stack { scalar @_ }
 
 # vecmex      in t/26-mex.t
 # vecpmex     in t/26-mex.t
@@ -480,13 +490,17 @@ subtest 'vecsort', sub {
   is_deeply([[vecrsort(\@s)],[@s]], [[5,4,3,2,1],[5,2,1,3,4]], "vecrsort sorts without modifying input");
 
   SKIP: {
-    skip "XS array cache refresh", 1 unless $usexs;
+    skip "XS input storage refresh", 2 unless $usexs;
     my @input;
     my $object = bless {array => \@input}, "Math::Prime::Util::TestMutatingString";
     @input = ($object, 1);
     is_deeply([vecsort(\@input)], [1,2],
               "vecsort refreshes array storage after overloaded validation");
     delete $object->{array};
+
+    my $stack_object = bless {}, "Math::Prime::Util::TestStackGrowingString";
+    is_deeply([vecsort(3, $stack_object, 1)], [1,2,3],
+              "vecsort preserves list arguments across stack-growing overload");
   }
 
   my @ivd = (qw/-3937 4322 -3619 -390 2039 2123 -1614 -879 -4372 1793 4404 4229 286 -3613 2707 -4166 4025 2450 -2003 3390 4498 -3094 -4854 3441 3501 -2871 -1206 315 71 -2101 4881 -3141 10 -2545 -2825 -519 3534 -4904 -3523 -1170 -3 3 -2 2 -1 1 0/);

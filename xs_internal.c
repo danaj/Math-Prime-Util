@@ -439,6 +439,7 @@ int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svba
   size_t i;
   int itype = IARR_TYPE_ANY;
   UV  *r;
+  SV **source = svbase, **snapshot = 0;
   *retlen = len;
   if (len == 0) {
     *ret = 0;
@@ -446,7 +447,7 @@ int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svba
   }
   New(0, r, len, UV);
   for (i = 0; i < len; i++) {
-    SV *iv = svbase[i];
+    SV *iv = source[i];
     if (SVNUMTEST(iv)) {
       IV n = SvIVX(iv);
       if (n < 0) {
@@ -456,9 +457,21 @@ int array_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV** svba
       }
       r[i] = (UV)n;
     } else {
+      /* Validation can invoke Perl and relocate its value stack.  Copy the
+       * original stack entries before the first validation that might do so.
+       * The current implementation only requires this for SvROK(iv) or
+       * SvGMAGICAL(iv), but stay conservative rather than rely on that detail.
+       */
+      if (snapshot == 0) {
+        New(0, snapshot, len, SV*);
+        Copy(svbase, snapshot, len, SV*);
+        source = snapshot;
+        iv = source[i];
+      }
       READ_UV_IARR(r[i], iv, itype);
     }
   }
+  if (snapshot != 0) Safefree(snapshot);
   if (i < len) {
     Safefree(r);
     *ret = 0;
