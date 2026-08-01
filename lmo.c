@@ -136,7 +136,7 @@ static uint32_t* make_primelist(uint32 n, uint32* number_of_primes)
 #if 0  /* primesieve 5.0 example */
 #include <primesieve.h>
 static uint32_t* make_primelist(uint32 n, uint32* number_of_primes) {
-  uint32_t plist;
+  uint32_t *plist;
   uint32_t* psprimes = generate_primes(2, n, number_of_primes, UINT_PRIMES);
   New(0, plist, *number_of_primes + 1, uint32_t);
   plist[0] = 0;
@@ -478,20 +478,6 @@ UV LMO_prime_count(UV n)
   primes = make_primelist( M + 500, &nprimes );
   factor_table = ft_create( M );
 
-  /* Create other arrays */
-  New(0, ss.sieve,           PHI_SIEVE_WORDS   + 2, sword_t);
-  New(0, ss.word_count,      PHI_SIEVE_WORDS   + 2, uint8);
-  New(0, ss.word_count_sum,  PHI_SIEVE_WORDS   + 2, uint32);
-  New(0, ss.totals,          K3+2, UV);
-  New(0, ss.prime_index,     K3+2, uint32);
-  New(0, ss.first_bit_index, K3+2, uint32);
-  New(0, ss.multiplier,      K3+2, uint8);
-
-  if (ss.sieve == 0 || ss.word_count == 0 || ss.word_count_sum == 0 ||
-      ss.totals == 0 || ss.prime_index == 0 || ss.first_bit_index == 0 ||
-      ss.multiplier == 0)
-    croak("Allocation failure in LMO Pi\n");
-
   /* Variables for fast prev_prime using small segment sieves (up to M^2) */
   ps_max   = prev_sieve_max( primes[nprimes] );
   ps_start = U32_CONST(0xFFFFFFFF);
@@ -512,6 +498,20 @@ UV LMO_prime_count(UV n)
   /* KM = smallest k, c <= k <= piM, s.t. primes[k+1] * primes[k+2] > M. */
   for (KM = c; primes[KM+1] * primes[KM+2] <= M && KM < piM; KM++) /* */;
   if (K3 < KM)  K3 = KM;  /* Ensure K3 >= KM */
+
+  /* Create other arrays */
+  New(0, ss.sieve,           PHI_SIEVE_WORDS   + 2, sword_t);
+  New(0, ss.word_count,      PHI_SIEVE_WORDS   + 2, uint8);
+  New(0, ss.word_count_sum,  PHI_SIEVE_WORDS   + 2, uint32);
+  New(0, ss.totals,          K3+2, UV);
+  New(0, ss.prime_index,     K3+2, uint32);
+  New(0, ss.first_bit_index, K3+2, uint32);
+  New(0, ss.multiplier,      K3+2, uint8);
+
+  if (ss.sieve == 0 || ss.word_count == 0 || ss.word_count_sum == 0 ||
+      ss.totals == 0 || ss.prime_index == 0 || ss.first_bit_index == 0 ||
+      ss.multiplier == 0)
+    croak("Allocation failure in LMO Pi\n");
 
   /* Start calculating Pi(n).  Steps 4-10 from Bau. */
   sum1 = (K2 - 1) + (UV) (piM - K3 - 1) * (UV) (piM - K3) / 2;
@@ -555,7 +555,8 @@ UV LMO_prime_count(UV n)
     uint32 last_prime = piM;
     for (k = KM; k < K3; k++) {
       UV pk = primes[k+1];
-      while (last_prime > k+1 && pk * pk * primes[last_prime] > n)
+      UV maxprime = n / (pk*pk);
+      while (last_prime > k+1 && primes[last_prime] > maxprime)
         last_prime--;
       ss.prime_index[k] = last_prime;
       sum1 += piM - last_prime;
