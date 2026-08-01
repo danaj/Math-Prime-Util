@@ -571,11 +571,13 @@ static UV _rootmod_composite1(UV a, UV k, UV n) {
           }
           /* That didn't work, do a stronger but time consuming search. */
           if (t >= f) {
-            UV afe = a % fe;
-            for (r = (a % f); r < fe; r += f)
+            UV base = r % f, count = fe / f, afe = a % fe;
+            for (t = 0; t < count; t++) {
+              r = base + t*f;
               if (powmod(r, k, fe) == afe)
                 break;
-            if (r >= fe) return 0;
+            }
+            if (t >= count) return 0;
           }
         }
       }
@@ -634,13 +636,13 @@ static UV _rootmod_prime_power(UV a, UV k, UV p, UV e) {
   if (e == 1) return _rootmod_prime(a, k, p);
 
   n  = ipow(p,e);
-  pk = ipow(p,k);
+  pk = ipowsafe(p,k);  /* pk = UV_MAX if overflow */
   /* Note: a is not modded */
 
   if ((a % n) == 0)
     return 0;
 
-  if ((a % pk) == 0) {
+  if (pk != UV_MAX && (a % pk) == 0) {
     apk = a / pk;
     s = _rootmod_prime_power(apk, k, p, e-k);
     if (s == UV_MAX) return UV_MAX;
@@ -1181,7 +1183,7 @@ UV* allrootmod(UV* nroots, UV a, UV k, UV n) {
           Safefree(roots);
           croak("Maximum returned roots exceeded");
         }
-        if (nr3 + nr2 >= allocr) {
+        if (nr3 + nr2 > allocr) {
           UV newallocr;
           if (!_roots_count_add_ok(allocr, nr2, &newallocr)) {
             Safefree(roots2);

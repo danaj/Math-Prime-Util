@@ -154,6 +154,8 @@ Revision history for Perl module Math::Prime::Util
 
     - Fix nth_powerfree near UV_MAX and keep refinement counts synchronized.
 
+    - rootmod no longer misses some roots modulo prime powers.
+
     - vecreduce, vecslide, and vecwindow block values are no longer aliases
       of input values in XS, matching the PP implementations and vecpairwise.
 

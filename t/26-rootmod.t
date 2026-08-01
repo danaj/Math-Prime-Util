@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/ sqrtmod allsqrtmod rootmod allrootmod /;
+use Math::Prime::Util qw/ sqrtmod allsqrtmod rootmod allrootmod powmod /;
 
 my @sqrtmods = (
  [ 0, 0, undef ],
@@ -143,7 +143,7 @@ plan tests => 0
             + 5                      # rootmod
             + scalar(@rootmods)*2    # allrootmod
             + scalar(@allroot_context_tests)*2
-            + 1                      # more rootmod
+            + 2                      # more rootmod
             + 0;
 
 ###### sqrtmod
@@ -228,6 +228,13 @@ foreach my $t (@allroot_context_tests) {
 
 # is(powmod(rootmod(12,41,1147),41,1147), 12, "41st root of 12 mod 1147 is correct");
 is(rootmod(12,41,1147),1106, "41st root of 12 mod 1147 is correct");
+
+{
+  my($a,$k,$n) = (249,50,625);
+  my $r = rootmod($a,$k,$n);
+  ok(defined($r) && powmod($r,$k,$n) == $a,
+     "rootmod($a,$k,$n) finds a valid prime-power root");
+}
 
 # Example with 383 roots:
 # say scalar allrootmod(32247425005, 383, 64552988163);
