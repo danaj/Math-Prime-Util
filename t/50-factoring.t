@@ -221,6 +221,11 @@ subtest 'specific cases for factoring code coverage', sub {
     skip "holf_factor for 64-bit input", 1 unless $use64 || !$usexs;
     is_deeply( [Math::Prime::Util::holf_factor(3747785838079,80000)], [1935281,1936559], "holf factor 1935281 * 1936559" );
   }
+  SKIP: {
+    skip "fermat_factor full-UV arithmetic", 1 unless $use64 && $usexs;
+    is_deeply( [Math::Prime::Util::fermat_factor("18446743979220271189",10)],
+               [4294967279,4294967291], "fermat factor near UV_MAX" );
+  }
   is_deeply( [Math::Prime::Util::pminus1_factor(166213)], [347,479], "p-1 factor 347 * 479" );
   is_deeply( [Math::Prime::Util::pminus1_factor("18450931744652885087",100,1000)],
              [4294976731,4295932877], "p-1 bigint stage 2 after native residue" );
@@ -241,7 +246,14 @@ subtest 'specific cases for factoring code coverage', sub {
     is_deeply( [Math::Prime::Util::cheb_factor("2466600463243213733",1000)], [1552318819,1588978007], "cheb factor 1552318819 * 1588978007" );
   }
   SKIP: {
-    skip "tinyecm64 C path", 3 unless $use64 && $usexs && !$usegmp;
+    skip "cheb_factor native initial value", 1 unless $usexs;
+    my $uvmax = $use64 ? "18446744073709551615" : "4294967295";
+    is_deeply( [Math::Prime::Util::cheb_factor(221,100,$uvmax)], [13,17],
+               "cheb factor reduces its initial value modulo n" );
+  }
+  SKIP: {
+    skip "tinyecm64 C path", 4 unless $use64 && $usexs && !$usegmp;
+    is_deeply( [Math::Prime::Util::ecm_factor(1111,10,10,1)], [11,101], "tinyecm64 setup denominator factor" );
     is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,0,3)], [3289045043,4060989437], "tinyecm64 64-bit Montgomery reduction" );
     is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,40000,3)], [3289045043,4060989437], "tinyecm64 explicit B2 path" );
     is_deeply( [Math::Prime::Util::ecm_factor("2949544710425713",500,600,30)], [7051211,418303283], "tinyecm64 stage 2 path" );

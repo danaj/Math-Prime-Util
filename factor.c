@@ -123,7 +123,7 @@ static int _power_factor(UV n, UV *factors)
   int nfactors, i, j, k;
   if (n > 3 && (k = powerof_ret(n, &root))) {
     nfactors = factor(root, factors);
-    for (i = nfactors; i >= 0; i--)
+    for (i = nfactors-1; i >= 0; i--)
       for (j = 0; j < k; j++)
         factors[k*i+j] = factors[i];
     return k * nfactors;
@@ -396,7 +396,7 @@ int trial_factor(UV n, UV *factors, UV f, UV last)
   int sp, nfactors = 0;
 
   if (f < 2) f = 2;
-  if (last == 0 || last*last > n) last = UV_MAX;
+  if (last == 0 || last > n/last) last = UV_MAX;
 
   if (n < 4 || last < f) {
     factors[0] = n;
@@ -405,11 +405,14 @@ int trial_factor(UV n, UV *factors, UV f, UV last)
 
   /* possibly do uint32_t specific code here */
 
-  if (f < primes_small[NPRIMES_SMALL-1]) {
-    while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n >>= 1; }
-    if (3<=last) while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
-    if (5<=last) while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
-    for (sp = 4; sp < (int)NPRIMES_SMALL; sp++) {
+  if (f <= primes_small[NPRIMES_SMALL-1]) {
+    if (f <= 2) while ( (n & 1) == 0 ) { factors[nfactors++] = 2; n >>= 1; }
+    if (f <= 3 && 3 <= last)
+      while ( (n % 3) == 0 ) { factors[nfactors++] = 3; n /= 3; }
+    if (f <= 5 && 5 <= last)
+      while ( (n % 5) == 0 ) { factors[nfactors++] = 5; n /= 5; }
+    for (sp = 4; sp < (int)NPRIMES_SMALL && primes_small[sp] < f; sp++) { }
+    for (; sp < (int)NPRIMES_SMALL; sp++) {
       f = primes_small[sp];
       if (f*f > n || f > last) break;
       while ( (n%f) == 0 ) {
@@ -417,9 +420,13 @@ int trial_factor(UV n, UV *factors, UV f, UV last)
         n /= f;
       }
     }
+    if (sp == (int)NPRIMES_SMALL) f = 2017;
   }
+  if (f > primes_small[NPRIMES_SMALL-1] &&
+      distancewheel30[f % 30] <= UV_MAX-f)
+    f += distancewheel30[f % 30];
   /* Trial division using a mod-30 wheel for larger values */
-  if (f*f <= n && f <= last) {
+  if (f <= n/f && f <= last) {
     UV m, newlimit, limit = isqrt(n);
     if (limit > last) limit = last;
     m = f % 30;
@@ -621,12 +628,13 @@ static int no_factor(UV n, UV* factors)
  */
 int fermat_factor(UV n, UV *factors, UV rounds)
 {
-  IV sqn, x, y, r;
+  UV sqn;
+  IV x, y, r;
   MPUassert( (n >= 3) && ((n%2) != 0) , "bad n in fermat_factor");
   sqn = isqrt(n);
-  x = 2 * sqn + 1;
+  x = (IV)(2 * sqn + 1);
   y = 1;
-  r = (sqn*sqn) - n;
+  r = -(IV)(n - sqn*sqn);
 
   while (r != 0) {
     if (rounds-- == 0) return no_factor(n,factors);
@@ -638,7 +646,7 @@ int fermat_factor(UV n, UV *factors, UV rounds)
     } while (r > 0);
   }
   r = (x-y)/2;
-  return found_factor(n, r, factors);
+  return found_factor(n, (UV)r, factors);
 }
 
 /* Hart's One Line Factorization. */
@@ -1152,55 +1160,53 @@ static int ecm_batch_normalize_x64(uint64_t *xout, uint64_t *fout,
                                    const ecpt64_t *P, UV npoints,
                                    const mont64_t *ctx)
 {
-  uint64_t n = ctx->n, acc = 1, inv, g;
-  uint64_t *zv, *prefix;
+  uint64_t n = ctx->n, R = tecm64_mont_enter(1, ctx);
+  uint64_t acc = R, inv, g;
+  uint64_t *prefix;
   UV i;
 
   if (npoints == 0) { *fout = 0; return 1; }
 
-  New(0, zv,     npoints, uint64_t);
   New(0, prefix, npoints, uint64_t);
 
   for (i = 0; i < npoints; i++) {
-    zv[i] = tecm64_mont_exit(P[i].Z, ctx);
-    g = tecm64_gcd(zv[i], n);
-    if (g > 1) {
-      *fout = (g < n) ? g : 0;
-      Safefree(prefix);
-      Safefree(zv);
-      return 0;
-    }
-    acc = tecm64_mulmod(acc, zv[i], n);
+    acc = tecm64_mont_mulmod(acc, P[i].Z, ctx);
     prefix[i] = acc;
   }
 
   g = tecm64_gcd(acc, n);
   if (g > 1) {
     *fout = (g < n) ? g : 0;
+    /* Different coordinates can expose different factors whose product has
+     * gcd n.  Check them individually only on this uncommon failure path. */
+    if (g == n) {
+      for (i = 0; i < npoints; i++) {
+        g = tecm64_gcd(P[i].Z, n);
+        if (g > 1 && g < n) { *fout = g; break; }
+      }
+    }
     Safefree(prefix);
-    Safefree(zv);
     return 0;
   }
 
-  inv = tecm64_modinv(acc, n);
+  inv = tecm64_modinv(tecm64_mont_exit(acc, ctx), n);
   if (inv == 0) {
     *fout = 0;
     Safefree(prefix);
-    Safefree(zv);
     return 0;
   }
+  inv = tecm64_mont_enter(inv, ctx);
 
   for (i = npoints; i > 0; i--) {
     UV j = i - 1;
-    uint64_t prev = (j == 0) ? 1 : prefix[j-1];
-    uint64_t zinv = tecm64_mulmod(inv, prev, n);
-    inv = tecm64_mulmod(inv, zv[j], n);
-    xout[j] = tecm64_mont_mulmod(P[j].X, tecm64_mont_enter(zinv, ctx), ctx);
+    uint64_t prev = (j == 0) ? R : prefix[j-1];
+    uint64_t zinv = tecm64_mont_mulmod(inv, prev, ctx);
+    inv = tecm64_mont_mulmod(inv, P[j].Z, ctx);
+    xout[j] = tecm64_mont_mulmod(P[j].X, zinv, ctx);
   }
 
   *fout = 0;
   Safefree(prefix);
-  Safefree(zv);
   return 1;
 }
 
@@ -1354,7 +1360,11 @@ static uint64_t tinyecm64(uint64_t n, UV B1, UV B2,
     num = abs_num_r ? n - abs_num_r : 0;
     den_r = tecm64_mulmod(tecm64_mulmod(u3, vi % n, n), 16 % n, n);
     den_inv = tecm64_modinv(den_r, n);
-    if (den_inv == 0) continue;
+    if (den_inv == 0) {
+      uint64_t g = tecm64_gcd(den_r, n);
+      if (g > 1 && g < n) return g;
+      continue;
+    }
     A24 = tecm64_mont_mulmod(tecm64_mont_enter(num, &ctx),
                              tecm64_mont_enter(den_inv, &ctx), &ctx);
 
@@ -1406,7 +1416,7 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 {
   UV f, k, kmin;
   UV a     = 2, q     = 2;
-  UV savea = 2, saveq = 2;
+  UV savea = 2, saveq = 1;
   UV j = 1;
   UV sqrtB1 = isqrt(B1);
 #if USE_MONTMATH
@@ -1459,16 +1469,16 @@ int pminus1_factor(UV n, UV *factors, UV B1, UV B2)
 
   /* If we found more than one factor in stage 1, backup and single step */
   if (f == n) {
+    /* savea is the state after saveq; resume at the following prime. */
     a = savea;
-    START_DO_FOR_EACH_PRIME(saveq, B1) {
-      k = p;  kmin = B1/p;
-      while (k <= kmin)  k *= p;
+    for (q = next_prime(saveq); q <= B1; q = next_prime(q)) {
+      k = q;  kmin = B1/q;
+      while (k <= kmin)  k *= q;
       a = powmod(a, k, n);
       f = gcd_ui(a-1, n);
-      q = p;
       if (f != 1)
         break;
-    } END_DO_FOR_EACH_PRIME
+    }
     /* If f == n again, we could do:
      * for (savea = 3; f == n && savea < 100; savea = next_prime(savea)) {
      *   a = savea;
@@ -1773,21 +1783,12 @@ int squfof_factor(UV n, UV *factors, UV rounds)
   return no_factor(n,factors);
 }
 
-#define SQR_TAB_SIZE 512
-static int sqr_tab_init = 0;
-static double sqr_tab[SQR_TAB_SIZE];
-static void make_sqr_tab(void) {
-  int i;
-  for (i = 0; i < SQR_TAB_SIZE; i++)
-    sqr_tab[i] = sqrt((double)i);
-  sqr_tab_init = 1;
-}
-
 /* Lehman written and tuned by Warren D. Smith.
- * Revised by Ben Buhrow and Dana Jacobsen. */
+ * Revised by Ben Buhrow and Dana Jacobsen.
+ * Needs retuning against HOLF and with the newer isqrt/is_perfect_square. */
 int lehman_factor(UV n, UV *factors, bool do_trial) {
   const double Tune = ((n >> 31) >> 5) ? 3.5 : 5.0;
-  double x, sqrtn;
+  double x;
   UV a,c,kN,kN4,B2;
   uint32_t b,p,k,r,B,U,Bred,inc,ip=2;
 
@@ -1815,9 +1816,6 @@ int lehman_factor(UV n, UV *factors, bool do_trial) {
   B2 = B*B;
   kN = 0;
 
-  if (!sqr_tab_init) make_sqr_tab();
-  sqrtn = sqrt(n);
-
   for (k = 1; k <= Bred; k++) {
     if (k&1) { inc = 4; r = (k+n) % 4; }
     else     { inc = 2; r = 1; }
@@ -1827,7 +1825,7 @@ int lehman_factor(UV n, UV *factors, bool do_trial) {
 #endif
     kN4 = kN*4;
 
-    x = (k < SQR_TAB_SIZE) ? sqrtn * sqr_tab[k] : sqrt((double)kN);
+    x = sqrt((double)kN);
     a = x;
     if ((UV)a * (UV)a == kN)
       return found_factor(n, gcd_ui(a,n), factors);
@@ -1868,7 +1866,7 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
   if (B > isqrt(n)) B = isqrt(n);
   sqrtB = isqrt(B);
   inv = modinverse(2,n);   /* multiplying by this will divide by two */
-  x = (initx == 0) ? 72 : initx;
+  x = (initx == 0) ? 72 : initx % n;
   f = 1;
 
   START_DO_FOR_EACH_PRIME(2, B) {
@@ -1884,7 +1882,7 @@ int cheb_factor(UV n, UV *factors, UV B, UV initx)
     } else {
       x = mulmod(lucasvmod(addmod(x,x,n), 1, p, n), inv, n);
     }
-    f = gcd_ui(x-1, n);  if (f > 1)  break;
+    f = gcd_ui(x > 0 ? x-1 : n-1, n);  if (f > 1)  break;
   } END_DO_FOR_EACH_PRIME
 
   if (f > 1 && f < n)
