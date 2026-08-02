@@ -689,6 +689,7 @@ UV valuation(UV n, UV k)
 /* N => k^s * t   =>   s = valuation_remainder(N, k, &t); */
 UV valuation_remainder(UV n, UV k, UV *r) {
   UV v;
+  MPUassert(n > 0, "valuation_remainder: n must be > 0");
   if      (k <= 1) { v = 0; }
   else if (k == 2) { v = ctz(n); n >>= v; }
   else {
@@ -2665,7 +2666,7 @@ UV consecutive_integer_lcm(UV n)
   ilcm = 1;
   sqrtn = isqrt(n);
   for (i = 1; i < NPRIMES_SMALL; i++) {
-    uint32_t p = primes_small[i];
+    UV p = primes_small[i];
     if (p > n) break;
     if (p <= sqrtn) p = ipow(p, logint(n,p));
     if (ilcm > UV_MAX/p) return 0;
@@ -2705,6 +2706,7 @@ UV frobenius_number(UV* A, uint32_t alen)
 
   nlen = A[0];
   /* if (nlen > 1000000000U) croak("overflow in frobenius number"); */
+  if (nlen+1 > (UV)(MAX_SIZET/sizeof(UV))) return UV_MAX;
   New(0, N, nlen+1, UV);
   N[0] = 0;
   for (j = 1; j < nlen; j++)
@@ -2869,8 +2871,13 @@ static void randperm_sparse_fy_hash(void *ctx, UV n, UV k, UV *S) {
   size_t cap = 16, mask;
   UV *table, *keys, *vals;
 
-  while (cap < 2 * (size_t)k)
+  while (cap / 2 < k) {
+    if (cap > MAX_SIZET / 2)
+      croak("randperm: requested permutation is too large");
     cap <<= 1;
+  }
+  if (cap > MAX_SIZET / (2 * sizeof(UV)))
+    croak("randperm: requested permutation is too large");
   mask = cap - 1;
 
   New(0, table, 2 * cap, UV);
@@ -2985,6 +2992,8 @@ void randperm(void* ctx, UV n, UV k, UV *S) {
     Safefree(T);
   } else {                              /* k of n.  FYK shuffle n, pick k */
     UV *T;
+    if (n > (UV)(MAX_SIZET / sizeof(UV)))
+      croak("randperm: requested permutation is too large");
     New(0, T, n, UV);
     for (i = 0; i < n; i++)
       T[i] = i;
@@ -3070,7 +3079,7 @@ bool is_rough(UV n, UV k) {
   if (k > isqrt(n)) return is_prime(n);
 
   if (k <= 2500) {
-    nfac = trial_factor(n, fac, 7, k);
+    (void) trial_factor(n, fac, 7, k);
     return (fac[0] >= k);
   }
 

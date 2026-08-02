@@ -643,3 +643,9 @@ OEIS lucky numbers:
   before converting it to the internal int argument.
 
 - We should call GMP is_frobenius_khashin_pseudoprime(n) only for 0.54+.
+
+- Move XS configuration globals (verbose, callgmp, nobigint, etc) into
+  per-interpreter context and add ithread isolation tests. Decide whether
+  secure should remain process-global.
+
+- hclassno is limited to n <= SINTMAX.

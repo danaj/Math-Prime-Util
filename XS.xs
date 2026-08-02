@@ -6605,6 +6605,8 @@ void randperm(IN SV* svn, IN SV* svk = 0)
       croak("randperm: k must fit in native signed integer");
     if (GIMME_V != G_ARRAY) XSRETURN_IV(k);
     if (k == 0)             XSRETURN_EMPTY;
+    if (k > (UV)MAX_SSIZET || k > (UV)(MAX_SIZET / sizeof(UV)))
+      croak("randperm: requested permutation is too large");
     New(0, S, k, UV);
     randperm(MY_CXT.randcxt, n, k, S);
     EXTEND(SP, (EXTEND_TYPE)k);
