@@ -675,12 +675,16 @@ static uint128_t squfof128(uint128_t n, uint64_t rounds) {
       if (ms[i].valid == 0) continue;
 
       uint64_t mult = squfof128_multipliers[i];
-      uint128_t nn64 = n * mult;
+      uint128_t nn64;
 
       if (ms[i].valid == -1) {
-        if (nn64 > MAX_NN64) {
+        if (n > MAX_NN64 / mult) {
           ms[i].valid = 0; mults_racing--; continue;
         }
+      }
+      nn64 = n * mult;
+
+      if (ms[i].valid == -1) {
         uint64_t sqrtnn64 = isqrt128(nn64);
         uint128_t rem     = nn64 - (uint128_t)sqrtnn64 * sqrtnn64;
         if (rem == 0) {
@@ -762,7 +766,7 @@ static uint128_t pminus1_128(uint128_t n, uint64_t B1_in, uint64_t B2_in) {
   /*--- Stage 1 -----------------------------------------------------------*/
   uint128_t a     = mont_enter128(2, &ctx);
   uint128_t savea = a;
-  UV q = 2, saveq = 2;
+  UV q = 2, saveq = 1;
   UV sqrtB1 = isqrt(B1);
   UV j = 15;   /* checkpoint counter, start offset like GMP */
 
@@ -790,9 +794,9 @@ static uint128_t pminus1_128(uint128_t n, uint64_t B1_in, uint64_t B2_in) {
   goto stage2;
 
 stage1_backtrack:
-  /* Multiple factors found -- redo from last checkpoint one prime at a time */
+  /* savea is the state after saveq; resume at the following prime. */
   a = savea;
-  for (q = saveq; q <= B1; q = next_prime(q)) {
+  for (q = next_prime(saveq); q <= B1; q = next_prime(q)) {
     UV k = q;
     if (q <= sqrtB1) { UV km = B1/q; while (k <= km) k *= q; }
     a = mont_powmod128(a, k, &ctx);
@@ -1003,12 +1007,6 @@ static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
                                          sizeof(uint128_t));
 
   for (i = 0; i < npoints; i++) {
-    g = gcd128(P[i].Z, n);
-    if (g > 1) {
-      *fout = (g < n) ? g : 0;
-      mpu_aligned_free(prefix);
-      return 0;
-    }
     acc = mont_mulmod128(acc, P[i].Z, ctx);
     prefix[i] = acc;
   }
@@ -1016,6 +1014,14 @@ static int ecm_batch_normalize_x128(uint128_t *xout, uint128_t *fout,
   g = gcd128(acc, n);
   if (g > 1) {
     *fout = (g < n) ? g : 0;
+    /* Different coordinates can expose different factors whose product has
+     * gcd n.  Check them individually only on this uncommon failure path. */
+    if (g == n) {
+      for (i = 0; i < npoints; i++) {
+        g = gcd128(P[i].Z, n);
+        if (g > 1 && g < n) { *fout = g; break; }
+      }
+    }
     mpu_aligned_free(prefix);
     return 0;
   }
