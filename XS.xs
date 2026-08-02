@@ -6700,11 +6700,15 @@ void is_happy(SV* svn, UV base = 10, UV k = 2)
         for (sum = 0, i = 0; i < len; i++)
           sum += ipow(s[i]-'0',k);
         h = happy_height(sum, base, k);
-        RETURN_NPARITY( (h>0) ? h+1 : 0);
+        if (h >= 0)
+          RETURN_NPARITY( (h>0) ? h+1 : 0);
       }
     }
-    if (status != 0)
-      RETURN_NPARITY(happy_height(n, base, k));
+    if (status != 0) {
+      h = happy_height(n, base, k);
+      if (h >= 0)
+        RETURN_NPARITY(h);
+    }
     DISPATCHPP_RETURN();
 
 void

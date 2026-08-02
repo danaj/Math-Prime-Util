@@ -109,7 +109,7 @@ extern UV   znorder(UV a, UV n);
 extern bool is_primitive_root(UV a, UV n, bool nprime);
 
 extern bool is_square_free(UV n);
-extern bool is_perfect_number(UV n);
+extern bool is_perfect_number(UV n) ISCONSTFUNC;
 extern bool is_fundamental(UV n, bool neg);
 extern bool is_semiprime(UV n);
 extern bool is_almost_prime(UV k, UV n);
@@ -121,13 +121,14 @@ extern UV   qnr(UV n);
 extern bool is_qr(UV a, UV n);         /* kronecker that works for composites */
 extern bool is_practical(UV n);
 extern int  is_delicate_prime(UV n, uint32_t b);
+/* Returns -1 if an intermediate digit sum overflows. */
 extern int  happy_height(UV n, uint32_t base, uint32_t exponent) ISCONSTFUNC;
 
 extern bool is_smooth(UV n, UV k);
 extern bool is_rough(UV n, UV k);
 
 extern bool is_sum_of_two_squares(UV n);
-extern bool is_sum_of_three_squares(UV n);
+extern bool is_sum_of_three_squares(UV n) ISCONSTFUNC;
 extern bool cornacchia(UV *x, UV *y, UV d, UV p);
 
 extern UV debruijn_psi(UV x, UV y);
@@ -141,7 +142,7 @@ extern bool bernfrac(IV *num, UV *den, UV n);
 extern bool harmfrac(UV *num, UV *den, UV n);
 
 extern IV hclassno(UV n);
-extern IV ramanujan_tau(UV n);
+extern IV ramanujan_tau(UV n) ISCONSTFUNC;
 
 extern char* pidigits(uint32_t digits);
 

@@ -1848,7 +1848,7 @@ static UV _pisano_prime_power(UV p, UV e)
 {
   UV k;
   if (e == 0) return 1;
-  if (p == 2) return 3UL << (e-1);
+  if (p == 2) return UVCONST(3) << (e-1);
   if      (p == 3) k = 8;
   else if (p == 5) k = 20;
   else if (p == 7) k = 16;
@@ -1941,20 +1941,23 @@ UV floor_sum(UV n, UV m, UV a, UV b)
 /*                                   HAPPY                                    */
 /******************************************************************************/
 
-static UV sum_of_digits(UV n, uint32_t base, uint32_t k) {
-  UV t, r, sum = 0;
+static bool sum_of_digits(UV *result, UV n, uint32_t base, uint32_t k) {
+  UV t, r, term, sum = 0;
   while (n) {
     t = n / base;
     r = n - base * t;
     switch (k) {
-      case 0:  sum += 1;         break;
-      case 1:  sum += r;         break;
-      case 2:  sum += r*r;       break;
-      default: sum += ipow(r,k); break;
+      case 0:  term = 1;           break;
+      case 1:  term = r;           break;
+      case 2:  term = r*r;         break;
+      default: term = ipowsafe(r,k); break;
     }
+    if (term == UV_MAX || sum > UV_MAX-term) return 0;
+    sum += term;
     n = t;
   }
-  return sum;
+  *result = sum;
+  return 1;
 }
 static UV sum_of_squared_digits(UV n) {
   UV t, r, sum = 0;
@@ -1976,10 +1979,11 @@ int happy_height(UV n, uint32_t base, uint32_t exponent) {
       n = sum_of_squared_digits(n);
     return (sh[n] == 0) ? 0 : h+sh[n];
   } else {
-    UV ncheck = 0;
+    UV next, ncheck = 0;
     for (h = 1;  n > 1 && n != ncheck;  h++) {
       if ((h & (h-1)) == 0) ncheck = n;         /* Brent cycle finding */
-      n = sum_of_digits(n, base, exponent);
+      if (!sum_of_digits(&next, n, base, exponent)) return -1;
+      n = next;
     }
   }
   return (n == 1) ? h : 0;

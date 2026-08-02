@@ -28,7 +28,7 @@ my %ex = (
   69378 => 7,
 );
 
-plan tests => 4 + 6 + 1 + 5;
+plan tests => 5 + 6 + 1 + 5;
 
 is_deeply( [grep { is_happy($_) } 0..715],
            \@a007770,
@@ -40,6 +40,8 @@ is_deeply( [map { is_happy($_) } @a007770],
 
 is(is_happy(78999), 8, "78999 has a happy height of 8");
 is(is_happy("3788" . ("9"x973)), 9, "3788(9)_973 has a happy height of 9");
+is(is_happy(26353,11,10), 0,
+   "generalized happy digit sum exceeding 32-bit UV");
 
 {
   my @happy_consec = (0,0,31,1880,7839,44488,"7899999999999959999999996","7899999999999959999999996");
