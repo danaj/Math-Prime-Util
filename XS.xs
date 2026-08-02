@@ -752,6 +752,34 @@ static int xs_sign_parity_result(pTHX_ SV* svn, const char* opname, int opix) {
   return (opix == 1) ? isodd : !isodd;         /* odd/even */
 }
 
+static int xs_cmpint_result(pTHX_ SV *sva, SV *svb) {
+  int astatus, bstatus;
+  UV a, b;
+
+  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
+  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
+  if (astatus != 0 && bstatus != 0) {
+    if (astatus > bstatus) return 1;
+    if (astatus < bstatus) return -1;
+    if (a == b)            return 0;
+    return ((astatus == 1 && a > b) ||
+            (astatus == -1 && (IV)a > (IV)b)) ? 1 : -1;
+  } else {
+    STRLEN alen, blen;
+    const char *aptr, *bptr;
+    SV *acopy;
+
+    aptr = SvPV(sva, alen);
+    acopy = NULL;
+    if (SvROK(svb) || SvGMAGICAL(svb)) {
+      acopy = sv_2mortal(newSVpvn(aptr, alen));
+      aptr = SvPVX(acopy);
+    }
+    bptr = SvPV(svb, blen);
+    return strint_cmp(aptr, alen, bptr, blen);
+  }
+}
+
 /******************************************************************************/
 
 #include "xs_xop.inc"
@@ -762,17 +790,15 @@ static void boot_register_custom_ops(pTHX) {
 #if MPU_HAS_CUSTOM_OPS
   int i;
   CV *custom_cv;
-  SV *custom_ckobj;
   for (i = 0; i < (int)(sizeof(xop_registrations)/sizeof(xop_registrations[0])); i++) {
     xop_registration_t *xopreg = &xop_registrations[i];
     XopENTRY_set(&xopreg->xop, xop_name, xopreg->xop_name);
     XopENTRY_set(&xopreg->xop, xop_desc, xopreg->xop_desc);
     Perl_custom_op_register(aTHX_ xopreg->ppfunc, &xopreg->xop);
     custom_cv = get_cv(xopreg->cv_name, GV_ADD);
-    if (custom_cv != NULL) {
-      custom_ckobj = newSViv(PTR2IV(xopreg));
-      cv_set_call_checker(custom_cv, xop_call_checker_exact_arity, custom_ckobj);
-    }
+    if (custom_cv != NULL)
+      cv_set_call_checker(custom_cv, xop_call_checker_exact_arity,
+                         (SV*)custom_cv);
   }
 #else
   PERL_UNUSED_CONTEXT;
@@ -5171,23 +5197,9 @@ void signint(IN SV* svn)
 
 void cmpint(IN SV* sva, IN SV* svb)
   PREINIT:
-    int astatus, bstatus, ret = 0;
-    UV a, b;
+    int ret;
   PPCODE:
-    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-    if (astatus != 0 && bstatus != 0) {
-      if      (astatus > bstatus) ret = 1;
-      else if (astatus < bstatus) ret = -1;
-      else if (a == b)            ret = 0;
-      else                        ret = ((astatus == 1 && a > b) || (astatus == -1 && (IV)a > (IV)b)) ? 1 : -1;
-    } else {
-      STRLEN alen, blen;
-      char *aptr, *bptr;
-      aptr = SvPV(sva, alen);
-      bptr = SvPV(svb, blen);
-      ret = strint_cmp(aptr, alen, bptr, blen);
-    }
+    ret = xs_cmpint_result(aTHX_ sva, svb);
     RETURN_NPARITY(ret);
 
 void logint(IN SV* svn, IN SV* svb, IN SV* svret = 0)

@@ -11,27 +11,32 @@ typedef struct {
 } xop_registration_t;
 static xop_registration_t* xop_find_registration(GV *namegv);
 
+static OP* xop_call_checker_fallback(pTHX_ OP *entersubop, GV *namegv,
+                                     SV *ckobj) {
+  return Perl_ck_entersub_args_proto_or_list(aTHX_ entersubop, namegv, ckobj);
+}
+
 static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ckobj) {
   xop_registration_t *xopreg = xop_find_registration(namegv);
   OP *pushop, *cur, *arg_first, *arg_last, *cvop, *newop;
   U8 i;
 
-  PERL_UNUSED_ARG(ckobj);
-  if (!xopreg) return entersubop;
+  if (!xopreg) return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
 
   pushop = cUNOPx(entersubop)->op_first;
-  if (!pushop) return entersubop;
+  if (!pushop) return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
   if (!OpHAS_SIBLING(pushop))
     pushop = cUNOPx(pushop)->op_first;
-  if (!pushop) return entersubop;
+  if (!pushop) return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
   if (pushop->op_type == OP_NULL && cUNOPx(pushop)->op_first != NULL)
     pushop = cUNOPx(pushop)->op_first;
-  if (pushop->op_type != OP_PUSHMARK) return entersubop;
+  if (pushop->op_type != OP_PUSHMARK)
+    return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
 
   arg_first = arg_last = NULL;
   cur = OpSIBLING(pushop);
   for (i = 0; i < xopreg->nargs; i++) {
-    if (!cur) return entersubop;
+    if (!cur) return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
     /* Previously we were rejecting (returning entersubop) anything with $_.
      * Later this was limited to 5.18, and now removed entirely as I am no
      * longer finding issues.  It seems like this was a trigger that showed
@@ -42,14 +47,16 @@ static OP* xop_call_checker_exact_arity(pTHX_ OP *entersubop, GV *namegv, SV *ck
     cur = OpSIBLING(cur);
   }
   cvop = cur;
-  if (!cvop) return entersubop;
-  if (OpSIBLING(cvop) != NULL) return entersubop;
+  if (!cvop) return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
+  if (OpSIBLING(cvop) != NULL)
+    return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
   if (cvop->op_type != OP_GV && cvop->op_type != OP_RV2CV) {
     if (cvop->op_type == OP_NULL && cUNOPx(cvop)->op_first != NULL) {
       OP *cvkid = cUNOPx(cvop)->op_first;
-      if (cvkid->op_type != OP_GV && cvkid->op_type != OP_RV2CV) return entersubop;
+      if (cvkid->op_type != OP_GV && cvkid->op_type != OP_RV2CV)
+        return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
     } else {
-      return entersubop;
+      return xop_call_checker_fallback(aTHX_ entersubop, namegv, ckobj);
     }
   }
 
@@ -192,6 +199,7 @@ static OP* pp_addint_custom_common(pTHX_ int opix, const char *opname, int minve
 
   if (addint_try_native_result(aTHX_ opix, sva, svb, opname,
                                &astatus, &bstatus, &is_uv, &uvret, &ivret)) {
+    SPAGAIN;
     SP -= 1;
     SETs(sv_2mortal(is_uv ? newSVuv(uvret) : newSViv(ivret)));
     RETURN;
@@ -225,6 +233,7 @@ static OP* pp_add1int_custom_common(pTHX_ int opix, const char *opname) {
   IV ivret;
 
   if (add1_try_native_result(aTHX_ opix, svn, &status, &is_uv, &uvret, &ivret)) {
+    SPAGAIN;
     SETs(sv_2mortal(is_uv ? newSVuv(uvret) : newSViv(ivret)));
     RETURN;
   }
@@ -244,7 +253,10 @@ static OP* pp_sub1int_custom(pTHX) { return pp_add1int_custom_common(aTHX_ 1, "s
 
 static OP* pp_signint_custom_common(pTHX_ int opix, const char *opname) {
   dSP;
-  SETs(_sv_const_int(aTHX_ xs_sign_parity_result(aTHX_ TOPs, opname, opix)));
+  SV *svn = TOPs;
+  int ret = xs_sign_parity_result(aTHX_ svn, opname, opix);
+  SPAGAIN;
+  SETs(_sv_const_int(aTHX_ ret));
   RETURN;
 }
 static OP* pp_signint_custom(pTHX) { return pp_signint_custom_common(aTHX_ 0, "signint"); }
@@ -253,15 +265,18 @@ static OP* pp_is_even_custom(pTHX) { return pp_signint_custom_common(aTHX_ 2, "i
 
 static OP* pp_is_square_custom(pTHX) {
   dSP;
+  SV *svn = TOPs;
   UV n;
   int ret;
-  int status = _validate_and_set(&n, aTHX_ TOPs, IFLAG_ANY);
+  int status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
 
   if (status != 0) {
+    SPAGAIN;
     SETs(_sv_const_int(aTHX_ status == 1 && is_perfect_square(n)));
     RETURN;
   }
-  if (xs_sv_is_perfect_square(aTHX_ TOPs, &ret)) {
+  if (xs_sv_is_perfect_square(aTHX_ svn, &ret)) {
+    SPAGAIN;
     SETs(_sv_const_int(aTHX_ ret));
     RETURN;
   }
@@ -271,23 +286,10 @@ static OP* pp_is_square_custom(pTHX) {
 static OP* pp_cmpint_custom(pTHX) {
   dSP;
   SV *sva = SP[-1], *svb = SP[0];
-  int astatus, bstatus, ret = 0;
-  UV a, b;
+  int ret;
 
-  astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ANY);
-  bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ANY);
-  if (astatus != 0 && bstatus != 0) {
-    if      (astatus > bstatus) ret = 1;
-    else if (astatus < bstatus) ret = -1;
-    else if (a == b)            ret = 0;
-    else                        ret = ((astatus == 1 && a > b) || (astatus == -1 && (IV)a > (IV)b)) ? 1 : -1;
-  } else {
-    STRLEN alen, blen;
-    char *aptr, *bptr;
-    aptr = SvPV(sva, alen);
-    bptr = SvPV(svb, blen);
-    ret = strint_cmp(aptr, alen, bptr, blen);
-  }
+  ret = xs_cmpint_result(aTHX_ sva, svb);
+  SPAGAIN;
   SP -= 1;
   SETs(_sv_const_int(aTHX_ ret));
   RETURN;
@@ -299,6 +301,7 @@ static OP* pp_kronecker_custom(pTHX) {
   int ret;
 
   if (xs_kronecker_result(aTHX_ sva, svb, &ret)) {
+    SPAGAIN;
     SP -= 1;
     SETs(_sv_const_int(aTHX_ ret));
     RETURN;

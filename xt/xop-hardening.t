@@ -123,6 +123,30 @@ sub _string_list {
   return [map { defined($_) ? "$_" : '<undef>' } @_];
 }
 
+subtest 'prototype fallback' => sub {
+  my $compiled = eval q{
+    sub {
+      my @args = (2, 3);
+      addint(@args);
+    };
+    1;
+  };
+  ok(!$compiled, 'wrong-arity array call is rejected at compile time');
+  like($@, qr/Not enough arguments/, 'wrong-arity error comes from prototype checking');
+
+  my $drand_array = eval q{
+    sub {
+      my @args = (7, 8);
+      Math::Prime::Util::drand(@args);
+    }
+  };
+  is(ref($drand_array), 'CODE', 'valid optional-argument fallback compiles');
+  if (ref($drand_array) eq 'CODE') {
+    my $r = $drand_array->();
+    ok($r >= 0 && $r < 2, 'fallback prototype scalarizes its array argument');
+  }
+};
+
 ###############################################################################
 # Context, argument evaluation order, and exactly-once evaluation.
 
