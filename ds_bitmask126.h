@@ -137,7 +137,7 @@ static void bitmask126_destroy(bitmask126_t *bm) {
 static void bitmask126_append(bitmask126_t *bm, BMTYPE n) {
   BMTYPE w = BM_WORD(n);
 #if BMDEBUG
-  if (n >= bm->n) croak("bitmask126: bad n in append");
+  if (n > bm->n || w >= bm->nwords) croak("bitmask126: bad n in append");
 #endif
   bm->data[w] |= BM_BITM(n);
   ADDSIZE(bm, w, 1);
@@ -185,7 +185,7 @@ static BMTYPE _bitmask126_find_index(const bitmask126_t *bm, BMTYPE *idx) {
   int lev;
   BMTYPE i = *idx, j = 0;
 
-  if (i > bm->nelems) croak("index higher than number of elements");
+  if (i >= bm->nelems) croak("index higher than number of elements");
 
   /* Skip though superblock tree (128,2048,32768,524288,... words) */
   for (lev = bm->nilevels-1;  lev >= 0;  lev--) {
@@ -238,7 +238,7 @@ typedef struct bitmask126_iter_t {
   const bitmask126_t *bm;
   const uint32_t     *data;
   BMTYPE              wi;
-  uint32_t            bit;
+  int                 bit;
 } bitmask126_iter_t;
 
 static bitmask126_iter_t bitmask126_iterator_create(const bitmask126_t *bm, BMTYPE idx) {
@@ -253,11 +253,20 @@ static bitmask126_iter_t bitmask126_iterator_create(const bitmask126_t *bm, BMTY
 
 static BMTYPE bitmask126_iterator_next(bitmask126_iter_t *iter) {
   BMTYPE   v, wi  = iter->wi;
-  uint32_t    bit = iter->bit;
-  uint32_t    w   = iter->data[wi] >> bit;
+  int         bit = iter->bit;
+  uint32_t    w;
+
+  if (bit >= 32) {
+    bit = 0;
+    if (++wi >= iter->bm->nwords)
+      croak("bitmask126: iterator overflow");
+  }
+  w = iter->data[wi] >> bit;
 
   while (w == 0) {   /* skip any empty words */
-    w = iter->data[++wi];
+    if (++wi >= iter->bm->nwords)
+      croak("bitmask126: iterator overflow");
+    w = iter->data[wi];
     bit = 0;
   }
 
@@ -271,32 +280,43 @@ static BMTYPE bitmask126_iterator_next(bitmask126_iter_t *iter) {
 
   v = wi * 126 + _bm_offset[bit];
 
-  iter->bit = ++bit & 31;
-  iter->wi  = wi + (bit>>5);
+  iter->bit = bit + 1;
+  iter->wi  = wi;
   return v;
 }
 
 static BMTYPE bitmask126_iterator_prev(bitmask126_iter_t *iter) {
   BMTYPE   v, wi  = iter->wi;
   int         bit = iter->bit;
-  uint32_t    w   = iter->data[wi];
+  uint32_t    w;
 
-  do {
-    if (bit < 0) {
-      if (wi == 0) croak("bitmask126: iterator underflow");
-      w = iter->data[--wi];
-      bit = 31;
-    }
-    for ( ; bit >= 0; bit--) {      /* Find prev set bit */
-      if (w & 1U << bit)
-        break;
-    }
-  } while (bit < 0);
+  if (bit < 0) {
+    if (wi == 0) croak("bitmask126: iterator underflow");
+    --wi;
+    bit = 31;
+  }
+  w = iter->data[wi] & (UINT32_MAX >> (31-bit));
+
+  while (w == 0) {   /* skip any empty words */
+    if (wi == 0) croak("bitmask126: iterator underflow");
+    w = iter->data[--wi];
+    bit = 31;
+  }
+
+#if defined(__GNUC__) && 100*__GNUC__ + __GNUC_MINOR >= 304
+  bit = (int)(sizeof(unsigned long) * CHAR_BIT - 1)
+        - __builtin_clzl((unsigned long)w);
+#else
+  for ( ; bit >= 0; bit--) {      /* Find prev set bit */
+    if (w & (1U << bit))
+      break;
+  }
+#endif
 
   v = wi * 126 + _bm_offset[bit];
 
-  iter->bit = --bit & 31;
-  iter->wi = wi - (bit >> 5 & 1);
+  iter->bit = bit - 1;
+  iter->wi = wi;
   return v;
 }
 
