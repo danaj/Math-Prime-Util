@@ -3417,8 +3417,10 @@ UV buchstab_phi(UV x, UV y) {
 
 UV random_factored_integer(void* ctx, UV n, int *nf, UV *factors) {
   UV r, s, nfac;
-  if (n < 1)
+  if (n < 1) {
+    *nf = 0;
     return 0;
+  }
 #if BITS_PER_WORD == 64 && (USE_MONTMATH || MULMODS_ARE_FAST)
   if (1)   /* Our factoring is very fast, just use it */
 #elif BITS_PER_WORD == 64

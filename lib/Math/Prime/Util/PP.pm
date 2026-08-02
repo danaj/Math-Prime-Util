@@ -7701,6 +7701,7 @@ sub cornacchia {
   if (Mis_prime($n)) {
     my ($u,$rk);
     my $negd = _negmod($d,$n);
+    return ($d == $n) ? (0,1) : undef if $negd == 0;
     return undef if Mkronecker($negd, $n) == -1;
     $u = _sqrtmod_prime($negd, $n);
     return undef unless defined $u;
