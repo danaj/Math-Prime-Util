@@ -10,7 +10,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $usegmp= Math::Prime::Util::prime_get_config->{'gmp'};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
 
-plan tests => 5 + 4;
+plan tests => 5 + 5;
 
 ###### is_carmichael
 is_deeply( [grep { is_carmichael($_) } 1 .. 20000],
@@ -38,3 +38,5 @@ is( scalar(grep { is_quasi_carmichael($_) } 1 .. 5000),
            "95 Quasi-Carmichael numbers under 5000" );
 is(is_quasi_carmichael(5092583), 1, "5092583 is a Quasi-Carmichael number with 1 base");
 is(is_quasi_carmichael(777923), 7, "777923 is a Quasi-Carmichael number with 7 bases");
+is(is_quasi_carmichael("17293822569102705135"), 0,
+   "large non-Quasi-Carmichael avoids floating-point arithmetic");

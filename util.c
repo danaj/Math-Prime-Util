@@ -1026,7 +1026,8 @@ IV stirling2(UV n, UV m) {
 }
 
 IV stirling1(UV n, UV m) {
-  IV k, t, b1, b2, s2, s = 0;
+  UV b1, b2;
+  IV k, t, s2, s = 0;
 
   if (m == n) return 1;
   if (n == 0 || m == 0 || m > n) return 0;
@@ -1040,8 +1041,8 @@ IV stirling1(UV n, UV m) {
     b1 = binomial(k + n - 1, n - m + k);
     b2 = binomial(2 * n - m, n - m - k);
     s2 = stirling2(n - m + k, k);
-    if (b1 == 0 || b2 == 0 || s2 == 0 || b1 > IV_MAX/b2) return 0;
-    t = b1 * b2;
+    if (b1 == 0 || b2 == 0 || s2 == 0 || b1 > (UV)IV_MAX/b2) return 0;
+    t = (IV)(b1 * b2);
     if (s2 > IV_MAX/t) return 0;
     t *= s2;
     s += (k & 1) ? -t : t;
@@ -1335,7 +1336,8 @@ bool is_almost_prime(UV k, UV n) {
   if (k == 1) return is_prob_prime(n);
   if (k == 2) return is_semiprime(n);
 
-  if ((n >> k) == 0) return 0;  /* The smallest k-almost prime is 2^k */
+  /* The smallest k-almost prime is 2^k. */
+  if (k >= BITS_PER_WORD || (n >> k) == 0) return 0;
 
   while (k > 0 && !(n& 1)) { k--; n >>= 1; }
   while (k > 0 && !(n% 3)) { k--; n /=  3; }

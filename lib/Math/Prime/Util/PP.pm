@@ -3448,18 +3448,24 @@ sub is_quasi_carmichael {
   } else {
     my($spf,$lpf) = ($f[0], $f[-1]);
     if (scalar(@f) == 2) {
-      foreach my $d (Mdivisors(Mdivint($n,$spf) - 1)) {
-        my $k = $spf - $d;
-        my $p = $n - $k;
-        last if $d >= $spf;
-        $nbases++ if Mvecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
+      foreach my $d (Mdivisors(Msub1int(Mdivint($n,$spf)))) {
+        last if Mcmpint($d,$spf) >= 0;
+        my $k = Msubint($spf,$d);
+        my $p = Msubint($n,$k);
+        $nbases++ if Mvecall(sub {
+          my $j = Msubint($_,$k);
+          Mcmpint($j,0) != 0 && Mis_divisible($p,$j);
+        }, @f);
       }
     } else {
-      foreach my $d (Mdivisors(Mmulint($lpf,Mdivint($n,$lpf)-1))) {
-        my $k = $lpf - $d;
-        my $p = $n - $k;
-        next if $k == 0 || $k >= $spf;
-        $nbases++ if Mvecall(sub { my $j = $_-$k;  $j && ($p % $j) == 0 }, @f);
+      foreach my $d (Mdivisors(Mmulint($lpf,Msub1int(Mdivint($n,$lpf))))) {
+        my $k = Msubint($lpf,$d);
+        next if Mcmpint($k,0) == 0 || Mcmpint($k,$spf) >= 0;
+        my $p = Msubint($n,$k);
+        $nbases++ if Mvecall(sub {
+          my $j = Msubint($_,$k);
+          Mcmpint($j,0) != 0 && Mis_divisible($p,$j);
+        }, @f);
       }
     }
   }

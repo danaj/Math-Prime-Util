@@ -1241,6 +1241,8 @@ subtest 'more misc ntheory functions', sub {
   ok( is_quasi_carmichael(1517), "1517 is quasi-Carmichael");
   ok( is_quasi_carmichael(10001), "10001 is quasi-Carmichael");
   ok( is_quasi_carmichael(10373), "10373 is quasi-Carmichael");
+  is( is_quasi_carmichael("17293822569102705135"), 0,
+      "large non-Quasi-Carmichael avoids floating-point arithmetic");
 
   ok(!is_cyclic(1521), "1521 is not cyclic");
   ok( is_cyclic(10001), "10001 is cyclic");

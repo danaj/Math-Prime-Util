@@ -51,6 +51,12 @@ subtest 'stirling numbers of the first kind', sub {
     skip "stirling(132,67) only with EXTENDED_TESTING", 1 unless $extra;
     is( "".stirling(132,67,1), '-6132458966070920781607687809239433538883836871765225500351514785120957322534135782514155513931693375104995311496306605620444680401484569675682191339176710', "s(132,67)" );
   }
+
+  my($rn, $rm, $expected) = Math::Prime::Util::_uvbits > 32
+      ? (95, 78, '-40527483117868335170265765167335287830968506330')
+      : (40, 30, '4344363139637533397580');
+  is("".stirling($rn,$rm,1), $expected,
+     "large native binomial intermediates in s($rn,$rm)");
 };
 
 subtest 'stirling numbers of the second kind', sub {
