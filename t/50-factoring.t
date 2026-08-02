@@ -230,6 +230,10 @@ subtest 'specific cases for factoring code coverage', sub {
     is_deeply( [Math::Prime::Util::pminus1_factor(667,1000)], [23,29], "p-1 factor 23 * 29 with small B1" );
     is_deeply( [Math::Prime::Util::pminus1_factor(563777293,1000,20000)], [23099,24407], "p-1 factor 23099 * 24407 using stage 2" );
   }
+  SKIP: {
+    skip "p+1 test for C code", 1 unless $usexs;
+    is_deeply( [Math::Prime::Util::pplus1_factor(11009,5)], [101,109], "p+1 exponent bit scan" );
+  }
   # GMP still has some issues with this
   #is_deeply( [Math::Prime::Util::cheb_factor("13581893559735945553",1500)], [3453481411,3932812123], "cheb factor 3453481411 * 3932812123" );
   SKIP: {

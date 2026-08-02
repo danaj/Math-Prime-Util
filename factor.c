@@ -1536,7 +1536,7 @@ static void pp1_pow(UV *cX, UV exp, UV n)
   UV X0 = *cX;
   UV X  = *cX;
   UV Y = mulsubmod(X, X, 2, n);
-  UV bit = UVCONST(1) << (clz(exp)-1);
+  UV bit = UVCONST(1) << (log2floor(exp)-1);
   while (bit) {
     UV T = mulsubmod(X, Y, X0, n);
     if ( exp & bit ) {

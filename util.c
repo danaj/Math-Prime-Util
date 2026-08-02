@@ -82,29 +82,29 @@ void mpu_aligned_free(void* ptr)
 /******************************************************************************/
 
 /* Returns 0 if not found, index+1 if found (returns leftmost if dups) */
-unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len)
+size_t index_in_sorted_uv_array(UV v, const UV* L, size_t len)
 {
-  unsigned long lo, hi;
+  size_t lo, hi;
   if (len == 0 || v < L[0] || v > L[len-1])
     return 0;
   lo = 0;
   hi = len-1;
   while (lo < hi) {
-    unsigned long mid = lo + ((hi-lo) >> 1);
+    size_t mid = lo + ((hi-lo) >> 1);
     if (L[mid] < v)  lo = mid + 1;
     else             hi = mid;
   }
   return (L[lo] == v)  ?  lo+1  :  0;
 }
-unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len)
+size_t index_in_sorted_iv_array(IV v, const IV* L, size_t len)
 {
-  unsigned long lo, hi;
+  size_t lo, hi;
   if (len == 0 || v < L[0] || v > L[len-1])
     return 0;
   lo = 0;
   hi = len-1;
   while (lo < hi) {
-    unsigned long mid = lo + ((hi-lo) >> 1);
+    size_t mid = lo + ((hi-lo) >> 1);
     if (L[mid] < v)  lo = mid + 1;
     else             hi = mid;
   }
@@ -800,15 +800,18 @@ UV powersum(UV n, UV k)
 }
 
 
-UV mpu_popcount_string(const char* ptr, uint32_t len)
+UV mpu_popcount_string(const char* ptr, STRLEN len)
 {
-  uint32_t count = 0, i, j, d, v, power, slen, *s, *sptr;
+  UV count = 0;
+  STRLEN i, slen;
+  uint32_t j, d, v, power, *s, *sptr;
 
   while (len > 0 && (*ptr == '0' || *ptr == '+' || *ptr == '-'))
     {  ptr++;  len--;  }
+  if (len == 0) return 0;
 
   /* Create s as array of base 10^8 numbers */
-  slen = (len + 7) / 8;
+  slen = len / 8 + (len % 8 != 0);
   Newz(0, s, slen, uint32_t);
   for (i = 0; i < slen; i++) {  /* Chunks of 8 digits */
     for (j = 0, d = 0, power = 1;  j < 8 && len > 0;  j++, power *= 10) {

@@ -451,7 +451,7 @@ bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret)
   } else if (itype == IARR_TYPE_NEG) {
     for (i = 0; i < len && is_sumfree; i++)
       for (j = i; j < len; j++)
-        if (is_in_sorted_iv_array((IV)data[i]+(IV)data[j], (IV*)data, len))
+        if (is_in_sorted_iv_array((IV)data[i]+(IV)data[j], (const IV*)data, len))
           { is_sumfree = 0; break; }
   }
   Safefree(data);

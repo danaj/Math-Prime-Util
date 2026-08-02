@@ -18,8 +18,8 @@ extern void* mpu_aligned_alloc(UV count, Size_t size, Size_t alignment);
 extern void  mpu_aligned_free(void* ptr);
 #endif
 
-extern unsigned long index_in_sorted_uv_array(UV v, UV* L, unsigned long len);
-extern unsigned long index_in_sorted_iv_array(IV v, IV* L, unsigned long len);
+extern size_t index_in_sorted_uv_array(UV v, const UV* L, size_t len);
+extern size_t index_in_sorted_iv_array(IV v, const IV* L, size_t len);
 #define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
 #define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
 
@@ -52,7 +52,7 @@ extern UV lcmsafe(UV x, UV u) ISCONSTFUNC;   /* returns 0 if overflows */
 extern UV valuation(UV n, UV k) ISCONSTFUNC;
 extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b) ISCONSTFUNC;
-extern UV mpu_popcount_string(const char* ptr, uint32_t len);
+extern UV mpu_popcount_string(const char* ptr, STRLEN len);
 
 extern unsigned char* range_issquarefree(UV lo, UV hi);
 
@@ -353,7 +353,8 @@ static UV gcd_ui(UV x, UV y) {
 
 #ifdef FUNC_lcm_ui
 static UV lcm_ui(UV x, UV y) {
-  /* Can overflow if lcm(x,y) > 2^64 (e.g. two primes each > 2^32) */
+  /* Can overflow if lcm(x,y) > UV_MAX. */
+  if (x == 0 || y == 0) return 0;
   return x * (y / gcd_ui(x,y));
 }
 #endif
