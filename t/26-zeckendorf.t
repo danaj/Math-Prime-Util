@@ -19,7 +19,7 @@ my @toz = (
 
 plan tests => 0 + 1 + scalar(@toz) # tozeckendorf
                 + 1 + scalar(@toz) # fromzeckendorf
-                + 1;
+                + 1 + 3;
 
 ###### tozeckendorf
 is_deeply([map { tozeckendorf($_) } 0..20], \@z20, "tozeckendorf for 0..20");
@@ -39,4 +39,9 @@ for my $pair (@toz) {
 ######
 is(fromdigits(tozeckendorf(24),2), 68, "fromdigits(tozeckendorf(24),2) = 68");
 
-# TODO: Test for invalid inputs
+ok(!eval { fromzeckendorf(undef); 1 } && $@ =~ /Parameter must be defined/,
+   "fromzeckendorf rejects undefined input");
+ok(!eval { fromzeckendorf("1\0x"); 1 } && $@ =~ /expected binary string/,
+   "fromzeckendorf rejects data after an embedded null");
+ok(!eval { fromzeckendorf("10\0"); 1 } && $@ =~ /expected binary string/,
+   "fromzeckendorf rejects an embedded trailing null");

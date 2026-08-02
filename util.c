@@ -2288,15 +2288,15 @@ int iv_uv_to_str(char str[41], IV hi, UV lo)
 #define MAX_FIB_VAL (MAX_FIB_LEN+1)
 
 /* 0 = bad,   -1 = not canonical,   1 = good,   2 = ok but out of UV range */
-int validate_zeckendorf(const char* str)
+int validate_zeckendorf(const char* str, size_t len)
 {
-  int i;
-  if (str == 0)
+  size_t i;
+  if (str == 0 || len == 0)
     return 0;
   if (str[0] != '1')
-    return (str[0] == '0' && str[1] == '\0');
+    return (str[0] == '0' && len == 1);
   /* str[0] = 1 */
-  for (i = 1; str[i] != '\0'; i++) {
+  for (i = 1; i < len; i++) {
     if (str[i] == '1') {
       if (str[i-1] == '1')
         return -1;
@@ -2305,23 +2305,24 @@ int validate_zeckendorf(const char* str)
     }
   }
   /* Valid number.  Check if in range. */
-  if (i > MAX_FIB_LEN || (i == MAX_FIB_LEN && strcmp(str, MAX_FIB_STR) > 0))
+  if (len > MAX_FIB_LEN ||
+      (len == MAX_FIB_LEN && memcmp(str, MAX_FIB_STR, len) > 0))
     return 2;
   return 1;
 }
 
-UV from_zeckendorf(const char* str)
+UV from_zeckendorf(const char* str, size_t len)
 {
-  int i, len;
+  size_t i;
   UV n, fa = 0, fb = 1, fc = 1;  /* fc = fib(2) */
 
-  if (str == 0) return 0;
-  for (len = 0; len < MAX_FIB_LEN && str[len] != '\0'; len++)
-    if (str[len] != '0' && str[len] != '1')
+  if (str == 0 || len == 0 || len > MAX_FIB_LEN) return 0;
+  for (i = 0; i < len; i++)
+    if (str[i] != '0' && str[i] != '1')
       return 0;
-  if (len == 0 || len > MAX_FIB_LEN) return 0;
   n = (str[len-1] == '1');
-  for (i = len-2; i >= 0; i--) {
+  for (i = len-1; i > 0; ) {
+    i--;
     fa = fb; fb = fc; fc = fa+fb;  /* Advance */
     if (str[i] == '1') n += fc;
   }
@@ -2350,8 +2351,8 @@ char* to_zeckendorf(UV n)
   }
   str[spos++] = '\0';
 #if 0
-  if (validate_zeckendorf(str) != 1) croak("to_zeckendorf bad for %lu\n",n);
-  if (from_zeckendorf(str) != n) croak("to_zeckendorf wrong for %lu\n",n);
+  if (validate_zeckendorf(str, spos-1) != 1) croak("to_zeckendorf bad for %lu\n",n);
+  if (from_zeckendorf(str, spos-1) != n) croak("to_zeckendorf wrong for %lu\n",n);
 #endif
   return str;
 }
@@ -2407,9 +2408,11 @@ bool is_catalan_pseudoprime(UV n) {
     uint32_t i;
     factored_t nf = factorint(n);
 #if BITS_PER_WORD == 32
-    if (nf.nfactors == 2) return 0;  /* Page 9, all 32-bit semiprimes */
+    if (nf.nfactors == 2 && nf.e[0] == 1 && nf.e[1] == 1)
+      return 0;  /* Page 9, all 32-bit semiprimes */
 #else
-    if (nf.nfactors == 2) {   /* Conditions from Aebi and Cairns (2008) */
+    if (nf.nfactors == 2 && nf.e[0] == 1 && nf.e[1] == 1) {
+      /* Conditions from Aebi and Cairns (2008) */
       if (n < UVCONST(10000000000)) return 0;  /* Page 9 */
       if (2*nf.f[0]+1 >= nf.f[1])   return 0;  /* Corollary 2 and 3 */
     }

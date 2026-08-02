@@ -155,8 +155,8 @@ extern int  uv_uv_to_str(char s[41], UV hi, UV lo);
 extern int  iv_uv_to_str(char s[41], IV hi, UV lo);
 
 /* Returns 1 if good, 0 if bad, -1 if non canon, 2 ok but out of range */
-extern int validate_zeckendorf(const char* str);
-extern UV  from_zeckendorf(const char* str);
+extern int validate_zeckendorf(const char* str, size_t len);
+extern UV  from_zeckendorf(const char* str, size_t len);
 extern char* to_zeckendorf(UV n);
 
 extern bool is_catalan_pseudoprime(UV n);

@@ -6806,7 +6806,7 @@ void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
     }
     if (bstatus != 1 || lstatus != 1)
       DISPATCHPP_RETURN();
-    if (nstatus != 0 && tlen < 128) {
+    if (nstatus != 0 && tlen <= 128) {
       if (ix == 0) {             /* todigits with native input */
         UV digits[128];
         int len = to_digit_array(digits, n, base, tlen);
@@ -6979,17 +6979,22 @@ void tozeckendorf(SV* svn)
     }
     DISPATCHPP_RETURN();
 
-void fromzeckendorf(IN char* str)
+void fromzeckendorf(IN SV* svstr)
   PREINIT:
     int status;
+    STRLEN len;
+    const char* str;
   PPCODE:
-    status = validate_zeckendorf(str);
+    SvGETMAGIC(svstr);
+    if (!SvOK(svstr)) croak("Parameter must be defined");
+    str = SvPV_nomg(svstr, len);
+    status = validate_zeckendorf(str, len);
     if (status == 0)
       croak("fromzeckendorf: expected binary string");
     if (status == -1)
       croak("fromzeckendorf: expected binary string in canonical Zeckendorf form");
     if (status == 1)
-      XSRETURN_UV(from_zeckendorf(str));
+      XSRETURN_UV(from_zeckendorf(str, len));
     DISPATCHPP_RETURN();
 
 void
