@@ -44,8 +44,6 @@ congruent_numbers.h
 congruent_numbers.c
 constants.h
 ds_bitmask126.h
-ds_pagelist32.h
-ds_pagelist64.h
 ds_iset.h
 ds_iset.c
 entropy.h
