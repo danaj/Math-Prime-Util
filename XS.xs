@@ -2898,17 +2898,16 @@ frobenius_number(...)
     Newz(0, A, items, UV);
     for (i = 0; i < items; i++) {
       if (!_validate_and_set(&n, aTHX_ ST(i), IFLAG_POS)) break;
-      if (n == 1) { found1 = 1; break; }
+      if (n == 1) found1 = 1;
       A[i] = n;
     }
-    if (i == items) {
+    if (i == items && !found1)
       fn = frobenius_number(A, i);
-      Safefree(A);
+    Safefree(A);
+    if (i == items) {
+      if (found1) XSRETURN_IV(-1);
       if (fn == 0) XSRETURN_UNDEF;
       if (fn != UV_MAX) XSRETURN_UV(fn);
-    } else {
-      Safefree(A);
-      if (found1) XSRETURN_IV(-1);
     }
     DISPATCHPP_RETURN();
 
@@ -5813,30 +5812,19 @@ void liouville(IN SV* svn)
     sumliouville = 1
     is_pillai = 2
     is_congruent_number = 3
-    hclassno = 4
-    ramanujan_tau = 5
   PREINIT:
     UV n;
-    int status;
   PPCODE:
-    status = _validate_and_set(&n, aTHX_ svn, (ix < 4) ? IFLAG_NONNEG : IFLAG_ANY);
-    if (status == -1)
-      XSRETURN_IV(0);
-    if (status == 1) {
+    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       IV r = 0;
       switch(ix) {
         case 0:  r = liouville(n); break;
         case 1:  r = sumliouville(n); break;
         case 2:  r = pillai_v(n); break;
         case 3:  r = is_congruent_number(n); break;
-        case 4:  r = hclassno(n); break;
-        case 5:  r = ramanujan_tau(n);
-                 if (r == 0 && n != 0)
-                   status = 0;
-                 break;
         default: break;
       }
-      if (status != 0) RETURN_NPARITY(r);
+      RETURN_NPARITY(r);
     }
 #if HAVE_FACTOR128
     if (ix == 0) {
@@ -5848,6 +5836,38 @@ void liouville(IN SV* svn)
       }
     }
 #endif
+    DISPATCHPP_RETURN();
+
+void hclassno(IN SV* svn)
+  PREINIT:
+    UV n, r;
+    int status;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1)
+      XSRETURN_IV(0);
+    if (status == 1) {
+      if (n == 0)
+        XSRETURN_IV(-1);
+      r = hclassno(n);
+      if (r != UV_MAX)
+        XSRETURN_UV(r);
+    }
+    DISPATCHPP_RETURN();
+
+void ramanujan_tau(IN SV* svn)
+  PREINIT:
+    UV n;
+    int status;
+  PPCODE:
+    status = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+    if (status == -1)
+      XSRETURN_IV(0);
+    if (status == 1) {
+      IV r = ramanujan_tau(n);
+      if (n == 0 || r != 0)
+        RETURN_NPARITY(r);
+    }
     DISPATCHPP_RETURN();
 
 int _is_congruent_number_filter(IN UV n)

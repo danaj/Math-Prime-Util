@@ -141,7 +141,7 @@ extern IV stirling1(UV n, UV m) ISCONSTFUNC;
 extern bool bernfrac(IV *num, UV *den, UV n);
 extern bool harmfrac(UV *num, UV *den, UV n);
 
-extern IV hclassno(UV n);
+extern UV hclassno(UV n);
 extern IV ramanujan_tau(UV n) ISCONSTFUNC;
 
 extern char* pidigits(uint32_t digits);

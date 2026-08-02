@@ -5818,6 +5818,7 @@ Given an integer C<n>, returns 12 times the
 Hurwitz-Kronecker class number.
 This will always be an integer due to the pre-multiplication by 12.
 The result is C<0> for negative C<n> and all C<n> congruent to 1 or 2 mod 4.
+C<n> must fit in a native signed integer.
 
 This is related to Pari's C<qfbhclassno(n)> where C<hclassno(n)> for positive
 C<n> equals C<12 * qfbhclassno(n)> in Pari/GP.

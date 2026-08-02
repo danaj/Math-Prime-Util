@@ -11691,7 +11691,8 @@ sub hclassno {
     $b += 2;
     $b2 = ($n+$b*$b) >> 2;
   }
-  return (($b2*3 == $n) ? 2*(3*$h+1) : $square ? 3*(2*$h+1) : 6*$h) << 1;
+  my $corr = ($b2*3 == $n) ? 4 : $square ? 6 : 0;
+  Mmuladdint(12, $h, $corr);
 }
 
 # Ramanujan Tau using Cohen's method with Hurwitz class numbers.
@@ -11749,7 +11750,7 @@ sub _taupower {
 
 sub ramanujan_tau {
   my($n) = @_;
-  validate_integer_nonneg($n);
+  validate_integer($n);
   return 0 if $n <= 0;
 
   Mvecprod(map { _taupower($_->[0],$_->[1]) } Mfactor_exp($n));

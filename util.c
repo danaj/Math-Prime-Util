@@ -2512,11 +2512,12 @@ static UV _count_class_div(UV s, UV b2) {
 /* Returns 12 * H(n).  See Cohen 5.3.5 or Pari/GP.
  * Pari/GP uses a different method for n > 500000, which is quite a bit
  * faster, but assumes the GRH. */
-IV hclassno(UV n) {
-  UV nmod4 = n % 4, b2, b, h;
+UV hclassno(UV n) {
+  UV nmod4 = n % 4, b2, b, h, corr;
   int square;
 
-  if (n == 0) return -1;
+  /* H(0) = -1/12, all other H(n) are non-negative. */
+  if (n == 0 || n > IV_MAX) return UV_MAX;
   if (nmod4 == 1 || nmod4 == 2) return 0;
   if (n == 3) return 4;
 
@@ -2534,7 +2535,9 @@ IV hclassno(UV n) {
       +  is_perfect_square(b2)
       +  (_count_class_div(b+1, b2) << 1);
   }
-  return 12*h + ((b2*3 == n) ? 4 : square && !(n&1) ? 6 : 0);
+
+  corr = (b2*3 == n) ? 4 : square && !(n&1) ? 6 : 0;
+  return (h > (UV_MAX-corr)/12)  ?  UV_MAX  :  12*h + corr;
 }
 
 UV polygonal_root(UV n, UV k, bool* overflow) {
@@ -2720,7 +2723,8 @@ UV frobenius_number(UV* A, uint32_t alen)
             n = N[q];
       }
       if (n != UV_MAX) {
-        for (j = 0; j < (nlen / d); j++) {
+        for (j = 1; j < (nlen / d); j++) {
+          if (n > UV_MAX-ai) { Safefree(N); return UV_MAX; }
           n += ai;
           p = n % nlen;
           if (N[p] >= n)  N[p] = n;

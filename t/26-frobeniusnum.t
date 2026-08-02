@@ -92,9 +92,9 @@ if (!$usexs && !$extra) {
   @t3 = grep { $_->[1]->[0] < 13000 } @t3;
 }
 
-plan tests => 3     # Simple tests
+plan tests => 4     # Simple tests
             + 3     # More complicated sets
-            + 2;    # overflow
+            + 4;    # overflow
 
 ##### frobenius_number
 
@@ -104,6 +104,9 @@ is( frobenius_number(4093),  undef, "frobenius_number(4093) = undef");
 #is( frobenius_number(20,44), undef, "frobenius_number(20,44) = undef");
 eval { frobenius_number(20,44); };
 like($@, qr/coprime/, "Non-coprime set gives error");
+
+eval { frobenius_number(1,undef); };
+like($@, qr/defined/, "Arguments after 1 are still validated");
 
 
 is_deeply( [map { frobenius_number(@{$_->[1]}) } @t1],
@@ -118,3 +121,5 @@ is_deeply( [map { frobenius_number(@{$_->[1]}) } @t3],
 # Check for overflow
 is( "".frobenius_number(12345,"1494268454735486"), "18445249805254826839", "frobenius_number(12345,1494268454735486) = 18445249805254826839" );
 is( "".frobenius_number(12345,"14948739119699798"), "184527235693574294167", "frobenius_number(12345,14948739119699798) = 184527235693574294167" );
+is( "".frobenius_number(4,8,"7000000000000000001"), "20999999999999999999", "frobenius_number handles native intermediate overflow" );
+is( "".frobenius_number(4,8,1500000001), "4499999999", "frobenius_number handles 32-bit native intermediate overflow" );
