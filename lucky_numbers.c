@@ -138,7 +138,7 @@ uint32_t* _pagelist_lucky_sieve32(UV *size, uint32_t n) {
 
   if (n <= 280000) return _small_lucky_sieve32(size, n);
 
-  pl = pagelist32_create(n);
+  pl = pagelist32_create();
 
   /* make initial list using filters for small lucky numbers. */
   {

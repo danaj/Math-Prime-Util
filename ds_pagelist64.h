@@ -2,6 +2,7 @@
 #define MPU_DS_PAGELIST64_H
 
 #include "ptypes.h"
+#include <string.h>
 
 /******************************************************************************/
 /*                           PAGELIST DATA STRUCTURE                          */
@@ -38,7 +39,7 @@ typedef struct pagelist64_t {
   PLTYPE   **pgdata;
 } pagelist64_t;
 
-static pagelist64_t* pagelist64_create(UV n) {
+static pagelist64_t* pagelist64_create(void) {
   pagelist64_t *pl;
   int i;
   New(0, pl, 1, pagelist64_t);
@@ -68,6 +69,7 @@ static void pagelist64_destroy(pagelist64_t *pl) {
     pl->npages[i] = pl->npages_allocated[i] = 0;
   }
   pl->nelems = 0;
+  Safefree(pl);
 }
 
 #if PLDEBUG
@@ -78,15 +80,15 @@ static void _pagelist64_check_epg(pagelist64_t *pl, const char* msg) {
 
   for (i = 0; i < ELEV; i++)
     if (pl->npages[i] > pl->npages_allocated[i])
-      croak("level %u more pages in use than allocated\n", i);
+      croak("level %u more pages in use than allocated\n", (unsigned)i);
 
   for (i = 1; i < ELEV; i++)
     if ( NEPG(npages0,i) > pl->npages[i] )
-      croak("%s: level %u not enough pages nepg\n",msg,i);
+      croak("%s: level %u not enough pages nepg\n",msg,(unsigned)i);
 
   for (i = 1; i < ELEV; i++)
     if ( ((npages0-1) >> (i*ESHIFT)) >= pl->npages[i] )
-      croak("%s: level %u not enough pages\n",msg,i);
+      croak("%s: level %u not enough pages\n",msg,(unsigned)i);
 
   for (p = 0; p < npages0; p++) {
     for (i = 1; i < ELEV; i++) {
@@ -95,7 +97,9 @@ static void _pagelist64_check_epg(pagelist64_t *pl, const char* msg) {
       if (p == npages0-1 || (p % pagesper) == (pagesper-1)) {
         PLTYPE ep = p >> (i*ESHIFT);
         if (sum[i] != pl->pgsize[i][ep])
-          croak("%s: bad epg:  sum %u  pgsize[%u][%u] %u\n", msg, sum[i], i, ep, pl->pgsize[i][ep]);
+          croak("%s: bad epg: sum %"UVuf" pgsize[%u][%"UVuf"] %"UVuf"\n",
+                msg, (UV)sum[i], (unsigned)i, (UV)ep,
+                (UV)pl->pgsize[i][ep]);
         sum[i] = 0;
       }
     }
@@ -210,7 +214,8 @@ static void pagelist64_delete(pagelist64_t *pl, PLTYPE idx) { /* idx 0,1,... */
     memcpy(pl->pgdata[p] + pgsz0[p], pl->pgdata[p+1], pgsz0[p+1] * sizeof(PLTYPE));
     Safefree(pl->pgdata[p+1]);
     if ( (p+1) < (npages0-1) )
-      memmove(pl->pgdata + p + 1, pl->pgdata + p + 2, (npages0-1-p) * sizeof(PLTYPE*));
+      memmove(pl->pgdata + p + 1, pl->pgdata + p + 2,
+              (npages0-p-2) * sizeof(PLTYPE*));
     /* 2 adjust upper levels, moving sizes on boundaries */
     for (i = 1; i < ELEV; i++) {
       PLTYPE ep, npagesi = pl->npages[i], *pgszi = pl->pgsize[i];
@@ -224,7 +229,8 @@ static void pagelist64_delete(pagelist64_t *pl, PLTYPE idx) { /* idx 0,1,... */
     /* 3 Move sizes at base level over efficiently */
     pgsz0[p] += pgsz0[p+1];
     if ( (p+1) < (npages0-1) )
-      memmove(pgsz0 + p + 1,  pgsz0 + p + 2, (npages0-1-p) * sizeof(PLTYPE));
+      memmove(pgsz0 + p + 1, pgsz0 + p + 2,
+              (npages0-p-2) * sizeof(PLTYPE));
     pl->npages[0]--;
   }
 #endif
@@ -247,16 +253,21 @@ static pagelist64_iter_t pagelist64_iterator_create(pagelist64_t *pl, PLTYPE idx
 }
 
 static PLTYPE pagelist64_iterator_next(pagelist64_iter_t *iter) {
-  PLTYPE v, p = iter->p;
+  PLTYPE v, p = iter->p, idx = iter->idx;
+  PLTYPE npages0 = iter->pl->npages[0], *pgsz0 = iter->pl->pgsize[0];
 
-  if (p >= iter->pl->npages[0]) return 0;
-
-  v = iter->pl->pgdata[p][iter->idx];
-
-  if (++iter->idx >= iter->pl->pgsize[0][p]) {
-    iter->p++;
-    iter->idx = 0;
+  while (p < npages0 && idx >= pgsz0[p]) {
+    p++;
+    idx = 0;
   }
+  iter->p = p;
+  if (p >= npages0) {
+    iter->idx = 0;
+    return 0;
+  }
+
+  v = iter->pl->pgdata[p][idx];
+  iter->idx = idx + 1;
   return v;
 }
 
