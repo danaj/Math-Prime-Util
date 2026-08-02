@@ -53,7 +53,7 @@ my @rootints = (
   ["18446744039349813264", 39, 3],
 );
 
-plan tests => 2 + 2 + 3 + 5 + 3 + 2 + 5 + 3 + 4;
+plan tests => 2 + 2 + 3 + 5 + 3 + 2 + 6 + 4 + 4;
 
 ok(!defined eval { rootint(377,0);  }, "rootint(n,0) gives error");
 ok(!defined eval { rootint(-377,2); }, "rootint(-n,k) gives error");
@@ -103,8 +103,10 @@ is(crootint("266667176579896000",3), 643660, "ceiling third root of 266667176579
 }
 {
   my $huge_k = "18446744073709551617";
+  my $wide_native_k = "4294967297";
   my $rk;
   is(rootint(0, 2), 0, "rootint(0,2) = 0");
+  is(rootint(16, $wide_native_k), 1, "rootint preserves native exponents above 32 bits");
   is(rootint(16, $huge_k), 1, "rootint with huge k returns 1 without power reference");
   is(rootint(16, $huge_k, \$rk), 1, "rootint with huge k returns 1 with power reference");
   is($rk, 1, "rootint huge k power reference is 1");
@@ -113,7 +115,9 @@ is(crootint("266667176579896000",3), 643660, "ceiling third root of 266667176579
 }
 {
   my $huge_k = "18446744073709551617";
+  my $wide_native_k = "4294967297";
   is(crootint(1, $huge_k), 1, "crootint with huge k returns 1 for n=1");
+  is(crootint(16, $wide_native_k), 2, "crootint preserves native exponents above 32 bits");
   is(crootint(2, $huge_k), 2, "crootint with huge k returns 2 for n=2");
   is(crootint(16, $huge_k), 2, "crootint with huge k returns 2 for n=16");
 }

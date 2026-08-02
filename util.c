@@ -471,8 +471,10 @@ static const uint32_t root_max[1+MPU_MAX_POW3] = {0,0,4294967295U,2642245,65535,
 static const uint32_t root_max[1+MPU_MAX_POW3] = {0,0,65535,1625,255,84,40,23,15,11,9,7,6,5,4,4,3,3,3,3,3};
 #endif
 
-UV rootint(UV n, uint32_t k)
+UV rootint(UV n, UV k)
 {
+  uint32_t k32;
+
   if (n <= 1) return (k != 0 && n != 0);
 
   switch (k) {
@@ -490,28 +492,29 @@ UV rootint(UV n, uint32_t k)
   /*  64-bit:       15               32                 40       */
 
   if (k >= BITS_PER_WORD || n >> k == 0)  return 1;
+  k32 = (uint32_t) k;
 
-  if (k <= MAX_IROOTN)       return _irootn(n,k);
+  if (k32 <= MAX_IROOTN)        return _irootn(n,k32);
 
-  if (k > MPU_MAX_POW3)      return 1 + (k < BITS_PER_WORD);
-  if (k >= BITS_PER_WORD/2)  return 2 + (n >= ipow(3,k));
+  if (k32 > MPU_MAX_POW3)       return 1 + (k32 < BITS_PER_WORD);
+  if (k32 >= BITS_PER_WORD/2)   return 2 + (n >= ipow(3,k32));
 
   /* k is now in range 11-15 (32-bit), 16-31 (64-bit).  Binary search. */
   {
-    uint32_t lo = 1U << (log2floor(n)/k);
-    uint32_t hi = root_max[k];
+    uint32_t lo = 1U << (log2floor(n)/k32);
+    uint32_t hi = root_max[k32];
     if (hi >= lo*2) hi = lo*2 - 1;
 
     while (lo < hi) {
       uint32_t mid = lo + (hi-lo+1)/2;
-      if (ipow(mid,k) > n) hi = mid-1;
+      if (ipow(mid,k32) > n) hi = mid-1;
       else                 lo = mid;
     }
     return lo;
   }
 }
 
-UV crootint(UV n, uint32_t k)
+UV crootint(UV n, UV k)
 {
   UV r;
   if (k == 0) return 0;
@@ -555,9 +558,9 @@ static const uint32_t _rootmask32[41] = {
   0xf7fffffe,0xfffdfffe,0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc /* 35-40 */
 };
 
-bool is_power_ret(UV n, uint32_t k, uint32_t *root)
+bool is_power_ret(UV n, UV k, uint32_t *root)
 {
-  uint32_t r, msbit;
+  uint32_t r, msbit, k32;
 
   /* Simple edge cases */
   if (n < 2 || k == 1) {
@@ -570,24 +573,25 @@ bool is_power_ret(UV n, uint32_t k, uint32_t *root)
     if (root) *root = 2;
     return (k < BITS_PER_WORD && n == (UV)1 << k);
   }
+  k32 = (uint32_t) k;
 
-  if (k == 2) return is_perfect_square_ret(n,root);
+  if (k32 == 2) return is_perfect_square_ret(n,root);
 
   /* Filter out many numbers which cannot be k-th roots */
-  if ((1U << (n&31)) & _rootmask32[k]) return 0;
+  if ((1U << (n&31)) & _rootmask32[k32]) return 0;
 
-  if (k == 3) {
+  if (k32 == 3) {
     r = n % 117; if ((r*833230740) & (r*120676722) & 813764715) return 0;
     r = icbrt(n);
     if (root) *root = r;
     return (UV)r*r*r == n;
   }
 
-  for (msbit = 8 /* k >= 4 */; k >= msbit; msbit <<= 1)  ;
+  for (msbit = 8 /* k >= 4 */; k32 >= msbit; msbit <<= 1)  ;
   msbit >>= 1;
-  r = _est_root(n, k, msbit);
+  r = _est_root(n, k32, msbit);
   if (root) *root = r;
-  return _ipow(r, k, msbit) == n;
+  return _ipow(r, k32, msbit) == n;
 }
 
 #define PORET(base,exp)  do { \
@@ -676,8 +680,9 @@ UV valuation(UV n, UV k)
   if (k < 2 || n < 2) return 0;
   if (k == 2) return ctz(n);
   while ( !(n % kpower) ) {
-    kpower *= k;
     v++;
+    if (kpower > n/k) break;
+    kpower *= k;
   }
   return v;
 }

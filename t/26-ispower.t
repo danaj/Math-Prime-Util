@@ -72,7 +72,7 @@ plan tests => 0
             + scalar(keys(%bppow))
             + 5  # is_power
             + 2*scalar(keys %powers) + scalar(@negpowers)
-            + 4  # large explicit exponent
+            + 5  # large explicit exponent
             + 13  # tests for 3,5,7 power
             + 15 # is_power/is_prime_power interface
             + 4  # is_square
@@ -137,6 +137,8 @@ is( is_power(-1,5), 1, "-1 is a 5th power" );
 {
   my $huge_even = "1000000000000000000000000000000";
   my $huge_odd  = "1000000000000000000000000000001";
+  my $wide_native_k = "4294967297";
+  is( is_power(16, $wide_native_k), 0, "16 is not a (2^32+1)-th power" );
   is( is_power(16, $huge_even), 0, "16 is not a huge-th power" );
   is( is_power(1,  $huge_even), 1, "1 is a huge-th power" );
   is( is_power(-1, $huge_odd),  1, "-1 is an odd huge-th power" );

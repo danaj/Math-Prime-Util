@@ -39,11 +39,11 @@ for my $k (reverse 3 .. 63) {
       croak "rootint($n + $i,$k) = $r != $rexpect" unless $r == $rexpect;
     }
   }
-  # 3. Check values near 2^64
+  # 3. Check values near the native maximum
   my $rexpect = $j-1;
   for my $i (0 .. 10000) {
     my $n = subint(~0,$i);
-    $r = rootint($n+$i,$k);
+    $r = rootint($n,$k);
     croak "rootint($n,$k) = $r != $rexpect" unless $r == $rexpect;
   }
   print "$k ";

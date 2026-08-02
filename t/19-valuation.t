@@ -13,6 +13,8 @@ use Math::Prime::Util qw/valuation remove_factors remove_factors_exp/;
 plan tests => 2;
 
 subtest 'valuation' => sub {
+  my $uvmax = Math::Prime::Util::prime_get_config->{'maxbits'} > 32
+            ? "18446744073709551615" : "4294967295";
   my @valuations = (
     [-4,2, 2],
     #[0,0, 0],  error
@@ -21,6 +23,8 @@ subtest 'valuation' => sub {
     [1,2, 0],
     [96552,6, 3],
     [1879048192,2, 28],
+    ["4611686018427387904",4, 31],
+    [$uvmax,$uvmax, 1],
     ["65520150907877741108803406077280119039314703968014509493068998974809747144832",2, 7],
   );
   foreach my $r (@valuations) {

@@ -41,12 +41,12 @@ extern uint32_t powerof_ret(UV n, uint32_t *root);
 #define powerof(n) powerof_ret(n,0)
 
 /* Return true if n = r^k for the given k, sets root if given */
-extern bool is_power_ret(UV n, uint32_t k, uint32_t *root);
+extern bool is_power_ret(UV n, UV k, uint32_t *root);
 #define is_power(n,k) is_power_ret(n,k,0)
 
 extern uint32_t icbrt(UV n) ISCONSTFUNC;
-extern UV rootint(UV n, uint32_t k) ISCONSTFUNC;
-extern UV crootint(UV n, uint32_t k) ISCONSTFUNC;
+extern UV rootint(UV n, UV k) ISCONSTFUNC;
+extern UV crootint(UV n, UV k) ISCONSTFUNC;
 extern UV ipowsafe(UV n, UV k) ISCONSTFUNC;  /* returns UV_MAX if overflows */
 extern UV lcmsafe(UV x, UV u) ISCONSTFUNC;   /* returns 0 if overflows */
 extern UV valuation(UV n, UV k) ISCONSTFUNC;

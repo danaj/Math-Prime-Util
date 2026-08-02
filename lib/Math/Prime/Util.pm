@@ -1849,6 +1849,9 @@ than using C<say>, C<print>, or C<printf>, though much more limited
 in functionality.  A later version may allow a file handle as the third
 argument.
 
+Normal SIGPIPE handling applies when writing to pipes or sockets.  Write
+errors croak when write returns an error.
+
 
 =head2 nth_prime
 
