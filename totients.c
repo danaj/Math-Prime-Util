@@ -586,6 +586,7 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   set_list_t setlist, divlist;
   UV i, ndivisors, *divs, *tlist;
   UV *totlist = 0;
+  Size_t nvals = 0;
 
   if (n == 1) {
     New(0, totlist, 2, UV);
@@ -639,7 +640,7 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
       for (j = 0; j <= v; j++) {
         UV k, ndiv = n/dp;  /* Loop over divisors of n/dp */
         for (k = 0; k < ndivisors && divs[k] <= ndiv; k++) {
-          UV nvals, *vals, d2 = divs[k];
+          UV *vals, d2 = divs[k];
           if ((ndiv % d2) != 0) continue;
           /* For the last divisor [1], don't add intermediate values */
           if (d == 1 && d2*dp != n) continue;
@@ -656,11 +657,13 @@ UV* inverse_totient_list(UV *ntotients, UV n) {
   }
   Safefree(divs);
 
-  tlist = setlist_getlist(ntotients, setlist, n);
-  if (tlist != 0 && *ntotients > 0) {
-    New(0, totlist, *ntotients, UV);
-    memcpy(totlist, tlist, *ntotients * sizeof(UV));
-    sort_uv_array(totlist, *ntotients);
+  tlist = setlist_getlist(&nvals, setlist, n);
+  MPUassert(nvals <= UV_MAX, "inverse totient list is too large");
+  *ntotients = (UV)nvals;
+  if (tlist != 0 && nvals > 0) {
+    New(0, totlist, nvals, UV);
+    memcpy(totlist, tlist, nvals * sizeof(UV));
+    sort_uv_array(totlist, nvals);
   }
   free_setlist(&setlist);
   return totlist;
