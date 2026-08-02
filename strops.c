@@ -34,6 +34,40 @@ static UV gcduv(UV x, UV y) {
   return x;
 }
 
+/* Internal allocations cannot propagate failure through the b9 interface. */
+static void* strops_xmalloc(size_t count, size_t size)
+{
+  void *p;
+  if (size != 0 && count > (size_t)MAX_SIZET / size)
+    croak("internal: strops allocation too large");
+  p = malloc(count * size);
+  if (p == 0 && count != 0 && size != 0)
+    croak("internal: strops allocation failed");
+  return p;
+}
+
+static void* strops_xcalloc(size_t count, size_t size)
+{
+  void *p;
+  if (size != 0 && count > (size_t)MAX_SIZET / size)
+    croak("internal: strops allocation too large");
+  p = calloc(count, size);
+  if (p == 0 && count != 0 && size != 0)
+    croak("internal: strops allocation failed");
+  return p;
+}
+
+static void* strops_xrealloc(void *ptr, size_t count, size_t size)
+{
+  void *p;
+  if (size != 0 && count > (size_t)MAX_SIZET / size)
+    croak("internal: strops allocation too large");
+  p = realloc(ptr, count * size);
+  if (p == 0 && count != 0 && size != 0)
+    croak("internal: strops allocation failed");
+  return p;
+}
+
 /* Parse a canonical decimal string (no sign, no leading zeros) to UV.
  * Returns 1 if it fits in UV, 0 on overflow. */
 static int str_to_uv_s(const char* s, STRLEN slen, UV* out) {
@@ -128,13 +162,16 @@ static void b9_free(b9_t *x)
 
 static void b9_ensure(b9_t *x, uint32_t need)
 {
+  b9limb_t *newd;
   if (x->alloc >= need) return;
   if (x->d == (b9limb_t*)x->d_small) {
-    x->d = (b9limb_t *) malloc((size_t)need * sizeof(b9limb_t));
-    if (x->n) memcpy(x->d, x->d_small, x->n * sizeof(b9limb_t));
+    newd = (b9limb_t*)strops_xmalloc((size_t)need, sizeof(b9limb_t));
+    if (x->n) memcpy(newd, x->d_small, x->n * sizeof(b9limb_t));
   } else {
-    x->d = (b9limb_t *) realloc(x->d, (size_t)need * sizeof(b9limb_t));
+    newd = (b9limb_t*)strops_xrealloc(x->d, (size_t)need,
+                                      sizeof(b9limb_t));
   }
+  x->d = newd;
   x->alloc = need;
 }
 
@@ -143,20 +180,54 @@ static void b9_swap(b9_t *a, b9_t *b)
 {
   int a_inline = (a->d == (b9limb_t*)a->d_small);
   int b_inline = (b->d == (b9limb_t*)b->d_small);
-  UV  a0 = a->d_small[0],  a1 = a->d_small[1];
-  UV  b0 = b->d_small[0],  b1 = b->d_small[1];
-  b9_t tmp = *a;  *a = *b;  *b = tmp;
-  if (b_inline) { a->d = (b9limb_t*)a->d_small;  a->d_small[0] = b0;  a->d_small[1] = b1; }
-  if (a_inline) { b->d = (b9limb_t*)b->d_small;  b->d_small[0] = a0;  b->d_small[1] = a1; }
+  b9limb_t small[B9_INLINE_LIMBS];
+  b9limb_t *d;
+  b9_t *t;
+  uint32_t an, bn, alloc, n;
+  int aneg, bneg, neg;
+
+  if (a_inline && b_inline) {
+    an = a->n;  aneg = a->neg;
+    bn = b->n;  bneg = b->neg;
+    if (an) memcpy(small, a->d, (size_t)an * sizeof(b9limb_t));
+    if (bn) memcpy(a->d, b->d, (size_t)bn * sizeof(b9limb_t));
+    if (an) memcpy(b->d, small, (size_t)an * sizeof(b9limb_t));
+    a->n = bn;  a->neg = bneg;
+    b->n = an;  b->neg = aneg;
+    return;
+  }
+
+  if (!a_inline && !b_inline) {
+    d = a->d;          a->d = b->d;          b->d = d;
+    alloc = a->alloc;  a->alloc = b->alloc;  b->alloc = alloc;
+    n = a->n;          a->n = b->n;          b->n = n;
+    neg = a->neg;      a->neg = b->neg;      b->neg = neg;
+    return;
+  }
+
+  /* Put the inline value in a and the heap value in b. */
+  if (!a_inline) { t = a;  a = b;  b = t; }
+  an = a->n;  aneg = a->neg;
+  if (an) memcpy(small, a->d, (size_t)an * sizeof(b9limb_t));
+  a->d = b->d;  a->alloc = b->alloc;  a->n = b->n;  a->neg = b->neg;
+  b->d = (b9limb_t*)b->d_small;
+  b->alloc = B9_INLINE_LIMBS;  b->n = an;  b->neg = aneg;
+  if (an) memcpy(b->d, small, (size_t)an * sizeof(b9limb_t));
 }
 
 /* Free dst, move src into dst.  src is blanked. */
 static void b9_move(b9_t *dst, b9_t *src)
 {
   b9_free(dst);
-  *dst = *src;
-  if (src->d == (b9limb_t*)src->d_small)
-      dst->d = (b9limb_t*)dst->d_small;
+  if (src->d == (b9limb_t*)src->d_small) {
+    if (src->n)
+      memcpy(dst->d, src->d, (size_t)src->n * sizeof(b9limb_t));
+  } else {
+    dst->d = src->d;
+    dst->alloc = src->alloc;
+  }
+  dst->n = src->n;
+  dst->neg = src->neg;
   b9_init(src);
 }
 
@@ -406,7 +477,7 @@ static void b9_add(b9_t *out, const b9_t *a, const b9_t *b)
   if (a->neg == b->neg) {
     need = (a->n > b->n ? a->n : b->n) + 1;
     if (use_tmp) {
-      dst = (b9limb_t*) malloc(need * sizeof(b9limb_t));
+      dst = (b9limb_t*)strops_xmalloc(need, sizeof(b9limb_t));
     } else {
       b9_ensure(out, need);
       dst = out->d;
@@ -418,7 +489,7 @@ static void b9_add(b9_t *out, const b9_t *a, const b9_t *b)
     if (cmp == 0) { out->n = 0;  out->neg = 0;  return; }
     need = (cmp > 0) ? a->n : b->n;
     if (use_tmp) {
-      dst = (b9limb_t*) malloc(need * sizeof(b9limb_t));
+      dst = (b9limb_t*)strops_xmalloc(need, sizeof(b9limb_t));
     } else {
       b9_ensure(out, need);
       dst = out->d;
@@ -444,7 +515,8 @@ static void b9_add(b9_t *out, const b9_t *a, const b9_t *b)
 /* out = a - b (signed).  out may alias a or b. */
 static void b9_sub(b9_t *out, const b9_t *a, const b9_t *b)
 {
-  b9_t nb = *b;   /* shallow copy: nb.d aliases b->d, only neg changes */
+  b9_t nb;
+  nb.d = b->d;  nb.alloc = b->alloc;  nb.n = b->n;  nb.neg = b->neg;
   b9_neg(&nb);
   b9_add(out, a, &nb);
 }
@@ -525,7 +597,7 @@ static void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
     acc = stack_acc;
     memset(acc, 0, (rn + 1) * sizeof(b9acc_t));
   } else {
-    acc = (b9acc_t*) calloc((size_t)(rn + 1), sizeof(b9acc_t));
+    acc = (b9acc_t*)strops_xcalloc((size_t)rn + 1, sizeof(b9acc_t));
   }
 
   for (i = 0; i < a->n; i++) {
@@ -678,10 +750,12 @@ static void b9_fdivrem(b9_t *q, b9_t *r, const b9_t *a, const b9_t *b)
   /* Multi-limb: Knuth Algorithm D (TAOCP Vol.2 §4.3.1) */
   {
     b9limb_t *u, *v;
+    size_t ulen;
     uint32_t d;
 
-    u = (b9limb_t*) malloc((size_t)(na + 1) * sizeof(b9limb_t));
-    v = (b9limb_t*) malloc((size_t)nb        * sizeof(b9limb_t));
+    ulen = (size_t)na + 1;
+    u = (b9limb_t*)strops_xmalloc(ulen + (size_t)nb, sizeof(b9limb_t));
+    v = u + ulen;
 
     d = (uint32_t)(B9_BASE / ((b9acc_t)b->d[nb-1] + 1));
 
@@ -748,7 +822,7 @@ static void b9_fdivrem(b9_t *q, b9_t *r, const b9_t *a, const b9_t *b)
     while (qn > 1 && qp->d[qn-1] == 0) qn--;
     qp->n = (uint32_t)qn;  qp->neg = 0;
 
-    free(u);  free(v);
+    free(u);
   }
 
 adjust:
@@ -770,7 +844,8 @@ adjust:
       if (carry) { qp->d[qp->n] = (b9limb_t)carry;  qp->n++; }
     }
     /* r_floor = |b| - r_trunc */
-    { b9limb_t *tmp = (b9limb_t*) malloc((size_t)nb * sizeof(b9limb_t));
+    { b9limb_t *tmp = (b9limb_t*)strops_xmalloc((size_t)nb,
+                                                 sizeof(b9limb_t));
       uint32_t rn_new = b9mag_sub(tmp, b->d, (uint32_t)nb, rp->d, rp->n);
       b9_ensure(rp, rn_new);
       memcpy(rp->d, tmp, rn_new * sizeof(b9limb_t));
@@ -934,7 +1009,8 @@ static void b9_addmod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *b, const 
 
 static void b9_submod(b9_t *out, b9_t *tmp, const b9_t *a, const b9_t *b, const b9_t *m)
 {
-  b9_t nb = *b;   /* shallow copy: nb.d aliases b->d, only neg changes */
+  b9_t nb;
+  nb.d = b->d;  nb.alloc = b->alloc;  nb.n = b->n;  nb.neg = b->neg;
   b9_neg(&nb);
   b9_addmod(out, tmp, a, &nb, m);
 }
@@ -1014,7 +1090,7 @@ static void b9_product_u32(b9_t *out, const uint32_t A[], size_t len)
     return;
   }
 
-  max_chunks = (len + n_u32_per_acc - 1) / n_u32_per_acc;
+  max_chunks = len / n_u32_per_acc + (len % n_u32_per_acc != 0);
   if (max_chunks > (size_t)MAX_SIZET / sizeof(b9_t))
     croak("internal: b9_product_u32 cannot allocate");
   B = (b9_t*) malloc(max_chunks * sizeof(b9_t));
@@ -1313,8 +1389,8 @@ char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN*
    * us high water memory as we allocate only 1/4 of the b9 objects.
    */
 
-  prodn = (n+3)/4;
-  A = (b9_t*) malloc(prodn * sizeof(b9_t));
+  prodn = n/4 + (n % 4 != 0);
+  A = (b9_t*)strops_xmalloc(prodn, sizeof(b9_t));
   for (i = 0; i < prodn; i++)
     b9_init(&A[i]);
   for (i = 0; i < 4; i++)
@@ -2058,7 +2134,7 @@ UV strint_moduv(const char* a, STRLEN alen, UV b)
   strint_strip(&a, &alen);
   for (i = 0; i < alen; i++)
     r = muladdmod(r, 10, (UV)(a[i] - '0'), b);
-  return r;
+  return (r < b) ? r : r % b;
 }
 
 /******************************************************************************/
@@ -2280,7 +2356,7 @@ static void b9_root_ui(b9_t *r, const b9_t *n,
     char mant_buf[24];
     STRLEN mlen = uv_to_str(mant_buf, r_mantissa);
     if (q_exp + 1 >= mlen) {
-      char *r_char = (char*) malloc(q_exp + 4);
+      char *r_char = (char*)strops_xmalloc((size_t)q_exp + 4, 1);
       memcpy(r_char, mant_buf, mlen);
       memset(r_char + mlen, '0', q_exp + 1 - mlen);
       b9_set_str(r, r_char, q_exp + 1);
@@ -2329,6 +2405,13 @@ STRLEN strint_rootint(char* out, const char* a, STRLEN alen, UV k)
   if (k == 1) { memcpy(out, a, alen); return alen; }
   if (alen == 1 && (a[0] == '0' || a[0] == '1')) {
     out[0] = a[0];
+    return 1;
+  }
+
+  /* n < 10^alen < 2^(4*alen), so larger k has floor root 1.
+   * Use division in the comparison to avoid overflowing either type. */
+  if (k / 4 >= alen) {
+    out[0] = '1';
     return 1;
   }
 

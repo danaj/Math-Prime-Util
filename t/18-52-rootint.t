@@ -53,7 +53,7 @@ my @rootints = (
   ["18446744039349813264", 39, 3],
 );
 
-plan tests => 2 + 2 + 3 + 5 + 3 + 2 + 4 + 3 + 4;
+plan tests => 2 + 2 + 3 + 5 + 3 + 2 + 5 + 3 + 4;
 
 ok(!defined eval { rootint(377,0);  }, "rootint(n,0) gives error");
 ok(!defined eval { rootint(-377,2); }, "rootint(-n,k) gives error");
@@ -108,6 +108,8 @@ is(crootint("266667176579896000",3), 643660, "ceiling third root of 266667176579
   is(rootint(16, $huge_k), 1, "rootint with huge k returns 1 without power reference");
   is(rootint(16, $huge_k, \$rk), 1, "rootint with huge k returns 1 with power reference");
   is($rk, 1, "rootint huge k power reference is 1");
+  is(rootint("18446744073709551616", 5_000_000), 1,
+     "rootint with bigint n and large native k returns 1");
 }
 {
   my $huge_k = "18446744073709551617";
