@@ -55,9 +55,9 @@ plan tests => 1 + 9*5 + scalar(@divt) + 2   # is_divisible
 my $ntests = $extra && $use64 && $usexs ? 10000
            : $extra && $usexs           ?  1000
            : $extra                     ?   250
-           :                                100;
-my @r32 = map { irand() } 0..$ntests;
-my @r64 = map { irand64() } 0..$ntests;
+           :                                 25;
+my @r32 = map { irand() } 1 .. $ntests;
+my @r64 = map { irand64() } 1 .. $ntests;
 
 ###### is_divisible
 

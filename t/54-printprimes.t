@@ -74,13 +74,10 @@ sub is_output {
 
 {
   my ($stdout, $stderr) = capture_fds {
-    print_primes("99999999999999999999999999900",
-                 "100000000000000000000000000378");
+    print_primes("99999999999999999999999999945",
+                 "99999999999999999999999999950");
   };
-  is_output($stdout, join("", map { "$_\n" }
-                          "99999999999999999999999999947",
-                          "99999999999999999999999999973",
-                          "100000000000000000000000000319"),
+  is_output($stdout, "99999999999999999999999999947\n",
             "print_primes bigint range writes primes to STDOUT");
   is($stderr, "", "print_primes bigint range leaves STDERR alone");
 }

@@ -257,14 +257,15 @@ subtest 'issue 47', sub {
 
 subtest 'n 257, compare with modint', sub {
   my $n = 257;
-  my @u1 = map { lucasumod(1,-1,$_,$n) } 0 .. 100;
-  my @v1 = map { lucasvmod(1,-1,$_,$n) } 0 .. 100;
+  my @k = $extra ? (0 .. 100) : (0 .. 10, 44 .. 50, 91 .. 95, 99, 100);
+  my @u1 = map { lucasumod(1,-1,$_,$n) } @k;
+  my @v1 = map { lucasvmod(1,-1,$_,$n) } @k;
 
-  my @u2 = map { modint(lucasu(1,-1,$_),$n) } 0 .. 100;
-  my @v2 = map { modint(lucasv(1,-1,$_),$n) } 0 .. 100;
+  my @u2 = map { modint(lucasu(1,-1,$_),$n) } @k;
+  my @v2 = map { modint(lucasv(1,-1,$_),$n) } @k;
 
-  my @uv1 = map { [lucasuvmod(1,-1,$_,$n)] } 0 .. 100;
-  my @uv2 = map { [map { modint($_,$n) } lucasuv(1,-1,$_)] } 0 .. 100;
+  my @uv1 = map { [lucasuvmod(1,-1,$_,$n)] } @k;
+  my @uv2 = map { [map { modint($_,$n) } lucasuv(1,-1,$_)] } @k;
 
   is_deeply(\@u1, \@u2, "lucasumod comparison with modint lucasu");
   is_deeply(\@v1, \@v2, "lucasvmod comparison with modint lucasv");
