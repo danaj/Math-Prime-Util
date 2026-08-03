@@ -174,7 +174,7 @@ static LNV _ei_chebyshev_pos24(const LNV x) {
   for (n = 0; n <= 8; n++)
     frac = Q2[n] / (P2[n] + x + frac);
   frac += P2[9];
-  if (x < LNVCONST(700))
+  if (x < LNVCONST(700.0))
     return explnv(x) * (invx + invx*invx*frac);
   return explnv(x-loglnv(x)) * (LNV_ONE + invx*frac);
 }
@@ -255,7 +255,7 @@ static LNV _ei_series_divergent(LNV const x) {
   }
   SUM_ADD(sum, invx);
   SUM_ADD(sum, LNV_ONE);
-  if (x < LNVCONST(700))
+  if (x < LNVCONST(700.0))
     return explnv(x) * SUM_FINAL(sum) * invx;
   return explnv(x-loglnv(x)) * SUM_FINAL(sum);
 }
