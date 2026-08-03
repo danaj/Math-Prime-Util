@@ -4100,7 +4100,9 @@ sub _inverse_li_bigfloat_value {
   my $bx = _upgrade_to_float("$x", $workacc);
   my $logx = $bx->copy->blog(undef, $workacc);
 
-  if ($Math::Prime::Util::_GMPfunc{"li"}) {
+  if ($Math::Prime::Util::_GMPfunc{"li"} &&
+      defined $Math::Prime::Util::GMP::VERSION &&
+      $Math::Prime::Util::GMP::VERSION >= 0.53) {
     my $li = Math::BigFloat->new(
       Math::Prime::Util::GMP::li("$x", $workacc), $workacc
     );
@@ -4160,9 +4162,11 @@ sub inverse_li {
   # high-precision Newton corrections recover accuracy for much larger input.
   for (1 .. 10) {
     my($li, $logt) = _inverse_li_bigfloat_value($t, $acc);
-    my $move = $li->copy->bsub($target)->bmul($logt)->bint;
-    last if $move->is_zero;
-    $t = Msubint($t, _truncate_bigfloat_to_string($move));
+    my $move = _truncate_bigfloat_to_string(
+      $li->copy->bsub($target)->bmul($logt)
+    );
+    last if $move eq '0';
+    $t = Msubint($t, $move);
   }
 
   my($li) = _inverse_li_bigfloat_value($t, $acc);
@@ -8187,6 +8191,12 @@ sub rootint {
     return $R;
   }
 
+  # A positive d-digit integer is less than 10^d, hence less than 2^(4d).
+  if ($k >= 4 * length("$n")) {
+    $$refp = 1 if defined $refp;
+    return 1;
+  }
+
   if ($Math::Prime::Util::_GMPfunc{"rootint"} && !ref($k)) {
     my $R = Math::Prime::Util::GMP::rootint($n, $k);
     if (defined $refp) {
@@ -11871,7 +11881,8 @@ sub LogarithmicIntegral {
   croak "LogarithmicIntegral: x must be > 0" if $x <= 0;
 
   if ($Math::Prime::Util::_GMPfunc{"li"}) {
-    my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::li, 0.49, $x);
+    # Pre-0.53 can underflow its precision counter for large results.
+    my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::li, 0.53, $x);
     return $r if defined $r;
   }
 
@@ -12032,6 +12043,8 @@ my @_Riemann_Zeta_Table = (
 sub RiemannZeta {
   my($x) = @_;
 
+  return $x if $x != $x;
+  return 0 if $x == MPU_INFINITY;
   return -1.5 if $x == 0;
   return MPU_INFINITY if $x == 1;
 
