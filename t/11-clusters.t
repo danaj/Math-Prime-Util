@@ -69,21 +69,25 @@ is( scalar sieve_prime_cluster(0,50,2), 6, "sieve_prime_cluster returns count in
 is_deeply( [sieve_prime_cluster(20000,0,2,6,8)], [],
            "sieve_prime_cluster reversed range ending at zero");
 
-my @pcache;  # holds primes in two ranges
+my $sprimes;  # array ref of native primes
+my $bigoffsets;  # array ref of offsets for the bigint range
 
 my($sbeg,$send) = (0, 100000);
 $send += 1000000 if $extra;
-$pcache[0] = primes($sbeg,$send+256);
+$sprimes = primes($sbeg,$send+256);
 
-my $mbeg = powint(10,21);
-my $mend = $mbeg + 10000 + int(rand(100000));
-$mend += 100000 if $extra;
+my $mbeg = powint(10,21);   # bigint range start
+my $mspan;                  # bigint range length
+my $mend;                   # bigint range end
 if ($usegmp) {
-  $pcache[1] = primes($mbeg,$mend+256);
+  $mspan = $extra ? 200000 : 100000;
+  $mend = addint($mbeg,$mspan);
+  $bigoffsets = [map { subint($_,$mbeg) } @{primes($mbeg,addint($mend,256))}];
 } else {
   # Without GMP and using the Calc backend, this is just painful slow
-  $mend = $mbeg + 5000;
-  $pcache[1] = [map { $mbeg+$_ } (qw/117 193 213 217 289 327 367 373 399 409 411 427 433 447 471 553 609 723 733 951 1063 1081 1213 1237 1311 1383 1411 1417 1459 1521 1573 1581 1687 1731 1749 1867 1897 2001 2011 2041 2049 2203 2209 2257 2259 2307 2317 2343 2349 2583 2611 2673 2701 2713 2719 2761 2803 2823 2961 3007 3021 3271 3289 3327 3331 3369 3399 3423 3483 3657 3759 3777 3861 3897 3973 3999 4011 4017 4039 4063 4081 4119 4123 4197 4231 4297 4353 4359 4381 4437 4521 4581 4591 4671 4743 4749 4791 4813 4851 4891 4897 4977 5203 5277 5317 5371 5427 5437 5499 5577 5683 5719 5751 5763 5913 5959 6003 6009 6103 6247 6297 6309 6493 6531 6727 6747 6759 6781 6783 6853 6871 6883 6993 7039 7059 7069 7147 7231 7269 7413 7467 7471 7509 7527 7639 7681 7689 7711 7741 7761 7887 8011 8071 8143 8173 8187 8221 8223 8283 8299 8343 8407 8467 8497 8587 8623 8761 8799 8973 9069 9111 9121 9159 9183 9187 9211 9217 9271 9333 9349 9369 9477 9501 9723 9847 9861 9961 9999/)];
+  $mspan = 5000;
+  $mend = addint($mbeg,$mspan);
+  $bigoffsets = [qw/117 193 213 217 289 327 367 373 399 409 411 427 433 447 471 553 609 723 733 951 1063 1081 1213 1237 1311 1383 1411 1417 1459 1521 1573 1581 1687 1731 1749 1867 1897 2001 2011 2041 2049 2203 2209 2257 2259 2307 2317 2343 2349 2583 2611 2673 2701 2713 2719 2761 2803 2823 2961 3007 3021 3271 3289 3327 3331 3369 3399 3423 3483 3657 3759 3777 3861 3897 3973 3999 4011 4017 4039 4063 4081 4119 4123 4197 4231 4297 4353 4359 4381 4437 4521 4581 4591 4671 4743 4749 4791 4813 4851 4891 4897 4977 5203 5277 5317 5371 5427 5437 5499 5577 5683 5719 5751 5763 5913 5959 6003 6009 6103 6247 6297 6309 6493 6531 6727 6747 6759 6781 6783 6853 6871 6883 6993 7039 7059 7069 7147 7231 7269 7413 7467 7471 7509 7527 7639 7681 7689 7711 7741 7761 7887 8011 8071 8143 8173 8187 8221 8223 8283 8299 8343 8407 8467 8497 8587 8623 8761 8799 8973 9069 9111 9121 9159 9183 9187 9211 9217 9271 9333 9349 9369 9477 9501 9723 9847 9861 9961 9999/];
 }
 
 ###### twin primes native
@@ -91,7 +95,7 @@ if ($usegmp) {
   my $beg = 0;
   my $end = $extra ? $send : 20000;
   my @sieve = sieve_prime_cluster($beg,$end,2);
-  my @tuple = ktuple($beg,$end,$pcache[0],2);
+  my @tuple = ktuple($beg, $end, $sprimes, 2);
   my $num = scalar(@tuple);
   is_deeply( \@sieve, \@tuple, "Pattern [2] $num in range $beg .. $end");
 }
@@ -99,9 +103,10 @@ if ($usegmp) {
 ###### twin primes bigint
 {
   my $beg = $mbeg;
-  my $end = $extra ? $mend : $mbeg + 1000;
+  my $end = $extra ? $mend : addint($mbeg,1000);
   my @sieve = map {"$_"} sieve_prime_cluster($beg,$end,2);
-  my @tuple = map {"$_"} ktuple($beg,$end,$pcache[1],2);
+  my @tuple = map {"".addint($mbeg,$_)}
+              ktuple(0, $extra ? $mspan : 1000, $bigoffsets, 2);
   my $num = scalar(@tuple);
   is_deeply( \@sieve, \@tuple, "Pattern [2] $num in range $beg .. $end");
 }
@@ -111,7 +116,7 @@ for my $pat (@patterns) {
   my @pat = @$pat;
   shift @pat if $pat[0] == 0;
   my @sieve = sieve_prime_cluster($sbeg,$send,@pat);
-  my @tuple = ktuple($sbeg,$send,$pcache[0],@pat);
+  my @tuple = ktuple($sbeg, $send, $sprimes, @pat);
   my $num = scalar(@tuple);
 
   is_deeply( \@sieve, \@tuple, "Pattern [@pat] $num in range $sbeg .. $send");
@@ -122,7 +127,8 @@ for my $pat (@patterns) {
   my @pat = @$pat;
   shift @pat if $pat[0] == 0;
   my @sieve = map {"$_"} sieve_prime_cluster($mbeg,$mend,@pat);
-  my @tuple = map {"$_"} ktuple($mbeg,$mend,$pcache[1],@pat);
+  my @tuple = map {"".addint($mbeg,$_)}
+              ktuple(0, $mspan, $bigoffsets, @pat);
   my $num = scalar(@tuple);
 
   is_deeply( \@sieve, \@tuple, "Pattern [@pat] $num in range $mbeg .. $mend");

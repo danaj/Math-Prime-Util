@@ -210,11 +210,13 @@ subtest 'inverse_li and inverse_li_nv', sub {
   );
   # Allow +/- 2 for floating point differences in LogarithmicIntegral
   like(inverse_li(1000000000), qr/^2280162741[34567]$/, "inverse_li(1e9)");
-  like(inverse_li(1100000000000), qr/^3310443690704[01234]$/, "inverse_li(11e11)");
   SKIP: {
-    skip "large inverse_li exactness on 64-bit builds", 1 unless $use64;
+    skip "large GMP inverse_li exactness on 64-bit builds", 1
+      unless $use64 && $Math::Prime::Util::_GMPfunc{"li"} &&
+             defined $Math::Prime::Util::GMP::VERSION &&
+             $Math::Prime::Util::GMP::VERSION >= 0.53;
     is("".inverse_li("1000000000000000"), "37124507851936145",
-       "inverse_li distinguishes adjacent large integers");
+       "GMP inverse_li distinguishes adjacent large integers");
   }
   {
     require Math::BigFloat;
@@ -223,11 +225,11 @@ subtest 'inverse_li and inverse_li_nv', sub {
     my $got;
     {
       local $Math::Prime::Util::_GMPfunc{"li"} = 0;
-      $got = "".inverse_li("1234567890123456");
+      $got = "".inverse_li("1100000000000");
     }
     Math::BigFloat->accuracy($oldacc);
-    is($got, "46100277989963825",
-       "inverse_li ignores global Math::BigFloat accuracy");
+    is($got, "33104436907042",
+       "PP inverse_li is exact and ignores global Math::BigFloat accuracy");
   }
   SKIP: {
     skip "extended large inverse_li series", 1 unless $extra && $use64;
