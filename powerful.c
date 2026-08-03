@@ -319,7 +319,7 @@ UV* powerful_numbers_range(UV* npowerful, UV lo, UV hi, UV k)
       pn[i-lo] = i;
       if (i == hi) break;
     }
-  } else if (k > log2floor(hi)) {
+  } else if (k > (UV)log2floor(hi)) {
     /* 2^k > hi, so 1 is the only possible k-powerful number. */
     npn = (lo == 1);
     if (npn) {

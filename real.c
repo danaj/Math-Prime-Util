@@ -295,10 +295,10 @@ static LNV _Li(LNV x) {
   /* Calculate directly using Ramanujan's series. */
   if (x > 1) {
     const LNV logx = loglnv(x);
-    SUM_INIT(inner_sum);
     LNV sum = 0, old_sum, factorial = 1, power2 = 1;
     LNV q, p = -1;
     int k = 0, n = 0;
+    SUM_INIT(inner_sum);
 
     for (n = 1, k = 0; n < 200; n++) {
       factorial *= n;
