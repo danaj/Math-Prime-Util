@@ -112,7 +112,9 @@ typedef __int8 int8_t;
 /* From perl.h, wrapped in PERL_CORE */
 #ifndef U64_CONST
 # ifdef HAS_QUAD
-#  if INTSIZE >= 8
+#  if defined(_MSC_VER)
+#   define U64_CONST(x) ((U64TYPE)x##UI64)
+#  elif INTSIZE >= 8
 #   define U64_CONST(x) ((U64TYPE)x##U)
 #  elif LONGSIZE >= 8
 #   define U64_CONST(x) ((U64TYPE)x##UL)

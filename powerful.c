@@ -5,6 +5,7 @@
 #include "ptypes.h"
 #define FUNC_isqrt 1
 #define FUNC_ctz 1
+#define FUNC_log2floor 1
 #define FUNC_gcd_ui 1
 #define FUNC_ipow 1
 #include "util.h"
