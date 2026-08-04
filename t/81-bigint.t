@@ -479,7 +479,7 @@ subtest 'is_power', sub {
     my $n = 7 ** $_;
     push @gotpow0, is_power("-$n");
     push @gotpow, is_power("-$n", int("0"), \$r);
-    push @gotroot, $r;
+    push @gotroot, defined $r ? "$r" : undef;
     my $p = $gotpow[-1];
     push @exproot, $p == 0 ? undef : -(7 ** int($_/$p));
   }

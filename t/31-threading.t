@@ -119,9 +119,11 @@ sub bigint_thread_result {
   return "".addint("184467440737095516160",17);
 }
 
-{
+SKIP: {
   # Initialize the preferred bigint class before cloning the interpreters.
   my $expected = bigint_thread_result();
+  my $class = prime_get_config->{'bigintclass'};
+  skip "Math::Pari is not thread safe",1 if defined $class && $class =~ /Pari/i;
   my @threads = map {
     threads->create(\&bigint_thread_result)
   } 1 .. $numthreads;
