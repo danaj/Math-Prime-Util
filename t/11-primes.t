@@ -119,7 +119,11 @@ subtest 'narrow ranges', sub {
   for my $R (@srexp) {
     my($range, $eref) = @$R;
     my($lo,$hi) = $range =~ /(\d+) to (\d+)/;
-    is_deeply(primes($lo,$hi), $eref, "primes($lo,$hi) should return [@$eref]");
+    # Math::GMPz and Math::GMP can't compare with strings (very frustrating).
+    # Munge our output so we can compare.
+    my $PR = primes($lo,$hi);
+    $PR = [map {"$_"} @$PR] if grep { ref($_) } @$PR;
+    is_deeply($PR, $eref, "primes($lo,$hi) should return [@$eref]");
   }
 };
 

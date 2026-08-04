@@ -32,6 +32,6 @@ ok(!defined eval { sqrtint(-1) }, "sqrtint(n): n must not be negative");
 
 is_deeply( [map { sqrtint($_) } 0..100], [map { int(sqrt($_)) } 0..100], "sqrtint 0 .. 100" );
 
-is_deeply( [map { sqrtint($_->[0]) } @vals],
+is_deeply( [map { "".sqrtint($_->[0]) } @vals],
            [map { $_->[1] } @vals],
            "sqrtint(n) for multiple values" );

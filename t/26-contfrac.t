@@ -171,7 +171,10 @@ subtest 'convergents' => sub {
   my @last = @{(convergents(3,7,15,1,292))[-1]};
   is_deeply( \@last, [103993, 33102], "last convergent of pi CF" );
 
-  is_deeply( [convergents(qw/2 590295810358705651712/)],
+  # Protect against incomplete Math::GMP and Math::GMPz
+  my @CR = convergents(qw/2 590295810358705651712/);
+  $CR[1] = [map { "$_" } @{$CR[1]}] if exists $CR[1];
+  is_deeply( \@CR,
              [[2,1],[qw/1180591620717411303425 590295810358705651712/]],
              "convergents for a bigint" );
 };

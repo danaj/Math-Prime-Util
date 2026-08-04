@@ -33,7 +33,7 @@ subtest 'bernfrac (Bernoulli numbers)', sub {
 
   SKIP: {
     skip "bernfrac(60) only with EXTENDED_TESTING",1 unless $extra;
-    is_deeply([bernfrac(60)],["-1215233140483755572040304994079820246041491",56786730],"bernfrac(60) (numerator has 43 digits)");
+    is_deeply([map { "$_" } bernfrac(60)],["-1215233140483755572040304994079820246041491",56786730],"bernfrac(60) (numerator has 43 digits)");
   }
 };
 
