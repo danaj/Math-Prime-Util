@@ -7240,6 +7240,8 @@ Returns the principal branch of the Lambert W function of a real value.
 Given a value C<k> this solves for C<W> in the equation C<k = We^W>.  The
 input must not be less than C<-1/e>.  This corresponds to Pari's C<lambertw>
 function and Mathematica's C<ProductLog> / C<LambertW> function.
+Inputs just below C<-1/e> within a small floating-point rounding margin are
+treated as C<-1/e> and return C<-1>.
 
 This function handles all real value inputs with non-complex return values
 from the principal branch.

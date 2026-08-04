@@ -71,7 +71,8 @@ my %rzvals = (
 );
 
 my %lamvals = (
-            "-0.3678794411714423215955237701614608674458" => -0.99999995824889,  # Ideally this would be -1
+            "-0.367879441171443" => -1,
+            "-0.3678794411714423215955237701614608674458" => -1,
             "-.1" => -0.11183255915896296483356945682026584227264536229126586332968,
             0 => 0,
             0.3678794411714423215955237701614608674458 => 0.278464542761073795109358739022980155439470898229676526861772,
@@ -107,8 +108,8 @@ cmp_ok( LogarithmicIntegral(0),         '==', 0,         "li(0) is 0");
 cmp_ok( LogarithmicIntegral(1),         '<=',-$infinity, "li(1) is -infinity");
 cmp_ok( LogarithmicIntegral($infinity), '>=', $infinity, "li(inf) is infinity");
 
-eval { LambertW("-0.367879441171445"); };
-like($@, qr/x must be >= -1\/e/, "LambertW rejects values below -1/e");
+eval { LambertW("-0.3678794411715"); };
+like($@, qr/x must be >= -1\/e/, "LambertW rejects values below branch margin");
 cmp_ok( LambertW($infinity), '>=', $infinity, "LambertW(inf) is infinity");
 cmp_ok( RiemannR($infinity), '>=', $infinity, "R(inf) is infinity");
 cmp_ok( RiemannZeta($infinity), '==', 0, "Zeta(inf) is 0");

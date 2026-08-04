@@ -12172,7 +12172,9 @@ sub LambertW {
   return $x           if $x != $x;
   return MPU_INFINITY if $x == MPU_INFINITY;
   croak "LambertW: x must be >= -1/e"
-    if $x < '-0.36787944117144232159552377016146086745';
+    if $x < '-0.36787944117145';
+  return -1.0
+    if $x <= '-0.3678794411714423215955237701614608674458111310317678';
 
   if ($Math::Prime::Util::_GMPfunc{"lambertw"}) {
     my $r = _try_real_gmp_func(\&Math::Prime::Util::GMP::lambertw, 0.42, $x);

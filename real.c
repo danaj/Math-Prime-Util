@@ -696,12 +696,15 @@ static long double _lambertw_approx(long double x) {
 
 NV lambertw(NV x) {
   const NV branch_point = (NV)(-LNV_ONE / explnv(LNV_ONE));
+  const NV branch_limit = -(NV)LNVCONST(0.36787944117145);
   long double w;
   int i;
 
   if (isnan(x)) return x;
-  if (x < branch_point)
+  /* Match GMP and absorb small conversion errors around the branch point. */
+  if (x < branch_limit)
     croak("Invalid input to LambertW:  x must be >= -1/e");
+  if (x <= branch_point) return -1.0;
   if (x == INFINITY) return x;
   if (x == 0.0L) return 0.0L;
 
