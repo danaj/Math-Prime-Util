@@ -317,7 +317,7 @@ static uint128_t mont_powmod128_u128(uint128_t a, uint128_t k,
 
 
 /*****************************************************************************
- * Primality — BPSW (Miller-Rabin base 2 + strong Lucas, Selfridge params)
+ * Primality — BPSW (Miller-Rabin base 2 + extra-strong Lucas)
  *****************************************************************************/
 
 /* We could add a base-2 M-R function, that avoided computing R2, but it is
@@ -455,7 +455,7 @@ static void lucas_seq128_mont(uint128_t *U, uint128_t *V, uint128_t *Qk,
  * n must be odd, > 2, not a perfect square.
  * D is chosen from sequence 5,-7,9,-11,13,... until jacobi(D,n)=-1.
  * P=1, Q=(1-D)/4. */
-static bool is_strong_lucas_pp128(uint128_t n) {
+MAYBE_UNUSED static bool is_strong_lucas128(uint128_t n) {
   int64_t D;
   int64_t sign = 1;
   int r, abs_D;
@@ -489,13 +489,86 @@ static bool is_strong_lucas_pp128(uint128_t n) {
   return 0;
 }
 
+/* Select Baillie's extra-strong Lucas parameters.  Q=1 and P is the first
+ * value in 3,4,5,... for which jacobi(P^2-4,n) == -1. */
+static bool select_extra_strong_parameters128(uint32_t *Pout, uint128_t n) {
+  uint128_t g;
+  uint64_t D;
+  uint32_t P = 3;
+  int j;
+
+  while (1) {
+    D = (uint64_t)P * P - 4;
+    j = jacobi128((int128_t)D, n);
+    if (j == 0) {
+      g = gcd128((uint128_t)D, n);
+      if (g != 1 && g != n) return 0;
+    }
+    if (j == -1) break;
+    if (P == 23 && is_perfect_square128(n)) return 0;
+    if (++P > 65535)
+      croak("lucas_extrastrong_params: P exceeded 65535");
+  }
+  *Pout = P;
+  return 1;
+}
+
+/* Full extra-strong Lucas probable-prime test with Baillie's parameters.
+ * n must be odd, greater than 2, and less than the maximum uint128_t. */
+static bool is_extra_strong_lucas128(uint128_t n) {
+  mont128_t ctx;
+  uint128_t U, V, d, bit, t2, unext, vnext;
+  uint128_t mont1, mont2, montP, montD;
+  uint64_t D;
+  uint32_t P;
+  int s = 0;
+
+  if (!select_extra_strong_parameters128(&P, n)) return 0;
+  D = (uint64_t)P * P - 4;
+
+  d = n + 1;
+  while (!(d & 1)) { d >>= 1; s++; }
+
+  mont_setup128(&ctx, n);
+  mont1 = mont_enter128(1, &ctx);
+  mont2 = addmod128(mont1, mont1, n);
+  montP = mont_enter128(P, &ctx);
+  montD = mont_enter128(D, &ctx);
+  U = mont1;
+  V = montP;
+
+  bit = (uint128_t)1 << 126;
+  while (bit > d) bit >>= 1;
+  bit >>= 1;
+  while (bit > 0) {
+    U = mont_mulmod128(U, V, &ctx);
+    V = submod128(mont_sqrmod128(V, &ctx), mont2, n);
+    if (d & bit) {
+      t2 = mont_mulmod128(U, montD, &ctx);
+      unext = addmod128(mont_mulmod128(U, montP, &ctx), V, n);
+      vnext = addmod128(mont_mulmod128(V, montP, &ctx), t2, n);
+      U = half_mod128(unext, n);
+      V = half_mod128(vnext, n);
+    }
+    bit >>= 1;
+  }
+
+  if (U == 0 && (V == mont2 || V == n-mont2)) return 1;
+  s--;
+  while (s--) {
+    if (V == 0) return 1;
+    if (s) V = submod128(mont_sqrmod128(V, &ctx), mont2, n);
+  }
+  return 0;
+}
+
 /* BPSW primality test, no trial division.  Assumes n > 2011 and odd.
  * Called from the factoring loop where small factors are already removed. */
 bool is_bpsw128(uint128_t n) {
   if (n < 7) return (n==2 || n==3 || n==5);
-  if (!(n & 1)) return 0;
+  if (!(n & 1) || n == (uint128_t)-1) return 0;
   if (!miller_rabin128(n, 2)) return 0;
-  if (!is_strong_lucas_pp128(n)) return 0;
+  if (!is_extra_strong_lucas128(n)) return 0;
   return 1;
 }
 

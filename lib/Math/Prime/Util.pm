@@ -7421,7 +7421,7 @@ Project Euler, problem 41 (Pandigital prime), brute force command line:
 
   perl -MMath::Prime::Util=primes,vecfirst -E 'say vecfirst { /1/&&/2/&&/3/&&/4/&&/5/&&/6/&&/7/} reverse @{primes(1000000,9999999)};'
 
-Project Euler, problem 47 (Distinct primes factors):
+Project Euler, problem 47 (Distinct prime factors):
 
   use Math::Prime::Util qw/pn_primorial factor_exp/;
   my $n = pn_primorial(4);  # Start with the first 4-factor number
@@ -7493,7 +7493,7 @@ Compute L<OEIS A054903|http://oeis.org/A054903> just like CRG4s Pari example:
 
 Construct the table shown in L<OEIS A046147|http://oeis.org/A046147>:
 
-  use Math::Prime::Util qw/znorder euler_phi gcd/;
+  use Math::Prime::Util qw/znprimroot znorder euler_phi gcd/;
   foreach my $n (1..100) {
     if (!znprimroot($n)) {
       say "$n -";
@@ -7514,8 +7514,8 @@ Find the 7-digit palindromic primes in the first 20k digits of Pi:
   }
 
   # Or we could use the regex engine to find the palindromes:
-  while ($pi =~ /(([1379])(\d)(\d)\d\4\3\2)/g) {
-    say "$1 at ",pos($pi)-7 if is_prime($1)
+  while ($pi =~ /(?=(([1379])(\d)(\d)\d\4\3\2))/g) {
+    say "$1 at ", pos($pi) if is_prime($1);
   }
 
 The L<Bell numbers|https://en.wikipedia.org/wiki/Bell_number> B_n:
@@ -7556,7 +7556,7 @@ Compute subfactorial (number of derangements) using simple recursion:
 
   sub my_subfactorial { my $n = shift;
     use bigint;
-    ($n < 1)  ?  1  :  $n * subfactorial($n-1) + (-1)**$n;
+    ($n < 1)  ?  1  :  $n * my_subfactorial($n-1) + (-1)**$n;
   }
 
 Recognize Sidon and sum-free sets.  We have specific functions
@@ -7579,17 +7579,18 @@ L<BPSW test|http://en.wikipedia.org/wiki/Baillie-PSW_primality_test>
 which is fast (a little less than the time to perform 3 Miller-Rabin
 tests) and has no known counterexamples.  If you trust the primality
 testing done by Pari, Maple, SAGE, FLINT, etc., then this function
-should be appropriate for you.  L</is_prime> will do the same BPSW
-test as well as some additional testing, making it slightly more time
-consuming but less likely to produce a false result.  This is a little
-more stringent than Mathematica.  L</is_provable_prime> constructs a
-primality proof.  If a certificate is requested, then either BLS75
+should be appropriate for you.
+L</is_prime> will do the same BPSW test and may perform additional
+testing for numbers over 64 bits.  With the GMP backend installed,
+its testing is a little more stringent than Mathematica's.
+L</is_provable_prime> constructs a primality proof.
+If a certificate is requested, then either BLS75
 theorem 5 or ECPP is performed.  Without a certificate, the method
-is implementation specific (currently it is identical, but later
-releases may use APRCL).  With L<Math::Prime::Util::GMP> installed,
+is implementation specific.
+With L<Math::Prime::Util::GMP> installed,
 this is quite fast through 300 or so digits.
 
-Math systems 35 years ago typically used Miller-Rabin tests with C<k>
+Math systems in the 1990s typically used Miller-Rabin tests with C<k>
 bases (usually fixed bases, sometimes random) for primality
 testing, but these have generally been replaced by some form of BPSW
 as used in this module.  See Pinch's 1993 paper for examples of why
@@ -7837,14 +7838,13 @@ certificate).
 
 L<Math::Primality> uses a strong BPSW test, which is the standard BPSW
 test based on the 1980 paper.  It has no known counterexamples (though
-like all these tests, we know some exist).  Pari 2.3.5 (and through at
-least 2.6.2) uses an almost-extra-strong BPSW test for its
-C<ispseudoprime> function.  This is deterministic for native integers,
-and should be excellent for bigints, with a slightly lower chance of
-counterexamples than the traditional strong test.
-L<Math::Prime::Util> uses the
-full extra-strong BPSW test, which has an even lower chance of
-counterexample.
+like all these tests, counterexamples are expected to exist).
+Pari/GP 2.3.5 (and through at least 2.18.1) uses an almost-extra-strong BPSW
+test for its C<ispseudoprime> function.  This is deterministic for native
+integers, and should be excellent for bigints, with a slightly lower chance
+of counterexamples than the traditional strong test.
+L<Math::Prime::Util> uses the full extra-strong BPSW test, which has an
+even lower chance of a counterexample.
 With L<Math::Prime::Util::GMP>, C<is_prime> adds an extra M-R test
 using a random base, which further reduces the probability of a composite
 being allowed to pass.
@@ -7892,7 +7892,7 @@ L</divisor_sum>.
 =item C<eulerphi>, C<moebius>
 
 Similar to MPU's L</euler_phi> and L</moebius>.  MPU is 2-20x faster for
-native integers.  MPU also supported range inputs, which can be much
+native integers.  MPU also supports range inputs, which can be much
 more efficient.  With bigint arguments, MPU is slightly faster than
 Math::Pari if the GMP backend is available, but very slow without.
 
@@ -7940,7 +7940,7 @@ function supports negative and complex inputs.
 
 Overall, L<Math::Pari> supports a huge variety of functionality and has a
 sophisticated and mature code base behind it (noting that the Pari library
-used is about 10 years old now).
+used is quite old).
 For native integers, typically Math::Pari will be slower than MPU.  For
 bigints, Math::Pari may be superior and it rarely has any performance
 surprises.  Some of the
@@ -7962,8 +7962,8 @@ First, for those looking for the state of the art non-Perl solutions:
 
 =item Primality testing
 
-For general numbers smaller than 2000 or so digits, MPU is the fastest
-solution I am aware of (it is faster than Pari 2.7, PFGW, and FLINT).
+For general numbers smaller than 2000 or so digits, MPU with its GMP backend
+is the fastest solution I am aware of (it is faster than Pari 2.7, PFGW, and FLINT).
 For very large inputs,
 L<PFGW|http://sourceforge.net/projects/openpfgw/> is the fastest primality
 testing software I'm aware of.  It has fast trial division, and is especially
@@ -7974,12 +7974,14 @@ A test such as the BPSW test in this module is then recommended.
 
 =item Primality proofs
 
-L<Primo|http://www.ellipsa.eu/> is the best method for open source primality
-proving for inputs over 1000 digits.  Primo also does well below that size,
-but other good alternatives are
+Available software for proofs include
+MPU's L<ECPP|https://metacpan.org/pod/Math::Prime::Util::GMP>
+(standalone or in Perl since 2013),
 David Cleaver's L<mpzaprcl|http://sourceforge.net/projects/mpzaprcl/>,
-the APRCL from the modern L<Pari|http://pari.math.u-bordeaux.fr/> package,
-or the standalone ECPP from this module with large polynomial set.
+the not-open-source but free ECPP executable L<Primo|http://www.ellipsa.eu/>,
+Pari's APRCL L<Pari|http://pari.math.u-bordeaux.fr/>,
+Pari's ECPP L<Pari|http://pari.math.u-bordeaux.fr/> (added in 2018),
+and Andreas Enge's L<CM|https://www.multiprecision.org/cm/> (added in 2022).
 
 =item Factoring
 
@@ -7991,7 +7993,7 @@ very limited compared to those.
 
 =item Primes
 
-L<primesieve|http://code.google.com/p/primesieve/> and
+L<primesieve|https://github.com/kimwalisch/primesieve> and
 L<yafu|http://sourceforge.net/projects/yafu/>
 are the fastest publicly available code I am aware of.  Primesieve
 will additionally take advantage of multiple cores with excellent
@@ -8201,9 +8203,8 @@ FIPS 186-4 algorithm but uses its own CSPRNG which may not be SHA-256.
 
 L<Crypt::Primes/maurer> times are included for comparison.  It is reasonably
 fast for small sizes but gets slow as the size increases.  It is 10 to 500
-times slower than this module's GMP methods.  It does not
-perform any primality checks on the intermediate results or the final
-result (I highly recommended running a primality test on the output).
+times slower than this module's GMP methods.  It does not perform any
+primality checks on the intermediate results or the final result.
 Additionally important for servers, L<Crypt::Primes/maurer> uses excessive
 system entropy and can grind to a halt if C</dev/random> is exhausted
 (it can take B<days> to return).
@@ -8411,7 +8412,7 @@ Christian Bau, "The Extended Meissel-Lehmer Algorithm", 2003, preprint with exam
 
 =item *
 
-Manuel Benito and Juan L. Varona, "Recursive formulas related to the summation of the Möbius function", I<The Open Mathematics Journal>, v1, pp 25-34, 2007.  Among many other things, shows a simple formula for computing the Mertens functions with only n/3 Möbius values (not as fast as Deléglise and Rivat, but really simple).  L<http://www.unirioja.es/cu/jvarona/downloads/Benito-Varona-TOMATJ-Mertens.pdf>
+Manuel Benito and Juan L. Varona, "Recursive formulas related to the summation of the Möbius function", I<The Open Mathematics Journal>, v1, pp 25-34, 2008.  Among many other things, shows a simple formula for computing the Mertens functions with only n/3 Möbius values (not as fast as Deléglise and Rivat, but really simple).  L<http://www.unirioja.es/cu/jvarona/downloads/Benito-Varona-TOMATJ-Mertens.pdf>
 
 =item *
 
@@ -8435,7 +8436,7 @@ Henri Cohen, "A Course in Computational Algebraic Number Theory", Springer, 1996
 
 =item *
 
-Marc Deléglise and Joöl Rivat, "Computing the summation of the Möbius function", I<Experimental Mathematics>, v5, n4, pp 291-295, 1996.  Enhances the Möbius computation in Lioen/van de Lune, and gives a very efficient way to compute the Mertens function.  L<http://projecteuclid.org/euclid.em/1047565447>
+Marc Deléglise and Joël Rivat, "Computing the summation of the Möbius function", I<Experimental Mathematics>, v5, n4, pp 291-295, 1996.  Enhances the Möbius computation in Lioen/van de Lune, and gives a very efficient way to compute the Mertens function.  L<http://projecteuclid.org/euclid.em/1047565447>
 
 =item *
 
@@ -8479,7 +8480,7 @@ William H. Press et al., "Numerical Recipes", 3rd edition.
 
 =item *
 
-Hans Riesel, "Prime Numbers and Computer Methods for Factorization", Birkh?user, 2nd edition, 1994.  Lots of information, some code, easy to follow.
+Hans Riesel, "Prime Numbers and Computer Methods for Factorization", Birkhäuser, 2nd edition, 1994.  Lots of information, some code, easy to follow.
 
 =item *
 
