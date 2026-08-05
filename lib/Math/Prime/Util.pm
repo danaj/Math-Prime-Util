@@ -6038,9 +6038,11 @@ See L</"MODULAR FUNCTIONS"> for more functions that operate mod n.
 Semantics mostly follow Pari/GP, though in some cases they will indicate
 an error while we return undef.
 
+Unless documented otherwise (e.g. for functions returning lists):
+
   We use the absolute value of the modulus.
-  A modulus of zero returns undef.
-  A modulus of 1 will return 0.
+  For modulus 0, the result is undef.
+  For modulus 1, a modular-residue result is 0.
   If a modular result doesn't exist, we return undef.
 
 =head2 negmod
@@ -6052,9 +6054,9 @@ This is similar to C<submod(0,$a,$n)> or C<$n ? modint(-$a,absint($n)) : undef>.
 =head2 addmod
 
 Given three integers C<a>, C<b>, and C<n>, return C<(a+b) mod |n|>.
-This is particularly useful when dealing with numbers that are larger
-than a half-word but still native size.
-No bigint package is needed and this can be 10-200x faster than using one.
+This is particularly useful when the inputs fit native integers but their
+sum might not.  It avoids constructing bigint objects solely to handle the
+intermediate result.
 
 =head2 submod
 
@@ -6063,8 +6065,9 @@ Given three integers C<a>, C<b>, and C<n>, return C<(a-b) mod |n|>.
 =head2 mulmod
 
 Given three integers C<a>, C<b>, and C<n>, return C<(a*b) mod |n|>.
-This is particularly useful when C<n> fits in a native integer.
-No bigint package is needed and this can be 10-200x faster than using one.
+This is particularly useful when the inputs fit native integers but their
+product might not.  It avoids constructing bigint objects solely to handle
+the intermediate result.
 
 =head2 muladdmod
 
@@ -6096,7 +6099,7 @@ If no square root exists, undef is returned.  If defined, the return value
 C<r> will always satisfy C<r^2 = a mod |n|>.
 
 If the modulus is prime, the function will always return C<r>, the smaller
-of the two square roots (the other being C<-r mod |n|>.  If the modulus is
+of the two square roots (the other being C<-r mod |n|>).  If the modulus is
 composite, one of possibly many square roots will be returned, and it will
 not necessarily be the smallest.
 
@@ -6106,9 +6109,11 @@ Given two integers C<a> and C<n>, returns a sorted list of all modular
 square roots of C<a> mod C<|n|>. If no square root exists, an empty
 list is returned.
 
+For C<n = 0>, this returns an empty list.  For C<|n| = 1>, it returns C<(0)>.
+
 Some inputs will return very many roots.
 For example, C<a = p^4, n = 24 * p^4> for prime p, has many roots,
-and C<sqrtmod(89**8, 24*89**8)> has over 500 million.
+and C<allsqrtmod(89**8, 24*89**8)> has over 500 million.
 
 In scalar context, this returns the count of roots.
 
@@ -6124,11 +6129,21 @@ For some composites with large prime powers this may not be efficient.
 C<rootmod(a,-k,n)> is calculated as C<rootmod(invmod(a,n),k,n)>.
 If C<1/a mod |n|> does not exist, undef is returned.
 
+For C<k = 0>, a root exists exactly when C<a = 1 mod |n|>.  In that
+case the function returns C<1> when C<< |n| > 1 >>.  As with other modular
+functions, a modulus of C<1> returns C<0>.
+
 =head2 allrootmod
 
 Given three integers C<a>, C<k>, and C<n>, returns a sorted list of all
-modular C<k>-th root of C<a> modulo C<|n|>.
+modular C<k>-th roots of C<a> modulo C<|n|>.
 If no root exists, an empty list is returned.
+For C<n = 0>, this returns an empty list.  For C<|n| = 1>, it returns C<(0)>.
+
+C<allrootmod(a,-k,n)> finds the roots of C<invmod(a,n)>.  If the inverse
+does not exist, an empty list is returned.  For C<k = 0>, every residue
+modulo C<|n|> is returned when C<a = 1 mod |n|>; otherwise there are no
+roots.
 
 Similar to L</allsqrtmod>, some inputs have millions or billions of roots,
 so it might not be able to successfully return them all.
@@ -6156,11 +6171,10 @@ Given a non-negative integer C<n> and an integer C<m>, returns C<n! mod |m|>.
 This is much faster than computing the large C<factorial(n)> followed
 by a mod operation.
 
-While very efficient, this is not state of the art.  Currently,
-Fredrik Johansson's fast multi-point polynomial evaluation method as
-used in FLINT is the fastest known implementation.
-This becomes noticeable for C<< n > 10^8 >> or so,
-and the O(n^.5) versus O(n) complexity is very apparent with large C<n>.
+This implementation performs linear modular work.  For sufficiently large
+C<n>, asymptotically faster methods based on fast multi-point polynomial
+evaluation, such as the implementation in FLINT, can be faster.  The
+crossover depends on the platform and modulus.
 
 Like other mod functions, C<undef> is returned when C<m=0>.
 
@@ -6204,6 +6218,9 @@ Given integers C<P>, C<Q>, the non-negative integer C<k>, and the
 integer C<n>, efficiently compute the k-th value
 of C<U(P,Q) mod |n|> and C<V(P,Q) mod |n|>.
 
+For C<n = 0>, this returns an empty list.
+For C<|n| = 1>, it returns C<(0,0)>.
+
 This is similar to the L</lucas_sequence> function, but uses a more
 consistent argument order and does not return C<Q_k>.
 
@@ -6218,23 +6235,14 @@ C<P>,C<Q>, modulo C<|n|>.  The modular Lucas sequence is used in a
 number of primality tests and proofs.
 C<k> must be non-negative, and C<n> must be positive.
 
-=head2 pisano_period
-
-Given a non-negative integer C<n>, returns the period of the Fibonacci
-sequence modulo C<n>.
-The modular Fibonacci numbers can be produced using C<lucasumod(1,-1,k,n)>.
-They are periodic for any integer C<n>, and the Pisano period is the
-length of the repeating sequence.
-
-This is the L<OEIS series A001175|http://oeis.org/A001175>.
 
 =head1 MODULAR FUNCTIONS
 
 =head2 OVERVIEW
 
-More functions are provided that operate mod n.  They use similar semantics
-with respect to the modulus: the absolute value is used, and a modulus of 0
-will return undef.  However the behavior with C<n = 1> is not always the same.
+More functions are provided that operate mod n.  They generally use the
+absolute value of the modulus and return undef for a modulus of 0.
+Exceptions and behavior for C<n = 1> are documented with each function.
 
 =head2 znlog
 
@@ -6242,6 +6250,8 @@ will return undef.  However the behavior with C<n = 1> is not always the same.
 
 Returns the integer C<k> that solves the equation C<a = g^k mod |p|>, or
 undef if no solution is found.  This is the discrete logarithm problem.
+The returned C<k> is non-negative, but is not guaranteed to be the smallest
+solution.
 
 The implementation for native integers first applies Silver-Pohlig-Hellman
 on the group order to possibly reduce the problem to a set of smaller
@@ -6253,21 +6263,21 @@ This is reasonable if C<g> and C<p> are coprime.
 If not, a reduction is attempted before falling back to the remaining
 discrete log problem.
 
-The PP implementation is less sophisticated, with only a memory-heavy BSGS
-being used.
+The PP implementation uses trial search and Silver-Pohlig-Hellman, with
+BSGS for subproblems and as a fallback.  It does not use Pollard's DLP Rho.
 
 =head2 znorder
 
   $order = znorder(2, next_prime(10**16)-6);
 
-Given two positive integers C<a> and C<n>, returns the multiplicative order
+Given two integers C<a> and C<n>, returns the multiplicative order
 of C<a> modulo C<|n|>.  This is the smallest positive integer C<k> such that
-C<a^k ≡ 1 mod |n|>.  Returns undef if C<n = 0>, C<a = 0>, or if
-C<a> and C<n> are not coprime, since no value can result in 1 mod n.
-Returns 1 if C<a = 1> or if C<n = 1>.
+C<a^k ≡ 1 mod |n|>.  Returns undef if C<n = 0>, or, when C<< |n| > 1 >>,
+if C<a> and C<n> are not coprime.  Returns C<1> if C<n = 1> or if
+C<a ≡ 1 mod |n|>.
 
-Note the latter differs from other mod functions, because the return value
-is a positive integer, not an integer mod n.
+The result for C<n = 1> differs from other mod functions because the
+return value is a positive integer, not an integer mod n.
 
 This corresponds to Pari's C<znorder(Mod(a,n))> function and Mathematica's
 C<MultiplicativeOrder[a,n]> function.
@@ -6282,6 +6292,7 @@ which will be true only if
 C<< n is one of {2, 4, p^k, 2p^k} >> for odd prime p.
 
 Like other modular functions, if C<n = 0> the function returns undef.
+By convention, C<znprimroot(1)> returns C<0>.
 
 L<OEIS A033948|http://oeis.org/A033948> is a sequence of integers where
 the primitive root exists, while L<OEIS A046145|http://oeis.org/A046145>
@@ -6295,6 +6306,7 @@ primitive root modulo C<|n|>, and C<0> if not.  If C<a> is a primitive root,
 then C<euler_phi(n)> is the smallest C<e> for which C<a^e = 1 mod n>.
 
 Like other modular functions, if C<n = 0> the function returns undef.
+By convention, every integer is considered a primitive root modulo C<1>.
 
 =head2 qnr
 
@@ -6303,6 +6315,7 @@ modulo C<|n|>.  This is the smallest integer C<a> where there does not
 exist an integer C<b> such that C<a = b^2 mod |n|>.
 
 Like other modular functions, if C<n = 0> the function returns undef.
+The values C<qnr(1) = 1> and C<qnr(2) = 2> are sequence conventions.
 
 This is L<OEIS A020649|http://oeis.org/A020649>.
 For primes it is L<OEIS A053760|http://oeis.org/A053760>.
@@ -6311,14 +6324,28 @@ For primes it is L<OEIS A053760|http://oeis.org/A053760>.
 
 Given two integers C<a> and C<n>, returns 1 if C<a> is a
 quadratic residue modulo C<|n|>, and 0 otherwise.
-A return value of 1 indicates there exists an C<x> where C<a = x^2 mod |n|>.
+A return value of 1 indicates there exists an integer C<x> where
+C<a = x^2 mod |n|>.
 
-For odd primes, this is similar to checking C<a==0 || kronecker(a,n) == 1>.
+For odd prime C<|n|>, this is equivalent to checking whether C<a> is
+divisible by C<n> or C<kronecker(a,absint(n)) == 1>.
 
-For all values, this will be equal to C<sqrtmod(a,n) != undef>, with
+For nonzero C<n> this will be equal to C<defined sqrtmod(a,n)>, with
 possibly better performance.
 
 Like other modular functions, if C<n = 0> the function returns undef.
+
+=head2 pisano_period
+
+Given a non-negative integer C<n>, returns the period of the Fibonacci
+sequence modulo C<n>.
+The modular Fibonacci numbers can be produced using C<lucasumod(1,-1,k,n)>.
+They are periodic for every positive integer C<n>, and the Pisano period is
+the length of the repeating sequence.  By convention, C<pisano_period(0)>
+returns C<0>; C<pisano_period(1)> returns C<1>.
+
+This is the L<OEIS series A001175|http://oeis.org/A001175>.
+
 
 =head1 RANDOM NUMBERS
 
@@ -7043,8 +7070,8 @@ Like all the specific-algorithm C<*_factor> routines, this is not exported
 unless explicitly requested.
 
 When XS is unavailable, C<squfof_factor>, C<lehman_factor>, and
-C<pplus1_factor> remain callable but use the Pure Perl pbrent fallback rather
-than the named algorithms.
+C<pplus1_factor> remain callable but use the Pure Perl C<pbrent_factor>
+fallback rather than the named algorithms.
 
 =head2 fermat_factor
 
