@@ -6572,25 +6572,20 @@ to the lower limit and less than or equal to the upper limit.  If no lower
 limit is given, 2 is implied.  Returns undef if no primes exist within the
 range.
 
-The goal is to return a uniform distribution of the primes in the range,
-meaning for each prime in the range, the chances are equally likely that it
-will be seen.  This removes from consideration such algorithms as
-C<PRIMEINC>, which although efficient, gives very non-random output.  This
-also implies that the numbers will not be evenly distributed, since the
-primes are not evenly distributed.  Stated differently, the random prime
-functions return a uniformly selected prime from the set of primes within
-the range.  Hence given C<random_prime(1000)>, the numbers 2, 3, 487, 631,
-and 997 all have the same probability of being returned.
+The goal is to select uniformly from the primes in the range, rather than use
+an algorithm such as C<PRIMEINC>, whose output is biased by the prime gaps.
+This does not imply that the returned numbers are evenly spaced, since the
+primes themselves are not evenly distributed.  For example, with
+C<random_prime(1000)>, each of 2, 3, 487, 631, and 997 has the same target
+probability of being returned.
 
-For small numbers, a random index selection is done, which gives ideal
-uniformity and is very efficient with small inputs.  For ranges larger than
-this ~16-bit threshold but within the native bit size, a Monte Carlo method
-is used.  This also
-gives ideal uniformity and can be very fast for reasonably sized ranges.
-For even larger numbers, we partition the range, choose a random partition,
-then select a random prime from the partition.  This gives some loss of
-uniformity but results in many fewer bits of randomness being consumed as
-well as being much faster.
+Native and GMP paths select uniformly, using rejection sampling over uniformly
+selected odd candidates or, for some small fixed ranges, a random prime index.
+For ranges too large for the Pure Perl path to select an offset directly, it
+partitions the range, chooses a random partition, and then selects a random
+prime within that partition.  This consumes many fewer random bits and is much
+faster, but is only approximately uniform because the partitions need not
+contain equal numbers of primes.
 
 
 =head2 random_ndigit_prime
@@ -6599,7 +6594,10 @@ well as being much faster.
 
 Selects a random n-digit prime, where the input is an integer number of
 digits.  One of the primes within that range (e.g. 1000 - 9999 for
-4-digits) will be uniformly selected.
+4 digits) will be selected.  Native and GMP paths select uniformly, using
+rejection sampling or random prime-index selection for small fixed ranges.
+When the Pure Perl path is used for very large values, the partitioning method
+described under L</random_prime> is used and is only approximately uniform.
 The number of digits must be between C<1> and C<4,294,967,295>.
 
 If the resulting prime is larger than the maximum native integer, then
@@ -6618,15 +6616,14 @@ Selects a random n-bit prime, where the input is an integer number of bits.
 A prime with the nth bit set will be selected.
 The number of bits must be between C<2> and C<4,294,967,295>.
 
-For bit sizes of 64 and lower, L</random_prime> is used, which gives completely
-uniform results in this range.  For sizes larger than 64, Algorithm 1 of
-Fouque and Tibouchi (2011) is used, wherein we select a random odd number
-for the lower bits, then loop selecting random upper bits until the result
-is prime.  This allows a more uniform distribution than the general
-L</random_prime> case while running slightly faster (in contrast, for large
-bit sizes L</random_prime> selects a random upper partition then loops
-on the values within the partition, which very slightly skews the results
-towards smaller numbers).
+For bit sizes no larger than the native integer width, direct rejection
+sampling (or random prime-index selection for very small sizes) gives uniform
+results.  For larger sizes, Algorithm 1 of Fouque and Tibouchi (2011) is used:
+a random odd value supplies the lower bits, then random upper bits are selected
+until the result is prime.  This gives a distribution close to uniform while
+using fewer random bits than direct rejection sampling.  It is also more
+uniform than the Pure Perl partitioning method used by L</random_prime> for
+very large arbitrary ranges.
 
 The result will be a BigInt if the number of bits is greater than the native
 bit size.  For better performance with large bit sizes, install
@@ -6666,14 +6663,13 @@ We consider a strong prime I<p> to be one where
 
 =back
 
-Using a strong prime in cryptography guards against easy factoring with
-algorithms like Pollard's Rho.  Rivest and Silverman (1999) present a case
-that using strong primes is unnecessary, and most modern cryptographic systems
-agree.  First, the smoothness does not affect more modern factoring methods
-such as ECM.  Second, modern factoring methods like GNFS are far faster than
-either method so makes the point moot.  Third, due to key size growth and
-advances in factoring and attacks, for practical purposes, using large random
-primes offers security equivalent to strong primes.
+Strong primes were historically intended to guard against special-purpose
+factoring algorithms such as Pollard's C<p-1> and Williams' C<p+1>.  Rivest
+and Silverman present a case that strong primes are unnecessary, and most
+modern cryptographic systems agree.  Their structure offers no protection
+against ECM, while general-purpose methods such as the number field sieve are
+more relevant for cryptographic-size inputs.  In practice, sufficiently large
+random primes offer security equivalent to strong primes.
 
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
@@ -6686,9 +6682,9 @@ with large bit sizes, install L<Math::Prime::Util::GMP>.
 
 Constructs an n-bit random proven prime.
 The number of bits must be between C<2> and C<4,294,967,295>.
-Internally this may use
-L</is_provable_prime>(L</random_nbit_prime>) or
-L</random_maurer_prime> depending on the platform and bit size.
+Native-size values may be generated directly because primality can be decided
+deterministically in that range.  Larger values use L</random_maurer_prime>.
+The certificate-returning form uses L</random_maurer_prime_with_cert>.
 
 
 =head2 random_proven_prime_with_cert
@@ -6707,8 +6703,10 @@ The number of bits must be between C<2> and C<4,294,967,295>.
 
   my $bigprime = random_maurer_prime(512);
 
-Construct an n-bit provable prime, using the FastPrime algorithm of
-Ueli Maurer (1995).
+Construct an n-bit provable prime.  For values beyond the native integer
+range, this uses the FastPrime algorithm of Ueli Maurer (1995).  Native-size
+values may be generated directly because primality can be decided
+deterministically in that range.
 The number of bits must be between C<2> and C<4,294,967,295>.
 This is the same algorithm used by L<Crypt::Primes>.
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
@@ -6720,10 +6718,11 @@ of times faster, so it is highly recommended.
 The differences between this function and that in L<Crypt::Primes> are
 described in the L</"SEE ALSO"> section.
 
-Internally this additionally runs the BPSW probable prime test on every
-partial result, and constructs a primality certificate for the final
-result, which is verified.  These provide additional checks that the resulting
-value has been properly constructed.
+Each recursively constructed result is additionally checked with BPSW.  The
+Pure Perl scalar path also constructs and verifies a certificate for the final
+result.  The direct GMP scalar path applies the proof test without materializing
+a certificate; use L</random_maurer_prime_with_cert> when the certificate is
+wanted.
 
 If you don't need absolutely proven results, then it is somewhat faster
 to use L</random_nbit_prime> either by itself or with some additional tests,
@@ -6740,31 +6739,40 @@ is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
 The number of bits must be between C<2> and C<4,294,967,295>.
-The proof construction consists of a single chain of C<BLS3> types.
+The Pure Perl path uses a C<Small> certificate for values within the native
+integer range and a chain of C<BLS3> certificates above it.  The GMP backend
+uses C<Small> through 32 bits and a C<BLS3> chain for larger values.
 
 
 =head2 random_shawe_taylor_prime
 
   my $bigprime = random_shawe_taylor_prime(8192);
 
-Construct an n-bit provable prime, using the Shawe-Taylor algorithm in
-section C.6 of FIPS 186-4.
+Construct an n-bit provable prime using the recursive Shawe-Taylor
+construction.
 The number of bits must be between C<2> and C<4,294,967,295>.
-This uses 512 bits of randomness and SHA-256 as the hash.  This is a
-slightly simpler and older (1986) method than Maurer's 1995 construction.
-It is a bit faster than Maurer's method, and uses less system entropy for
-large sizes.  The primary reason to use this rather than Maurer's method is
-to use the FIPS 186-4 algorithm.
+For values beyond the native integer range, both implementations use the
+recursive construction and Pocklington proofs.  The Pure Perl implementation
+follows section C.6 of FIPS 186-4, using a 512-bit initial seed and SHA-256 to
+derive its random values.  The GMP backend obtains the corresponding values
+directly from its CSPRNG instead.  This distinguishes the specific FIPS C.6
+instantiation from the GMP implementation, not the underlying Shawe-Taylor
+construction.  Native-size scalar calls may use direct random-prime generation
+because primality can be decided deterministically in that range.
+
+This is a slightly simpler and older (1986) construction than Maurer's 1995
+method.  It is often somewhat faster than Maurer's method.
 
 Similar to L</random_nbit_prime>, the result will be a BigInt if the
 number of bits is greater than the native bit size.  For better performance
 with large bit sizes, install L<Math::Prime::Util::GMP>.  Also see
 L</random_maurer_prime> and L</random_proven_prime>.
 
-Internally this additionally runs the BPSW probable prime test on every
-partial result, and constructs a primality certificate for the final
-result, which is verified.  These provide additional checks that the resulting
-value has been properly constructed.
+Each recursively constructed result is additionally checked with BPSW.  The
+Pure Perl scalar path also constructs and verifies a certificate for the final
+result.  The direct GMP scalar path applies the proof test without materializing
+a certificate; use L</random_shawe_taylor_prime_with_cert> when the certificate
+is wanted.
 
 
 =head2 random_shawe_taylor_prime_with_cert
@@ -6777,7 +6785,8 @@ The certificate is the same as produced by L</prime_certificate> or
 L</is_provable_prime_with_cert>, and can be parsed by L</verify_prime> or
 any other software that understands MPU primality certificates.
 The number of bits must be between C<2> and C<4,294,967,295>.
-The proof construction consists of a single chain of C<Pocklington> types.
+Values through 32 bits use a C<Small> certificate.  Larger values use a single
+chain of C<Pocklington> certificates.
 
 
 =head2 random_semiprime
@@ -6860,11 +6869,11 @@ Returns a reference to a hash of the current settings.  The hash is a copy of
 the configuration, so changing it has no effect.  The settings include:
 
   verbose         verbose level.  1 or more will result in extra output.
-  bigintclass     the bigint type name (default Math::BigInt)
+  bigintclass     selected bigint type, or undef until one is first needed
   precalc_to      primes up to this number are calculated
   maxbits         the maximum number of bits for native operations
   xs              0 or 1, indicating the XS code is available
-  gmp             0 or 1, indicating GMP code is available
+  gmp             0 if disabled/unavailable, otherwise 100 * GMP version
   maxparam        the largest value for most functions, without bigint
   maxdigits       the max digits in a number, without bigint
   maxprime        the largest representable prime, without bigint
@@ -6904,9 +6913,11 @@ Allows setting of some parameters.  Currently the only parameters are:
                code to be used.  Set to 0 to disable XS, set to 1 to
                re-enable.  You probably will never want to do this.
 
-  gmp          Allows turning off the use of L<Math::Prime::Util::GMP>,
-               which means using Pure Perl code for big numbers.  Set
-               to 0 to disable GMP, set to 1 to re-enable.
+  gmp          Allows turning off direct use of L<Math::Prime::Util::GMP>.
+               This does not disable XS or change the selected bigint class;
+               native and other XS paths remain available, as do bigint-backed
+               Pure Perl operations.  Set to 0 to disable GMP, set to 1 to
+               re-enable.
                You probably will never want to do this.
 
   assume_rh    Allows functions to assume the Riemann hypothesis is
@@ -6949,18 +6960,19 @@ C<PrimeOmega[n]> function.
 This is the same result that we would get if we evaluated the resulting
 array in scalar context.
 
-The current algorithm does a little trial division, a check for perfect
-powers, followed by combinations of Pollard's Rho, SQUFOF, and Pollard's
-p-1.  The combination is applied to each non-prime factor found.
+The exact algorithm depends on the input size, platform, and available
+backend.  Implementations perform trial division and perfect-power checks,
+then use size-appropriate combinations of methods including HOLF, SQUFOF,
+Pollard rho and Brent variants, Pollard C<p-1>, and ECM.  The selected recipe
+is applied recursively to each composite factor found.
 
 Factoring bigints works with pure Perl, and can be very handy on 32-bit
 machines for numbers just over the 32-bit limit, but it can be B<very> slow
 for "hard" numbers.  Installing the L<Math::Prime::Util::GMP> module will
-speed up bigint factoring a B<lot>, and all future effort on large number
-factoring will be in that module.  If you do not have that module for
-some reason, use the GMP or Pari version of bigint if possible
-(e.g. C<< use bigint try => 'GMP,Pari' >>), which will run 2-3x faster
-(though still 100x slower than the real GMP code).
+usually speed up bigint factoring substantially.  If that module is not
+available, selecting a faster bigint implementation such as GMP or Pari
+(e.g. C<< use bigint try => 'GMP,Pari' >>) can also help.  The improvement
+depends heavily on the input and factoring method.
 
 
 =head2 factor_exp
@@ -6991,10 +7003,10 @@ Just the way the factors are arranged is different.
   my @divisors = divisors(30);   # returns (1, 2, 3, 5, 6, 10, 15, 30)
 
 Produces all the divisors of a non-negative integer input, including 1 and
-the input number.  The divisors are a power set of multiplications of
-the prime factors, returned as a uniqued sorted list.  The result is
-identical to that of Pari's C<divisors> and Mathematica's C<Divisors[n]>
-functions.
+the input number.  They are all products formed by choosing an exponent from
+zero through its multiplicity for each prime factor, returned as a unique
+sorted list.  The result is identical to that of Pari's C<divisors> and
+Mathematica's C<Divisors[n]> functions.
 
 In scalar context this returns the sigma0 function
 (see Hardy and Wright section 16.7).
@@ -7008,7 +7020,7 @@ Also see the L</fordivisors> function for looping over the divisors.
 
 When C<n=0> we return the empty set (zero in scalar context).
 
-An optional second positive integer argument C<k> indicates that the results
+An optional second non-negative integer argument C<k> indicates that the results
 should not include any value larger than C<k>.  This is especially useful
 when the number has thousands of divisors and we may only be interested in
 the small ones.
@@ -7030,15 +7042,21 @@ value in the list might be composite.
 Like all the specific-algorithm C<*_factor> routines, this is not exported
 unless explicitly requested.
 
+When XS is unavailable, C<squfof_factor>, C<lehman_factor>, and
+C<pplus1_factor> remain callable but use the Pure Perl pbrent fallback rather
+than the named algorithms.
+
 =head2 fermat_factor
 
   my @factors = fermat_factor($n);
+  my @factors = fermat_factor($n, 100_000);  # limit the number of rounds
 
 Produces factors, not necessarily prime, of the positive number input.  The
 particular algorithm is Knuth's algorithm C.  For small inputs this will be
 very fast, but it slows down quite rapidly as the number of digits increases.
 It is very fast for inputs with a factor close to the midpoint
 (e.g. a semiprime p*q where p and q are the same number of digits).
+An optional number of rounds can be given as a second parameter.
 
 =head2 holf_factor
 
@@ -7057,9 +7075,10 @@ same advantages and disadvantages as Fermat's method.
   my @factors = lehman_factor($n);
 
 Produces factors, not necessarily prime, of the positive number input.  An
-optional argument, defaulting to 0 (false), indicates whether to run trial
-division.  Without trial division, is possible the function will be unable
-to find a factor, in which case a single element, the input, is returned.
+optional argument, defaulting to 1 (true) in the XS implementation, indicates
+whether to run trial division.  Without trial division, it is possible the
+function will be unable to find a factor, in which case a single element, the
+input, is returned.
 
 This is Warren D. Smith's Lehman core with minor modifications.  It is
 limited to 42-bit inputs: C<< n < 8796393022208 >>.
@@ -7153,9 +7172,10 @@ indicates to do this for all implementations).
 
   my $Ei = ExponentialIntegral($x);
 
-Given a non-zero floating point input C<x>, this returns the real-valued
-exponential integral of C<x>, defined as the integral of C<e^t/t dt>
-from C<-infinity> to C<x>.
+Given a floating point input C<x>, this returns the real-valued exponential
+integral of C<x>, defined as the Cauchy principal value of the integral of
+C<e^t/t dt> from C<-infinity> to C<x>.  At C<x = 0> the function returns
+C<-infinity>.
 
 For non-BigFloat inputs, the result should be accurate to at least 14
 digits.
@@ -7175,17 +7195,16 @@ The accuracy() setting of the input is used to determine the output accuracy.
   my $li = LogarithmicIntegral($x);
 
 Given a non-negative floating point input, returns the floating point
-logarithmic integral of C<x>, defined as the integral of C<dt/ln t>
-from C<0> to C<x>.
+logarithmic integral of C<x>, defined using the Cauchy principal value of the
+integral of C<dt/ln t> from C<0> to C<x>.
 If given a negative input, the function will croak.
 The function returns 0 at C<x = 0>, and C<-infinity> at C<x = 1>.
 
-This is often known as C<li(x)>.  A related function is the offset logarithmic
-integral, sometimes known as C<Li(x)> which avoids the singularity at 1.  It
-may be defined as C<Li(x) = li(x) - li(2)>.  Crandall and Pomerance use the
-term C<li0> for this function, and define C<li(x) = Li0(x) - li0(2)>.  Due to
-this terminology confusion, it is important to check which exact definition is
-being used.
+This is often known as C<li(x)>.  For C<< x > 1 >>, a related offset logarithmic
+integral, sometimes known as C<Li(x)>, is normalized to zero at 2 and may be
+defined as C<Li(x) = li(x) - li(2)>, equivalently as the integral from 2 to
+C<x>.  Notation for these functions varies, so it is important to check which
+exact definition is being used.
 
 For non-BigFloat objects, the result should be accurate to at least 14
 digits.
@@ -7200,9 +7219,11 @@ The accuracy() setting of the input is used to determine the output accuracy.
 
 Given a non-negative floating point input C<s>, returns the floating
 point value of ζ(s)-1, where ζ(s) is the Riemann zeta function.  One is
-subtracted to ensure maximum precision for large values of C<s>.  The zeta
-function is the sum from k=1 to infinity of C<1 / k^s>.  This function only
-uses real arguments, so is more properly the Euler Zeta function.
+subtracted to ensure maximum precision for large values of C<s>.  For
+C<< s > 1 >>, the zeta function is the convergent sum from k=1 to infinity of
+C<1 / k^s>.  Values below 1 use its analytic continuation, and C<s = 1> is
+the pole.  This function only uses real arguments, so is more properly the
+Euler zeta function.
 
 For non-BigFloat objects, the result should be accurate to at least 14
 digits.  The XS code uses a rational Chebyshev approximation between 0.5 and 5,
@@ -7249,14 +7270,15 @@ Pari/GP's C<lambertw> prior to 2.15 (2022) was a subset of this.
 Recent Pari/GP and Mathematica both have more complete functions with
 both branches, and support for complex arguments and results.
 
-Calculation will be done with C long doubles if the input is a standard
-scalar, but if the input is a BigFloat type, then
-extended precision results will be generated.
+For a standard scalar, the XS implementation calculates internally with C's
+C<long double> type, or C<__float128> in a quadmath build, while the Pure Perl
+path uses Perl's NV arithmetic.  If the input is a BigFloat type, extended
+precision results will be generated.
 The accuracy() setting of the input is used to determine the output accuracy.
 
-Speed of the native code is about half of the fastest native code
-(Veberic's C++), and about 10x faster than Pari/GP.  However the bignum
-calculation is slower than Pari/GP.
+The native implementation is intended for fast fixed-precision evaluation.
+Arbitrary-precision performance depends heavily on the bigint backend;
+Pari/GP may be faster for large requested precision.
 
 =head2 Pi
 
@@ -7265,9 +7287,9 @@ calculation is slower than Pari/GP.
 
 With no arguments, returns the value of Pi as an NV.  With a positive
 integer argument, returns the value of Pi rounded to the requested number of
-digits (including the leading 3).  The return value will be an NV if the
-number of digits fits in an NV (typically 15 or less), or a L<Math::BigFloat>
-object otherwise.
+digits (including the leading 3).  Small requests handled at native precision
+return an NV; larger requests return a L<Math::BigFloat> object.  The exact
+cutoff depends on the implementation and native floating-point precision.
 
 For sizes over 10k digits, having either
 L<Math::Prime::Util::GMP> or L<Math::BigInt::GMP> installed will help
@@ -7285,7 +7307,8 @@ change or deletion in future revisions.
 =head2 _uvsize
 
 Returns the size of a UV in bytes (typically 4 or 8).
-The size of the basic integer type used in Perl and the C library.
+This is Perl's unsigned integer scalar type; it need not match C's
+C<unsigned long> type.
 
 =head2 _uvbits
 
@@ -7304,21 +7327,24 @@ configurations.  Usually we won't care about this directly.
 
 =head2 _nvmantbits
 
-Returns the size of the mantissa of Perl's NV floating point type, in bits.
-This can vary widely, with C<23, 52, 112> all possible from mainstream
-platforms and other numbers possible.
+Returns Perl's C<NVMANTBITS>: the number of mantissa bits in the NV floating
+point type, not including a possible implicit leading bit.  This can vary
+widely, with C<23>, C<52>, C<64>, and C<112> all possible on mainstream
+platforms and other values possible.
 
-This gives the actual mantissa bits, not counting the implicit 1.  The
-significand precision is therefore one higher than the value returned
-by this function.  A typical IEEE-754 double will report 52 here, which
-means integers up to C<2^53-1> are able to be accurately stored.
+For formats with an implicit leading bit, the significand precision is one
+higher than the value returned.  A typical IEEE-754 double therefore reports
+52 and can exactly store integers through C<2^53-1>.  Formats without an
+implicit bit do not add one; for example, x87 extended precision normally
+reports 64 and has 64 bits of significand precision.
 
 Perl prior to 5.23 did not configure this at build time.  We will guess
 based on the byte size of the NV on an IEEE-754 machine.
 
 =head2 _nvmantdigits
 
-How many full decimal integer digits able to be stored in an NV.
+Returns the number of full decimal integer digits that can be stored exactly
+in an NV.
 
 
 =head1 EXAMPLES
@@ -8199,7 +8225,8 @@ algorithm but provides less diversity (even fewer primes in the range are
 selected, though for typical cryptographic sizes this is not important).
 The Perl implementation uses a single large random seed followed by
 SHA-256 as specified by FIPS 186-4.  The GMP implementation uses the same
-FIPS 186-4 algorithm but uses its own CSPRNG which may not be SHA-256.
+recursive Shawe-Taylor construction but draws the corresponding random values
+from its own CSPRNG rather than deriving them with the FIPS hash sequence.
 
 L<Crypt::Primes/maurer> times are included for comparison.  It is reasonably
 fast for small sizes but gets slow as the size increases.  It is 10 to 500

@@ -163,6 +163,9 @@ Revision history for Perl module Math::Prime::Util
 
     - random_ndigit_prime(3) was undersampling 101 (since v0.62).
 
+    - random_prime and random_ndigit_prime require GMP 0.54+ for direct GMP
+      dispatch, preserving uniform selection after the initial random trials.
+
     - omega_prime_count no longer misses some large 7- and 8-omega primes.
       omega_primes uses bounded memory for large non-prefix ranges.
 

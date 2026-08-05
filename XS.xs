@@ -306,7 +306,7 @@ static const gmp_info_t gmp_info[] = {
   {      "random_strong_prime", 43, 1, R_BIGINT },
   {      "random_maurer_prime", 43, 1, R_BIGINT },
   {"random_shawe_taylor_prime", 43, 1, R_BIGINT },
-  {             "random_prime", 44, 1, R_BIGINT },
+  {             "random_prime", 54, 1, R_BIGINT }, /* uniform fallback in v0.54 */
   {        "random_safe_prime", 52, 1, R_BIGINT },
 
   {              "sieve_range", 36, 0xFF, R_BIGINT },

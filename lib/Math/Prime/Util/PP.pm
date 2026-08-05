@@ -13653,6 +13653,7 @@ sub random_ndigit_prime {
 
   return maybetobigint(Math::Prime::Util::GMP::random_ndigit_prime($digits))
     if $Math::Prime::Util::_GMPfunc{"random_ndigit_prime"}
+    && $Math::Prime::Util::GMP::VERSION >= 0.54
     && !getconfig()->{'nobigint'};
 
   require Math::Prime::Util::RandomPrimes;
