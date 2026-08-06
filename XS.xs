@@ -6939,41 +6939,53 @@ void fromdigits(SV* svn, SV* svbase = 0)
     }
     DISPATCHPP_RETURN();
 
-void is_harshad(SV* svn, int base = 10)
+void is_harshad(SV* svn, SV* svbase = 0)
   PREINIT:
-    int nstatus;
-    UV n;
+    int nstatus, bstatus;
+    UV n, base;
   PPCODE:
-    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
-    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
-    if (nstatus == -1 || (nstatus == 1 && n == 0))
-      RETURN_NPARITY(0);
-    if (nstatus == 1) {
-      UV N, t, sum;
-      uint32_t b = base;
-      for (sum = 0, N = n; N > 0; N = t) {
-        t = N / b;
-        sum += N - b*t;
+    if (items == 1) { bstatus = 1; base = 10; }
+    else            { bstatus = _validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG); }
+    if (bstatus == 1) {
+      if (base < 2) croak("%s: invalid base: %"UVuf, SUBNAME, base);
+      if (base <= UINT32_MAX) {
+        nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ANY);
+        if (nstatus == -1 || (nstatus == 1 && n == 0))
+          RETURN_NPARITY(0);
+        if (nstatus == 1) {
+          UV N, t, sum;
+          uint32_t b = (uint32_t) base;
+          for (sum = 0, N = n; N > 0; N = t) {
+            t = N / b;
+            sum += N - b*t;
+          }
+          RETURN_NPARITY(n % sum == 0);
+        }
       }
-      RETURN_NPARITY(n % sum == 0);
     }
     /* We can read the string and sum the digits, but no way to mod here. */
     DISPATCHPP_RETURN();
 
-void is_palindrome(SV* svn, int base = 10)
+void is_palindrome(SV* svn, SV* svbase = 0)
   PREINIT:
-    UV n;
+    int bstatus;
+    UV n, base;
   PPCODE:
-    if (base < 2) croak("%s: invalid base: %d", SUBNAME, base);
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
-      uint32_t b = base;
-      UV forward = n, reverse = 0;
-      while (n > 0) {
-        uint32_t digit = n % b;
-        reverse = reverse * b + digit;
-        n /= b;
+    if (items == 1) { bstatus = 1; base = 10; }
+    else            { bstatus = _validate_and_set(&base, aTHX_ svbase, IFLAG_NONNEG); }
+    if (bstatus == 1) {
+      if (base < 2) croak("%s: invalid base: %"UVuf, SUBNAME, base);
+      if (base <= UINT32_MAX &&
+          _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
+        uint32_t b = (uint32_t) base;
+        UV forward = n, reverse = 0;
+        while (n > 0) {
+          uint32_t digit = n % b;
+          reverse = reverse * b + digit;
+          n /= b;
+        }
+        RETURN_NPARITY(forward == reverse);
       }
-      RETURN_NPARITY(forward == reverse);
     }
     DISPATCHPP_RETURN();
 

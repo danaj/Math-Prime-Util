@@ -69,6 +69,8 @@ subtest 'fromdigits', sub {
 
 subtest 'todigits', sub {
   is_deeply([todigits(0)], [], "todigits 0");
+  is_deeply([todigits(0,10,3)], [0,0,0], "todigits 0 with explicit length");
+  is(scalar todigits(0,10,3), 3, "scalar todigits 0 with explicit length");
   is_deeply([todigits(1)], [1], "todigits 1");
   is_deeply([todigits(77)], [7,7], "todigits 77");
   is_deeply([todigits(77,2)], [1,0,0,1,1,0,1], "todigits 77 base 2");
@@ -130,6 +132,8 @@ subtest 'reverse_digits', sub {
 };
 
 subtest 'todigitstring', sub {
+  is(todigitstring(0), "", "todigitstring 0");
+  is(todigitstring(0,10,3), "000", "todigitstring 0 with explicit length");
   is(todigitstring("3" x 21, 3), "10001020211011120202011020201202220201012100", "todigitstring base 3");
   is(todigitstring("7" x 26, 9), "1303055203367717374834745502", "todigitstring base 9");
   is(todigitstring("9" x 27, 11), "92586630a001888a8112250349", "todigitstring base 11");
@@ -153,6 +157,7 @@ subtest 'is_palindrome', sub {
   is(is_palindrome(10,2),0,"10 is not a base-2 palindrome");
   is(is_palindrome(130,3),1,"130 is a base-3 palindrome");
   is(is_palindrome(130,4),1,"130 is a base-4 palindrome");
+  is(is_palindrome(10,"4294967296"),1,"single digit in base larger than 32-bit");
 
   my $m = 719848917;
   ok(is_palindrome($m) && is_palindrome($m,2) && is_palindrome($m,8),"$m is a palindrome in bases 2, 8, and 10");
@@ -186,6 +191,7 @@ subtest 'is_harshad' => sub {
   # spot checks
   is(is_harshad(2016), 1, "2016: 2+0+1+6=9, 9|2016");
   is(is_harshad(2017), 0, "2017: 2+0+1+7=10, 10 does not divide 2017");
+  is(is_harshad(10, "4294967296"), 1, "single digit Harshad in base larger than 32-bit");
 
   # bigint
   is(is_harshad("200000000000000000000"), 1, "2*10^20: digitsum=2, even");

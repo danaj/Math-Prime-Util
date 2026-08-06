@@ -3351,7 +3351,8 @@ a double, which will mean incorrect results with large integers.  C<vecsum>
 sums (signed) integers and returns the untruncated result.
 
 Processing is done on native integers while possible, including using a
-128-bit running sum in the C code.
+double-width running sum in the C code (128 bits on 64-bit Perl and 64 bits
+on 32-bit Perl).
 
 =head2 vecprefixsum
 
@@ -3386,11 +3387,11 @@ results as integers and automatically switches to bigints if needed.
 
 Returns the minimum of all arguments, each of which must be an integer.
 This is similar to List::Util's L<List::Util/min> function, but has a very
-important difference.  List::Util turns all inputs into doubles and returns
-a double, which gives incorrect results with large integers.  C<vecmin>
-validates and compares all results as integers.  The validation step will
-make it a little slower than L<List::Util/min> but this prevents accidental
-and unintentional use of floats.
+important difference.  List::Util may compare large integers as floating
+point values, which can make it select the wrong input entry.  C<vecmin>
+validates and compares all values as integers.  The validation step will make
+it a little slower than L<List::Util/min> but prevents accidental and
+unintentional use of floats.
 
 =head2 vecmax
 
@@ -3398,11 +3399,11 @@ and unintentional use of floats.
 
 Returns the maximum of all arguments, each of which must be an integer.
 This is similar to List::Util's L<List::Util/max> function, but has a very
-important difference.  List::Util turns all inputs into doubles and returns
-a double, which gives incorrect results with large integers.  C<vecmax>
-validates and compares all results as integers.  The validation step will
-make it a little slower than L<List::Util/max> but this prevents accidental
-and unintentional use of floats.
+important difference.  List::Util may compare large integers as floating
+point values, which can make it select the wrong input entry.  C<vecmax>
+validates and compares all values as integers.  The validation step will make
+it a little slower than L<List::Util/max> but prevents accidental and
+unintentional use of floats.
 
 =head2 vecreduce
 
@@ -3454,6 +3455,9 @@ evaluation on list elements is done until either all list values have been
 evaluated or the result condition can be determined.  For instance, in the
 example of C<vecall> above, evaluation stops as soon as any value returns
 false.
+
+C<vecfirst> returns the first element for which the block returns true, or
+C<undef> if no element satisfies the block.
 
 The interface is exactly the same as the C<any>, C<all>, C<none>, C<notall>,
 and C<first> functions in L<List::Util>.  This was done to increase
@@ -3681,7 +3685,8 @@ C<vecpmex>(1,2,...,I<w>) = I<w>+1.
 Given a code block and a list, calls the code block for each pair
 in the list, setting the local C<$a> and C<$b> to the values in
 each pair.  Values supplied to the block are not aliases of the input
-values; assigning to them will not modify the input.
+values; assigning to them will not modify the input.  The block is called
+in scalar context, and one result is collected for each pair.
 In scalar context, returns the number of results.
 Returned values are not lvalue aliases of input values.  References are not
 deep-copied.
@@ -4007,56 +4012,60 @@ to any element of the set.  That is, the set and its sumset are disjoint.
 
 =head2 set_is_disjoint
 
-Given two array references of integers, treats them as sets and
+The set relation functions below accept array references containing distinct
+integers.  The values need not be sorted, but duplicate values are not allowed.
+
+Given two such array references, treats them as sets and
 returns 1 if the sets have no elements in common, 0 otherwise.
 
 This corresponds to Mathematica's C<DisjointQ> function.
 
 =head2 set_is_equal
 
-Given two array references of integers in set form,
-returns 1 if the sets have all elements in common, 0 otherwise.
+Given two array references of distinct integers, returns 1 if the sets
+contain the same elements, 0 otherwise.
 
-This function works even if the inputs are not sorted.  If they are sorted
-(proper set form) then L</vecequal> can be used and is typically much faster.
+If the inputs are sorted (proper set form), then L</vecequal> can be used and
+is typically much faster.
 
 =head2 set_is_subset
 
-Given two array references of integers in set form,
+Given two array references of distinct integers,
 returns 1 if the first set also contains all elements of the second set,
 0 otherwise.
 
-The L</setcontains> function can be used equivalently, and
-does not require the second list to be in set form.
+If the first input is in set form, C<setcontains($first, @$second)> performs
+the equivalent test and allows the second list to be unordered or contain
+duplicates.
 
 This corresponds to Mathematica's C<SubsetQ> function (is B a subset of A).
 
 =head2 set_is_proper_subset
 
-Given two array references of integers in set form,
+Given two array references of distinct integers,
 returns 1 if the first set also contains all elements of the second set
-but are not equal, 0 otherwise.
+but the sets are not equal, 0 otherwise.
 The size of the first set must be strictly larger than the second.
 
 =head2 set_is_superset
 
-Given two array references of integers in set form,
+Given two array references of distinct integers,
 returns 1 if the second set also contains all elements of the first set,
 0 otherwise.
 
-The L</setcontains> function can be used equivalently
-(with reversed arguments).
+If the second input is in set form, C<setcontains($second, @$first)> performs
+the equivalent test.
 
 =head2 set_is_proper_superset
 
-Given two array references of integers in set form,
+Given two array references of distinct integers,
 returns 1 if the second set also contains all elements of the first set
-but are not equal, 0 otherwise.
+but the sets are not equal, 0 otherwise.
 The size of the second set must be strictly larger than the first.
 
 =head2 set_is_proper_intersection
 
-Given two array references of integers in set form,
+Given two array references of distinct integers,
 returns 1 if the two sets have at least one element in common,
 and each of the two sets have at least one element not present
 in the other set.  Returns 0 otherwise.
@@ -4070,12 +4079,13 @@ Given an integer C<n>, return an array of digits of C<|n|>.  An optional
 second integer argument specifies a base (default 10).  For example,
 given a base of 2, this returns an array of binary digits of C<n>.
 An optional third argument specifies a length for the returned array.
-The result will be either have upper digits truncated or have leading
+The result will either have upper digits truncated or have leading
 zeros added.  This is most often used with base 2, 8, or 16.
 
-The values returned may be read-only.  C<todigits(0)> returns an empty array.
-The base must be at least 2, and is limited to an int.  Length must be
-at least zero and is limited to an int.
+The values returned may be read-only.  Without an explicit length,
+C<todigits(0)> returns an empty array.  With a length, zero is padded to that
+many zero digits like any other input.  The base must be at least 2, and the
+length must be at least zero.
 
 In scalar context, returns the number of digits that would be returned.
 
@@ -4093,7 +4103,9 @@ For bases E<lt>= 10, this is equivalent to joining the array returned
 by L</todigits>.
 
 The first argument C<n> is the input integer.  The sign is ignored.
-If no other arguments are given, this just returns the string of C<n>.
+If no other arguments are given, this returns the digit string of C<n>.
+As with C<todigits>, zero is represented by an empty string unless an explicit
+length is given.
 An optional second argument is the base C<base> which must be between 2 and 36.
 No prefix such as "0x" will be added, and all bases over 9 use lower case
 C<a> to C<z>.
@@ -4113,7 +4125,7 @@ This corresponds to Mathematica's C<IntegerString> function.
 This takes either a string or array reference, and an optional base
 (default 10).  With a string, each character will be interpreted as a
 digit in the given base, with both upper and lower case denoting
-values 11 through 36.  With an array reference, the values indicate
+values 10 through 35.  With an array reference, the values indicate
 the entries in that location, and values larger than the base are
 allowed (results are carried).  The result is a number (either a
 native integer or a bigint).
@@ -4347,8 +4359,8 @@ Given integer C<n>, returns 1 if C<|n|> has no repeated factor.
 
 Given integer C<n>, returns 1 if C<n> is positive and cyclic in the number
 theory sense, and returns 0 otherwise.
-A cyclic number C<n> has only one group of order C<n>.
-C<n> and C<φ(n)> are relatively prime.
+A cyclic number C<n> is one for which every group of order C<n> is cyclic.
+Equivalently, C<n> and C<φ(n)> are relatively prime.
 This function returns C<0> for all input C<< n <= 0 >>.
 
 This is the L<OEIS series A003277|http://oeis.org/A003277>.
@@ -4366,11 +4378,11 @@ square-free and C<p-1> divides C<n-1> for all prime divisors C<p> of C<n>.
 This function returns C<0> for all input C<< n <= 0 >>.
 
 For inputs larger than 50 digits after removing very small factors, this
-uses a probabilistic test since factoring the number could take unreasonably
-long.  The first 150 primes are used for testing.  Any that divide C<n> are
+uses a heuristic test since factoring the number could take unreasonably long.
+A fixed set of small primes is used for testing.  Any that divide C<n> are
 checked for square-free-ness and the Korselt condition, while those that do
-not divide C<n> are used as the pseudoprime base.  The chances of a
-non-Carmichael passing this test are less than C<2^-150>.
+not divide C<n> are used as pseudoprime bases.  This test is deterministic
+and may return a false positive for a specially constructed input.
 
 This is the L<OEIS series A002997|http://oeis.org/A002997>.
 
@@ -4398,7 +4410,7 @@ function performs shortcuts that can greatly speed up the operation.
   say is_almost_prime(6,2169229601);  # True if n has exactly 6 factors
 
 Given non-negative integers C<k> and C<n>, returns 1 if C<n> has
-exactly C<k> prime factors, and 0 otherwise.
+exactly C<k> prime factors (counted with multiplicity), and 0 otherwise.
 With C<k=1>, this is a standard primality test.
 With C<k=2>, this is the same as L</is_semiprime>.
 
@@ -4442,8 +4454,8 @@ This corresponds to Pari's C<isfundamental> function.
 
 =head2 is_totient
 
-Given an integer C<n>, returns 1 if there exists an integer C<x> where
-C<euler_phi(x) == n>.
+Given an integer C<n>, returns 1 if there exists a positive integer C<x> such
+that C<euler_phi(x) == n>.
 
 This corresponds to Pari's C<istotient> function, though without the
 optional second argument to return an C<x>.  L<Math::NumSeq::Totient>
@@ -4480,23 +4492,25 @@ This corresponds to Pari's C<ispolygonal> function.
 Given a non-negative integer C<n>, returns 1 if C<n> is the area of a
 rational right triangle, and 0 otherwise.
 
-This function answers the B<congruent number problem> using Tunnell's theorem
-which relies on the Birch Swinnerton-Dyer conjecture.  It uses an extensive
-filter for known non-congruent families, including the works of
+This function answers the B<congruent number problem> using Tunnell's theorem.
+The theorem gives an unconditional necessary condition, while its converse,
+used for the general positive classification, assumes the Birch Swinnerton-Dyer
+conjecture.  The function uses an extensive filter for known non-congruent
+families, including the works of
 Bastien (1915), Lagrange (1974), Monsky (1990), Serf (1991),
 Iskra (1996), Feng (1996), Reinholz et al. (2013),
 Cheng and Guo (2018 and 2019), Das and Saikia (2020), and Evink (2021).
 
 =head2 cornacchia
 
-Given non-negative integers C<d> and C<n>, finds solutions C<(x,y)> to the
+Given non-negative integers C<d> and C<n>, finds a solution C<(x,y)> to the
 equation C<x^2 + d y^2 = n>.  C<undef> is returned if no solution exists.
 
 In the case of C<n> a prime, this is done using Cornacchia's algorithm.
 
 For non-prime C<n>, we use a combination of Cornacchia-Smith on all roots,
-as well as a loop to find solutions in the harder cases.  This means we
-will always return a solution.
+as well as a loop to find solutions in the harder cases.  The search is
+exhaustive, so a solution is returned whenever one exists.
 
 There will often be multiple solutions, but only one is returned.
 

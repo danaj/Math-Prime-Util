@@ -7951,7 +7951,8 @@ sub _parse_todig_args {
 
 sub todigits {
   my($n,$base,$len) = _parse_todig_args("todigits", 0, @_);
-  return wantarray ? () : 0 if $n == 0 || (defined $len && $len == 0);
+  return wantarray ? () : 0 if defined $len && $len == 0;
+  return wantarray ? () : 0 if $n == 0 && !defined $len;
   my @d = _splitdigits($n, $base, $len);
   wantarray ? @d : scalar(@d);
 }
@@ -7974,7 +7975,8 @@ sub _tobinarystring {
 sub todigitstring {
   my($n,$base,$len) = _parse_todig_args("todigitstring", 36, @_);
   return _tobinarystring($n) if $base == 2 && !defined $len;
-  return "" if $n == 0 || (defined $len && $len == 0);
+  return "" if defined $len && $len == 0;
+  return "" if $n == 0 && !defined $len;
 
   if (!ref($n)) {
     if ($base != 2 && $base != 8 && $base != 16) {
