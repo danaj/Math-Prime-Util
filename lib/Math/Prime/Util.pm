@@ -6422,7 +6422,7 @@ L</irand>, L</irand32>, and L</irand64>.
 
 =head2 irand
 
-  $n32 = irand;     # random 32-bit integer
+  $n32 = irand;       # random 32-bit integer
 
 Returns a random 32-bit integer using the CSPRNG.
 
@@ -6439,7 +6439,7 @@ Returns a random 32-bit integer using the CSPRNG.
 
 =head2 irand64
 
-  $n64 = irand64;   # random 64-bit integer
+  $n64 = irand64;     # random 64-bit integer
 
 Returns a random 64-bit integer using the CSPRNG.
 On 64-bit Perl this will be a native UV.
@@ -6447,9 +6447,9 @@ On 32-bit Perl this will be a bigint if the result exceeds C<2^32-1>.
 
 =head2 drand
 
-  $f = drand;       # random floating point value in [0,1)
-  $r = drand(25.33);   # random floating point value in [0,25.33)
-  $r = drand(-10);     # random floating point value in (-10,0]
+  $f = drand;         # random floating point value in [0,1)
+  $r = drand(25.33);  # random floating point value in [0,25.33)
+  $r = drand(-10);    # random floating point value in (-10,0]
 
 Returns a random NV (Perl's native floating point) using the CSPRNG.  The
 API is similar to Perl's C<rand> but giving better results.
@@ -6458,10 +6458,10 @@ With no argument or with an argument numerically equal to zero, the range
 is C<[0,1)>.  For a positive argument C<m>, the range is C<[0,m)>; for a
 negative argument C<m>, the range is C<(m,0]>.
 
-The number of actual random bits will be equal to the number of mantissa
-bits in the NV type.  For IEEE-754 doubles, this means 53 bits, and can
-go to 64 or 113 bits with long double / quadmath support.
-The L</_nvmantbits> function allows seeing how many bits are used.
+The number of actual random bits equals the significand precision of the
+NV type.  For IEEE-754 doubles this is 53 bits, and it can be 64 or 113
+bits with long double or quadmath support.  See L</_nvmantbits> for how
+Perl reports the mantissa width and implicit leading bit.
 
 This gives I<substantially> better quality random numbers than the default Perl
 C<rand> function.  Among other things, on modern Perl's, C<rand> uses drand48,
@@ -6556,6 +6556,7 @@ This is not normally needed as system entropy is used as a seed on
 startup.  For best security this should be 16-128 bytes of good
 entropy.  No more than 1024 bytes will be used (and usually less,
 for example the current ChaCha CSPRNG uses only the first 40 bytes).
+On success, returns no value.  Errors are reported by croaking.
 
 With no argument or with C<undef>, reseeds using system entropy, which is
 preferred.  An empty string is treated as an explicit seed.

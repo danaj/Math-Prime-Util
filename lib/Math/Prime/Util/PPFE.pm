@@ -66,6 +66,7 @@ if (MPU_MAXBITS == 32) {
 }
 
 sub srand {
+  croak "srand: expected zero or one argument" if @_ > 1;
   my $has_seed = @_ > 0;
   my $seed = $has_seed ? $_[0] : undef;
   croak "secure option set, manual seeding disabled" if prime_get_config()->{'secure'};
@@ -92,6 +93,7 @@ sub srand {
   $seed;
 }
 sub csrand {
+  croak "csrand: expected zero or one argument" if @_ > 1;
   my($seed) = @_;
   croak "secure option set, manual seeding disabled" if defined $seed && prime_get_config()->{'secure'};
   if (defined $seed) {
@@ -105,7 +107,7 @@ sub csrand {
     }
   }
   Math::Prime::Util::_csrand($seed);
-  1; # Don't return the seed
+  return;
 }
 sub entropy_bytes {
   my($bytes) = @_;

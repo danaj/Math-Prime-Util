@@ -22,6 +22,7 @@ plan tests => 1
             + 4  # identify rng and test srand/csrand
             + 2  # srand UV coercion
             + 1  # csrand(undef) entropy reseeding
+            + 4  # srand/csrand arity and csrand return
             + 4  # GMP srand/csrand synchronization
             + 4  # 0 / undef arguments to urandom*
             + 1  # urandomb native range
@@ -187,6 +188,16 @@ is("" . srand(-1), $use64 ? "18446744073709551615" : "4294967295",
 csrand(undef);
 ok(Math::Prime::Util::_is_csprng_well_seeded(),
    "csrand(undef) reseeds from entropy");
+{
+  my $srand_sub = \&srand;
+  my $csrand_sub = \&csrand;
+  ok(!eval { $srand_sub->(1, 2); 1 }, "srand rejects extra arguments");
+  ok(!eval { $csrand_sub->("seed", 2); 1 }, "csrand rejects extra arguments");
+  is(scalar csrand("scalar return"), undef,
+     "csrand returns undef in scalar context");
+  my @ret = csrand("list return");
+  is(scalar @ret, 0, "csrand returns an empty list in list context");
+}
 
 # Quick check to identify the RNG being used.  Should be ChaCha20.
 srand(42);

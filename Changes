@@ -81,6 +81,9 @@ Revision history for Perl module Math::Prime::Util
 
     - drand now always returns below 1 before scaling in both XS and PP.
 
+    - PP srand and csrand reject extra arguments, and csrand returns no value
+      in both XS and PP.
+
     - LambertW consistently handles floating-point rounding just below -1/e.
 
     - Fix rare nth_prime hangs and native overflow near the 64-bit limit.
