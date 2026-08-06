@@ -4521,11 +4521,12 @@ and Sage's C<continued_fraction> function.
 
   my($N,$D) = from_contfrac(4,2,6,7);  # N = 415, D = 93
 
-Given an array of integers representing the simple continued fraction,
-returns the rational C<n / d> as two integers.
+Given a list of integers representing a simple continued fraction, returns
+its value as a reduced numerator and positive denominator C<(n,d)>.
 
-The first input value represents the whole part, and may be zero or negative.
-All successive input values must be non-negative and non-zero.
+The initial coefficient C<a_0> may be any integer;
+all subsequent coefficients must be positive integers.
+With no terms, C<from_contfrac> returns C<(0,1)>.
 
 This corresponds to a subset of Pari's C<contfracpnqn> function,
 Mathematica's C<FromContinuedFraction[list]> function,
@@ -4536,7 +4537,7 @@ and one value of Sage's C<convergent(n)> method.
   my @convs = convergents(4,2,6,7);
   # ([4,1], [9,2], [58,13], [415,93])
 
-Given an array of integers representing a simple continued fraction
+Given a list of integers representing a simple continued fraction
 (as returned by C<contfrac>), returns a list of array references
 C<[p, q]> where each C<p/q> is a convergent of the continued fraction.
 The k-th convergent is the rational obtained by truncating the
@@ -4545,8 +4546,9 @@ continued fraction at term k.
 The convergents are computed via the standard recurrence:
 C<p_k = a_k * p_{k-1} + p_{k-2}>, and likewise for C<q_k>.
 
-The first input value may be zero or negative (the whole-number part);
-all successive values must be positive integers.
+The initial coefficient C<a_0> may be any integer;
+all subsequent coefficients must be positive integers.
+With no terms, C<convergents> returns an empty list.
 
 In scalar context, returns the number of convergents that would be returned.
 
@@ -4555,15 +4557,19 @@ In scalar context, returns the number of convergents that would be returned.
   my($p,$q) = bestrational(3.14159265358979, 1000);
   # (355, 113)
 
-Given a finite real number C<x> (native floating-point, numeric string, or
-C<Math::BigFloat> object) and a positive integer C<dbound>, returns a
-pair C<(p, q)> such that C<p/q> is the best rational approximation to
-C<x> with denominator C<< q <= dbound >>.  Here "best" means no other
-fraction with denominator at most C<dbound> has a smaller absolute error
-C<|p/q - x|>.  For negative C<x>, C<p> is negative and C<q> is positive.
+Given a finite real number C<x> and a positive integer C<dbound>, returns
+a reduced pair C<(p, q)>, with C<< 1 <= q <= dbound >>, that minimizes
+C<|p/q - x|>.  For negative C<x>, C<p> is negative and C<q> remains
+positive.
+
+If two candidates are equally close, the candidate with the smaller
+denominator is preferred; any remaining tie is resolved toward zero.
 
 The algorithm uses continued-fraction convergents, with a semiconvergent
 check at the final step.
+The value C<x> may be given as a native number, a numeric string
+(including decimal or exponential form), a bigint object, or a
+L<Math::BigFloat> object.
 
 =head2 next_calkin_wilf
 
@@ -4675,9 +4681,10 @@ In array context, returns a list with each rational as a 2-entry array
 reference.
 
 Given two values: a positive integer C<n> and a non-negative integer C<k>,
-returns the C<k-th> entry of the order C<n> Farey sequence.  The index
-starts at zero so it matches using the full list as an array.
-If C<k> is larger than the number of entries, undef is returned.
+returns the C<k-th> entry of the order C<n> Farey sequence.
+The index starts at zero, matching array indexing of the full returned list.
+Valid indices run from zero through one less than the sequence length;
+C<undef> is returned for any larger index.
 
 This corresponds to Mathematica's C<FareySequence> function (their
 two argument version is 1-based rather than 0-based).
@@ -4723,7 +4730,7 @@ L<OEIS series A049805|http://oeis.org/A049805> (E<lt>= 1/k),
 
   say "$n has ", prime_bigomega($n), " total factors";
 
-Given a non-negative integer C<n>, returns Ω(|n|), the prime Omega function.
+Given an integer C<n>, returns Ω(|n|), the prime Omega function.
 This is the total number of prime factors of C<n> including multiplicities.
 The result is identical to C<scalar(factor($n))>.
 The return value is a read-only constant.
@@ -4735,7 +4742,7 @@ and Mathematica's C<PrimeOmega[n]> function.
 
   say "$n has ", prime_omega($n), " distinct factors";
 
-Given a non-negative integer C<n>, returns ω(|n|), the prime omega function.
+Given an integer C<n>, returns ω(|n|), the prime omega function.
 This is the number of distinct prime factors of C<n>.
 The result is identical to C<scalar(factor_exp($n))>.
 The return value is a read-only constant.
@@ -4924,7 +4931,7 @@ returns the summatory Euler totient function.
 This function is defined as C<sum(euler_phi(1..n))>, but calculated
 much more efficiently.
 
-A sub-linear time recursion is implemented, using O(n^2/3) memory.
+A sub-linear time recursion is implemented, using O(n^{2/3}) memory.
 Memory use is restricted so growth becomes approximately linear above C<10^13>.
 
 This is L<OEIS series A002088|http://oeis.org/A002088>.
@@ -4933,13 +4940,16 @@ This is L<OEIS series A002088|http://oeis.org/A002088>.
 =head2 ramanujan_sum
 
 Given two non-negative integers C<k> and C<n>, returns Ramanujan's sum.
-This is the sum of the nth powers of the primitive k-th roots of unity.
+For positive C<k> and C<n>, this is the sum of the C<n>-th powers of the
+primitive C<k>-th roots of unity.  By convention, zero is returned if
+either argument is zero.
 
 Note this is not related to Ramanujan summation for divergent series.
 
 
 =head2 exp_mangoldt
 
+  sub lambda { my $p; is_prime_power(shift,\$p) ? log($p) : 0; }
   say "exp(lambda($_)) = ", exp_mangoldt($_) for 1 .. 100;
 
 Given a non-negative integer C<n>, returns EXP(Λ(n)), the exponential
@@ -4956,6 +4966,7 @@ Hence the return value for C<exp_mangoldt> is:
 
 Given a non-negative integer C<n>, returns λ(n), the Liouville function.
 This is -1 raised to Ω(n) (the total number of prime factors).
+By convention, C<liouville(0) = -1>.
 
 This corresponds to Mathematica's C<LiouvilleLambda[n]> function.
 It can be computed in Pari/GP as C<(-1)^bigomega(n)>.
@@ -4992,7 +5003,7 @@ but computed more efficiently and accurately.
 Given a non-negative integer C<n>, returns ψ(n),
 the second Chebyshev function.
 This is the sum of the logarithm of each prime power where C<< p^k <= n >>
-for an integer k.
+for a positive integer k.
 Effectively:
 
   my $s = 0;  for (1..$n) { $s += log(exp_mangoldt($_)) }  return $s;
@@ -5117,7 +5128,7 @@ This is L<OEIS A008472|http://oeis.org/A008472>.
 =head2 ramanujan_tau
 
 Given an integer C<n>, returns the value of Ramanujan's tau function.
-The result is a signed integer.  Zero is returned for negative C<n>.
+The result is a signed integer.  Zero is returned for C<< n <= 0 >>.
 This corresponds to Pari v2.8's C<tauramanujan> function and
 Mathematica's C<RamanujanTau> function.
 
@@ -5138,9 +5149,6 @@ definition.
 
   primorial(0)  == 1
   primorial($n) == pn_primorial( prime_count($n) )
-
-The result will be a L<Math::BigInt> object if it is larger than the native
-bit size.
 
 Be careful about which version (C<primorial> or C<pn_primorial>) matches the
 definition you want to use.  Not all sources agree on the terminology, though
@@ -5163,9 +5171,6 @@ definition.
 
   pn_primorial(0)  == 1
   pn_primorial($n) == primorial( nth_prime($n) )
-
-The result will be a L<Math::BigInt> object if it is larger than the native
-bit size.
 
 
 =head2 consecutive_integer_lcm
@@ -5190,9 +5195,10 @@ This corresponds to Pari's C<numbpart>
 function and Mathematica's C<PartitionsP> function.  The values produced
 in order are L<OEIS series A000041|http://oeis.org/A000041>.
 
-This uses a combinatorial calculation, which means it will not be very
-fast compared to Pari, Mathematica, or FLINT which use the Rademacher
-formula using multi-precision floating point.  In 10 seconds:
+This uses a combinatorial calculation, which is much slower than Pari,
+Mathematica, or FLINT implementations using the Rademacher formula with
+multi-precision floating point.  In one benchmark performed in 2018, the
+approximate largest C<n> completed in 10 seconds was:
 
             70    Integer::Partition
             90    MPU forpart { $n++ }
@@ -5265,14 +5271,15 @@ good estimate of the count of lucky numbers less than or equal to C<n>.
 =head2 lucky_count_lower
 
 Given a single non-negative integer C<n>, quickly returns a
-lower bound of the count of lucky numbers less than or equal to C<n>.
-The actual count will always be greater than or equal to the result.
+lower estimate of the count of lucky numbers less than or equal to C<n>.
 
 =head2 lucky_count_upper
 
 Given a single non-negative integer C<n>, quickly returns an
-upper bound of the count of lucky numbers less than or equal to C<n>.
-The actual count will always be less than or equal to the result.
+upper estimate of the count of lucky numbers less than or equal to C<n>.
+
+The lower and upper estimates have been verified as bounds through
+C<< n <= 10^9 >>, but are not proven for larger inputs.
 
 =head2 nth_lucky
 
@@ -5290,14 +5297,15 @@ good estimate of the C<n>-th lucky number.
 =head2 nth_lucky_lower
 
 Given a single non-negative integer C<n>, quickly returns a
-lower bound of the C<n>-th lucky number.
-The actual value will always be greater than or equal to the result.
+lower estimate of the C<n>-th lucky number.
 
 =head2 nth_lucky_upper
 
 Given a single non-negative integer C<n>, quickly returns an
-upper bound of the C<n>-th lucky number.
-The actual value will always be less than or equal to the result.
+upper estimate of the C<n>-th lucky number.
+
+The lower and upper estimates have been verified as bounds through
+C<< n <= 3 * 10^9 >>, but are not proven for larger inputs.
 
 
 =head2 minimal_goldbach_pair
@@ -5312,10 +5320,10 @@ less than C<4> and for all odd C<n> where C<n != 2+q> for a prime C<q>.
 The Goldbach Conjecture famously states that a C<p> exists for
 all even C<n> greater than C<2>.
 
-This function is reasonably fast even for larger values of C<n> as it can
-terminate after the first pair is found.  On Macbook M1, average time is
-under 1 microsecond for 32-bit even inputs, under 10 microseconds for 64-bit
-even inputs, and 1 millisecond for 105 bit even inputs.
+This function is usually fast even for large values of C<n>, since it
+terminates when the first pair is found.  Running time depends on the size
+of C<n> and on how many candidate primes C<p> must be tested before
+C<n-p> is prime.
 
 =head2 goldbach_pair_count
 
@@ -5362,7 +5370,7 @@ The values themselves produce L<OEIS series A090425|http://oeis.org/A090425>.
 
   my $is_23_smooth = is_smooth($n, 23);
 
-Given two non-negative integer inputs C<n> and C<k>,
+Given an integer C<n> and a non-negative integer C<k>,
 returns C<1> if C<|n|> is C<k>-smooth, and C<0> otherwise.
 This uses the OEIS definition: Returns true if no prime factors
 of C<n> are larger than C<k>.
@@ -5382,7 +5390,7 @@ This corresponds to Mathematica's C<SmoothIntegerQ[n]> resource function.
 
   my $is_23_rough = is_rough($n, 23);
 
-Given two non-negative integer inputs C<n> and C<k>,
+Given an integer C<n> and a non-negative integer C<k>,
 returns C<1> if C<|n|> is C<k>-rough, and C<0> otherwise.
 This uses the OEIS definition: Returns true if no prime factors
 of C<n> are smaller than C<k>.
@@ -5511,9 +5519,8 @@ of perfect powers between C<lo> and C<hi> inclusive.
 
 By convention, numbers less than 1 are not counted.
 
-This can be calculated extremely quickly (less than 100ns per call
-for native size integers), so in most cases there is no need for the
-approximations or bounds.
+This can be calculated extremely quickly, so in most cases there is
+no need for the approximations or bounds.
 
 This is L<OEIS series A069623|http://oeis.org/A069623>.
 
@@ -5578,7 +5585,7 @@ Given non-negative integer inputs C<n> and C<k>, returns the number of
 integers between C<1> and C<n> inclusive, that have no prime factor larger
 than C<k>.
 
-For all C<n>, C<smooth_count(n,0) = smooth_count(n,1) = 1>.
+For positive C<n>, C<smooth_count(n,0) = smooth_count(n,1) = 1>.
 For all C<k>, C<smooth_count(0,k) = 0> and C<smooth_count(1,k) = 1>.
 
 This is equivalent to, but much faster than,
@@ -5613,7 +5620,9 @@ Given a non-negative integer C<n>, returns the Carmichael function
 (also called the reduced totient function, or Carmichael λ(n)).
 This is the smallest
 positive integer C<m> such that C<a^m = 1 mod n> for every integer C<a>
-coprime to C<n>.  This is L<OEIS series A002322|http://oeis.org/A002322>.
+coprime to C<n>.
+By convention, C<carmichael_lambda(0) = 0>.
+This is L<OEIS series A002322|http://oeis.org/A002322>.
 
 This corresponds to Mathematica's C<CarmichaelLambda[n]> function.
 It can be computed in Pari/GP as C<lcm(znstar(n)[2])>.
@@ -5677,7 +5686,7 @@ The third kind are the unsigned Lah numbers.
 This corresponds to Pari's C<stirling(n,k,{type})>
 function and Mathematica's C<StirlingS1> / C<StirlingS2> functions.
 
-Stirling numbers of the first kind are C<-1^(n-k)> times the number of
+Stirling numbers of the first kind are C<(-1)^(n-k)> times the number of
 permutations of C<n> symbols with exactly C<k> cycles.  Stirling numbers
 of the second kind are the number of ways to partition a set of C<n>
 elements into C<k> non-empty subsets.  The Lah numbers are the number of
@@ -5714,9 +5723,9 @@ Given a non-negative integer C<n>, returns the integer complexity of C<n>:
 the minimum number of 1s needed to represent C<n> using addition and
 multiplication only.  C<n=0> returns undef.
 
-The complexity satisfies C<f(2^k) = 2k> and C<f(3^k) = 3k>, since powers
-of 2 and 3 have optimal factorization trees.  In general,
-C<f(n) >= 3 * log(n) / log(3)>.
+The complexity satisfies C<f(2^k) = 2k> and C<f(3^k) = 3k>, for a positive
+integer C<k>, since powers of 2 and 3 have optimal factorization trees.
+In general, C<f(n) >= 3 * log(n) / log(3)>.
 
 Results are cached internally, so repeated calls are efficient.
 When computing C<integer_complexity(n)> for many values up to some
@@ -5777,7 +5786,7 @@ This corresponds to Mathematica's C<Subfactorial[n]> function.
 =head2 falling_factorial
 
 Given two integers C<x> and C<n>, with C<n> non-negative, returns the
-falling factorial of C<n>.
+falling factorial of C<x>.
 
   falling_factorial(x,n) = x * (x-1) * (x-2) * ... * (x-(n-1))
 
@@ -5786,7 +5795,7 @@ This corresponds to Mathematica's C<FactorialPower[x,n]> function.
 =head2 rising_factorial
 
 Given two integers C<x> and C<n>, with C<n> non-negative, returns the
-rising factorial of C<n>.
+rising factorial of C<x>.
 
   rising_factorial(x,n) = x * (x+1) * (x+2) * ... * (x+(n-1))
 
@@ -5818,6 +5827,7 @@ Given an integer C<n>, returns 12 times the
 Hurwitz-Kronecker class number.
 This will always be an integer due to the pre-multiplication by 12.
 The result is C<0> for negative C<n> and all C<n> congruent to 1 or 2 mod 4.
+Using the standard convention C<H(0) = -1/12>, C<hclassno(0) = -1>.
 C<n> must fit in a native signed integer.
 
 This is related to Pari's C<qfbhclassno(n)> where C<hclassno(n)> for positive
@@ -5829,7 +5839,7 @@ This is L<OEIS A259825|http://oeis.org/A259825>.
 
   my($num,$den) = bernfrac(12);  # returns (-691,2730)
 
-Returns the Bernoulli number C<B_n> for an integer argument C<n>, as a
+Returns the Bernoulli number C<B_n> for a non-negative integer C<n>, as a
 rational number represented by two integers.  B_1 is chosen as 1/2, which
 is the same as Pari's C<bernfrac(n)> and Mathematica's C<BernoulliB>
 functions.
@@ -5890,25 +5900,23 @@ C<--phi n a> feature of C<primecount>.
 
   $approx_prime_count = inverse_li(1000000000);
 
-Given a non-negative integer C<n>, returns the least integer value C<k>
-such that C<< Li(k) >= n >>.  Since the logarithmic integral C<Li(n)> is
-a good approximation to the number of primes less than C<n>, this function
-is a good simple approximation to the nth prime.
+Given a non-negative integer C<n>, returns the least non-negative integer
+C<k> such that C<< li(k) >= n >>, where C<li> is the logarithmic
+integral.  For C<n = 0>, returns zero.  This provides an approximation
+to the C<n>-th prime.
 
 =head2 inverse_li_nv
 
   $faster_approx_prime_count = inverse_li_nv(1000000000);
 
-With input C<x> and output both in NV (floating point), computes the
-inverse of the logarithmic integral.  This should be very fast, as everything
-is done in native long double precision, no Perl bigints or bigfloats are
-involved, and the computed result is returned as an NV.
+Given a finite non-negative real value C<x>, returns an NV approximation
+to the unique value C<y > 1> satisfying C<li(y) = x>.  The calculation
+uses native floating-point arithmetic and is limited to native
+floating-point range and precision.
 
-The L</inverse_li> function uses this to start, then ensures the integer
-return value is the closest inverse of the integer result of the
-L</LogarithmicIntegral> function.  While this is a small amount of extra
-time for small inputs, once we have to go to Perl and use BigInt / BigFloat,
-the extra time can be significant.
+For integer C<n >= 1>, C<inverse_li(n)> is mathematically the ceiling
+of this value, but performs additional work to ensure the correct
+integer result.
 
 
 =head2 numtoperm
@@ -5944,8 +5952,8 @@ later use the same lexicographic ordering).
 
 =head2 randperm
 
-  @p = randperm(100);   # returns shuffled 0..99
-  @p = randperm(100,4)  # returns 4 elements from shuffled 0..99
+  @p = randperm(100);                # returns shuffled 0..99
+  @p = randperm(100,4);              # returns 4 elements of shuffled 0..99
   @s = @data[randperm(1+$#data)];    # shuffle an array
   @p = @data[randperm(1+$#data,2)];  # pick 2 from an array
 
@@ -5971,7 +5979,7 @@ needing to perform the full shuffle.
 In scalar context, returns the number of elements that would be returned,
 without actually generating the permutation.
 
-The slicing technique shown in the last two examples are similar to
+The slicing techniques in the last two examples are similar to
 L</shuffle> and L</vecsample>.
 
 =head2 shuffle
@@ -6009,7 +6017,7 @@ If the input is exactly two elements (C<k> and one other) and the second
 value is an array reference, then we will use it as the input list:
 
   $oneof = vecsample(1, $arrayref);
-  @twoof = vecsample(1, \@data);
+  @twoof = vecsample(2, \@data);
 
 This can be a large performance increase if the input list is large
 (e.g. 2x at 1000 elements, can be 10x with more).

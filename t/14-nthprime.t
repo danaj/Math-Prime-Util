@@ -239,11 +239,32 @@ subtest 'inverse_li and inverse_li_nv', sub {
        "inverse_li convergent series reaches its tolerance");
   }
 
-  cmp_within(inverse_li_nv(4), 5.60927669305089, .001, "inverse_li_nv(4)");
-  cmp_within(inverse_li_nv(64.2731216921018), 277, .001, "inverse_li_nv(64.2731216921018)");
-  cmp_within(inverse_li_nv(40000), 478956.000953764, .001, "inverse_li_nv(40000)");
-  cmp_within(inverse_li_nv(1234567890123), 37301814610592.3, .1, "inverse_li_nv(1234567890123)");
+  my @invli_nv = (
+    [0,                 1.45136923488338,  1e-10],
+    [0.1,               1.48992165248084,  1e-10],
+    [1,                 1.96904748922475,  1e-10],
+    [1.668,             2.50064638079738,  1e-10],
+    [4,                 5.60927669305089,   .001],
+    [64.2731216921018,  277,                .001],
+    [40000,             478956.000953764,   .001],
+    [1234567890123,     37301814610592.3,   .1],
+  );
+  for my $v (@invli_nv) {
+    my($x, $expect, $tolerance) = @$v;
+    cmp_closeto(inverse_li_nv($x), $expect, $tolerance,
+                "inverse_li_nv($x)");
+  }
+  for my $x (-1, "NaN", "Inf") {
+    ok(!eval { inverse_li_nv($x); 1 } &&
+       $@ =~ /finite non-negative real number/,
+       "inverse_li_nv rejects $x");
+  }
 };
+
+sub cmp_closeto {
+  my($got, $expect, $tolerance, $message) = @_;
+  cmp_ok(abs($got - $expect), '<=', $tolerance, $message);
+}
 
 sub cmp_within {
   my($got, $exp, $tolpct, $mess) = @_;

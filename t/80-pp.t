@@ -1141,7 +1141,13 @@ subtest 'misc number theory functions', sub {
 
   is(legendre_phi(54321,5),11287,"legendre_phi(54321,5) = 11287");
   is(inverse_li(13579),146261,"inverse_li");
+  cmp_closeto(inverse_li_nv(0),1.45136923488338,1e-10,"inverse_li_nv(0)");
   cmp_closeto(inverse_li_nv(135790),1808203.25662372,1e-4,"inverse_li_nv");
+  for my $x (-1, "NaN", "Inf") {
+    ok(!eval { inverse_li_nv($x); 1 } &&
+       $@ =~ /finite non-negative real number/,
+       "inverse_li_nv rejects $x");
+  }
 
   { my @t;
     forprimes(sub {push @t,$_}, 2387234,2387303);

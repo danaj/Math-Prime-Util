@@ -3339,11 +3339,28 @@ void inverse_li(IN SV* svn)
     }
     DISPATCHPP_RETURN();
 
-NV inverse_li_nv(IN NV x)
-  CODE:
-    RETVAL = ld_inverse_li(x,0);
-  OUTPUT:
-    RETVAL
+void inverse_li_nv(IN SV* svx)
+  PREINIT:
+    const char *xstr;
+    STRLEN xlen;
+    int xtype;
+    NV x, ret;
+  PPCODE:
+    SvGETMAGIC(svx);
+    if (SvOK(svx)) {
+      xstr = SvPV(svx, xlen);
+      xtype = grok_number(xstr, xlen, 0);
+      if (xtype && !(xtype & (IS_NUMBER_INFINITY | IS_NUMBER_NAN))) {
+        x = SvROK(svx) ? STRTONV(xstr) : SvNV(svx);
+        if (x >= 0.0 && MPU_NV_ISFINITE(x)) {
+          ret = (NV)ld_inverse_li(x,0);
+          if (MPU_NV_ISFINITE(ret))
+            XSRETURN_NV(ret);
+          croak("inverse_li_nv: result is outside native floating-point range");
+        }
+      }
+    }
+    croak("inverse_li_nv: x must be a finite non-negative real number");
 
 void nth_prime(IN SV* svn)
   ALIAS:

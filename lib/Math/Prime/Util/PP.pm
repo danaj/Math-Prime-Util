@@ -4074,8 +4074,15 @@ sub nth_prime_lower {
 
 sub inverse_li_nv {
   my($n) = @_;
-  $n = 0.0 + "$n";
-  my $t = $n * log($n);
+  my $nstr = defined($n) ? "$n" : '';
+  croak "inverse_li_nv: x must be a finite non-negative real number"
+    if !defined($n) || !looks_like_number($nstr) || $nstr =~ /(?:inf|nan)/i;
+  $n = 0.0 + (ref($n) ? $nstr : $n);
+  croak "inverse_li_nv: x must be a finite non-negative real number"
+    if $n < 0.0 || $n*0 != 0;
+
+  my $t = ($n < 2.719) ? 2.0 + ($n >= 1.668)
+                       : $n * (log($n) + log(log($n)));
 
   # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
@@ -4088,6 +4095,8 @@ sub inverse_li_nv {
     $t -= $term;
     last if abs($term) < 1e-6;
   }
+  croak "inverse_li_nv: result is outside native floating-point range"
+    if $t*0 != 0;
   $t;
 }
 
