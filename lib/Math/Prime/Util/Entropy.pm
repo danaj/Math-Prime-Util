@@ -101,6 +101,10 @@ sub _try_crypt_random_seed {
 
 my $_method;
 
+sub _clear_method {
+  undef $_method;
+}
+
 sub _timer_sample {
   my ($sec, $t1) = Time::HiRes::gettimeofday();
   my $str = pack("LL", $sec, $t1);

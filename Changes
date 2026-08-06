@@ -87,6 +87,8 @@ Revision history for Perl module Math::Prime::Util
     - PP uses timer and scheduler jitter if no normal entropy source is
       available, rather than deterministically seeding the CSPRNG with zero.
 
+    - PP threads independently reseed their CSPRNG after interpreter cloning.
+
     - LambertW consistently handles floating-point rounding just below -1/e.
 
     - Fix rare nth_prime hangs and native overflow near the 64-bit limit.

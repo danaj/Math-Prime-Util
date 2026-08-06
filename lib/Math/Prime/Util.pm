@@ -6411,8 +6411,8 @@ Carefully tuning that interface is critical for any module.
 For performance on large amounts of data, see the tables
 in L</random_bytes>.
 
-Each thread uses its own context, meaning seeding in one thread has no
-impact on other threads.  In addition to improved security, this is
+Each thread has its own independently seeded context, so reseeding one thread
+has no impact on other threads.  In addition to improved security, this is
 better for performance than a single context with locks.
 If explicit control of multiple independent streams is needed then using
 a more specific module is recommended.  I believe L<Crypt::PRNG>

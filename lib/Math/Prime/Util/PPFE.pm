@@ -109,6 +109,10 @@ sub csrand {
   Math::Prime::Util::_csrand($seed);
   return;
 }
+sub CLONE {
+  Math::Prime::Util::Entropy::_clear_method();
+  Math::Prime::Util::_csrand(entropy_bytes(64));
+}
 sub entropy_bytes {
   my($bytes) = @_;
   my $n = defined $bytes ? "$bytes" : "";
