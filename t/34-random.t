@@ -31,6 +31,7 @@ plan tests => 1
             + 5  # urandomr
             + 7  # random_bytes / entropy_bytes
             + 2  # irand stream continuity across buffer boundaries
+            + 2  # PP timer entropy fallback
             + 0;
 
 ########
@@ -423,3 +424,25 @@ $eb2 = unpack("H*",$eb2);
 isnt($eb1, '00' x $ebytes, "entropy_bytes didn't return all zeros once");
 isnt($eb2, '00' x $ebytes, "entropy_bytes didn't return all zeros twice");
 isnt($eb1, $eb2, "entropy_bytes returned two different binary strings");
+
+SKIP: {
+  skip "PP timer fallback test", 1
+    if Math::Prime::Util::prime_get_config()->{'xs'};
+  no warnings qw(redefine once);
+  local *Math::Prime::Util::Entropy::entropy_bytes = sub { undef };
+  local *Math::Prime::Util::Entropy::_timer_seed = sub { "T" x 64 };
+  is(length(entropy_bytes(17)), 17,
+     "PP entropy fallback seeds the CSPRNG and returns requested bytes");
+}
+
+SKIP: {
+  skip "timer entropy modules unavailable", 1
+    unless $extra && eval {
+      require Math::Prime::Util::Entropy;
+      require Time::HiRes;
+      require Digest::SHA;
+      1;
+    };
+  is(length(Math::Prime::Util::Entropy::_timer_seed()), 64,
+     "timer entropy fallback produces a 64-byte seed");
+}

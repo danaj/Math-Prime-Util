@@ -6385,8 +6385,11 @@ Since we often deal with random primes for cryptographic purposes, we have
 additional requirements.  This module uses a CSPRNG for its random stream.
 In particular, ChaCha20, which is the same algorithm used by BSD's
 C<arc4random> and C</dev/urandom> on BSD and Linux 4.8+.
-Seeding is performed at startup using the Win32 Crypto API (on Windows),
-C</dev/urandom>, C</dev/random>, or L<Crypt::PRNG>, whichever is found first.
+Seeding is performed at startup.  The XS implementation obtains seed material
+from the Win32 Crypto API or C</dev/urandom> (falling back to
+C</dev/random>), with timer jitter as a last resort.  The pure-Perl
+implementation also tries L<Crypt::Random::Seed> and L<Crypt::PRNG> before
+using its timer-jitter fallback.
 
 We use the original ChaCha definition rather than RFC7539.  This means a
 64-bit counter, resulting in a period of 2^70 bytes or 2^67 calls to
@@ -6477,7 +6480,8 @@ With the ":rand" tag, this function is additionally exported as C<rand>.
   $str = random_bytes(32);     # 32 random bytes
 
 Given a non-negative integer number of bytes C<n>, returns a string filled
-with random data from the CSPRNG.  Performance for large quantities:
+with random data from the CSPRNG.
+The following historical rates were measured on one machine in 2017:
 
     Module/Method                  Rate   Type
     -------------             ---------   ----------------------
@@ -6505,11 +6509,15 @@ The input C<n> must be between 0 and 2147483646.
 
 =head2 entropy_bytes
 
-Similar to random_bytes, but directly using the entropy source.
+Similar to random_bytes, but normally reading directly from the entropy source.
 This is not normally recommended as it can consume shared system
 resources and is typically slow -- on the computer that produced
 the L</random_bytes> chart above, using C<dd> generated the same
 13 MB/s performance as our L</entropy_bytes> function.
+
+If no normal source is available, a last-resort timer-jitter fallback is
+used.  The pure-Perl fallback requires L<Time::HiRes> and L<Digest::SHA>,
+and will croak if they cannot be loaded.
 
 The actual performance will be highly system dependent.
 

@@ -84,6 +84,9 @@ Revision history for Perl module Math::Prime::Util
     - PP srand and csrand reject extra arguments, and csrand returns no value
       in both XS and PP.
 
+    - PP uses timer and scheduler jitter if no normal entropy source is
+      available, rather than deterministically seeding the CSPRNG with zero.
+
     - LambertW consistently handles floating-point rounding just below -1/e.
 
     - Fix rare nth_prime hangs and native overflow near the 64-bit limit.

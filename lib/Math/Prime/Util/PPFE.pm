@@ -115,10 +115,11 @@ sub entropy_bytes {
   croak "entropy_bytes: input must be an integer between 0 and 2147483646"
       if $n !~ /^\+?\d+\z/ || 0+$n > 2147483646;
   $n = 0+$n;
+  return '' if $n == 0;
   my $data = Math::Prime::Util::Entropy::entropy_bytes($n);
   if (!defined $data) {
-    # We can't find any entropy source!  Highly unusual.
-    Math::Prime::Util::_srand();
+    my $seed = Math::Prime::Util::Entropy::_timer_seed();
+    Math::Prime::Util::_csrand($seed);
     $data = random_bytes($n);
   }
   croak "entropy_bytes internal got wrong amount!" unless length($data) == $n;

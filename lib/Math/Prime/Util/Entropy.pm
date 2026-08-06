@@ -101,6 +101,35 @@ sub _try_crypt_random_seed {
 
 my $_method;
 
+sub _timer_sample {
+  my ($sec, $t1) = Time::HiRes::gettimeofday();
+  my $str = pack("LL", $sec, $t1);
+  my ($t2, %dummy);
+
+  for my $i (1 .. 8) {
+    # The exact wall clock time taken will vary based on the system state.
+    Time::HiRes::usleep(2 + 3*$i);
+    # The time taken for this will typically vary (hash + Perl SV creation).
+    $dummy{$str . $_}++ for 1 .. 8;
+    # Get the current high-res wall clock, XOR with previous.
+    (undef, $t2) = Time::HiRes::gettimeofday();
+    $str .= pack("L", $t1 ^ $t2);
+    $t1 = $t2;
+  }
+  # All the timer data gathered is spread by SHA256.
+  Digest::SHA::sha256($str);
+}
+
+sub _timer_seed {
+  eval { require Time::HiRes; require Digest::SHA; 1 }
+    or croak "timer entropy fallback unavailable: $@";
+
+  my $sha = Digest::SHA->new(512);
+  # Conservatively credit one bit to each group of eight timing samples.
+  $sha->add(_timer_sample()) for 1 .. 128;
+  $sha->digest;
+}
+
 sub entropy_bytes {
   my $nbytes = shift;
   my @methodlist = ( \&_try_win32,                 # All we have for Windows

@@ -211,7 +211,7 @@ sub _prng_new {
   }
   sub srand {
     my $seed = shift;
-    $seed = CORE::rand unless defined $seed;
+    $seed = int(CORE::rand(4294967296)) unless defined $seed;
     if ($seed <= 4294967295) { csrand(pack("V",$seed)); }
     else                     { csrand(pack("V2",$seed,$seed>>32)); }
     $seed;
