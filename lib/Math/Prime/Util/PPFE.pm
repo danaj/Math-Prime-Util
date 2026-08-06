@@ -142,15 +142,37 @@ sub entropy_bytes {
   my $_tonv_128 = $_tonv_96;  $_tonv_128/= 2.0 for 1..32;
   if ($uvbits == 64) {
     if ($nvbits <= 32) {
-      *drand = sub { my $d = irand() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub {
+        my $d;
+        do { $d = irand() * $_tonv_32; } while $d >= 1.0;
+        $d *= $_[0] if defined($_[0]) && $_[0] != 0;
+        $d;
+      };
     } elsif ($nvbits <= 64) {
-      *drand = sub { my $d = irand64() * $_tonv_64;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub {
+        my $d;
+        do { $d = irand64() * $_tonv_64; } while $d >= 1.0;
+        $d *= $_[0] if defined($_[0]) && $_[0] != 0;
+        $d;
+      };
     } else {
-      *drand = sub { my $d = irand64() * $_tonv_64 + irand64() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub {
+        my $d;
+        do {
+          $d = irand64() * $_tonv_64 + irand64() * $_tonv_128;
+        } while $d >= 1.0;
+        $d *= $_[0] if defined($_[0]) && $_[0] != 0;
+        $d;
+      };
     }
   } else {
     if ($nvbits <= 32) {
-      *drand = sub { my $d = irand() * $_tonv_32;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub {
+        my $d;
+        do { $d = irand() * $_tonv_32; } while $d >= 1.0;
+        $d *= $_[0] if defined($_[0]) && $_[0] != 0;
+        $d;
+      };
     } elsif ($nvbits <= 64) {
       *drand = sub {
         my $d;
@@ -159,11 +181,19 @@ sub entropy_bytes {
           my $b = irand();
           $d = $a * $_tonv_32 + $b * $_tonv_64;
         } while ($d >= 1.0);
-        $d *= $_[0] if $_[0];
+        $d *= $_[0] if defined($_[0]) && $_[0] != 0;
         $d;
       };
     } else {
-      *drand = sub { my $d = irand() * $_tonv_32 + irand() * $_tonv_64 + irand() * $_tonv_96 + irand() * $_tonv_128;  $d *= $_[0] if $_[0];  $d; };
+      *drand = sub {
+        my $d;
+        do {
+          $d = irand() * $_tonv_32 + irand() * $_tonv_64
+             + irand() * $_tonv_96 + irand() * $_tonv_128;
+        } while $d >= 1.0;
+        $d *= $_[0] if defined($_[0]) && $_[0] != 0;
+        $d;
+      };
     }
   }
   *rand = \&drand;

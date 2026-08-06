@@ -18,7 +18,7 @@ plan tests => 1
             + 5  # irand / irand32
             + 3  # irand64
             + 2
-            + 5  # drand range
+            + 6  # drand range and zero scaling
             + 4  # identify rng and test srand/csrand
             + 2  # srand UV coercion
             + 1  # csrand(undef) entropy reseeding
@@ -123,6 +123,17 @@ check_float_range('drand(0)',0,1,[map{ drand(0) } 1..$num]);
   # Skip warnings these give, worry about the behavior
   no warnings;
   check_float_range('drand(undef)',0,1,[map{ drand(undef) } 1..$num]);
+}
+{
+  srand(0x521974A3);
+  my $expected = drand();
+  my @got;
+  for my $zero (0, "0.0", "0E0") {
+    srand(0x521974A3);
+    push @got, drand($zero);
+  }
+  is_deeply(\@got, [($expected) x 3],
+            "drand treats every numeric zero limit as an omitted limit");
 }
 # We can't easily supress the warning here, but we'd like to check the
 # result.  Math::Random::Secure fails this, for instance.

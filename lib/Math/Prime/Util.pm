@@ -5146,6 +5146,7 @@ defined as the
 product of the prime numbers less than or equal to C<n>.  This is the
 L<OEIS series A034386|http://oeis.org/A034386>: primorial numbers second
 definition.
+The input C<n> must fit in a native signed integer.
 
   primorial(0)  == 1
   primorial($n) == pn_primorial( prime_count($n) )
@@ -5168,6 +5169,7 @@ the product of the first C<n> prime numbers (compare to the factorial, which
 is the product of the first C<n> natural numbers).  This is the
 L<OEIS series A002110|http://oeis.org/A002110>: primorial numbers first
 definition.
+The input C<n> must fit in a native signed integer.
 
   pn_primorial(0)  == 1
   pn_primorial($n) == primorial( nth_prime($n) )
@@ -5181,6 +5183,7 @@ Given a non-negative integer C<n>, returns the least common multiple of all
 integers from 1 to C<n>.  This can be done by manipulation of the primes up
 to C<n>, resulting in much faster and memory-friendly results than using
 a factorial.
+The input C<n> must fit in a native signed integer.
 
 This is L<OEIS series A003418|http://oeis.org/A003418>.
 Matching that series, we define C<consecutive_integer_lcm(0) = 1>.
@@ -5190,6 +5193,7 @@ Matching that series, we define C<consecutive_integer_lcm(0) = 1>.
 Given a non-negative integer C<n>, returns the partition function C<p(n)>.
 This is the number of ways of writing the integer C<n> as a sum of positive
 integers, without restrictions.
+The input C<n> must fit in a native signed integer.
 
 This corresponds to Pari's C<numbpart>
 function and Mathematica's C<PartitionsP> function.  The values produced
@@ -5214,6 +5218,7 @@ If you want the enumerated partitions, see L</forpart>.
 
 Given a non-negative integer C<n>, returns the number of partitions of C<n>
 into B<distinct> parts (no part repeated).
+The input C<n> must fit in a native signed integer.
 
 For example, C<partitionsq(6) = 4>: the partitions are {6}, {1,5}, {2,4},
 and {1,2,3}.
@@ -5667,6 +5672,7 @@ with similar semantics.  Prior to this, C<< n < 0, k > 0 >> was undefined.
 
 Given a non-negative integer C<n>, returns the Catalan number C<C_n>.
 This is given by C<binomial(2*n,n) / (n+1)>.
+The input C<n> must fit in a native signed integer.
 
 This corresponds to Mathematica's C<CatalanNumber[n]> function,
 Sage's C<catalan_number(n)> function, and SymPy's C<catalan(n)> function.
@@ -5698,6 +5704,7 @@ ways to split a set of C<n> elements into C<k> non-empty lists.
 
 Given a non-negative integer C<n>, returns the Bell number of C<n>,
 which counts the number of partitions of a set of size C<n>.
+The input C<n> must fit in a native signed integer.
 
 This corresponds to Mathematica's C<BellB[n]> function,
 Sage's C<bell_number(n)> function, and SymPy's C<bell(n)> function.
@@ -5709,6 +5716,7 @@ This is the L<OEIS series A000110|http://oeis.org/A000110>.
 Given a non-negative integer C<n>, returns the Fubini number of C<n>,
 also called the ordered Bell numbers, or the number of ordered partitions
 of C<n>.  It is the count of rankings of C<n> items allowing for ties.
+The input C<n> must fit in a native signed integer.
 
 This is the L<OEIS series A000670|http://oeis.org/A000670>.
 
@@ -5779,6 +5787,7 @@ Given a non-negative integer C<n>, returns the subfactorial of C<n>,
 which is the number of derangements of C<n> objects.  This is the number
 of permutations of n items where each item is not allowed to stay in its
 starting position.
+The input C<n> must fit in a native signed integer.
 
 This is L<OEIS series A000166|http://oeis.org/A000166>.
 This corresponds to Mathematica's C<Subfactorial[n]> function.
@@ -6440,9 +6449,14 @@ On 32-bit Perl this will be a bigint if the result exceeds C<2^32-1>.
 
   $f = drand;       # random floating point value in [0,1)
   $r = drand(25.33);   # random floating point value in [0,25.33)
+  $r = drand(-10);     # random floating point value in (-10,0]
 
 Returns a random NV (Perl's native floating point) using the CSPRNG.  The
 API is similar to Perl's C<rand> but giving better results.
+
+With no argument or with an argument numerically equal to zero, the range
+is C<[0,1)>.  For a positive argument C<m>, the range is C<[0,m)>; for a
+negative argument C<m>, the range is C<(m,0]>.
 
 The number of actual random bits will be equal to the number of mantissa
 bits in the NV type.  For IEEE-754 doubles, this means 53 bits, and can

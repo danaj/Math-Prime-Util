@@ -181,7 +181,7 @@ Tags:
   irand()                             random 32-bit integer
   irand32()                           random 32-bit integer
   irand64()                           random 64-bit integer
-  drand([limit])                      random NV in [0,1) or [0,limit)
+  drand([m])                          random NV in [0,1), scaled by non-zero m
   random_bytes(n)                     string with n random bytes
   entropy_bytes(n)                    string with n entropy-source bytes
   urandomb(n)                         random integer less than 2^n
