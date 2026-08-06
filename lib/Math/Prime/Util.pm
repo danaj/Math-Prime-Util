@@ -2736,7 +2736,7 @@ Also see L</abundance>.
   if (my $pow = is_power($n, \my $root)) { say "$n = $root^$pow" }
 
 Given a single integer input C<n>, returns k if C<n = r^k> for
-some integer C<< r > 1, k > 1 >>, and 0 otherwise.  The k returned is
+some integers C<< |r| > 1, k > 1 >>, and 0 otherwise.  The k returned is
 the largest possible.  This can be used in a boolean statement to
 determine if C<n> is a perfect power.
 
@@ -2770,11 +2770,13 @@ This corresponds to Pari/GP's C<issquare> function.
 
 =head2 is_sum_of_squares
 
-Given an integer C<n> and an optional positive integer number of squares C<k>,
-returns 1 if C<|n|> can be represented as the sum of exactly C<k> squares.
-C<k> defaults to 2.
-All positive integers can be represented by 4 or more squares, so
-only C<k == 2> and C<k == 3> are interesting cases.
+Given an integer C<n> and an optional non-negative integer number of squares
+C<k>, returns 1 if C<|n|> can be represented as the sum of exactly C<k>
+integer squares.  Zero is allowed as a square, and C<k> defaults to 2.
+For C<k == 0>, the result is 1 only when C<n == 0>.  For C<k == 1>,
+this is equivalent to L</is_square>.
+All non-negative integers can be represented by 4 or more squares, so
+only C<k == 2> and C<k == 3> are non-trivial cases.
 
 With C<k == 2> this produces the sequence
 L<OEIS A001481|http://oeis.org/A001481>.
@@ -2784,11 +2786,13 @@ L<OEIS A000378|http://oeis.org/A000378>.
 =head2 is_powerfree
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
-1 if C<|n|> has no divisor C<d^k>, and returns 0 otherwise.
+1 if C<|n|> has no divisor C<d^k> with C<d E<gt> 1>, and returns 0 otherwise.
 This determines if C<|n|> has any k-th (or higher) powers in the prime
 factorization.
 C<k> defaults to 2.
 For the powerfree functions, C<k> must be at most C<2^32-1>.
+For C<k E<lt> 2>, only C<|n| = 1> is considered k-powerfree.  Consequently,
+the count and sum functions return 1 for C<n E<gt>= 1> and 0 otherwise.
 
 With C<k == 2> this produces the sequence of square-free integers
 L<OEIS A005117|http://oeis.org/A005117>.
@@ -2835,12 +2839,13 @@ L<OEIS A066779|http://oeis.org/A066779>.
 
 Given an integer C<n> and an optional non-negative integer C<k>, returns
 the k-powerfree part of C<n>.  This is done via removing "excess" powers,
-i.e. in the prime factorization of C<n>, we reduce any exponents C<E>
-from C<P^E> to C<P^(E % k)>.  Alternately we can say all k-th powers are
-divided out.
+i.e. for C<k E<gt>= 2>, in the prime factorization of C<n> we reduce any
+exponents C<E> from C<P^E> to C<P^(E % k)>.  Alternately we can say all
+k-th powers are divided out.
 For negative C<n>, the k-powerfree part of C<|n|> is computed and the
 original sign is restored.
 C<k> defaults to 2.
+For C<k E<lt> 2>, the result is C<n> when C<|n| = 1>, and 0 otherwise.
 
 When C<k == 2>, this is also sometimes called C<core(n)>.  It is the
 unique square-free integer C<d> such that C<n/d> is a square.
@@ -2863,6 +2868,7 @@ is equivalent to
 
 but substantially faster.
 Returns 0 if C<n E<lt> 1>.
+C<k> defaults to 2.
 
 With C<k == 2> this produces the sequence
 L<OEIS A069891|http://oeis.org/A069891>.
@@ -2874,13 +2880,14 @@ also known as the integer radical.  It is the largest square-free divisor
 of C<n>, which is also the product of the distinct primes dividing C<n>.
 
 We choose to accept negative inputs, with the result matching the input sign.
+For C<n = 0>, the result is 0.
 
 This is the L<OEIS series A007947|http://oeis.org/A007947>.
 
 =head2 sqrtint
 
-Given a non-negative integer input C<n>, returns the integer square root.
-For native integers, this is equal to C<int(sqrt(n))>.
+Given a non-negative integer input C<n>, returns the exact integer square root,
+C<floor(sqrt(n))>.
 
 This corresponds to Pari/GP's C<sqrtint> function.
 
@@ -2929,7 +2936,7 @@ This corresponds to Pari/GP's C<logint> function.
 Given an integer C<n> and an optional integer number of bits C<k>,
 perform a left shift of C<n> by C<k> bits.
 If the second argument is not provided, it is assumed to be 1.
-This is equivalent to multiplying by C<2^k>.
+For non-negative C<k>, this is equivalent to multiplying by C<2^k>.
 
 With negative C<n>, this behaves as described above.  This is similar to
 how Perl behaves with C<use integer> or C<use bigint>, but raw Perl
@@ -2984,7 +2991,7 @@ Given an integer C<n>, returns the sign of C<n>.
 Returns -1, 0, or 1 if C<n> is negative, zero, or positive respectively.
 
 This corresponds to Pari/GP's C<sign> function, GMP's C<mpz_sgn> function,
-Raku's C<sign> method, and Math::BigInt's C<sign> method.
+Raku's C<sign> method, and comparing a Math::BigInt against zero with C<bcmp>.
 Some of those extend to non-integers.
 
 =head2 cmpint
@@ -3076,11 +3083,13 @@ Given integers C<n>, C<m>, and C<a>, returns C<n * m - a>.
 Given an integer C<a> and a non-negative integer C<b>,
 returns C<a^b>.  C<0^0> will return 1.
 
-The exponent C<b> is converted into an unsigned long.
+The exponent C<b> is not restricted to native integer size.
 
 =head2 divint
 
 Given integers C<a> and C<b>, returns the quotient C<a / b>.
+For this and all the integer division functions below, C<b> must be non-zero.
+A zero divisor raises an exception.
 
 Floor division is used, so q is rounded towards C<-inf> and
 the remainder has the same sign as the divisor C<b>.
@@ -3185,6 +3194,8 @@ Returns a native integer if the result fits in a Perl native integer
 Truncation toward zero is done, just like Perl's C<int(n)> or an integer
 cast in C.
 
+As special cases, C<undef> and the empty string return 0.
+
 Strings prefixed with C<0x>, C<0b>, or C<0o> are interpreted as hexadecimal,
 binary, or octal integers respectively.  A leading zero without one of these
 prefixes does not change the base, so C<toint("0777")> returns 777.
@@ -3234,6 +3245,10 @@ computes C<U_k> for the Lucas sequence defined by C<P>,C<Q>.  These include
 the Fibonacci numbers (C<1,-1>), the Pell numbers (C<2,-1>), the Jacobsthal
 numbers (C<1,-2>), the Mersenne numbers (C<3,2>), and more.
 
+We use C<U(0) = 0>, C<U(1) = 1>, and
+C<U(k) = P*U(k-1) - Q*U(k-2)> for C<k E<gt>= 2>.  The corresponding
+V sequence uses C<V(0) = 2>, C<V(1) = P>, and the same recurrence.
+
 Also see L</lucasumod> for fast computation mod n.
 
 This corresponds to OpenPFGW's C<lucasU> function and gmpy2's C<lucasu>
@@ -3246,6 +3261,7 @@ function.
 Given integers C<P>, C<Q>, and the non-negative integer C<k>,
 computes C<V_k> for the Lucas sequence defined by C<P>,C<Q>.  These include
 the Lucas numbers (C<1,-1>).
+The initial values and recurrence are defined under L</lucasu>.
 
 Also see L</lucasvmod> for fast computation mod n.
 
@@ -3259,7 +3275,8 @@ function.
 Given integers C<P>, C<Q>, and the non-negative integer C<k>,
 computes both C<U_k> and C<V_k> for the Lucas sequence defined
 by C<P>,C<Q>.
-Generating both values is typically not much more time than one.
+Computing both values typically takes little more time than computing one.
+The initial values and recurrence are defined under L</lucasu>.
 
 Also see L</lucasuvmod> for fast computation mod n.
 
@@ -3269,6 +3286,7 @@ Given a list of integers, returns the greatest common divisor.  This is
 often used to test for L<coprimality|https://oeis.org/wiki/Coprimality>.
 
 Each input C<n> is treated as C<|n|>.
+With no inputs, C<gcd()> returns 0.  As usual, C<gcd(0,n) = |n|>.
 
 =head2 lcm
 
@@ -3299,8 +3317,9 @@ solution exists, C<undef> is returned.  If a solution is returned, the
 modulus is equal to the lcm of all the given moduli (see L</lcm>).  In
 the standard case where all values of C<n> are coprime, this is just the
 product.
-The C<a> values must be integers, while the C<n> values must be
-non-zero integers.  Like other mod functions, we use C<abs(n)>.
+The C<a> and C<n> values must be integers.  If any modulus C<n> is zero,
+C<undef> is returned.  Otherwise, like other mod functions, we use C<abs(n)>.
+With no input pairs, C<chinese()> returns 0.
 
 Comparison to similar functions in other software:
 
@@ -3320,12 +3339,13 @@ Comparison to similar functions in other software:
 
 =head2 chinese2
 
-Functions like L</chinese> but returns two items: the remainder
+Like L</chinese>, this returns a solution, but as two items: the remainder
 and the modulus.
 If a solution exists, the second value (the final modulus) is equal to
 the lcm of the absolute values of all the given moduli.
 
 If no solution exists, both return values will be C<undef>.
+With no input pairs, C<chinese2()> returns C<(0,0)>.
 
 =head2 frobenius_number
 
@@ -3339,6 +3359,7 @@ This is sometimes called the "coin problem".
 
 This corresponds to Mathematica's C<FrobeniusNumber> function.  Matching
 their API, we return -1 if any set element is C<1>.
+With no inputs, or with a single input greater than 1, C<undef> is returned.
 
 =head2 vecsum
 
