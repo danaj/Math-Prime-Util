@@ -1042,12 +1042,12 @@ tests, and the L</is_provable_prime> function which will construct a proof
 that the input is prime and returns 2 for almost all primes (at the
 expense of speed).
 
-For native precision numbers (anything smaller than C<2^64>, all three
-functions are identical and use a deterministic set of tests (selected
-Miller-Rabin bases or BPSW).  For larger inputs both L</is_prob_prime> and
-L</is_prime> return probable prime results using the extra-strong
-Baillie-PSW test, which has had no counterexample found since it was
-published in 1980.
+For inputs smaller than C<2^64>, all three functions return identical
+results and use a deterministic set of tests (selected Miller-Rabin bases
+or BPSW).  For larger inputs L</is_prob_prime> returns probable prime results
+using the extra-strong Baillie-PSW test, which has had no counterexample
+found since it was published in 1980.  L</is_prime> begins with the same
+test, but may perform additional tests and attempt a proof.
 
 For cryptographic key generation, you may want even more testing for probable
 primes (NIST recommends some additional M-R tests).  This can be done using
@@ -1097,8 +1097,8 @@ larger than C<18,446,744,073,709,551,557> in 64-bit).
   $n = prev_prime($n);
 
 Returns the prime preceding the input number (i.e. the largest prime that is
-strictly less than the input).  C<undef> is returned if the input is C<2>
-or lower.
+strictly less than the input).  C<undef> is returned for a non-negative input
+of C<2> or less.  Negative inputs are invalid.
 
 The behavior in various programs of the I<previous prime> function is varied.
 Pari/GP and L<Math::Pari> returns the input if it is prime, as does
@@ -1172,13 +1172,14 @@ numbers with exactly C<k> factors.  If C<k=1> these are the primes, if
 C<k=2> these are the semiprimes, if C<k=3> these are the integers in the
 range with exactly 3 prime factors, etc.
 
-This is functionally equivalent to:
+For C<k E<gt>= 1>, this is functionally equivalent to:
 
   for ($a .. $b) { if (is_almost_prime($k,$_)) { ... } }
   # or
   for ($a .. $b) { if (prime_bigomega($_) == $k) { ... } }
 
 though B<significantly> faster and avoids issues with large loop variables.
+For C<k=0>, no calls are made.
 
 =head2 forfactored
 
@@ -1257,7 +1258,8 @@ partitions.  This can be thought of as all orderings of partitions, or
 alternately partitions may be viewed as an ordered subset of compositions.
 The ordering is lexicographic.  All options from L</forpart> may be used.
 
-The number of unrestricted compositions of C<n> is C<2^(n-1)>.
+For C<n E<gt>= 1>, the number of unrestricted compositions is C<2^(n-1)>.
+For C<n=0>, there is one empty composition.
 
 =head2 forcomb
 
@@ -1289,7 +1291,7 @@ This corresponds to the Pari/GP 2.10 C<forsubset> function.
 =head2 forperm
 
 Given non-negative argument C<n>, the block is called with C<@_> set to
-the C<k> element array of values from C<0> to C<n-1> representing
+the C<n> element array of values from C<0> to C<n-1> representing
 permutations in lexicographical order.
 The total number of calls will be C<n!>.
 
@@ -1724,10 +1726,11 @@ Though we have defined C<prime_omega(0) = 1>, it is not included.
 
 =head2 ramanujan_primes
 
-Returns the Ramanujan primes R_n between the upper and lower limits
+Returns the Ramanujan primes R_n between the lower and upper limits
 (inclusive), with a lower limit of C<2> if none is given.  This is
-L<OEIS A104272|http://oeis.org/A104272>.  These are the Rn such that if
-C<< x > Rn >> then L</prime_count>(n) - L</prime_count>(n/2) C<< >= n >>.
+L<OEIS A104272|http://oeis.org/A104272>.  The nth Ramanujan prime C<R_n>
+is the smallest integer such that, for every C<< x >= R_n >>,
+L</prime_count>(x) - L</prime_count>(x/2) C<< >= n >>.
 
 This has a similar API to the L</primes> and L</twin_primes> functions, and
 like them, returns an array reference.
@@ -1767,9 +1770,9 @@ and C<depth>, a sieve of maximum depth C<depth> is done for the C<width>
 consecutive numbers beginning with C<n>.  An array of offsets from the start
 is returned.  C<width> and C<depth> must fit in a native unsigned integer.
 
-The returned list contains those offsets in the range C<n> to C<n+width-1>
-where C<n + offset> has no prime factors smaller than itself and
-less than or equal to C<depth>.  Hence a depth of 2 will remove all even
+The returned list contains offsets from C<0> to C<width-1> for which
+the corresponding value C<n + offset> has no prime factors smaller than
+itself and less than or equal to C<depth>.  Hence a depth of 2 will remove all even
 numbers (other than 2 itself if it is in the range).
 A depth of 3 will remove all numbers divisible by 2 or 3 other than those
 primes themselves.
@@ -1796,13 +1799,14 @@ This function returns an array rather than an array reference.
 Typically the number of returned values is much lower than for
 other primes functions, so this uses the more convenient array
 return.  This function has an identical signature to the function
-of the same name in L<Math::Prime::Util:GMP>.
+of the same name in L<Math::Prime::Util::GMP>.
 
 In scalar context, returns the number of values that would be returned.
 
 The cluster is described as offsets from 0, with the implicit prime
-at 0.  Hence an empty list is asking for all primes (the cluster
-C<p+0>).  A list with the single value C<2> will find all twin primes
+at 0.  An explicit leading 0 is accepted and ignored.  Hence an empty
+list is asking for all primes (the cluster C<p+0>).  A list with the
+single value C<2> will find all twin primes
 (the cluster where C<p+0> and C<p+2> are prime).  The list C<2,6,8>
 will find prime quadruplets.  Note that there is no requirement that
 the list denote a constellation (a cluster with minimal distance) --
@@ -1897,7 +1901,7 @@ See L</nth_prime_lower> for details common to both functions.
 Returns a proven lower bound on the Nth prime.  No sieving is
 done, so these are fast even for large inputs.
 
-For tiny values of C<n>. exact answers are returned.  For small inputs, an
+For tiny values of C<n>, exact answers are returned.  For small inputs, an
 inverse of the opposite prime count bound is used.  For larger values, the
 Dusart (2010) and Axler (2013) bounds are used.
 
@@ -2023,9 +2027,9 @@ For practical use, L</is_strong_pseudoprime> is a much stronger test with
 similar or better performance.
 
 Note that there is a set of composites (the Carmichael numbers) that will
-pass this test for all bases.  This downside is not shared by the Euler
-and strong probable prime tests (also called the Solovay-Strassen
-and Miller-Rabin tests).
+pass this test for every base coprime to the number.  This downside is not
+shared by the Euler and strong probable prime tests (also called the
+Solovay-Strassen and Miller-Rabin tests).
 
 =head2 is_euler_pseudoprime
 
@@ -2188,7 +2192,7 @@ Given an integer C<n>, returns 1 if C<n> is positive and
 C<< (-1)^{(n-1)/2} * C_{(n-1)/2} >> is congruent to 2 mod C<n>,
 where C<C_n> is the nth Catalan number, and returns 0 otherwise.
 The nth Catalan number is equal to C<binomial(2n,n)/(n+1)>.
-All odd primes satisfy this condition, and only three known composites.
+All odd primes satisfy this condition, and only three composites are known.
 
 The pseudoprime sequence is L<OEIS A163209|http://oeis.org/A163209>.
 
@@ -2265,6 +2269,8 @@ Performance at 1e12 is about 40% slower than BPSW.
 Given an integer C<n> and a positive integer C<k>,
 returns 1 if C<n> is positive and passes C<k> Miller-Rabin tests
 using uniform random bases selected between C<2> and C<n-2>.
+For very large C<k> relative to C<n>, a deterministic test may be used
+instead of performing redundant random tests.
 
 This should not be used in place of L</is_prob_prime>, L</is_prime>,
 or L</is_provable_prime>.  Those functions will be faster and provide
@@ -2330,7 +2336,7 @@ larger polynomial set).
 
 The pure Perl implementation uses theorem 5 of BLS75 (Brillhart, Lehmer, and
 Selfridge's 1975 paper), an improvement on the Pocklington-Lehmer test.
-This requires C<n-1> to be factored to C<(n/2)^(1/3))>.  This is often fast,
+This requires C<n-1> to be factored to C<(n/2)^(1/3)>.  This is often fast,
 but as C<n> gets larger, it takes exponentially longer to find factors.
 
 L<Math::Prime::Util::GMP> implements both the BLS75 theorem 5 test as well
@@ -2479,12 +2485,13 @@ and this module does not currently generate these blocks.
 This block verifies if:
   a  Q divides N-1
   .  Let M = (N-1)/Q
-  b  M > 0
-  c  M < Q
-  d  MQ+1 = N
-  e  A > 1
-  f  A^(N-1) mod N = 1
-  g  gcd(A^M - 1, N) = 1
+  b  M is even
+  c  M > 0
+  d  M < Q
+  e  MQ+1 = N
+  f  A > 1
+  g  A^(N-1) mod N = 1
+  h  gcd(A^M - 1, N) = 1
 
 =item C<BLS15>
 
@@ -2534,14 +2541,13 @@ multiple Q values to chain rather than a single one.  This block verifies if:
   c3   A[i] > 1
   c4   A[i] < N
   c5   Q[i] divides N-1
-  . Let F = N-1 divided by each Q[i] as many times as evenly possible
+  . Let F be the product of each Q[i] to its full multiplicity in N-1
   . Let R = (N-1)/F
   d  F is even
   e  gcd(F, R) = 1
-  . Let s = integer    part of R / 2F
-  . Let f = fractional part of R / 2F
+  . Let s and r be the quotient and remainder of R divided by 2F
   . Let P = (F+1) * (2*F*F + (r-1)*F + 1)
-  f  n < P
+  f  N < P
   g  s = 0  OR  r^2-8s is not a perfect square
   h  For each i (0 .. maxi):
   h1   A[i]^(N-1) mod N = 1
@@ -2606,11 +2612,6 @@ This module also has ECPP, and indeed it is much faster.
 This implementation uses theorem 4.1 from Bernstein (2003).  It runs
 substantially faster than the original, v6 revised paper with Lenstra
 improvements, or the late 2002 improvements of Voloch and Bornemann.
-The GMP implementation uses a binary segmentation method for modular
-polynomial multiplication (see Bernstein's 2007 Quartic paper), which
-reduces to a single scalar multiplication, at which GMP excels.
-Because of this, the GMP implementation is likely to be faster once
-the input is larger than C<2^33>.
 
 
 =head2 is_mersenne_prime

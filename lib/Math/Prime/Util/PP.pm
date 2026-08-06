@@ -1005,6 +1005,8 @@ sub sieve_prime_cluster {
     croak "sieve_prime_cluster: values must be even" if $cl[$i] & 1;
     croak "sieve_prime_cluster: values must be increasing" if $i > 0 && $cl[$i] <= $cl[$i-1];
   }
+  shift @cl if $cl[0] == 0;
+  return @{Mprimes($lo,$hi)} if scalar(@cl) == 0;
 
   return maybetobigintall(
              Math::Prime::Util::GMP::sieve_prime_cluster($lo,$hi,@cl)

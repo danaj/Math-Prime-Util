@@ -310,7 +310,7 @@ static const gmp_info_t gmp_info[] = {
   {        "random_safe_prime", 52, 1, R_BIGINT },
 
   {              "sieve_range", 36, 0xFF, R_BIGINT },
-  {      "sieve_prime_cluster", 34, 0xFF, R_BIGINT },
+  {      "sieve_prime_cluster", 54, 0xFF, R_BIGINT },
   {                 "divisors", 53, 0xFF, R_BIGINT },
   {                   "factor", 41, 0xFF, R_BIGINT },
   {                "euler_phi", 54, 0xFF, R_BIGINT },
@@ -2414,16 +2414,17 @@ sieve_prime_cluster(IN SV* svlo, IN SV* svhi, ...)
     UV i, lo, hi, cval, nprimes, *list;
     int done;
   PPCODE:
-    nc = items-1;
+    nc = 1;
     if (items > 100) croak("sieve_prime_cluster: too many entries");
     cl[0] = 0;
-    for (i = 1; i < nc; i++) {
-      if (!_validate_and_set(&cval, aTHX_ ST(1+i), IFLAG_NONNEG))
+    for (i = 2; i < (UV)items; i++) {
+      if (!_validate_and_set(&cval, aTHX_ ST(i), IFLAG_NONNEG))
         croak("sieve_prime_cluster: cluster values must be standard integers");
+      if (i == 2 && cval == 0) continue;
       if (cval & 1) croak("sieve_prime_cluster: values must be even");
       if (cval > 2147483647UL) croak("sieve_prime_cluster: values must be 31-bit");
-      if (cval <= cl[i-1]) croak("sieve_prime_cluster: values must be increasing");
-      cl[i] = cval;
+      if (cval <= cl[nc-1]) croak("sieve_prime_cluster: values must be increasing");
+      cl[nc++] = cval;
     }
     done = 0;
     if (_validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) &&

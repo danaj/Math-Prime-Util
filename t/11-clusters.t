@@ -54,11 +54,10 @@ push @high_check, @high_check2 if $extra;
 #[4,6,10,16,18,24,28,30,34,40,46,48,54,58,60,66);   # A257375
 #[6,12,16,18,22,28,30,36,40,42,46,48);   # A214947
 
-plan tests => scalar(@tests) + 2 + 1 + 1 + 2 + 2 * scalar(@patterns) + scalar(@high_check);
+plan tests => scalar(@tests) + 2 + 1 + 1 + 2 + 3 + 2 * scalar(@patterns) + scalar(@high_check);
 
 for my $t (@tests) {
   my($what, $tuple, $range, $expect) = @$t;
-  shift @$tuple if $tuple->[0] == 0;
   my @res = sieve_prime_cluster($range->[0],$range->[1], @$tuple );
   is_deeply( \@res, $expect, "$what @$range" );
 }
@@ -68,6 +67,12 @@ is_deeply( [sieve_prime_cluster(1,1e9,2,8,14,26)], [3,5], "Inadmissible pattern 
 is( scalar sieve_prime_cluster(0,50,2), 6, "sieve_prime_cluster returns count in scalar context");
 is_deeply( [sieve_prime_cluster(20000,0,2,6,8)], [],
            "sieve_prime_cluster reversed range ending at zero");
+is_deeply( [sieve_prime_cluster(0,30,0)], [2,3,5,7,11,13,17,19,23,29],
+           "sieve_prime_cluster ignores an explicit leading zero");
+ok( !eval { sieve_prime_cluster(0,30,0,0,2); 1 },
+    "sieve_prime_cluster rejects a second zero" );
+ok( !eval { sieve_prime_cluster(0,30,2,0); 1 },
+    "sieve_prime_cluster rejects a non-leading zero" );
 
 my $sprimes;  # array ref of native primes
 my $bigoffsets;  # array ref of offsets for the bigint range
@@ -114,8 +119,8 @@ if ($usegmp) {
 ###### extended patterns native
 for my $pat (@patterns) {
   my @pat = @$pat;
-  shift @pat if $pat[0] == 0;
   my @sieve = sieve_prime_cluster($sbeg,$send,@pat);
+  shift @pat if $pat[0] == 0;
   my @tuple = ktuple($sbeg, $send, $sprimes, @pat);
   my $num = scalar(@tuple);
 
@@ -125,8 +130,8 @@ for my $pat (@patterns) {
 ###### extended patterns bigint
 for my $pat (@patterns) {
   my @pat = @$pat;
-  shift @pat if $pat[0] == 0;
   my @sieve = map {"$_"} sieve_prime_cluster($mbeg,$mend,@pat);
+  shift @pat if $pat[0] == 0;
   my @tuple = map {"".addint($mbeg,$_)}
               ktuple(0, $mspan, $bigoffsets, @pat);
   my $num = scalar(@tuple);
