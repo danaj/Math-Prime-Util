@@ -737,8 +737,9 @@ Version 0.75
   # Or for the composites in a range
   forcomposites { say if is_strong_pseudoprime($_,2) } 10000, 10**6;
 
-  # For non-bigints, is_prime and is_prob_prime will always be 0 or 2.
-  # They return 0 (composite), 2 (prime), or 1 (probably prime)
+  # is_prime and is_prob_prime return one of:
+  #   0 (composite)   1 (probably prime)   2 (definitely prime)
+  # Below 2^64, both tests are deterministic and return only 0 or 2.
   my $n = 1000003;  # for example
   say "$n is prime"  if is_prime($n);
   say "$n is ", (qw(composite maybe_prime? prime))[is_prob_prime($n)];
@@ -751,14 +752,14 @@ Version 0.75
   say "$n is a prime or slpsp"  if is_strong_lucas_pseudoprime($n);
   say "$n is a prime or eslpsp" if is_extra_strong_lucas_pseudoprime($n);
 
-  # step to the next prime (returns 0 if not using bigints and we'd overflow)
+  # step to the next prime (returns a bigint if needed)
   $n = next_prime($n);
 
-  # step back (returns undef if given input 2 or less)
+  # step back (returns undef for non-negative inputs of 2 or less)
   $n = prev_prime($n);
 
 
-  # Return Pi(n) -- the number of primes E<lt>= n.
+  # Return Pi(n) -- the number of primes <= n.
   my $primepi = prime_count( 1_000_000 );
   $primepi = prime_count( 10**14, 10**14+1000 );  # also does ranges
 
@@ -797,21 +798,26 @@ Version 0.75
   say jordan_totient(5, 1234);  # Jordan's totient
 
   # Moebius function used to calculate Mertens
-  $sum += moebius($_) for (1..200); say "Mertens(200) = $sum";
+  say "Mertens(200) = ", vecsum(moebius(1, 200));
   # Mertens function directly (more efficient for large values)
   say mertens(10_000_000);
+
   # Exponential of Mangoldt function
-  say "lamba(49) = ", log(exp_mangoldt(49));
+  say "lambda(49) = ", log(exp_mangoldt(49));
+
   # Some more number theoretical functions
   say liouville(4292384);
   say chebyshev_psi(234984);
   say chebyshev_theta(92384234);
   say partitions(1000);
+
   # Show all prime partitions of 25
   forpart { say "@_" unless scalar grep { !is_prime($_) } @_ } 25;
+
   # List all 3-way combinations of an array
   my @cdata = qw/apple bread curry donut eagle/;
   forcomb { say "@cdata[@_]" } @cdata, 3;
+
   # or all permutations
   forperm { say "@cdata[@_]" } @cdata;
 
@@ -822,12 +828,12 @@ Version 0.75
   my $sigmaf = divisor_sum( $n, sub { log($_[0]) } ); # arbitrary func
 
   # primorial n#, primorial p(n)#, and lcm
-  say "The product of primes below 47 is ",     primorial(47);
+  say "The product of primes up to 47 is ",     primorial(47);
   say "The product of the first 47 primes is ", pn_primorial(47);
   say "lcm(1..1000) is ", consecutive_integer_lcm(1000);
 
   # Ei, li, and Riemann R functions
-  my $ei   = ExponentialIntegral($x);   # $x a real: $x != 0
+  my $ei   = ExponentialIntegral($x);   # $x a real; returns -Inf at 0
   my $li   = LogarithmicIntegral($x);   # $x a real: $x >= 0
   my $R    = RiemannR($x);              # $x a real: $x > 0
   my $Zeta = RiemannZeta($x);           # $x a real: $x >= 0
@@ -836,7 +842,7 @@ Version 0.75
   # Precalculate a sieve, possibly speeding up later work.
   prime_precalc( 1_000_000_000 );
 
-  # Free any memory used by the module.
+  # Free cached memory used by the module.
   prime_memfree;
 
   # Alternate way to free.  When this leaves scope, memory is freed.
@@ -863,23 +869,20 @@ tests, primality proofs, integer factoring, counts / bounds / approximations
 for primes, nth primes, and twin primes, random prime generation,
 and much more.
 
-This module is the fastest on CPAN for almost all operations it supports.
-This includes
-L<Math::Prime::XS>, L<Math::Prime::FastSieve>, L<Math::Factor::XS>,
-L<Math::Prime::TiedArray>, L<Math::Big::Factors>, L<Math::Factoring>,
-and L<Math::Primality> (when the GMP module is available).
-For numbers in the 10-20 digit range, it is often orders of magnitude faster.
-Typically it is faster than L<Math::Pari> for 64-bit operations.
+The module is designed for high performance across the operations it
+supports.  Its XS implementation accelerates native-size operations, while
+L<Math::Prime::Util::GMP> provides much faster methods for many bigint
+operations.
 
-All operations support both Perl UV's (32-bit or 64-bit) and bignums.  If
-you want high performance with big numbers (larger than Perl's native 32-bit
-or 64-bit size), you should install L<Math::Prime::Util::GMP> and
-L<Math::BigInt::GMP>.  This will be a recurring theme throughout this
-documentation -- while all bignum operations are supported in pure Perl,
-most methods will be much slower than the C+GMP alternative.
+Most integer functions accept values beyond Perl's native 32-bit or 64-bit
+range, and integer results use the configured bigint class when needed.
+Individual functions document any native-size input limits.  Pure Perl
+implementations are available for most bigint operations, but are generally
+slower than the C and GMP alternatives.
 
-The module is thread-safe and allows concurrency between Perl threads while
-still sharing a prime cache.  It is not itself multi-threaded.  See the
+The module is thread-safe and allows concurrency between Perl threads.
+The XS implementation shares a prime cache between them.
+The functions themselves are not multi-threaded.  See the
 L<Limitations|/"LIMITATIONS"> section if you are using Win32 and threads in
 your program.  Also note that L<Math::Pari> is not thread-safe (and will
 crash as soon as it is loaded in threads), so if you use
@@ -906,27 +909,31 @@ bigint and expression inputs.
 
 =head1 ENVIRONMENT VARIABLES
 
-There are two environment variables that affect operation.  These are
+There are three environment variables that affect operation.  These are
 typically used for validation of the different methods or to simulate
 systems that have different support.
+All the environment variables are read once when Math::Prime::Util is loaded.
 
 =head2 MPU_NO_XS
 
-If set to C<1>, everything is run in pure Perl.  No C functions
-are loaded or used, as XSLoader is not even called.  All top-level
-XS functions are replaced by a pure Perl layer (the PPFE.pm module
-that supplies a "Pure Perl Front End").
+If set to C<1>, this module's XS implementation is not loaded or used, as
+XSLoader is not even called.  Top-level functions normally supplied by XS
+are replaced by a pure Perl layer (the PPFE.pm module that supplies a
+"Pure Perl Front End").
 
-Caveat: This does not change whether the GMP backend is used.
-For as much pure Perl as possible, you will need to set both variables.
+Caveat: This does not change whether the GMP backend, which also uses C, is
+loaded and used.
+For as much pure Perl as possible, you will need to set
+both MPU_NO_XS and MPU_NO_GMP.
 
 If this variable is not set or set to anything other than C<1>, the
 module operates normally.
 
 =head2 MPU_NO_GMP
 
-If set to C<1>, the L<Math::Prime::Util::GMP> backend is not
-loaded, and operation will be exactly as if it was not installed.
+If set to C<1> before Math::Prime::Util is loaded, the
+L<Math::Prime::Util::GMP> backend will not be loaded, even if installed.
+This is primarily intended for testing, development, and debugging.
 
 If this variable is not set or set to anything other than C<1>, the
 module operates normally.
@@ -934,8 +941,9 @@ module operates normally.
 =head2 MPU_DEVNAMES
 
 If set to C<1>, the PP package will be loaded on startup rather than
-on demand, and the package aliases C<MPU>, C<PP>, C<GMP> will be used
-for the main, Perl, and GMP packages respectively.
+on demand, and the package aliases C<MPU>, C<PP>, and C<GMP> will be
+created for the main, Perl, and GMP packages respectively.
+The C<GMP> alias is created only when that backend is available.
 Normally you wouldn't want this both for aggressive namespace pollution
 and for performance (there is often no need to load the huge PP module).
 But it is convenient if one wants to call the different paths explicitly.
@@ -949,9 +957,9 @@ or more time critical short applications will care.
 
 =head1 BIGNUM SUPPORT
 
-By default all functions support bigints.  For performance, you should
-install L<Math::Prime::Util::GMP> which will be automatically used as a
-backend.
+Most integer functions support bigint inputs, with individual size limits
+documented where applicable.  For performance, you should install
+L<Math::Prime::Util::GMP>, which will be automatically used as a backend.
 
 The default bigint class is L<Math::BigInt>, which is not particularly speedy
 but is available by default in all Perl distributions, and is well tested.
@@ -959,7 +967,7 @@ You can install and use L<Math::GMPz> or L<Math::GMP> which will be
 B<much> faster.  You can have this module use and return them, for example:
 
   prime_set_config(bigint => Math::GMPz);
-  my $n = next_prime(~0);
+  my $n = next_prime("18446744073709551615");
   say "$n ",ref($n);
   # 18446744073709551629 Math::GMPz
 
@@ -1008,16 +1016,15 @@ This module provides three functions for general primality testing, as
 well as numerous specialized functions.  The three main functions are:
 L</is_prob_prime> and L</is_prime> for general use, and L</is_provable_prime>
 for proofs.  For inputs below C<2^64> the functions are identical and
-fast deterministic testing is performed.  That is, the results will always
-be correct and should take at most a few microseconds for any input.  This
-is hundreds to thousands of times faster than other CPAN modules.  For
-inputs larger than C<2^64>, an extra-strong
+fast deterministic testing is performed, so the results will always be
+correct.  For inputs larger than C<2^64>, an extra-strong
 L<BPSW test|http://en.wikipedia.org/wiki/Baillie-PSW_primality_test>
 is used.  See the L</PRIMALITY TESTING NOTES> section for more
 discussion.
 
-Following the semantics used by Pari/GP, all primality test functions
-allow a negative primary argument, but will return false.
+Following the semantics used by Pari/GP, functions that directly test an
+integer C<n> for primality or pseudoprimality allow a negative C<n>, but
+return false.
 All inputs must be integers or an error is raised.
 
 
