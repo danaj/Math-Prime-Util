@@ -1998,6 +1998,8 @@ under C<10^8> or so, this is relatively efficient for single calls.  If
 multiple calls are being made, it will be much more efficient to get the
 list once.
 
+Like the other C<nth_> functions, C<undef> is returned for C<n == 0>.
+
 =head2 nth_ramanujan_prime_approx
 
 A fast approximation of the Nth Ramanujan prime.
@@ -2384,8 +2386,7 @@ its elliptic curve computations.
 If the certificate is malformed, the routine will carp a warning in addition
 to returning 0.  If the C<verbose> option is set (see L</prime_set_config>)
 then if the validation fails, the reason for the failure is printed in
-addition to returning 0.  If the C<verbose> option is set to 2 or higher, then
-a message indicating success and the certificate type is also printed.
+addition to returning 0.
 
 A certificate may have arbitrary text before the beginning (the primality
 routines from this module will not have any extra text, but this way

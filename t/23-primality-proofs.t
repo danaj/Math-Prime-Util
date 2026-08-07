@@ -56,7 +56,7 @@ plan tests => 0
             + 1*$doextra_proof     #  n-1 for 2^607-1
             + (($doexpensive) ? 1 : 0)  # n-1 proof
             + 2                    #  Pratt and ECPP
-            + 28 # borked up certificates generate warnings
+            + 32 # borked up certificates generate warnings
             + 6  # verification failures (tiny/BPSW)
             + 8  # verification failures (Lucas/Pratt)
             + 8  # verification failures (n-1)
@@ -212,7 +212,7 @@ EOPROOF
 
 # First, let's get the borked up formats, which is should warn about.
 SKIP: {
-  skip "No Test::Warn", 28 unless $use_test_warn;
+  skip "No Test::Warn", 32 unless $use_test_warn;
   my $result;
   warning_like { $result = verify_prime([1490266103, 'INVALID', 1, 2, 3]) }
                { carped => qr/^verify_prime: / },
@@ -272,6 +272,33 @@ SKIP: {
   warning_like { $result = verify_prime([1490266103, 'ECPP', [1490266103, 1442956066, 1025050760, 1490277784, 2780369, [531078754, 0, 195830554]]]) }
                { carped => qr/^verify_prime: / },
                "warning for invalid ECPP (block point wrong format)";
+  is( $result, 0, "   ...and returns 0" );
+
+  my $unknown_type = <<'CERT';
+[MPU - Primality Certificate]
+Version 1.0
+
+Proof for:
+N 17
+
+Type UNKNOWN
+CERT
+  warning_like { $result = verify_prime($unknown_type) }
+               { carped => qr/^verify_prime: Unknown type: UNKNOWN/ },
+               "warning for unknown text certificate proof type";
+  is( $result, 0, "   ...and returns 0" );
+
+  my $missing_n = <<'CERT';
+[MPU - Primality Certificate]
+Version 1.0
+
+Proof for:
+Type Small
+N 17
+CERT
+  warning_like { $result = verify_prime($missing_n) }
+               { carped => qr/^verify_prime: Still missing values in type Proof for/ },
+               "warning for missing certificate N";
   is( $result, 0, "   ...and returns 0" );
 }
 

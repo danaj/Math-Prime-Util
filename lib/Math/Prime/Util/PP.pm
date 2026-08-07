@@ -5381,7 +5381,8 @@ sub nth_omega_prime {
 sub nth_ramanujan_prime_upper {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return (0,2,11)[$n] if $n <= 2;
+  return undef if $n == 0;
+  return (2,11)[$n-1] if $n <= 2;
 
   if ($n < 50) {
     return Mnth_prime_upper(int(2.6*$n)) if $n <= 20;
@@ -5408,7 +5409,8 @@ sub nth_ramanujan_prime_upper {
 sub nth_ramanujan_prime_lower {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return (0,2,11)[$n] if $n <= 2;
+  return undef if $n == 0;
+  return (2,11)[$n-1] if $n <= 2;
   my $nth = Math::Prime::Util::nth_prime_lower(Mmulint($n,2));
   return Mdivint(Mmulint(275,$nth),256) if $n < 10000;
   return Mdivint(Mmulint(262,$nth),256) if $n < 1e10;
@@ -5417,7 +5419,8 @@ sub nth_ramanujan_prime_lower {
 sub nth_ramanujan_prime_approx {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return (0,2,11)[$n] if $n <= 2;
+  return undef if $n == 0;
+  return (2,11)[$n-1] if $n <= 2;
   my($lo,$hi) = (nth_ramanujan_prime_lower($n),nth_ramanujan_prime_upper($n));
   $lo + (($hi-$lo)>>1);
 }

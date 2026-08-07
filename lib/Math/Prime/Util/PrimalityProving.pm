@@ -404,7 +404,7 @@ sub convert_array_cert_to_string {
 ###############################################################################
 
 sub _primality_error ($) {  ## no critic qw(ProhibitSubroutinePrototypes)
-  print "primality fail: $_[0]\n" if prime_get_config->{'verbose'};
+  carp "verify_prime: $_[0]\n";
   return;  # error in certificate
 }
 
@@ -809,14 +809,19 @@ sub verify_cert {
     chomp($line);
     if ($line =~ /^\[(\S+) - Primality Certificate\]/) {
       if ($1 ne 'MPU') {
-        return _primality_error "Unknown certificate type: $1";
+        _primality_error "Unknown certificate type: $1";
+        return 0;
       }
       $cert_type = $1;
       next;
     }
     if ( ($cert_type eq 'PRIMO' && $line =~ /^\[Candidate\]/) || ($cert_type eq 'MPU' && $line =~ /^Proof for:/) ) {
-      return _primality_error "Certificate with multiple N values" if defined $N;
+      if (defined $N) {
+        _primality_error "Certificate with multiple N values";
+        return 0;
+      }
       ($N) = _read_vars($lines, 'Proof for', qw/N/);
+      return 0 unless defined $N;
       if (!is_prob_prime($N)) {
         _pfail "N '$N' does not look prime.";
         return 0;
@@ -825,28 +830,40 @@ sub verify_cert {
     }
     if ($line =~ /^Base (\d+)/) {
       $base = $1;
-      return _primality_error "Only base 10 supported, sorry" unless $base == 10;
+      if ($base != 10) {
+        _primality_error "Only base 10 supported, sorry";
+        return 0;
+      }
       next;
     }
     if ($line =~ /^Type (.*?)\s*$/) {
-      return _primality_error("Starting type without telling me the N value!") unless defined $N;
+      if (!defined $N) {
+        _primality_error "Starting type without telling me the N value!";
+        return 0;
+      }
       my $type = $1;
       $type =~ tr/a-z/A-Z/;
-      error("Unknown type: $type") unless defined $proof_funcs{$type};
+      if (!defined $proof_funcs{$type}) {
+        _primality_error "Unknown type: $type";
+        return 0;
+      }
       my ($n, @q) = $proof_funcs{$type}->($lines);
       return 0 unless defined $n;
       $parts{$n} = [@q];
     }
   }
 
-  return _primality_error("No N") unless defined $N;
+  if (!defined $N) {
+    _primality_error "No N";
+    return 0;
+  }
   my @qs = ($N);
   while (@qs) {
     my $q = shift @qs;
     # Check that this q has a chain
     if (!defined $parts{$q}) {
       if ($q > $_smallval) {
-        _primality_error "q value $q has no proof\n";
+        _primality_error "q value $q has no proof";
         return 0;
       }
       if (!is_prob_prime($q)) {
@@ -930,8 +947,7 @@ indicates the proof given is not sufficient.
 If the certificate is malformed, the routine will carp a warning in addition
 to returning 0.  If the C<verbose> option is set (see L</prime_set_config>)
 then if the validation fails, the reason for the failure is printed in
-addition to returning 0.  If the C<verbose> option is set to 2 or higher, then
-a message indicating success and the certificate type is also printed.
+addition to returning 0.
 
 A later release may add support for
 L<Primo|http://www.ellipsa.eu/public/primo/primo.html>

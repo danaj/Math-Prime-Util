@@ -31,7 +31,7 @@ my %small_range = (
   "10000 to 10100" => [10061,10067,10079,10091,10093],
 );
 
-plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 2 + 3 + 3 + 2;
+plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 2 + 3 + 3 + 2 + 1;
 
 is_deeply( ramanujan_primes($a104272[-1]), \@a104272, "ramanujan_primes($a104272[-1])" );
 
@@ -41,6 +41,13 @@ while (my($range, $expect) = each (%small_range)) {
 }
 
 my @smalla = grep { $_ < ($usexs ? 1000 : 500) } @a104272;
+
+is_deeply(
+  [ nth_ramanujan_prime(0), nth_ramanujan_prime_lower(0),
+    nth_ramanujan_prime_upper(0), nth_ramanujan_prime_approx(0) ],
+  [ undef, undef, undef, undef ],
+  "zeroth Ramanujan prime and bounds are undefined"
+);
 
 {
   my @rp;
