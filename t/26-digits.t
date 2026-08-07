@@ -76,6 +76,11 @@ subtest 'todigits', sub {
   is_deeply([todigits(77,2)], [1,0,0,1,1,0,1], "todigits 77 base 2");
   is_deeply([todigits(77,3)], [2,2,1,2], "todigits 77 base 3");
   is_deeply([todigits(77,21)], [3,14], "todigits 77 base 21");
+  is_deeply([todigits("18446744073709551617", "4294967296")], [1,0,1],
+            "todigits bigint in base larger than 32-bit");
+  is_deeply([todigits("340282366920938463463374607431768211457",
+                      "18446744073709551616")], [1,0,1],
+            "todigits bigint in base larger than native UV");
 
   is_deeply([todigits(900,2)], [1,1,1,0,0,0,0,1,0,0], "todigits 900 base 2");
   is_deeply([todigits(900,2,0)], [], "todigits 900 base 2 len 0");
@@ -158,6 +163,11 @@ subtest 'is_palindrome', sub {
   is(is_palindrome(130,3),1,"130 is a base-3 palindrome");
   is(is_palindrome(130,4),1,"130 is a base-4 palindrome");
   is(is_palindrome(10,"4294967296"),1,"single digit in base larger than 32-bit");
+  is(is_palindrome("18446744073709551617", "4294967296"),1,
+     "multi-digit palindrome in base larger than 32-bit");
+  is(is_palindrome("340282366920938463463374607431768211457",
+                   "18446744073709551616"),1,
+     "multi-digit palindrome in base larger than native UV");
 
   my $m = 719848917;
   ok(is_palindrome($m) && is_palindrome($m,2) && is_palindrome($m,8),"$m is a palindrome in bases 2, 8, and 10");
@@ -192,6 +202,11 @@ subtest 'is_harshad' => sub {
   is(is_harshad(2016), 1, "2016: 2+0+1+6=9, 9|2016");
   is(is_harshad(2017), 0, "2017: 2+0+1+7=10, 10 does not divide 2017");
   is(is_harshad(10, "4294967296"), 1, "single digit Harshad in base larger than 32-bit");
+  is(is_harshad("18446744073709551618", "4294967296"), 1,
+     "multi-digit Harshad in base larger than 32-bit");
+  is(is_harshad("340282366920938463463374607431768211458",
+                "18446744073709551616"), 1,
+     "multi-digit Harshad in base larger than native UV");
 
   # bigint
   is(is_harshad("200000000000000000000"), 1, "2*10^20: digitsum=2, even");

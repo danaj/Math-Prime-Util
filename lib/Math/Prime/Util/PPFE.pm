@@ -150,6 +150,7 @@ sub entropy_bytes {
   if ($uvbits == 64) {
     if ($nvbits <= 32) {
       *drand = sub {
+        croak "drand: expected zero or one argument" if @_ > 1;
         my $d;
         do { $d = irand() * $_tonv_32; } while $d >= 1.0;
         $d *= $_[0] if defined($_[0]) && $_[0] != 0;
@@ -157,6 +158,7 @@ sub entropy_bytes {
       };
     } elsif ($nvbits <= 64) {
       *drand = sub {
+        croak "drand: expected zero or one argument" if @_ > 1;
         my $d;
         do { $d = irand64() * $_tonv_64; } while $d >= 1.0;
         $d *= $_[0] if defined($_[0]) && $_[0] != 0;
@@ -164,6 +166,7 @@ sub entropy_bytes {
       };
     } else {
       *drand = sub {
+        croak "drand: expected zero or one argument" if @_ > 1;
         my $d;
         do {
           $d = irand64() * $_tonv_64 + irand64() * $_tonv_128;
@@ -175,6 +178,7 @@ sub entropy_bytes {
   } else {
     if ($nvbits <= 32) {
       *drand = sub {
+        croak "drand: expected zero or one argument" if @_ > 1;
         my $d;
         do { $d = irand() * $_tonv_32; } while $d >= 1.0;
         $d *= $_[0] if defined($_[0]) && $_[0] != 0;
@@ -182,6 +186,7 @@ sub entropy_bytes {
       };
     } elsif ($nvbits <= 64) {
       *drand = sub {
+        croak "drand: expected zero or one argument" if @_ > 1;
         my $d;
         do {
           my $a = irand();
@@ -193,6 +198,7 @@ sub entropy_bytes {
       };
     } else {
       *drand = sub {
+        croak "drand: expected zero or one argument" if @_ > 1;
         my $d;
         do {
           $d = irand() * $_tonv_32 + irand() * $_tonv_64

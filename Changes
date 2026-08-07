@@ -84,8 +84,8 @@ Revision history for Perl module Math::Prime::Util
 
     - drand now always returns below 1 before scaling in both XS and PP.
 
-    - PP srand and csrand reject extra arguments, and csrand returns no value
-      in both XS and PP.
+    - PP drand, srand, and csrand reject extra arguments, and csrand returns
+      no value in both XS and PP.
 
     - PP uses timer and scheduler jitter if no normal entropy source is
       available, rather than deterministically seeding the CSPRNG with zero.

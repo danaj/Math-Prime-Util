@@ -6845,7 +6845,7 @@ void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
       if (lstatus != 0) tlen = uvtlen;
     }
     if (bstatus != 1 || lstatus != 1)
-      DISPATCHPP_RETURN();
+      DISPATCHPP_RETURN_GMPIF(0);
     if (nstatus != 0 && tlen <= 128) {
       if (ix == 0) {             /* todigits with native input */
         UV digits[128];
@@ -6895,7 +6895,11 @@ void todigits(SV* svn, SV* svbase = 0, SV* svtlen = 0)
         PUSH_NPARITY(str[i]-'0');
       XSRETURN(len);
     }
+#if BITS_PER_WORD == 64
+    DISPATCHPP_RETURN_GMPIF(base <= UINT32_MAX);
+#else
     DISPATCHPP_RETURN();
+#endif
 
 void fromdigits(SV* svn, SV* svbase = 0)
   PREINIT:

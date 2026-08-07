@@ -19,6 +19,7 @@ plan tests => 1
             + 3  # irand64
             + 2
             + 6  # drand range and zero scaling
+            + 1  # drand arity
             + 4  # identify rng and test srand/csrand
             + 2  # srand UV coercion
             + 1  # csrand(undef) entropy reseeding
@@ -113,7 +114,7 @@ sub check_float_range {
   if ($lo <= $hi) {
     ok( vecall(sub{ $_ >= $lo && $_ < $hi },@$v), "$name: all in range [$lo,$hi)" );
   } else {
-    ok( vecall(sub{ $_ >= $hi && $_ < $lo },@$v), "$name: all in range ($hi,$lo]" );
+    ok( vecall(sub{ $_ > $hi && $_ <= $lo },@$v), "$name: all in range ($hi,$lo]" );
   }
 }
 my $num = $extra ? 1000 : 100;
@@ -121,6 +122,8 @@ check_float_range('drand(10)',0,10,[map{ drand(10) } 1..$num]);
 check_float_range('drand()',0,1,[map{ drand() } 1..$num]);
 check_float_range('drand(-10)',0,-10,[map{ drand(-10) } 1..$num]);
 check_float_range('drand(0)',0,1,[map{ drand(0) } 1..$num]);
+my $drand_sub = \&drand;
+ok(!eval { $drand_sub->(1,2); 1 }, "drand rejects extra arguments");
 {
   # Skip warnings these give, worry about the behavior
   no warnings;
