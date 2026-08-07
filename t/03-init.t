@@ -1,10 +1,11 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use Math::Prime::Util qw/prime_precalc prime_memfree prime_get_config/;
+use Math::Prime::Util qw/prime_precalc prime_memfree prime_get_config
+                         prime_set_config/;
 use Math::Prime::Util::MemFree;
 
-use Test::More  tests => 3 + 3 + 3 + 6;
+use Test::More  tests => 3 + 3 + 3 + 6 + 3;
 
 
 # This is still a slightly dubious assumption, that the precalc size _must_
@@ -15,6 +16,14 @@ can_ok( 'Math::Prime::Util', 'prime_get_config' );
 { my $x = Math::Prime::Util::_to_bigint(0); }
 my $config = Math::Prime::Util::prime_get_config();
 my $biclass = $config->{bigintclass};
+
+is(prime_set_config(xs => $config->{xs}), 1,
+   "Setting XS to its current state is allowed");
+eval { prime_set_config(xs => !$config->{xs}) };
+like($@, qr/^prime_set_config: xs cannot be changed at runtime/,
+     "XS selection cannot be changed at runtime");
+is(prime_get_config()->{xs}, $config->{xs},
+   "Rejected XS change preserves the current state");
 
 my $diag = "" .
   (($config->{xs}) ? "XS" : "PP") .

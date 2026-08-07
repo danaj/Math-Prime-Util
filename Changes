@@ -10,6 +10,9 @@ Revision history for Perl module Math::Prime::Util
 
     [API Changes]
 
+    - prime_set_config does not allow changing the xs option.  Set MPU_NO_XS=1
+      before loading the module to select the Pure Perl implementation.
+
     - When a function returns an integer result larger than native type size,
       it will use the user configured bigint class (default Math::BigInt).
       We no longer try to preserve the input bigint class.

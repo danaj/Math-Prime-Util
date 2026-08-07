@@ -144,7 +144,7 @@ our %EXPORT_TAGS = (all  => [ @EXPORT_OK ],
 push @EXPORT_OK, (qw/trial_factor fermat_factor holf_factor lehman_factor squfof_factor prho_factor pbrent_factor pminus1_factor pplus1_factor cheb_factor ecm_factor rand srand/);
 
 my %_Config;
-my %_GMPfunc;  # Available MPU::GMP functions
+our %_GMPfunc;  # Available MPU::GMP functions
 
 # Similar to how boolean handles its option
 sub import {
@@ -272,8 +272,8 @@ sub prime_get_config {
   return \%config;
 }
 
-# Note: You can cause yourself pain if you turn on xs or gmp when they're not
-# loaded.  Your calls will probably die horribly.
+# Note: You can cause yourself pain if you turn on gmp when it isn't loaded.
+# Your calls will probably die horribly.
 sub prime_set_config {
   my %params = (@_);  # no defaults
   foreach my $param (keys %params) {
@@ -281,10 +281,13 @@ sub prime_set_config {
     $param = lc $param;
     # dispatch table should go here.
     if      ($param eq 'xs') {
-      $_Config{'xs'} = ($value) ? 1 : 0;
-      $_XS_MAXVAL = $_Config{'xs'}  ?  MPU_MAXPARAM  :  -1;
+      if (!!$value != $_Config{'xs'}) {
+        croak "prime_set_config: xs cannot be changed at runtime; " .
+              "XS selection is controlled by MPU_NO_XS at load time";
+      }
     } elsif ($param eq 'gmp') {
-      $_HAVE_GMP = ($value) ? int(100*$Math::Prime::Util::GMP::VERSION) : 0;
+      $_HAVE_GMP = ($value) ? int(100 * $Math::Prime::Util::GMP::VERSION + 1e-6)
+                            : 0;
       $_Config{'gmp'} = $_HAVE_GMP;
       $Math::Prime::Util::_GMPfunc{$_} = $_HAVE_GMP
         for keys %Math::Prime::Util::_GMPfunc;
@@ -363,6 +366,7 @@ sub _load_bigint {
   do { require Math::BigInt;  Math::BigInt->import(try=>"GMP,GMPz,LTM,Pari"); } unless defined $Math::BigInt::VERSION;
   $_BIGINT = $_Config{'bigintclass'} = 'Math::BigInt';
   _XS_set_bigint_class($_BIGINT) if $_Config{'xs'};
+  return $_BIGINT;
 }
 
 sub _bigint_to_int {
@@ -716,10 +720,13 @@ Version 0.75
 
 =head1 SYNOPSIS
 
-  # Nothing is exported by default.  List the functions, or use :all.
-  use Math::Prime::Util ':all';  # import all functions
+  # Nothing is exported by default; list any functions to import.
+  use Math::Prime::Util qw/is_prime next_prime/;
 
-  # The ':rand' tag replaces srand and rand (not done by default)
+  # ':all' imports all standard functions.
+  use Math::Prime::Util ':all';
+
+  # ':rand' imports replacements for srand and rand.
   use Math::Prime::Util ':rand';  # import srand, rand, irand, irand32, irand64
 
 
@@ -928,6 +935,9 @@ both MPU_NO_XS and MPU_NO_GMP.
 
 If this variable is not set or set to anything other than C<1>, the
 module operates normally.
+
+XS selection is fixed when Math::Prime::Util is loaded and cannot be
+changed later with L</prime_set_config>.
 
 =head2 MPU_NO_GMP
 
@@ -7031,10 +7041,6 @@ Allows setting of some parameters.  Currently the only parameters are:
 
   trybigint    Exactly the same behavior as C<bigint> but no warning
                will be output if we couldn't load anything from the list.
-
-  xs           Allows turning off the XS code, forcing the Pure Perl
-               code to be used.  Set to 0 to disable XS, set to 1 to
-               re-enable.  You probably will never want to do this.
 
   gmp          Allows turning off direct use of L<Math::Prime::Util::GMP>.
                This does not disable XS or change the selected bigint class;

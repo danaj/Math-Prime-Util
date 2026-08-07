@@ -649,3 +649,7 @@ OEIS lucky numbers:
   secure should remain process-global.
 
 - hclassno is limited to n <= SINTMAX.
+
+- Consider making bernreal and harmreal into XS functions.
+
+- Add support for Pari primality certificates to MPU and standalone.
