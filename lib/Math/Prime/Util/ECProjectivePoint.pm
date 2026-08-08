@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::ECProjectivePoint::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECProjectivePoint::VERSION = '0.74';
+  $Math::Prime::Util::ECProjectivePoint::VERSION = '0.75';
 }
 
 BEGIN {
@@ -209,7 +209,7 @@ Math::Prime::Util::ECProjectivePoint - Elliptic curve operations for projective 
 
 =head1 VERSION
 
-Version 0.74
+Version 0.75
 
 
 =head1 SYNOPSIS

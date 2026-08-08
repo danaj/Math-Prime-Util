@@ -1,6 +1,6 @@
 Revision history for Perl module Math::Prime::Util
 
-0.75 2026-?
+0.75 2026-08-08
 
     - Requires Perl 5.8.1 or later.  Dropping Perl 5.6 support has been
       considered for years.  Supporting very old Perl builds with broken

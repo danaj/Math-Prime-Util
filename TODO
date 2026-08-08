@@ -653,3 +653,7 @@ OEIS lucky numbers:
 - Consider making bernreal and harmreal into XS functions.
 
 - Add support for Pari primality certificates to MPU and standalone.
+
+- modint uses strint, but is_divisible does not.  Add that.
+
+- srand from :rand should use PERL_RAND_SEED

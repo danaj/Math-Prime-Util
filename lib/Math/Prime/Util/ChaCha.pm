@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::ChaCha::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ChaCha::VERSION = '0.74';
+  $Math::Prime::Util::ChaCha::VERSION = '0.75';
 }
 
 ###############################################################################
@@ -259,7 +259,7 @@ Math::Prime::Util::ChaCha - Pure Perl ChaCha20 CSPRNG
 
 =head1 VERSION
 
-Version 0.74
+Version 0.75
 
 
 =head1 SYNOPSIS

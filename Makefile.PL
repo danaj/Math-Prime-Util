@@ -109,7 +109,6 @@ WriteMakefile1(
                   version => '2',
                   url     => 'http://search.cpan.org/perldoc?CPAN::Meta::Spec',
                },
-               release_status => 'testing',
                dynamic_config => 1,  # Check for GMP on install
                resources    => {
                   license    => [ 'http://dev.perl.org/licenses/' ],
