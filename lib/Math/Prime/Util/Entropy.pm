@@ -5,7 +5,7 @@ use Carp qw/carp croak confess/;
 
 BEGIN {
   $Math::Prime::Util::Entropy::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::Entropy::VERSION = '0.75';
+  $Math::Prime::Util::Entropy::VERSION = '0.76';
 }
 
 sub _read_file {
@@ -173,7 +173,7 @@ Math::Prime::Util::Entropy - Get a good random seed
 
 =head1 VERSION
 
-Version 0.75
+Version 0.76
 
 
 =head1 SYNOPSIS

@@ -6,7 +6,7 @@ use Scalar::Util qw/looks_like_number refaddr reftype/;
 
 BEGIN {
   $Math::Prime::Util::PP::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::PP::VERSION = '0.75';
+  $Math::Prime::Util::PP::VERSION = '0.76';
 }
 
 our $BIGINTVERSION = 0.0;
@@ -14009,7 +14009,7 @@ Math::Prime::Util::PP - Pure Perl version of Math::Prime::Util
 
 =head1 VERSION
 
-Version 0.75
+Version 0.76
 
 
 =head1 SYNOPSIS

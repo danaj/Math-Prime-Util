@@ -5,7 +5,7 @@ use Carp qw/croak/;
 
 BEGIN {
   $Math::Prime::Util::ECM::AUTHORITY = 'cpan:DANAJ';
-  $Math::Prime::Util::ECM::VERSION = '0.75';
+  $Math::Prime::Util::ECM::VERSION = '0.76';
 }
 
 BEGIN {
