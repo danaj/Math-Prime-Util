@@ -336,7 +336,9 @@
   arithmetic.  Retain Math::BigInt method paths only in measured,
   performance-sensitive, explicitly gated blocks.
 
-- incremental factoring.  Maybe a stateful iterator?
+- incremental factoring.
+  ordered_factor_iterator(n) - simple wrapper around factor_exp
+  factor_iterator(n) - unordered lazy factoring.  returns f/e pairs.
 
 - consider forfactors { } n.  Iterate through factors using iterator.
   Allows convenient early exit.

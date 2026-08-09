@@ -239,7 +239,7 @@ static const gmp_info_t gmp_info[] = {
   { "is_almost_extra_strong_lucas_pseudoprime", 13, 1, R_BOOL },
   {                 "is_frobenius_pseudoprime", 54, 1, R_BOOL }, /* v0.24 IVs */
   {       "is_frobenius_underwood_pseudoprime", 13, 1, R_BOOL },
-  {         "is_frobenius_khashin_pseudoprime", 30, 1, R_BOOL },
+  {         "is_frobenius_khashin_pseudoprime", 54, 1, R_BOOL },
   {                      "miller_rabin_random", 46, 1, R_BOOL },
 
   {               "next_prime",  1, 1, R_BIGINT },
