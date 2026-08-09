@@ -301,6 +301,7 @@ sub entropy_bytes {
 *is_perfect_number = \&Math::Prime::Util::PP::is_perfect_number;
 *is_delicate_prime = \&Math::Prime::Util::PP::is_delicate_prime;
 *is_safe_prime = \&Math::Prime::Util::PP::is_safe_prime;
+*is_higgs_prime = \&Math::Prime::Util::PP::is_higgs_prime;
 *is_happy = \&Math::Prime::Util::PP::is_happy;
 *is_harshad = \&Math::Prime::Util::PP::is_harshad;
 *is_palindrome = \&Math::Prime::Util::PP::is_palindrome;

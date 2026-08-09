@@ -1013,6 +1013,9 @@ subtest 'other is * prime', sub {
             [0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0],
             "is_safe_prime(n) for 1,3,5,7,...,61");
 
+  is_deeply([map { is_higgs_prime($_) } 37,83,103], [1,0,0],
+            "is_higgs_prime");
+
 };
 
 subtest 'primality proofs', sub {

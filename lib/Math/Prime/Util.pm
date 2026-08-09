@@ -35,7 +35,7 @@ our @EXPORT_OK =
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
-      is_harshad is_palindrome is_safe_prime
+      is_harshad is_palindrome is_safe_prime is_higgs_prime
       sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
       absint negint signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
@@ -4502,6 +4502,18 @@ safe prime has a large prime-order subgroup, making discrete logarithm
 problems harder.  See also L</random_safe_prime>.
 
 This is L<OEIS A005385|http://oeis.org/A005385>.
+
+=head2 is_higgs_prime
+
+  say "$n is a Higgs prime" if is_higgs_prime($n);
+
+Given an integer C<n>, returns 1 if C<n> is a Higgs prime, and 0 otherwise.
+Starting with 2, a prime C<p> is a Higgs prime if C<p-1> divides the square
+of the product of all smaller Higgs primes.  Equivalently, every prime factor
+of C<p-1> must be a Higgs prime and have exponent at most 2.
+
+This uses the standard exponent-2 definition,
+L<OEIS A007459|https://oeis.org/A007459>.
 
 =head2 is_fundamental
 

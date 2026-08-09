@@ -2442,6 +2442,24 @@ bool is_catalan_pseudoprime(UV n) {
   return (a & 1) ? (m==(n-1)) : (m==1);
 }
 
+static bool _is_higgs(UV p) {  /* assumes p is a prime */
+  if (p % 8 == 1) return 0;
+  if (p < 103) return p != 83;
+  {
+    uint32_t i;
+    factored_t nf = factorint((p-1)>>1);
+    for (i = 0; i < nf.nfactors; i++)
+      if (nf.e[i] > 2 || !_is_higgs(nf.f[i]))
+        return 0;
+  }
+  return 1;
+}
+bool is_higgs_prime(UV n) {
+  if (n % 2 == 0) return n == 2;
+  if (n % 8 == 1 || !is_prime(n)) return 0;
+  return _is_higgs(n);
+}
+
 /* If we have fast CTZ, use this GCD.  See Brent Alg V and FLINT Abhinav Baid */
 UV gcdz(UV x, UV y) {
   UV f, x2, y2;

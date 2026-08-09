@@ -29,7 +29,7 @@ my @functions =  qw(
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
-      is_harshad is_palindrome is_safe_prime
+      is_harshad is_palindrome is_safe_prime is_higgs_prime
       sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
       absint negint signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint

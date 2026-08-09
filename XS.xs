@@ -2498,7 +2498,8 @@ void is_prime(IN SV* svn)
     is_semiprime = 13
     is_chen_prime = 14
     is_safe_prime = 15
-    is_mersenne_prime = 16
+    is_higgs_prime = 16
+    is_mersenne_prime = 17
   PREINIT:
     int status, ret;
     UV n;
@@ -2523,7 +2524,8 @@ void is_prime(IN SV* svn)
         case 13: ret = is_semiprime(n); break;
         case 14: ret = is_chen_prime(n); break;
         case 15: ret = is_safe_prime(n); break;
-        case 16: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
+        case 16: ret = is_higgs_prime(n); break;
+        case 17: ret = is_mersenne_prime(n);  if (ret == -1) status = 0; break;
         default: break;
       }
     }

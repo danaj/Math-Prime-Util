@@ -3064,6 +3064,27 @@ sub is_safe_prime {
   1;
 }
 
+sub _is_higgs {   # input p is assumed to be prime
+  my($p) = @_;
+  my $p8 = $p % 8;
+  return 0 if $p8 == 1;
+  return $p == 83 ? 0 : 1 if $p < 103;
+  my $N = ($p-1) >> (1 + ($p8 == 5));
+  foreach my $F (Mfactor_exp($N)) {
+    my($f,$e) = @$F;
+    return 0 if $e > 2 || !_is_higgs($f);
+  }
+  1;
+}
+sub is_higgs_prime {
+  my($n) = @_;
+  validate_integer($n);
+  return 0+($n>=2)  if $n <= 3;
+  return 0 unless (0,0,0,1,0,1,0,1)[$n % 8];
+  return 0 unless Mis_prime($n);
+  _is_higgs($n);
+}
+
 sub is_practical {
   my($n) = @_;
   validate_integer($n);

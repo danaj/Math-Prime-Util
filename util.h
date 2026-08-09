@@ -160,6 +160,7 @@ extern UV  from_zeckendorf(const char* str, size_t len);
 extern char* to_zeckendorf(UV n);
 
 extern bool is_catalan_pseudoprime(UV n);
+extern bool is_higgs_prime(UV n);
 
 extern UV  polygonal_root(UV n, UV k, bool* overflow);
 
