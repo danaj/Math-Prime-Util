@@ -28,7 +28,10 @@
 #define FUNC_ipow 1
 #define FUNC_popcnt 1
 #include "ptypes.h"
+
+/* See xs_internal.h for _validate_and_set mask and status semantics. */
 #include "xs_internal.h"
+
 #include "xs_set.h"
 #include "cache.h"
 #include "sieve.h"
@@ -4857,6 +4860,17 @@ void invmod(IN SV* sva, IN SV* svn)
       if (retok == 0) XSRETURN_UNDEF;
       XSRETURN_UV(r);
     }
+    if (ix == 3 && _XS_get_callgmp() < 53) {
+      STRLEN lena, lenn, rlen;
+      const char *sa = SvPV_nomg(sva, lena), *sn = SvPV_nomg(svn, lenn);
+      if (strint_cmp(sn, lenn, "0", 1) == 0) XSRETURN_UNDEF;
+      {
+        SV* tmp = sv_2mortal(newSV(lenn + 1));
+        rlen = strint_mulsubmod(SvPVX(tmp), "0", 1, "0", 1,
+                                sa, lena, sn, lenn);
+        if (rlen > 0) RETURN_PVSV_CANONICAL(tmp, rlen);
+      }
+    }
     DISPATCHPP_RETURN();
 
 void allsqrtmod(IN SV* sva, IN SV* svn)
@@ -4994,20 +5008,40 @@ is_omega_prime(IN SV* svk, IN SV* svn)
 void is_divisible(IN SV* svn, IN SV* svd, ...)
   PREINIT:
     UV n, d, ret;
+    int nstatus, dstatus;
     size_t i;
   PPCODE:
-    if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
-        _validate_and_set(&d, aTHX_ svd, IFLAG_ABS)) {
-      int status = 1;
-      ret =  d==0  ?  (n==0)  :  n % d == 0;
-      for (i = 2; i < (size_t)items && !ret; i++) {
-        if ((status = _validate_and_set(&d, aTHX_ ST(i), IFLAG_ABS)) != 1)
-          break;
-        ret =  d==0  ?  (n==0)  :  n % d == 0;
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    ret = 0;
+    if (nstatus != 0) {
+      for (i = 1; i < (size_t)items && !ret; i++) {
+        SV *svdi = ST(i);
+        dstatus = _validate_and_set(&d, aTHX_ svdi, IFLAG_ABS);
+        if (n == 0) {
+          ret = 1;
+        } else if (dstatus == 0) {
+          /* |d| > UV_MAX, so it cannot divide a native n. */
+        } else {
+          ret = d != 0 && d <= n && (d == 1 || d == n || n % d == 0);
+        }
       }
-      if (status == 1) RETURN_NPARITY(ret);
+      RETURN_NPARITY(ret);
     }
-    DISPATCHPP_RETURN();
+    if (_XS_get_callgmp() >= 53)
+      DISPATCHPP_RETURN();
+    for (i = 1; i < (size_t)items && !ret; i++) {
+      STRLEN lenn, lend;
+      dstatus = _validate_and_set(&d, aTHX_ ST(i), IFLAG_ABS);
+      if (dstatus != 0) {
+        const char *sn = SvPV_nomg(svn, lenn);
+        ret = d != 0 && strint_moduv(sn, lenn, d) == 0;
+      } else {
+        const char *sd = SvPV_nomg(ST(i), lend);
+        const char *sn = SvPV_nomg(svn, lenn);
+        ret = strint_is_divisible(sn, lenn, sd, lend);
+      }
+    }
+    RETURN_NPARITY(ret);
 
 void is_congruent(IN SV* svn, IN SV* svc, IN SV* svd)
   PREINIT:
@@ -5023,6 +5057,12 @@ void is_congruent(IN SV* svn, IN SV* svc, IN SV* svd)
         _mod_with(&c, cstatus, d);
       }
       RETURN_NPARITY( n == c );
+    }
+    if (_XS_get_callgmp() < 53) {
+      STRLEN lenn, lenc, lend;
+      const char *sn = SvPV_nomg(svn, lenn), *sc = SvPV_nomg(svc, lenc);
+      const char *sd = SvPV_nomg(svd, lend);
+      RETURN_NPARITY(strint_is_congruent(sn, lenn, sc, lenc, sd, lend));
     }
     DISPATCHPP_RETURN();
 
@@ -7004,27 +7044,37 @@ void digital_root(SV* svn, IN SV* svbase = 0)
     mult_digital_root = 1
   PREINIT:
     UV n, dr, base;
-    int bstatus;
+    int bstatus, nstatus;
   PPCODE:
     if (items==1){bstatus = 1; base = 10;}
     else         {bstatus = _validate_and_set(&base,aTHX_ svbase,IFLAG_NONNEG);}
-    if (bstatus == 1 && _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
+    if (bstatus == 1) {
+      nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG);
       if (base < 2) croak("%s: invalid base: %"UVuf, SUBNAME, base);
-      if (n == 0) {
-        dr = 0;
-      } else if (ix == 0) {
-        dr = 1 + (n-1) % (base-1);
-      } else {
-        UV digits[128];
-        int i, len;
-        dr = n;
-        while (dr >= base) {
-          len = to_digit_array(digits, dr, base, -1);
-          for (dr = 1, i = 0; i < len; i++)
-            dr *= digits[i];
+      if (nstatus != 0) {
+        if (n == 0) {
+          dr = 0;
+        } else if (ix == 0) {
+          dr = 1 + (n-1) % (base-1);
+        } else {
+          UV digits[128];
+          int i, len;
+          dr = n;
+          while (dr >= base) {
+            len = to_digit_array(digits, dr, base, -1);
+            for (dr = 1, i = 0; i < len; i++)
+              dr *= digits[i];
+          }
         }
+        RETURN_NPARITY(dr);
+      } else if (ix == 0) {
+        STRLEN lenn;
+        const char *sn = SvPV_nomg(svn, lenn);
+        if (strint_cmp(sn, lenn, "0", 1) == 0)
+          RETURN_NPARITY(0);
+        dr = strint_moduv(sn, lenn, base-1);
+        RETURN_NPARITY(dr == 0 ? base-1 : dr);
       }
-      RETURN_NPARITY(dr);
     }
     DISPATCHPP_RETURN();
 

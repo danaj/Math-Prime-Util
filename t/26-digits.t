@@ -227,6 +227,8 @@ subtest 'digital_root' => sub {
   is( digital_root(255, 16), 15, "digital_root(255, 16)" );
   is( digital_root("99999999999999999999"),  9, "digital_root bigint (20 nines)" );
   is( digital_root("10000000000000000000"),  1, "digital_root bigint (10^19)" );
+  is( digital_root("340282366920938463463374607431768211456", 16), 1,
+      "digital_root bigint (2^128) base 16" );
   is( digital_root(10, "4294967296"), 10, "digital_root large base" );
   is( digital_root(10, "100000000000000000000000000000000000000"), 10,
       "digital_root huge base" );

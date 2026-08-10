@@ -2126,6 +2126,44 @@ STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b, STRLE
   return len;
 }
 
+bool strint_is_divisible(const char* a, STRLEN alen,
+                         const char* b, STRLEN blen)
+{
+  bool ret = 0;
+  b9_t A, B, R;
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init(&R);
+  if (B.n != 0) {
+    b9_fdivrem(NULL, &R, &A, &B);
+    ret = (R.n == 0);
+  }
+  b9_free(&A);  b9_free(&B);  b9_free(&R);
+  return ret;
+}
+
+bool strint_is_congruent(const char* a, STRLEN alen,
+                         const char* b, STRLEN blen,
+                         const char* m, STRLEN mlen)
+{
+  bool ret;
+  b9_t A, B, M, R;
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init_set_str(&M, m, mlen);
+  b9_init(&R);
+  if (M.n == 0) {
+    ret = (b9_cmp(&A, &B) == 0);
+  } else {
+    b9_neg(&B);
+    b9_add(&A, &A, &B);
+    b9_fdivrem(NULL, &R, &A, &M);
+    ret = (R.n == 0);
+  }
+  b9_free(&A);  b9_free(&B);  b9_free(&M);  b9_free(&R);
+  return ret;
+}
+
 UV strint_moduv(const char* a, STRLEN alen, UV b)
 {
   UV r = 0;

@@ -6,6 +6,11 @@ Revision history for Perl module Math::Prime::Util
 
     - is_higgs_prime(n)               is n a Higgs prime (exponent 2)
 
+    [FUNCTIONALITY AND PERFORMANCE]
+
+    - strint processing for negmod, is_divisible, is_congruent, digital_root.
+      Much faster for bigints when we don't have the GMP backend.
+
 
 0.75 2026-08-08
 

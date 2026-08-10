@@ -132,6 +132,15 @@ extern STRLEN strint_modint(char* out, const char* a, STRLEN alen, const char* b
 /* out needs alen+1 bytes.  Returns 0 on failure. */
 extern STRLEN strint_cdivint(char* out, const char* a, STRLEN alen, const char* b, STRLEN blen);
 
+/* Divisibility and congruence for validated signed decimal integer strings.
+ * A zero divisor is never considered divisible.  Congruence with modulus zero
+ * is exact equality. */
+extern bool strint_is_divisible(const char* a, STRLEN alen,
+                                const char* b, STRLEN blen);
+extern bool strint_is_congruent(const char* a, STRLEN alen,
+                                const char* b, STRLEN blen,
+                                const char* m, STRLEN mlen);
+
 /* Return a mod b as a UV.  b > 0.  For negative a, returns |a| mod b. */
 extern UV strint_moduv(const char* a, STRLEN alen, UV b);
 
