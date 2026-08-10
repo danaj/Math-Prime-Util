@@ -249,6 +249,24 @@ static SV* _stringify_unknown_integer_object(pTHX_ SV* n)
   return n;
 }
 
+/* Convert a validated negative decimal string when its magnitude fits in UV.
+ * This covers the range below IV_MIN that IFLAG_ABS can process natively. */
+static int _negative_magnitude_to_uv(pTHX_ UV* val, SV* n)
+{
+  const char *s;
+  STRLEN len, i;
+  UV v = 0;
+
+  s = SvPV_nomg(n, len);
+  if (len < 2 || s[0] != '-' ||
+      _parse_strnum(s+1, len-1) != SNUMFLAG_NATIVE)
+    return 0;
+  for (i = 1; i < len; i++)
+    v = v * 10 + (UV)(s[i] - '0');
+  *val = v;
+  return 1;
+}
+
 /* Is this a pedantically valid integer?
  * Croaks if undefined or invalid.
  * Returns 0 for a validated integer that is not safe to process natively.
@@ -329,6 +347,11 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
     IV n = my_sviv(svn);
     if (mask & IFLAG_ABS) { *val = neg_iv((UV)n); status = 1; }
     else                  { *val = (UV)n; }
+  } else if (status == 0 && (mask & IFLAG_ABS) &&
+             _negative_magnitude_to_uv(aTHX_ val, svn)) {
+    if (*val > (UV)IV_MAX && (mask & IFLAG_IV))
+      return 0;
+    status = 1;
   }
   return status;
 }

@@ -161,6 +161,13 @@ int _sv_is_math_object(pTHX_ SV* n);
 uint32_t _parse_strnum(const char* s, STRLEN len);
 SV* _normalize_toint_string(pTHX_ SV* svn, const char **sp, STRLEN *lenp);
 int _validate_int(pTHX_ SV* n, int negok);
+/* A return of 0 means validation succeeded, but the value does not fit:
+ *   IFLAG_ANY         Non-native integer; status does not preserve its sign.
+ *   IFLAG_ABS         Magnitude exceeds UV_MAX.
+ *   IFLAG_NONNEG/POS  Positive value exceeds UV_MAX.
+ *   IFLAG_IV          Outside the IV range, potentially still a native UV.
+ *                     Typically used as an additional restriction.
+ */
 int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask);
 int arrayref_to_int_array(pTHX_ size_t *retlen, UV** ret, bool want_sort, SV* sva, const char* fstr);
 SV** _check_sorted_nonneg_arrayref(pTHX_ SV *sv, size_t *lenp);
