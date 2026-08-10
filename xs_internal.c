@@ -327,7 +327,10 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
       *val = (UV)n;
       return 1;
     }
-    if (mask & IFLAG_ABS)    { *val = neg_iv((UV)n); return 1; }
+    if (mask & IFLAG_ABS) {
+      *val = neg_iv((UV)n);
+      return !(mask & IFLAG_IV) || *val <= (UV)IV_MAX;
+    }
     if (mask & IFLAG_POS)    croak("Parameter '%" SVf "' must be a positive integer", svn);
     if (mask & IFLAG_NONNEG) croak("Parameter '%" SVf "' must be a non-negative integer", svn);
     *val = n;
@@ -345,13 +348,14 @@ int _validate_and_set(UV* val, pTHX_ SV* svn, uint32_t mask) {
     *val = n;
   } else if (status == -1) {
     IV n = my_sviv(svn);
-    if (mask & IFLAG_ABS) { *val = neg_iv((UV)n); status = 1; }
-    else                  { *val = (UV)n; }
+    if (mask & IFLAG_ABS) {
+      *val = neg_iv((UV)n);
+      return !(mask & IFLAG_IV) || *val <= (UV)IV_MAX;
+    }
+    *val = (UV)n;
   } else if (status == 0 && (mask & IFLAG_ABS) &&
              _negative_magnitude_to_uv(aTHX_ val, svn)) {
-    if (*val > (UV)IV_MAX && (mask & IFLAG_IV))
-      return 0;
-    status = 1;
+    return !(mask & IFLAG_IV) || *val <= (UV)IV_MAX;
   }
   return status;
 }
