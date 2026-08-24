@@ -11,6 +11,9 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#if defined(HAS_FORK) && defined(HAS_PTHREAD_ATFORK)
+# include <pthread.h>
+#endif
 #define NEED_newCONSTSUB
 #define NEED_newRV_noinc
 #define NEED_sv_2pv_flags
@@ -376,6 +379,52 @@ typedef struct {
 } my_cxt_t;
 
 START_MY_CXT
+
+#if defined(HAS_FORK) && defined(HAS_PTHREAD_ATFORK)
+static void *_csprng_fork_context = NULL;
+static char _csprng_atfork_initialized = 0;
+static pthread_mutex_t _csprng_fork_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void _csprng_before_fork(void)
+{
+  dTHX;
+  dMY_CXT;
+  (void) pthread_mutex_lock(&_csprng_fork_mutex);
+  _csprng_fork_context = MY_CXT.randcxt;
+}
+
+static void _csprng_after_fork_parent(void)
+{
+  _csprng_fork_context = NULL;
+  (void) pthread_mutex_unlock(&_csprng_fork_mutex);
+}
+
+static void _csprng_after_fork_child(void)
+{
+  void *ctx = _csprng_fork_context;
+  _csprng_fork_context = NULL;
+  if (ctx != NULL)
+    csprng_require_reseed(ctx);
+  (void) pthread_mutex_unlock(&_csprng_fork_mutex);
+}
+
+static void _csprng_init_fork_tracking(void)
+{
+  int status = 0;
+
+  (void) pthread_mutex_lock(&_csprng_fork_mutex);
+  if (!_csprng_atfork_initialized) {
+    status = pthread_atfork(_csprng_before_fork,
+                            _csprng_after_fork_parent,
+                            _csprng_after_fork_child);
+    if (status == 0)
+      _csprng_atfork_initialized = 1;
+  }
+  (void) pthread_mutex_unlock(&_csprng_fork_mutex);
+  if (status != 0)
+    croak("Unable to register CSPRNG fork handler");
+}
+#endif
 
 static void xs_set_bigint_class(pTHX_ SV* sv) {
   dMY_CXT;
@@ -1667,6 +1716,9 @@ BOOT:
       }
       New(0, MY_CXT.randcxt, csprng_context_size(), char);
       csprng_init(MY_CXT.randcxt, get_entropy_bytes);
+#if defined(HAS_FORK) && defined(HAS_PTHREAD_ATFORK)
+      _csprng_init_fork_tracking();
+#endif
       MY_CXT.forcount = 0;
       MY_CXT.forexit = 0;
       MY_CXT.bigintname = NULL;

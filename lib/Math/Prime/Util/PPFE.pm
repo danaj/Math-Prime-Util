@@ -95,23 +95,22 @@ sub srand {
 sub csrand {
   croak "csrand: expected zero or one argument" if @_ > 1;
   my($seed) = @_;
-  croak "secure option set, manual seeding disabled" if defined $seed && prime_get_config()->{'secure'};
+  my $have_gmp = $Math::Prime::Util::_GMPfunc{"seed_csprng"};
+  my $gmpseed;
+
   if (defined $seed) {
-    Math::Prime::Util::GMP::seed_csprng(length($seed),$seed)
-      if $Math::Prime::Util::_GMPfunc{"seed_csprng"};
+    croak "secure option set, manual seeding disabled"
+      if prime_get_config()->{'secure'};
+    $gmpseed = $seed;
   } else {
-    $seed = entropy_bytes(64);
-    if ($Math::Prime::Util::_GMPfunc{"seed_csprng"}) {
-      my $gmpseed = entropy_bytes(64);
-      Math::Prime::Util::GMP::seed_csprng(length($gmpseed),$gmpseed);
-    }
+    $seed = Math::Prime::Util::Entropy::_get_seed();
+    $gmpseed = Math::Prime::Util::Entropy::_get_seed() if $have_gmp;
   }
+
+  Math::Prime::Util::GMP::seed_csprng(length($gmpseed), $gmpseed)
+    if $have_gmp;
   Math::Prime::Util::_csrand($seed);
   return;
-}
-sub CLONE {
-  Math::Prime::Util::Entropy::_clear_method();
-  Math::Prime::Util::_csrand(entropy_bytes(64));
 }
 sub entropy_bytes {
   my($bytes) = @_;
@@ -122,8 +121,7 @@ sub entropy_bytes {
   return '' if $n == 0;
   my $data = Math::Prime::Util::Entropy::entropy_bytes($n);
   if (!defined $data) {
-    my $seed = Math::Prime::Util::Entropy::_timer_seed();
-    Math::Prime::Util::_csrand($seed);
+    Math::Prime::Util::_csrand(Math::Prime::Util::Entropy::_get_seed());
     $data = random_bytes($n);
   }
   croak "entropy_bytes internal got wrong amount!" unless length($data) == $n;

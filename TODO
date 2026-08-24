@@ -656,6 +656,6 @@ OEIS lucky numbers:
 
 - Add support for Pari primality certificates to MPU and standalone.
 
-- modint uses strint, but is_divisible does not.  Add that.
-
 - srand from :rand should use PERL_RAND_SEED
+
+- GMP backend needs to include fork detection.

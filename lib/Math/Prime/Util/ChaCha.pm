@@ -190,8 +190,27 @@ sub _prng_new {
   my $_goodseed;     # Did we get a long seed
   my $_state;        # the cipher state.  40 bytes user data, 64 total.
   my $_str;          # buffered to-be-sent output.
+  my $_pid;          # process that owns this state
 
-  sub _is_csprng_well_seeded { $_goodseed }
+  sub _reseed_from_entropy {
+    my($fresh_source) = @_;
+    require Math::Prime::Util::Entropy;
+    csrand(Math::Prime::Util::Entropy::_get_seed($fresh_source));
+  }
+
+  sub _reseed_after_fork {
+    my $pid = $$;
+    return if !defined($_pid) || $_pid == $pid;
+
+    _reseed_from_entropy(1);
+  }
+
+  sub CLONE { _reseed_from_entropy(1); }
+
+  sub _is_csprng_well_seeded {
+    _reseed_after_fork();
+    $_goodseed;
+  }
 
   sub csrand {
     my($seed) = @_;
@@ -208,6 +227,7 @@ sub _prng_new {
                @seed[0..7],
                0, 0, @seed[8..9]];
     $_str = '';
+    $_pid = $$;
   }
   sub srand {
     my $seed = shift;
@@ -217,25 +237,30 @@ sub _prng_new {
     $seed;
   }
   sub irand {
+    _reseed_from_entropy(1) if defined($_pid) && $_pid != $$;
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 4;
     return unpack("V",substr($_str, 0, 4, ''));
   }
   sub irand32 {
+    _reseed_from_entropy(1) if defined($_pid) && $_pid != $$;
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 4;
     return unpack("V",substr($_str, 0, 4, ''));
   }
   sub irand64 {
     croak "ChaCha irand64 called on 32-bit" if ~0 == 4294967295;
+    _reseed_from_entropy(1) if defined($_pid) && $_pid != $$;
     $_str .= _keystream(BUFSZ,$_state) if length($_str) < 8;
     ($a,$b) = unpack("V2",substr($_str, 0, 8, ''));
     return ($a << 32) | $b;
   }
   sub random_bytes {
     my($bytes) = @_;
-    my $n = defined $bytes ? "$bytes" : "";
+    my $n = defined $bytes ? "$bytes" : "";  # undefined will croak below
     croak "random_bytes: input must be an integer between 0 and 2147483646"
       if $n !~ /^\+?\d+\z/ || 0+$n > 2147483646;
     $n = 0+$n;
+    return '' if $n == 0;
+    _reseed_from_entropy(1) if defined($_pid) && $_pid != $$;
     $_str .= _keystream($n-length($_str),$_state) if length($_str) < $n;
     return substr($_str, 0, $n, '');
   }

@@ -134,6 +134,16 @@ sub _timer_seed {
   $sha->digest;
 }
 
+# Return a 64-byte seed, using timer entropy when no normal source is available.
+sub _get_seed {
+  my($fresh_source) = @_;
+  _clear_method() if $fresh_source;
+  my $seed = entropy_bytes(64);
+  $seed = _timer_seed() unless defined $seed;
+  croak "entropy source returned wrong amount" unless length($seed) == 64;
+  $seed;
+}
+
 sub entropy_bytes {
   my $nbytes = shift;
   my @methodlist = ( \&_try_win32,                 # All we have for Windows

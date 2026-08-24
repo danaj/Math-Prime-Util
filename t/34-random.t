@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Config;
 use Math::Prime::Util qw/irand irand32 irand64 drand urandomb urandomm urandomr
                          random_bytes entropy_bytes
                          srand csrand powint
@@ -33,6 +34,7 @@ plan tests => 1
             + 7  # random_bytes / entropy_bytes
             + 2  # irand stream continuity across buffer boundaries
             + 2  # PP timer entropy fallback
+            + 4  # fork safety
             + 0;
 
 ########
@@ -327,6 +329,51 @@ SKIP: {
 }
 
 srand;
+
+#######
+
+SKIP: {
+  my $using_xs = Math::Prime::Util::prime_get_config()->{'xs'};
+  my $have_fork = ($Config{d_fork} || '') eq 'define';
+  my $have_atfork = ($Config{d_pthread_atfork} || '') eq 'define';
+  my $have_pseudofork = ($Config{d_pseudofork} || '') eq 'define';
+  my $can_track_fork = !$using_xs || $have_atfork;
+  skip "native fork CSPRNG reseeding is not available", 4
+    unless $have_fork && !$have_pseudofork && $can_track_fork;
+
+  require POSIX;
+  my $seed = "fork stream regression";
+  csrand($seed);
+  irand32();
+  my $expected = unpack("H*", random_bytes(32));
+  csrand($seed);
+  irand32();
+
+  pipe(my $reader, my $writer) or die "pipe failed: $!";
+  my $pid = fork();
+  die "fork failed: $!" unless defined $pid;
+  if ($pid == 0) {
+    close $reader;
+    my $child = eval { unpack("H*", random_bytes(32)) };
+    $child = "ERROR: $@" unless defined $child;
+    print {$writer} "$child\n";
+    close $writer;
+    POSIX::_exit(0);
+  }
+
+  close $writer;
+  my $parent = unpack("H*", random_bytes(32));
+  my $child = <$reader>;
+  close $reader;
+  waitpid($pid, 0);
+  my $status = $?;
+  chomp $child if defined $child;
+
+  is($parent, $expected, "fork does not alter the parent CSPRNG stream");
+  like($child, qr/\A[0-9a-f]{64}\z/, "child produced a valid CSPRNG stream");
+  isnt($child, $expected, "child reseeds the inherited CSPRNG stream");
+  is($status, 0, "child exited successfully after CSPRNG reseed");
+}
 
 #######
 

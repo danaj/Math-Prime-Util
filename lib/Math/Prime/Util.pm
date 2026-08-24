@@ -6499,8 +6499,12 @@ For performance on large amounts of data, see the tables
 in L</random_bytes>.
 
 Each thread has its own independently seeded context, so reseeding one thread
-has no impact on other threads.  In addition to improved security, this is
-better for performance than a single context with locks.
+has no impact on other threads.  Process forks are detected by the pure-Perl
+implementation and by XS on systems with C<pthread_atfork>.  Perl pseudo-forks
+are handled as thread clones.  The child reseeds from new entropy before
+producing CSPRNG output, while the parent's stream is unchanged.  In addition
+to improved security, separate contexts are better for performance than a
+single context with locks.
 If explicit control of multiple independent streams is needed then using
 a more specific module is recommended.  I believe L<Crypt::PRNG>
 (part of L<CryptX>) and L<Bytes::Random::Secure> are good alternatives.

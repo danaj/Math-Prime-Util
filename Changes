@@ -8,6 +8,9 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - CSPRNG streams automatically reseed from entropy in a child process
+      after supported forks, while leaving the parent's stream unchanged.
+
     - strint processing for negmod, is_divisible, is_congruent, digital_root.
       Much faster for bigints when we don't have the GMP backend.
 
