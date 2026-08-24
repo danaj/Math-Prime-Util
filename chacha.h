@@ -9,16 +9,23 @@
 #define KEYSZ    40        /* bytes of user supplied key+nonce */
 #define CORESZ   64        /* bytes output by core */
 #define BUFSZ    16*CORESZ /* bytes we get at a time (1024) */
-typedef struct {
+typedef struct chacha_context_t {
   uint32_t      state[STATESZ];
   unsigned char buf[BUFSZ];
   uint16_t      have;
   bool          goodseed;
+  bool          reseed_needed;
+  void          (*reseed)(void *ctx);
 } chacha_context_t;
 
 /*  API  */
 
+/* Configure a context whose first use invokes reseed to initialize it. */
+extern void chacha_init(chacha_context_t *cs, void (*reseed)(void *ctx));
 extern void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, bool isgood);
+extern void chacha_require_reseed(chacha_context_t *cs);
+
+extern bool chacha_is_well_seeded(chacha_context_t *cs);
 extern void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data);
 
 extern uint32_t chacha_irand32(chacha_context_t *cs);

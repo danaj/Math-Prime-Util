@@ -36,10 +36,18 @@
 
 #include "chacha.h"
 #define SEED_BYTES (32+8)
-#define CSEED(ctx,bytes,data,good)  chacha_seed((chacha_context_t*)ctx,bytes,data,good)
-#define CRBYTES(ctx,bytes,data)     chacha_rand_bytes((chacha_context_t*)ctx,bytes,data)
-#define CIRAND32(ctx)               chacha_irand32((chacha_context_t*)ctx)
-#define CIRAND64(ctx)               chacha_irand64((chacha_context_t*)ctx)
+
+typedef struct {
+  /* Must remain first: ChaCha passes this address to _csprng_reseed. */
+  chacha_context_t prng;
+  csprng_entropy_f get_entropy;
+} csprng_context_t;
+
+#define CCTX(ctx)                   (&((csprng_context_t*)(ctx))->prng)
+#define CSEED(ctx,bytes,data,good)  chacha_seed(CCTX(ctx),bytes,data,good)
+#define CRBYTES(ctx,bytes,data)     chacha_rand_bytes(CCTX(ctx),bytes,data)
+#define CIRAND32(ctx)               chacha_irand32(CCTX(ctx))
+#define CIRAND64(ctx)               chacha_irand64(CCTX(ctx))
 #define CSELFTEST()                 chacha_selftest()
 
 /* Use volatile stores so the compiler cannot optimize away the wipe. */
@@ -126,9 +134,20 @@ void* prng_new(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
 
 /*****************************************************************************/
 
+static void _csprng_reseed(void *vctx);
+
 uint32_t csprng_context_size(void)
 {
-  return sizeof(chacha_context_t);
+  return sizeof(csprng_context_t);
+}
+
+void csprng_init(void *vctx, csprng_entropy_f get_entropy)
+{
+  csprng_context_t *ctx = (csprng_context_t*)vctx;
+  chacha_init(&ctx->prng, _csprng_reseed);
+  ctx->get_entropy = get_entropy;
+  /* Call reseed so the csprng has entropy immediately. */
+  csprng_reseed(vctx);
 }
 
 void csprng_clear(void *ctx)
@@ -137,16 +156,23 @@ void csprng_clear(void *ctx)
     secure_bzero(ctx, csprng_context_size());
 }
 
+void csprng_require_reseed(void *ctx)
+{
+  chacha_require_reseed(CCTX(ctx));
+}
+
 static char _has_selftest_run = 0;
 
 void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
 {
-  unsigned char seed[SEED_BYTES + 4];
+  if (!_has_selftest_run) {
+    if (!CSELFTEST())
+      croak("CSPRNG self-test failed");
+    _has_selftest_run = 1;
+  }
 
-  /* If given a short seed, minimize zeros in state */
-  if (bytes >= SEED_BYTES) {
-    memcpy(seed, data, SEED_BYTES);
-  } else {
+  if (bytes < SEED_BYTES) {  /* A short seed.  Minimize zeros in state. */
+    unsigned char seed[SEED_BYTES + 4];
     void* rng;
     uint32_t a, b, c, d, i;
     memcpy(seed, data, bytes);
@@ -165,15 +191,31 @@ void csprng_seed(void *ctx, uint32_t bytes, const unsigned char* data)
     printf("from: ");for(i=0;i<bytes;i++)printf("%02x",data[i]);printf("\n");
     printf("to:   ");for(i=0;i<SEED_BYTES;i++)printf("%02x",seed[i]);printf("\n");
 #endif
+    CSEED(ctx, SEED_BYTES, seed, (bytes >= 16));
+    secure_bzero(seed, sizeof(seed));
+  } else {
+    /* They gave us enough bytes for a full seed.  Use directly. */
+    CSEED(ctx, SEED_BYTES, data, TRUE);
   }
+}
 
-  if (!_has_selftest_run) {
-    if (!CSELFTEST())
-      croak("CSPRNG self-test failed");
-    _has_selftest_run = 1;
+static void _csprng_reseed(void *vctx)
+{
+  csprng_context_t *ctx = (csprng_context_t*)vctx;
+  unsigned char data[64];
+  const uint32_t n = (uint32_t)sizeof(data);
+
+  if (ctx->get_entropy == NULL || ctx->get_entropy((UV)n, data) != (UV)n) {
+    secure_bzero(data, sizeof(data));
+    croak("Failed to get entropy bytes for CSPRNG seed");
   }
-  CSEED(ctx, SEED_BYTES, seed, (bytes >= 16));
-  secure_bzero(seed, sizeof(seed));
+  csprng_seed(ctx, n, data);
+  secure_bzero(data, sizeof(data));
+}
+
+void csprng_reseed(void *ctx)
+{
+  _csprng_reseed(ctx);
 }
 
 extern uint32_t csprng_srand(void* ctx, UV insecure_seed,
@@ -218,8 +260,7 @@ UV irand64(void* ctx)
 
 bool is_csprng_well_seeded(void *ctx)
 {
-  chacha_context_t *cs = (chacha_context_t*)ctx;
-  return cs->goodseed;
+  return chacha_is_well_seeded(CCTX(ctx));
 }
 
 /* There are many ways to get floats from integers.  A few good, many bad.

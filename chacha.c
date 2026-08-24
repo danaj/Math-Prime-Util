@@ -36,8 +36,12 @@
 #if CHACHA_ROUNDS != 8 && CHACHA_ROUNDS != 12 && CHACHA_ROUNDS != 20
 #error "CHACHA_ROUNDS must be 8, 12, or 20"
 #endif
+
+/* On first use, run simple test vectors. */
 #define RUN_INTERNAL_TESTS 1
-#define RESEED_ON_REFILL 0
+
+/* On every buffer refill, rekey the stream to add some forward security. */
+#define REKEY_ON_REFILL 0
 
 /* Use volatile stores so the compiler cannot optimize away the wipe. */
 static void secure_bzero(void *v, size_t n)
@@ -168,16 +172,25 @@ static uint32_t chacha_keystream(unsigned char* buf, uint32_t n, chacha_context_
   return n;
 }
 
-/* The method for refilling our buffer.  This includes reseeding policy.
- */
+static void _reseed_if_needed(chacha_context_t *ctx)
+{
+  if (!ctx->reseed_needed)
+    return;
+  if (ctx->reseed == NULL)
+    croak("CSPRNG reseed requested without a callback");
+  ctx->reseed(ctx);
+  if (ctx->reseed_needed)
+    croak("CSPRNG reseed callback did not seed the context");
+}
+
+/* The method for refilling our buffer.  This includes reseeding policy. */
 static uint32_t  _refill_buffer(chacha_context_t *ctx) {
-#if RESEED_ON_REFILL
+  _reseed_if_needed(ctx);
   ctx->have = (uint16_t) chacha_keystream(ctx->buf, BUFSZ, ctx);
+#if REKEY_ON_REFILL
   init_context(ctx, ctx->buf, FALSE);
   memset(ctx->buf, 0, KEYSZ);
   ctx->have = BUFSZ - KEYSZ;
-#else
-  ctx->have = (uint16_t) chacha_keystream(ctx->buf, BUFSZ, ctx);
 #endif
   return ctx->have;
 }
@@ -345,11 +358,26 @@ bool chacha_selftest(void) { return TRUE; }
 /*   API                                                                     */
 /*****************************************************************************/
 
+void chacha_init(chacha_context_t *cs, void (*reseed)(void *ctx))
+{
+  /* No cipher state exists yet.  First use calls reseed, which must call
+   * chacha_seed and initialize the state before output is generated. */
+  memset(cs, 0, sizeof(*cs));
+  cs->reseed = reseed;
+  cs->reseed_needed = TRUE;
+}
 void chacha_seed(chacha_context_t *cs, uint32_t bytes, const unsigned char* data, bool good)
 {
   if (bytes < 40) croak("Not enough seed bytes given to ChaCha\n");
   init_context(cs, data, TRUE);
   cs->goodseed = good;
+  cs->reseed_needed = FALSE;
+}
+void chacha_require_reseed(chacha_context_t *cs)
+{
+  cs->have = 0;
+  cs->goodseed = FALSE;
+  cs->reseed_needed = TRUE;
 }
 void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data)
 {
@@ -363,6 +391,11 @@ void chacha_rand_bytes(chacha_context_t *cs, uint32_t bytes, unsigned char* data
     cs->have -= copybytes;
     bytes -= copybytes;
   }
+}
+bool chacha_is_well_seeded(chacha_context_t *cs)
+{
+  _reseed_if_needed(cs);
+  return cs->goodseed;
 }
 uint32_t chacha_irand32(chacha_context_t *cs)
 {

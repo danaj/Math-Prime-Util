@@ -1387,21 +1387,6 @@ static void reverse_uv_array(UV *L, size_t len)
 
 /******************************************************************************/
 
-/******************************************************************************/
-
-static void csprng_init_seed(void* ctx) {
-  unsigned char data[64];
-  const uint32_t n = (uint32_t) sizeof(data);
-  if (get_entropy_bytes(n, data) != n)
-    croak("Failed to get entropy bytes for CSPRNG seed");
-  csprng_seed(ctx, n, data);
-  {
-    volatile unsigned char *p = (volatile unsigned char *) data;
-    uint32_t i = n;
-    while (i-- > 0) *p++ = 0;
-  }
-}
-
 static void _comb_init(UV* cm, UV k, int derangement) {
   UV i;
   cm[0] = UV_MAX;
@@ -1681,7 +1666,7 @@ BOOT:
         SvREADONLY_on(MY_CXT.const_int[i]);
       }
       New(0, MY_CXT.randcxt, csprng_context_size(), char);
-      csprng_init_seed(MY_CXT.randcxt);
+      csprng_init(MY_CXT.randcxt, get_entropy_bytes);
       MY_CXT.forcount = 0;
       MY_CXT.forexit = 0;
       MY_CXT.bigintname = NULL;
@@ -1709,7 +1694,7 @@ PPCODE:
     }
     /* Make a new CSPRNG context for this thread */
     New(0, MY_CXT.randcxt, csprng_context_size(), char);
-    csprng_init_seed(MY_CXT.randcxt);
+    csprng_init(MY_CXT.randcxt, get_entropy_bytes);
     /* NOTE:  There is no thread destroy, so these never get freed... */
     MY_CXT.forcount = 0;
     MY_CXT.forexit = 0;
@@ -1754,7 +1739,7 @@ void csrand(IN SV* seed = 0)
     uint32_t size32, n, i;
   PPCODE:
     if (items == 0 || !SvOK(seed)) {
-      csprng_init_seed(MY_CXT.randcxt);
+      csprng_reseed(MY_CXT.randcxt);
       if (_XS_get_callgmp() >= 42) {
         n = (uint32_t) sizeof(gmpseed);
         if (get_entropy_bytes(n, gmpseed) != n)
