@@ -22,8 +22,8 @@ plan tests => 5 + 1*$extra                # lucky_numbers
             + 3 + (0+$nsamples)*$extra    # nth_lucky
             + 1                           # lucky_count
             + 1                           # lucky_count ranges
-            + 5                           # lucky_count bounds
-            + 11;                         # nth_lucky bounds
+            + 9                           # lucky_count bounds
+            + 13;                         # nth_lucky bounds
 
 
 ###### lucky_numbers sieve
@@ -127,6 +127,32 @@ is_deeply( [map { check_count_bounds($samples{$_},$_) } keys %samples],
            "lucky count bounds for small samples" );
 
 is(check_count_bounds(307703784778627, 8796093022208), 1, "lucky count bounds for 2^43-rd lucky number");
+is(check_count_bounds("100000000000", "3790060378"), 1,
+   "lucky count bounds at fitted endpoint");
+
+{
+  my @n = (999999999, 1000000000, 1000000001);
+  my @lower = map { lucky_count_lower($_) } @n;
+  my @upper = map { lucky_count_upper($_) } @n;
+  ok($lower[0] <= $lower[1] && $lower[1] <= $lower[2] &&
+     $upper[0] <= $upper[1] && $upper[1] <= $upper[2] &&
+     $lower[2] - $lower[0] <= 1 && $upper[2] - $upper[0] <= 1,
+     "lucky count bounds have no old fitted-limit discontinuity");
+}
+
+{
+  my($at,$next) = ("100000000000", "100000000001");
+  ok(lucky_count_lower($next) >= lucky_count_lower($at) &&
+     lucky_count_upper($next) >= lucky_count_upper($at),
+     "lucky count bounds are monotone at rigorous crossover");
+}
+
+{
+  my $n = ~0;
+  my $lo = lucky_count_lower($n);
+  ok(nth_lucky_upper($lo) <= $n,
+     "lucky count lower bound at UV_MAX is certified by nth upper bound");
+}
 
 ###### nth_lucky
 
@@ -151,6 +177,15 @@ is(check_nth_bounds(5286238, 99999979), 1, "nth_lucky(5286238) bounds");
 is(check_nth_bounds(46697909, 999999991), 1, "nth_lucky(46697909) bounds");
 is(check_nth_bounds(1<<31, 55291335127), 1, "nth_lucky(2^31) bounds");
 is(check_nth_bounds("8796093022208", "307703784778627"), 1, "nth_lucky(2^43) bounds");
+is(check_nth_bounds("3790060378", "99999999973"), 1,
+   "nth_lucky bounds at fitted endpoint");
+
+{
+  my($at,$next) = ("3790060378", "3790060379");
+  ok(nth_lucky_lower($next) >= nth_lucky_lower($at) &&
+     nth_lucky_upper($next) >= nth_lucky_upper($at),
+     "nth lucky bounds are monotone at rigorous crossover");
+}
 
 is_deeply( [map { check_nth_bounds($_, $ln1k->[$_-1]) } 1..100],
            [map { 1 } 1..100],

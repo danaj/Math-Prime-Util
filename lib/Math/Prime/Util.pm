@@ -5370,8 +5370,9 @@ lower estimate of the count of lucky numbers less than or equal to C<n>.
 Given a single non-negative integer C<n>, quickly returns an
 upper estimate of the count of lucky numbers less than or equal to C<n>.
 
-The lower and upper estimates have been verified as bounds through
-C<< n <= 10^9 >>, but are not proven for larger inputs.
+The lower and upper estimates use tight fitted bounds verified through
+C<< n <= 10^11 >>, then conservative explicit inequalities derived from
+L<Sanna's bounds for the nth lucky number|https://arxiv.org/abs/2604.07142>.
 
 =head2 nth_lucky
 
@@ -5396,8 +5397,9 @@ lower estimate of the C<n>-th lucky number.
 Given a single non-negative integer C<n>, quickly returns an
 upper estimate of the C<n>-th lucky number.
 
-The lower and upper estimates have been verified as bounds through
-C<< n <= 3 * 10^9 >>, but are not proven for larger inputs.
+The lower and upper estimates use tight fitted bounds verified through
+C<< n <= 3,790,060,378 >>, then the explicit inequalities proved by
+L<Sanna|https://arxiv.org/abs/2604.07142>.
 
 
 =head2 minimal_goldbach_pair

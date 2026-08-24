@@ -14,6 +14,9 @@ Revision history for Perl module Math::Prime::Util
     - strint processing for negmod, is_divisible, is_congruent, digital_root.
       Much faster for bigints when we don't have the GMP backend.
 
+    - Extend fitted lucky count bounds through 10^11 and nth bounds through
+      index 3,790,060,378, with rigorous fallbacks for larger inputs.
+
 
 0.75 2026-08-08
 

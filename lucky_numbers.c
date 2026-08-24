@@ -7,6 +7,7 @@
 #include "lucky_numbers.h"
 #include "inverse_interpolate.h"
 #include "ds_bitmask126.h"
+#include "mathl.h"
 
 static const int _verbose = 0;
 
@@ -293,6 +294,69 @@ UV* lucky_sieve_cgen(UV *size, UV n) {
 /* static UV lucky_count_approx(UV n) { return 0.5 + 0.970 * n / log(n); } */
 /* static UV lucky_count_upper(UV n) { return 200 + lucky_count_approx(n) * 1.025; } */
 
+#if BITS_PER_WORD == 64
+  #define LUCKY_COUNT_FITTED_LIMIT UVCONST(100000000000)
+  #define NTH_LUCKY_FITTED_LIMIT   UVCONST(3790060378)
+#else
+  #define LUCKY_COUNT_FITTED_LIMIT MPU_MAX_LUCKY
+  #define NTH_LUCKY_FITTED_LIMIT   MPU_MAX_LUCKY_IDX
+#endif
+
+/* Exact data through 1e11 has 3,790,060,378 entries and ends at
+ * 99,999,999,973. */
+
+/* Sanna, "Explicit inequalities for the nth lucky number" (2026).
+ * The paper substitutes 2 for the first lucky number, but its indexing agrees
+ * with ours from the second term onward.  Move generously away from the real
+ * bound before truncation so floating-point evaluation cannot reverse it. */
+static UV _lucky_bound_to_uv(long double est, bool upper) {
+  long double err = 1.0L + 1.0e-12L * fabsl(est);
+  est += upper ? err : -err;
+  if (est <= 0.0L) return 0;
+  if (est >= (long double)UV_MAX) return UV_MAX;
+  return (UV)est;
+}
+
+/* Strict lower bound: ell_n > n log(n), for every n >= 1. */
+static UV _nth_lucky_theorem_lower(UV n) {
+  long double fn = n;
+  return _lucky_bound_to_uv(fn * logl(fn), 0);
+}
+
+/* Inclusive integer upper bound derived from Sanna's strict upper bounds. */
+static UV _nth_lucky_theorem_upper(UV n) {
+  long double fn, logn, loglogn, est;
+  if (n <= 3) return (n == 0) ? 0 : _small_lucky[n-1];
+  fn = n;
+  logn = logl(fn);
+  loglogn = logl(logn);
+  est = fn * (logn + 0.5L*loglogn*loglogn +
+              ((n <= UVCONST(10000000))
+                ? 1.0L
+                : 1.239L*loglogn + 3.016L));
+  return _lucky_bound_to_uv(est, 1);
+}
+
+/* Invert a monotone nth bound.  This is a count upper bound when fnth is a
+ * strict nth lower bound, and a count lower bound when fnth is an inclusive
+ * nth upper bound. */
+static UV _lucky_count_from_nth_bound(UV n, UV (*fnth)(UV)) {
+  UV hi = 1 + (n >> 1);
+  return inverse_interpolate(1, hi, n, fnth, 0);
+}
+
+static UV _lucky_count_lower_from_nth_upper(UV n) {
+  UV ret = _lucky_count_from_nth_bound(n, &_nth_lucky_theorem_upper);
+
+  /* A saturated upper bound cannot certify its index when n is UV_MAX. */
+  if (n == UV_MAX && _nth_lucky_theorem_upper(ret) == UV_MAX) {
+    MPUassert(ret > 0 && _nth_lucky_theorem_upper(ret-1) < UV_MAX,
+              "lucky count upper-bound inversion did not find first value");
+    ret--;
+  }
+  return ret;
+}
+
 static UV _simple_lucky_count_approx(UV n) {
   double logn = log(n);
   return   (n <           7)  ?  (n > 0) + (n > 2)
@@ -327,26 +391,37 @@ UV lucky_count_approx(UV n) {
   hi = _simple_lucky_count_upper(n);
   return inverse_interpolate(lo, hi, n, &nth_lucky_approx, 0);
 }
-UV lucky_count_upper(UV n) {   /* Holds under 1e9 */
-  UV lo, hi;
+UV lucky_count_upper(UV n) {
+  UV direct, lo, hi, ret;
   if (n <       48) return _small_lucky_count[n];
+  if (n > LUCKY_COUNT_FITTED_LIMIT)
+    return _lucky_count_from_nth_bound(n, &_nth_lucky_theorem_lower);
+  direct = _simple_lucky_count_upper(n);
   /* The count estimator is better than nth lucky estimator for small values */
-  if (n < 40000000) return _simple_lucky_count_upper(n);
-#if 1 && BITS_PER_WORD == 64
-  if (n > UVCONST(18428297000000000000))
-    return _simple_lucky_count_upper(n);
-#endif
+  if (n < 40000000) return direct;
   lo = _simple_lucky_count_lower(n);
-  hi = 1 + (_simple_lucky_count_upper(n) * 1.001);
-  return inverse_interpolate(lo, hi, n, &nth_lucky_lower, 0);
+  hi = (direct < NTH_LUCKY_FITTED_LIMIT)
+     ? direct : NTH_LUCKY_FITTED_LIMIT;
+  if (hi <= lo || nth_lucky_lower(hi) < n) return direct;
+  ret = inverse_interpolate(lo, hi, n, &nth_lucky_lower, 0);
+  return (ret < direct) ? ret : direct;
 }
-UV lucky_count_lower(UV n) {   /* Holds under 1e9 */
-  UV lo, hi;
+UV lucky_count_lower(UV n) {
+  UV direct, hi, ret;
   if (n <    48) return _small_lucky_count[n];
-  if (n <  9000) return _simple_lucky_count_lower(n);
-  lo = _simple_lucky_count_lower(n);
+  if (n > LUCKY_COUNT_FITTED_LIMIT) {
+    ret = _lucky_count_lower_from_nth_upper(n);
+    direct = lucky_count_lower(LUCKY_COUNT_FITTED_LIMIT);
+    return (ret < direct) ? direct : ret;
+  }
+  direct = _simple_lucky_count_lower(n);
+  if (n < 9000) return direct;
   hi = _simple_lucky_count_upper(n);
-  return inverse_interpolate(lo, hi, n, &nth_lucky_upper, 0);
+  if (hi > NTH_LUCKY_FITTED_LIMIT) hi = NTH_LUCKY_FITTED_LIMIT;
+  if (hi <= direct) return direct;
+  ret = (nth_lucky_upper(hi) < n)
+      ? hi : inverse_interpolate(direct, hi, n, &nth_lucky_upper, 0);
+  return (ret > direct) ? ret : direct;
 }
 UV lucky_count_range(UV lo, UV hi) {
   UV nlucky, lsize;
@@ -447,20 +522,28 @@ UV nth_lucky_approx(UV n) {
 UV nth_lucky_upper(UV n) {
   double est, corr;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
+  if (n > NTH_LUCKY_FITTED_LIMIT)
+    return _nth_lucky_theorem_upper(n);
   corr = (n <=  1000) ? 1.01   :
          (n <=  8200) ? 1.005   :
-                        1.001;   /* verified to n=3e9 / v=1e11 */
+                        1.001;   /* verified to n=3,790,060,378 / v=1e11 */
   est = corr * nth_lucky_approx(n) + 0.5;
   if (est >= (double)MPU_MAX_LUCKY) return MPU_MAX_LUCKY;
   return (UV)est;
 }
 UV nth_lucky_lower(UV n) {
+  UV fitlimit;
   double est, corr;
   if (n <= 48)  return (n == 0) ? 0 : _small_lucky[n-1];
+  if (n > NTH_LUCKY_FITTED_LIMIT) {
+    UV ret = _nth_lucky_theorem_lower(n);
+    fitlimit = nth_lucky_lower(NTH_LUCKY_FITTED_LIMIT);
+    return (ret < fitlimit) ? fitlimit : ret;
+  }
   corr = (n <=        122) ? 0.95  :
          (n <=       4096) ? 0.97  :
          (n <=     115000) ? 0.998 :
-                             0.999 ;    /* verified to n=3e9 / v=1e11 */
+                             0.999 ;  /* verified to n=3,790,060,378 / v=1e11 */
   est = corr * nth_lucky_approx(n);
   return (UV)est;
 }

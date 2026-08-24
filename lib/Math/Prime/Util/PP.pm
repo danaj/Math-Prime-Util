@@ -1322,6 +1322,8 @@ sub partitionsq {
 
 my @_lf63 = (0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,1,1,1,1,1,1,0,0);
 my @_small_lucky = (undef,1,3,7,9,13,15,21,25,31,33,37,43,49,51,63,67,69,73,75,79,87,93,99,105,111,115,127,129,133,135,141,151,159,163,169,171,189,193,195);
+my $_lucky_count_fitted_limit = "100000000000";
+my $_nth_lucky_fitted_limit = 3790060378;
 
 sub lucky_numbers {
   my($lo,$hi) = @_;
@@ -1403,6 +1405,31 @@ sub _simple_lucky_count_lower {
   my $est = $approx * (($n <= 10000) ? 0.9 : 0.99);
   int($est);
 }
+sub _lucky_bound_to_int {
+  my($est, $upper) = @_;
+  my $err = 1 + 1e-12 * abs($est);
+  Mtoint($est + ($upper ? $err : -$err));
+}
+sub _nth_lucky_theorem_lower {
+  my($n) = @_;
+  $n = "$n" if ref($n);
+  _lucky_bound_to_int($n * log($n), 0);
+}
+sub _nth_lucky_theorem_upper {
+  my($n) = @_;
+  return $_small_lucky[$n] if $n <= 3;
+  $n = "$n" if ref($n);
+  my $logn = log($n);
+  my $loglogn = log($logn);
+  my $extra = ($n <= 10000000) ? 1
+            : 1.239 * $loglogn + 3.016;
+  _lucky_bound_to_int(
+      $n * ($logn + 0.5 * $loglogn * $loglogn + $extra), 1);
+}
+sub _lucky_count_from_nth_bound {
+  my($n, $fnth) = @_;
+  _binary_search($n, 1, Madd1int(Mdivint($n, 2)), $fnth);
+}
 sub lucky_count_approx {
   my($n) = @_;
   validate_integer_nonneg($n);
@@ -1415,17 +1442,34 @@ sub lucky_count_upper {
   my($n) = @_;
   validate_integer_nonneg($n);
   return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
-  my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
-  1+_binary_search($n, $lo, $hi,
-                   sub{Math::Prime::Util::nth_lucky_lower(shift)});
+  return _lucky_count_from_nth_bound($n, \&_nth_lucky_theorem_lower)
+    if $n > $_lucky_count_fitted_limit;
+  my $direct = _simple_lucky_count_upper($n);
+  my $hi = $direct < $_nth_lucky_fitted_limit
+         ? $direct : $_nth_lucky_fitted_limit;
+  my $fnth = sub { Math::Prime::Util::nth_lucky_lower(shift) };
+  return $direct if $n > $fnth->($hi);
+  my $ret = 1 + _binary_search(
+      $n, _simple_lucky_count_lower($n), $hi, $fnth);
+  $ret < $direct ? $ret : $direct;
 }
 sub lucky_count_lower {
   my($n) = @_;
   validate_integer_nonneg($n);
   return scalar(grep { defined $_ && $_ <= $n } @_small_lucky) if $n <= $_small_lucky[-1];
-  my($lo,$hi) = (_simple_lucky_count_lower($n), _simple_lucky_count_upper($n));
-  _binary_search($n, $lo, $hi,
-                 sub{Math::Prime::Util::nth_lucky_upper(shift)});
+  if ($n > $_lucky_count_fitted_limit) {
+    my $ret = _lucky_count_from_nth_bound($n, \&_nth_lucky_theorem_upper);
+    my $fitlimit = lucky_count_lower($_lucky_count_fitted_limit);
+    return $ret < $fitlimit ? $fitlimit : $ret;
+  }
+  my $direct = _simple_lucky_count_lower($n);
+  my $hi = _simple_lucky_count_upper($n);
+  $hi = $_nth_lucky_fitted_limit if $hi > $_nth_lucky_fitted_limit;
+  return $direct if $hi <= $direct;
+  my $fnth = sub { Math::Prime::Util::nth_lucky_upper(shift) };
+  my $ret = ($n > $fnth->($hi))
+          ? $hi : _binary_search($n, $direct, $hi, $fnth);
+  $ret > $direct ? $ret : $direct;
 }
 
 sub nth_lucky {
@@ -1458,6 +1502,7 @@ sub nth_lucky_upper {
   my($n) = @_;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= 0+$#_small_lucky;
+  return _nth_lucky_theorem_upper($n) if $n > $_nth_lucky_fitted_limit;
   my $c = ($n <= 100) ? 1.05 : ($n <= 300) ? 1.03 : ($n <= 800) ? 1.01 : 1.0033;
   return 1 + int( $c * nth_lucky_approx($n) + 0.5 );
 }
@@ -1465,6 +1510,11 @@ sub nth_lucky_lower {
   my($n) = @_;
   validate_integer_nonneg($n);
   return $_small_lucky[$n] if $n <= 0+$#_small_lucky;
+  if ($n > $_nth_lucky_fitted_limit) {
+    my $ret = _nth_lucky_theorem_lower($n);
+    my $fitlimit = nth_lucky_lower($_nth_lucky_fitted_limit);
+    return $ret < $fitlimit ? $fitlimit : $ret;
+  }
   my $c = ($n <= 130) ? 0.985 : ($n <= 1000) ? 0.992 : 0.996;
   return int( $c * nth_lucky_approx($n) );
 }

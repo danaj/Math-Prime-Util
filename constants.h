@@ -29,9 +29,11 @@
  #define MPU_MAX_POW3           40
  #define MPU_MAX_PERFECT_POW    UVCONST(18446744065119617025)
  #define MPU_MAX_PERFECT_POW_IDX UVCONST(4297615581)
- /* Max Lucky Tested through 200000000000, but need to 394961521040845441. */
+ /* Sanna's upper bound proves nth_lucky(MPU_MAX_LUCKY_IDX) fits in a UV. */
+ /* Not exact.  Largest UV we have not ruled out as lucky. */
  #define MPU_MAX_LUCKY          UVCONST(18446744073709551517) /* Maybe */
- #define MPU_MAX_LUCKY_IDX      UVCONST(395236168661920929)  /* Not correct */
+ /* Not exact.  Conservative index where nth-lucky upper bound fits in a UV. */
+ #define MPU_MAX_LUCKY_IDX      UVCONST(336667000000000000)
 #endif
 
 #if HAVE_UINT64
