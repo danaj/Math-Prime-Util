@@ -1,19 +1,6 @@
 #ifndef MPU_XS_INTERNAL_H
 #define MPU_XS_INTERNAL_H
 
-#if BITS_PER_WORD == 64
-  #if defined(_MSC_VER)
-    #include <stdlib.h>
-    #define strtoull _strtoui64
-    #define strtoll  _strtoi64
-  #endif
-  #define PSTRTOULL(str, end, base) strtoull (str, end, base)
-  #define PSTRTOLL(str, end, base)  strtoll (str, end, base)
-#else
-  #define PSTRTOULL(str, end, base) strtoul (str, end, base)
-  #define PSTRTOLL(str, end, base)  strtol (str, end, base)
-#endif
-
 #if defined(_MSC_VER) && !defined(strtold)
   #define strtold strtod
 #endif
@@ -28,13 +15,13 @@
 
 #if PERL_VERSION_LT(5,7,0) && BITS_PER_WORD == 64
  /* Workaround perl 5.6 UVs and bigints */
- #define my_svuv(sv)  PSTRTOULL(SvPV_nolen(sv), NULL, 10)
- #define my_sviv(sv)  PSTRTOLL(SvPV_nolen(sv), NULL, 10)
+ #define my_svuv(sv)  xs_str_to_uv(SvPV_nolen(sv))
+ #define my_sviv(sv)  xs_str_to_iv(SvPV_nolen(sv))
 #elif PERL_VERSION_LT(5,14,0) && BITS_PER_WORD == 64
  /* Workaround RT 49569 in Math::BigInt::FastCalc (pre 5.14.0) */
  /* TODO: Math::BigInt::Pari has the same problem with negs pre-5.18.0 */
- #define my_svuv(sv) ( (!SvROK(sv)) ? SvUV(sv) : PSTRTOULL(SvPV_nolen(sv),NULL,10) )
- #define my_sviv(sv) ( (!SvROK(sv)) ? SvIV(sv) : PSTRTOLL(SvPV_nolen(sv),NULL,10) )
+ #define my_svuv(sv) ( (!SvROK(sv)) ? SvUV(sv) : xs_str_to_uv(SvPV_nolen(sv)) )
+ #define my_sviv(sv) ( (!SvROK(sv)) ? SvIV(sv) : xs_str_to_iv(SvPV_nolen(sv)) )
 #else
  #define my_svuv(sv) SvUV(sv)
  #define my_sviv(sv) SvIV(sv)
@@ -158,6 +145,8 @@ SV* _fetch_arref(pTHX_ AV* av, SV** svarr, size_t i);
 int _sv_is_bigint(pTHX_ SV* n);
 int _sv_is_bigint_fast(pTHX_ SV* n);
 int _sv_is_math_object(pTHX_ SV* n);
+UV xs_str_to_uv(const char* s);
+IV xs_str_to_iv(const char* s);
 uint32_t _parse_strnum(const char* s, STRLEN len);
 SV* _normalize_toint_string(pTHX_ SV* svn, const char **sp, STRLEN *lenp);
 int _validate_int(pTHX_ SV* n, int negok);

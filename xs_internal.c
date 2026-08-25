@@ -74,6 +74,25 @@ int _sv_is_math_object(pTHX_ SV* n) {
   static const char ivmin_str[] =  "9223372036854775808";
 #endif
 
+/* Convert validated decimal strings that fit in the requested native type. */
+/* Avoids relying on PSTRTOULL / PSTRTOLL */
+UV xs_str_to_uv(const char* s)
+{
+  UV n = 0;
+  if (*s == '+') s++;
+  while (*s != '\0')
+    n = n * 10 + (UV)(*s++ - '0');
+  return n;
+}
+
+IV xs_str_to_iv(const char* s)
+{
+  UV n;
+  if (*s != '-') return (IV)xs_str_to_uv(s);
+  n = xs_str_to_uv(s+1);
+  return n == (UV)IV_MAX + 1 ? IV_MIN : -(IV)n;
+}
+
 /* Parse any numeric string.  Returns:
  *   SNUMFLAG_UNKNOWN          syntax not recognized by this parser
  *   SNUMFLAG_NATIVE [|NEG]    integer fits in native UV or IV
@@ -254,16 +273,13 @@ static SV* _stringify_unknown_integer_object(pTHX_ SV* n)
 static int _negative_magnitude_to_uv(pTHX_ UV* val, SV* n)
 {
   const char *s;
-  STRLEN len, i;
-  UV v = 0;
+  STRLEN len;
 
   s = SvPV_nomg(n, len);
   if (len < 2 || s[0] != '-' ||
       _parse_strnum(s+1, len-1) != SNUMFLAG_NATIVE)
     return 0;
-  for (i = 1; i < len; i++)
-    v = v * 10 + (UV)(s[i] - '0');
-  *val = v;
+  *val = xs_str_to_uv(s+1);
   return 1;
 }
 

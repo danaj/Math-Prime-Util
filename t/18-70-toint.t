@@ -8,6 +8,8 @@ use Math::BigInt;
 use Math::BigFloat;
 
 my $use64 = (~0 > 4294967295);
+my $uvmax = $use64 ? "18446744073709551615" : "4294967295";
+my $ivmin = $use64 ? "-9223372036854775808" : "-2147483648";
 
 sub is_native { !ref($_[0]) }
 sub is_bigint {  ref($_[0]) }
@@ -75,6 +77,11 @@ subtest 'integer strings' => sub {
   is(toint("00"),    0,   "'00' is zero");
   is(toint("1_000_000"), 1_000_000, "underscores between decimal digits");
   is(toint(" \t-42\r\n"), -42, "surrounding ASCII whitespace");
+  is("".toint($uvmax), $uvmax, "UV_MAX decimal string");
+  is("".toint("+$uvmax"), $uvmax, "UV_MAX string with explicit plus");
+  is("".toint($ivmin), $ivmin, "IV_MIN decimal string");
+  ok(is_native(toint($uvmax)), "UV_MAX string returns native UV");
+  ok(is_native(toint($ivmin)), "IV_MIN string returns native IV");
   ok( is_native(toint("42")),  "string int → native");
   ok( is_native(toint("-42")), "string neg int → native");
   # 20-digit integer > UV64_MAX → bigint

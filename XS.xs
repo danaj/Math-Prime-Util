@@ -1140,9 +1140,9 @@ static SV* xs_to_canonical(pTHX_ SV* sv) {
   stype = _parse_strnum(str, len);
 
   if (stype == SNUMFLAG_NATIVE)
-    return sv_2mortal(newSVuv((UV)PSTRTOULL(str, NULL, 10)));
+    return sv_2mortal(newSVuv(xs_str_to_uv(str)));
   if (stype == (SNUMFLAG_NEG|SNUMFLAG_NATIVE))
-    return sv_2mortal(newSViv((IV)PSTRTOLL(str, NULL, 10)));
+    return sv_2mortal(newSViv(xs_str_to_iv(str)));
   if (stype & SNUMFLAG_BIGINT)
     return xs_to_canonical_bigint(aTHX_ sv, str, len);
   /* We can't understand the input.  Return it unchanged. */
@@ -3756,9 +3756,9 @@ void toint(IN SV* svn)
       croak("%s: '%" SVf "' is not a valid number", SUBNAME, svn);
 
     if (stype == SNUMFLAG_NATIVE)
-      XSRETURN_UV(PSTRTOULL(s, NULL, 10));
+      XSRETURN_UV(xs_str_to_uv(s));
     if (stype == (SNUMFLAG_NEG|SNUMFLAG_NATIVE))
-      XSRETURN_IV(PSTRTOLL(s,NULL,10));
+      XSRETURN_IV(xs_str_to_iv(s));
 
     if (stype & SNUMFLAG_RADIX) {
       UV n, base = (stype & SNUMFLAG_HEXSTR) ? 16 :
