@@ -1209,6 +1209,8 @@ subtest 'misc number theory functions', sub {
   is( lcm(11926,78001,2211), 2790719778, "lcm(11926,78001,2211) = 2790719778" );
 
   is(sum_primes(14400),11297213,"sum_primes(14400)");
+  is("".sum_primes("18446744073709551521", "18446744073709551557"),
+     "55340232221128654611", "sum_primes narrow bigint range");
   is("".sum_primes(2100000),"156999759090","sum_primes(2100000)") if $extra;
   is("".sum_primes(2440000,2500000),"10099224219","sum_primes(2440000,2500000)") if $extra;
 

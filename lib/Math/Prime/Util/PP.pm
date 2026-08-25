@@ -5566,6 +5566,18 @@ sub sum_primes {
 
   return $sum if $low > $high;
 
+  # Match primes()'s next-prime path for narrow ranges at a large base,
+  # avoiding construction of a prime cache to sqrt(high).
+  if (Mcmpint($low,1_000_000_000_000) > 0 &&
+      Mcmpint(Msubint($high,$low),1000) < 0) {
+    my $p = Mnext_prime(Msub1int($low));
+    while (Mcmpint($p,$high) <= 0) {
+      $sum = Maddint($sum,$p);
+      $p = Mnext_prime($p);
+    }
+    return $sum;
+  }
+
   # Easy, not unreasonable, but seems slower than the windowed sum.
   # return _sum_primes_n($high) if $low <= 2;
 
