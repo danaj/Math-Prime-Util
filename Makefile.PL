@@ -34,27 +34,28 @@ WriteMakefile1(
 
     OBJECT       => 'XS.o '           .
                     'factor128.o '    .
-                    'strops.o '       .
                     'util.o '         .
                     'factor.o '       .
                     'rootmod.o '      .
+                    'strops.o '       .
                     'znlog.o '        .
+                    'b9.o '           .
                     'primality.o '    .
                     'congruent_numbers.o ' .
                     'totients.o '     .
                     'sieve_cluster.o '.
                     'sieve.o '        .
-                    'inverse_sigma0.o ' .
                     'lucky_numbers.o '.
-                    'moebius.o '      .
-                    'factmod.o '      .
                     'lmo.o '          .
+                    'factmod.o '      .
+                    'xs_internal.o '  .
+                    'inverse_sigma0.o ' .
+                    'moebius.o '      .
                     'almost_primes.o '.
                     'prime_counts.o ' .
                     'legendre_phi.o ' .
                     'lucas_seq.o '    .
                     'aks.o '          .
-                    'xs_internal.o '  .
                     'xs_set.o '       .
                     'ds_iset.o '      .
                     'semi_primes.o '  .
