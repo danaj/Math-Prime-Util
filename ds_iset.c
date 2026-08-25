@@ -4,7 +4,6 @@
 
 #include "ptypes.h"
 #include "ds_iset.h"
-#include "util.h"
 #include "sort.h"
 
 #define FILL_RATIO 0.55

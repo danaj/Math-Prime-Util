@@ -5,9 +5,9 @@
 #include "ptypes.h"
 #include "constants.h"
 #include "perfect_powers.h"
-#define FUNC_log2floor 1
-#define FUNC_ipow 1
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "inverse_interpolate.h"
 
 /******************************************************************************/

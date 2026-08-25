@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_popcnt 1
-#define FUNC_isqrt 1
 #include "ptypes.h"
 #include "sieve.h"
 #include "cache.h"
@@ -11,6 +9,8 @@
 #include "constants.h"
 #include "prime_counts.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "real.h"
 #include "mathl.h"
 

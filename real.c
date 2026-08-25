@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_log2floor 1
 #include "ptypes.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_bits.h"
 #include "moebius.h"
 #include "constants.h"
 #include "real.h"

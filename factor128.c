@@ -1,13 +1,13 @@
 #include <math.h>
 
-#define FUNC_isqrt 1
 #include "ptypes.h"
 #include "constants.h"
 #include "factor.h"
 #include "factor128.h"
 #include "cache.h"
 #include "sieve.h"
-#include "util.h"       /* for isqrt, verbose and next_prime */
+#include "util.h"       /* for verbose and next_prime */
+#include "util_math.h"  /* for isqrt */
 #include "moebius.h"
 
 #if HAVE_FACTOR128

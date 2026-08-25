@@ -5,11 +5,9 @@
 #include "ptypes.h"
 #include "constants.h"
 #include "prime_powers.h"
-#define FUNC_ctz 1
-#define FUNC_log2floor 1
-#define FUNC_ipow 1
-#define FUNC_isqrt 1
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "sort.h"
 #include "cache.h"
 #include "sieve.h"

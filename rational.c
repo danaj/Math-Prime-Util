@@ -3,8 +3,8 @@
 
 #include "ptypes.h"
 #include "rational.h"
-#define FUNC_gcd_ui 1
 #include "util.h"
+#include "util_math.h"
 #include "totients.h"
 #undef B0
 #undef B1

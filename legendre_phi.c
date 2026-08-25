@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_isqrt 1
 #include "sieve.h"
 #include "util.h"
+#include "util_math.h"
 #include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "legendre_phi.h"

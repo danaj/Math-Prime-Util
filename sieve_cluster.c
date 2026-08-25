@@ -2,10 +2,10 @@
 #include <stdlib.h>
 
 #define FUNC_is_prime_in_sieve 1
-#define FUNC_gcd_ui 1
 #include "sieve.h"
 #include "ptypes.h"
 #include "util.h"
+#include "util_math.h"
 #include "primality.h"
 #include "constants.h"
 

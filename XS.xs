@@ -25,11 +25,6 @@
 #include "multicall.h"  /* only works in 5.6 and newer */
 #include "multicall_scoped.h"  /* SC_ versions do auto-scoping */
 
-#define FUNC_gcd_ui 1
-#define FUNC_isqrt 1
-#define FUNC_is_perfect_square 1
-#define FUNC_ipow 1
-#define FUNC_popcnt 1
 #include "ptypes.h"
 
 /* See xs_internal.h for _validate_and_set mask and status semantics. */
@@ -40,6 +35,8 @@
 #include "sieve.h"
 #include "sieve_cluster.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "strops.h"
 #include "sort.h"
 #include "primality.h"

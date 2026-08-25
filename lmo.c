@@ -60,8 +60,8 @@
 /* Phi sieve multiplier, adjust for best performance and memory use. */
 #define PHI_SIEVE_MULT 13
 
-#define FUNC_isqrt 1
 #include "util.h"
+#include "util_math.h"
 #include "constants.h"
 #include "prime_counts.h"
 #include "cache.h"

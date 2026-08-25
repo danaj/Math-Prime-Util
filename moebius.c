@@ -1,11 +1,11 @@
 #include <string.h>
 
-#define FUNC_isqrt 1
-#define FUNC_log2floor 1
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "factor.h"
 #include "moebius.h"
 

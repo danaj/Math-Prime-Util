@@ -3,12 +3,12 @@
 #include <string.h>
 #include <math.h>
 
-#define FUNC_isqrt 1
 #define FUNC_next_prime_in_sieve
 #include "sieve.h"
 #include "ptypes.h"
 #include "cache.h"
 #include "util.h"
+#include "util_math.h"
 #include "primality.h"
 #include "montmath.h"
 #include "prime_counts.h"

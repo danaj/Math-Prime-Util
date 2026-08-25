@@ -9,9 +9,8 @@
 #include "primality.h"
 #include "lucas_seq.h"
 #include "mulmod.h"
-#define FUNC_gcd_ui 1
-#define FUNC_is_perfect_square
 #include "util.h"
+#include "util_math.h"
 #include "montmath.h"  /* Fast Montgomery math */
 
 /******************************************************************************/

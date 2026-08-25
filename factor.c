@@ -3,16 +3,13 @@
 #include <string.h>
 #include <math.h>
 
-#define FUNC_isqrt  1
-#define FUNC_gcd_ui 1
-#define FUNC_is_perfect_square 1
-#define FUNC_clz 1
-#define FUNC_log2floor 1
 #include "ptypes.h"
 #include "constants.h"
 #include "factor.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "sort.h"
 #include "mulmod.h"
 #include "cache.h"

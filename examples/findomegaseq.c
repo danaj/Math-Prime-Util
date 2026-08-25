@@ -4,8 +4,7 @@
 #include <errno.h>
 #include "ptypes.h"
 #include "factor.h"
-#define FUNC_isqrt 1
-#include "util.h"
+#include "util_math.h"
 #include "cache.h"
 
 /* Compile with:

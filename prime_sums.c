@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_isqrt 1
 #include "ptypes.h"
 #include "constants.h"
 #include "sieve.h"
 #include "cache.h"
 #include "util.h"
+#include "util_math.h"
 #include "prime_sums.h"
 
 /******************************************************************************/

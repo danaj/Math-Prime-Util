@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_isqrt 1
-#define FUNC_ipow 1
-#define FUNC_ctz 1
 #include "ptypes.h"
 #include "constants.h"
 #include "powerfree.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "factor.h"
 #include "moebius.h"
 #include "real.h"

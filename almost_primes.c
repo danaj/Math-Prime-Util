@@ -8,12 +8,12 @@
 #include <math.h>
 #include "ptypes.h"
 #include "constants.h"
-#define FUNC_isqrt 1
-#define FUNC_ctz 1
 #include "sort.h"
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "prime_counts.h"
 #include "prime_count_cache.h"
 #include "semi_primes.h"

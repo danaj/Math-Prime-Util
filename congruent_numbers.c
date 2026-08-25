@@ -10,9 +10,8 @@
 
 #include "ptypes.h"
 #include "congruent_numbers.h"
-#define FUNC_isqrt 1
-#define FUNC_is_perfect_square 1
 #include "util.h"
+#include "util_math.h"
 #include "factor.h"
 #include "rootmod.h"
 

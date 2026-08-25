@@ -1,11 +1,9 @@
 #include <stdio.h>
 
-#define FUNC_ipow   1
-#define FUNC_isqrt  1
-#define FUNC_gcd_ui 1
 #include "ptypes.h"
 #include "factor.h"
 #include "util.h"
+#include "util_math.h"
 #include "mulmod.h"
 #include "primality.h"
 #include "znlog.h"

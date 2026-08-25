@@ -51,9 +51,8 @@
 
 #include "ptypes.h"
 #include "aks.h"
-#define FUNC_isqrt 1
-#define FUNC_gcd_ui 1
 #include "util.h"
+#include "util_math.h"
 #include "cache.h"
 #include "mulmod.h"
 #include "factor.h"

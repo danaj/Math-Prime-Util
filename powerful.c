@@ -3,12 +3,9 @@
 #include <string.h>
 
 #include "ptypes.h"
-#define FUNC_isqrt 1
-#define FUNC_ctz 1
-#define FUNC_log2floor 1
-#define FUNC_gcd_ui 1
-#define FUNC_ipow 1
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 #include "sort.h"
 #include "sieve.h"
 #include "cache.h"

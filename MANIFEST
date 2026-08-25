@@ -123,6 +123,8 @@ twin_primes.h
 twin_primes.c
 util.h
 util.c
+util_bits.h
+util_math.h
 csprng.h
 csprng.c
 chacha.h

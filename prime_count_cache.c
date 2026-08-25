@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_popcnt 1
 #include "ptypes.h"
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_bits.h"
 #include "lmo.h"
 
 /*

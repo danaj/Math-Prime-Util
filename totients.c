@@ -2,14 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FUNC_isqrt 1
-#define FUNC_ipow 1
-#define FUNC_lcm_ui 1
 #include "ptypes.h"
 #include "sort.h"
 #include "totients.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_math.h"
 #include "factor.h"
 #include "keyval.h"
 

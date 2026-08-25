@@ -2,8 +2,7 @@
 #define MPU_SIEVE_H
 
 #include "ptypes.h"
-#define FUNC_ctz 1
-#include "util.h"
+#include "util_bits.h"
 
 extern unsigned char* sieve_erat30(UV end);
 extern bool sieve_segment(unsigned char* mem, UV startd, UV endd);

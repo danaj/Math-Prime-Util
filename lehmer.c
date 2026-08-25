@@ -4,9 +4,9 @@
 #include <math.h>
 
 #define USE_PHI_CACHE 1
-#define FUNC_isqrt 1
 #include "lehmer.h"
 #include "util.h"
+#include "util_math.h"
 #include "cache.h"
 #include "sieve.h"
 #include "prime_counts.h"

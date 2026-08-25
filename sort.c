@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define FUNC_log2floor 1
-#include "util.h"
+#include "util_bits.h"
 #include "sort.h"
 
 #define USE_QUADSORT 0

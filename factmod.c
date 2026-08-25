@@ -1,8 +1,7 @@
-#define FUNC_isqrt 1
-#define FUNC_ipow 1
 #include "ptypes.h"
 #include "sieve.h"
 #include "util.h"
+#include "util_math.h"
 #include "factor.h"
 #include "mulmod.h"
 #include "montmath.h"

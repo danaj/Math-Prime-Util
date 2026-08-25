@@ -1,9 +1,6 @@
 /***********    inverse_sigma0_list   and   inverse_sigma0_count    ***********/
 
 #include <string.h>
-#define FUNC_isqrt 1
-#define FUNC_is_perfect_square 1
-#define FUNC_log2floor 1
 #include "ptypes.h"
 #include "cache.h"
 #include "constants.h"
@@ -14,6 +11,8 @@
 #include "sieve.h"
 #include "sort.h"
 #include "util.h"
+#include "util_bits.h"
+#include "util_math.h"
 
 /*
  * Given a range [lo,hi] and a k value, returns or counts all the values
