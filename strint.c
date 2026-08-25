@@ -4,9 +4,9 @@
 
 #include "ptypes.h"
 #include "b9.h"
+#include "strint.h"
 #include "constants.h"
 #include "mulmod.h"
-#include "strops.h"
 #include "util_bits.h"
 
 /******************************************************************************/
@@ -36,15 +36,15 @@ static UV gcduv(UV x, UV y) {
   return x;
 }
 
-/* Internal allocations cannot propagate failure through the strops API. */
-static void* strops_xmalloc(size_t count, size_t size)
+/* Internal allocations cannot propagate failure through the strint API. */
+static void* strint_xmalloc(size_t count, size_t size)
 {
   void *p;
   if (size != 0 && count > (size_t)MAX_SIZET / size)
-    croak("internal: strops allocation too large");
+    croak("internal: strint allocation too large");
   p = malloc(count * size);
   if (p == 0 && count != 0 && size != 0)
-    croak("internal: strops allocation failed");
+    croak("internal: strint allocation failed");
   return p;
 }
 
@@ -324,7 +324,7 @@ char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN*
    */
 
   prodn = n/4 + (n % 4 != 0);
-  A = (b9_t*)strops_xmalloc(prodn, sizeof(b9_t));
+  A = (b9_t*)strint_xmalloc(prodn, sizeof(b9_t));
   for (i = 0; i < prodn; i++)
     b9_init(&A[i]);
   for (i = 0; i < 4; i++)
@@ -1312,7 +1312,7 @@ static void b9_root_ui(b9_t *r, const b9_t *n,
     char mant_buf[24];
     STRLEN mlen = uv_to_str(mant_buf, r_mantissa);
     if (q_exp + 1 >= mlen) {
-      char *r_char = (char*)strops_xmalloc((size_t)q_exp + 4, 1);
+      char *r_char = (char*)strint_xmalloc((size_t)q_exp + 4, 1);
       memcpy(r_char, mant_buf, mlen);
       memset(r_char + mlen, '0', q_exp + 1 - mlen);
       b9_set_str(r, r_char, q_exp + 1);

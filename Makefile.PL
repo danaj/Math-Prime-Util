@@ -37,7 +37,7 @@ WriteMakefile1(
                     'util.o '         .
                     'factor.o '       .
                     'rootmod.o '      .
-                    'strops.o '       .
+                    'strint.o '       .
                     'znlog.o '        .
                     'b9.o '           .
                     'primality.o '    .

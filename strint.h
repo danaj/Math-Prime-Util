@@ -1,10 +1,10 @@
-#ifndef MPU_STROPS_H
-#define MPU_STROPS_H
+#ifndef MPU_STRINT_H
+#define MPU_STRINT_H
 
 #include "ptypes.h"
 
 /* Free a malloc-owned result returned by a strint function.  Keeping the
- * matching free in strops is required by wrapped allocators on Windows. */
+ * matching free in strint is required by wrapped allocators on Windows. */
 extern void strint_free(void* ptr);
 
 /* Compare two signed decimal integer strings.

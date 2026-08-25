@@ -37,7 +37,7 @@
 #include "util.h"
 #include "util_bits.h"
 #include "util_math.h"
-#include "strops.h"
+#include "strint.h"
 #include "sort.h"
 #include "primality.h"
 #include "lucas_seq.h"
