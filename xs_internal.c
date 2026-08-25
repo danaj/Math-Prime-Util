@@ -79,10 +79,11 @@ int _sv_is_math_object(pTHX_ SV* n) {
 UV xs_str_to_uv(const char* s)
 {
   UV n = 0;
-  if (*s == '+') s++;
+  int neg = (*s == '-');
+  if (neg || *s == '+') s++;
   while (*s != '\0')
     n = n * 10 + (UV)(*s++ - '0');
-  return n;
+  return neg ? neg_iv(n) : n;
 }
 
 IV xs_str_to_iv(const char* s)

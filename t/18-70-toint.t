@@ -75,6 +75,8 @@ subtest 'integer strings' => sub {
   is(toint("007"),   7,   "'007' leading zeros stripped");
   is(toint("-007"), -7,   "'-007' leading zeros stripped");
   is(toint("00"),    0,   "'00' is zero");
+  is_deeply([map { toint($_) } ("-0", "-00", "-0_0", " \t-0\r\n")],
+            [0, 0, 0, 0], "negative zero strings return zero");
   is(toint("1_000_000"), 1_000_000, "underscores between decimal digits");
   is(toint(" \t-42\r\n"), -42, "surrounding ASCII whitespace");
   is("".toint($uvmax), $uvmax, "UV_MAX decimal string");
