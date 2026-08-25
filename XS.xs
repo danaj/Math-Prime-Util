@@ -5671,7 +5671,7 @@ void hammingweight(IN SV* svn)
       XSRETURN_UV(popcnt(n));
     if (_XS_get_callgmp() < 47) {
       char* ptr;  STRLEN len;  ptr = SvPV(svn, len);
-      XSRETURN_UV(mpu_popcount_string(ptr, len));
+      XSRETURN_UV(strint_popcount(ptr, len));
     }
     DISPATCHPP_RETURN();
 

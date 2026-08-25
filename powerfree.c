@@ -11,6 +11,7 @@
 #include "factor.h"
 #include "moebius.h"
 #include "real.h"
+#include "sieve.h"
 
 static INLINE UV T(UV n) {
   return (n+1)/2 * (n|1);
@@ -289,4 +290,45 @@ UV squarefree_kernel(UV n)
   for (P = 1, i = 0; i < nf.nfactors; i++)
     P *= nf.f[i];
   return P;
+}
+
+unsigned char* range_issquarefree(UV lo, UV hi) {
+  unsigned char* isf;
+  UV i, p2, range, sqrthi;
+
+  if (hi < lo) return 0;
+  if (hi-lo == UV_MAX || hi-lo+1 > (UV)MAX_SIZET)
+    croak("range_issquarefree: range too large");
+
+  range = hi - lo + 1;
+  sqrthi = isqrt(hi);
+
+  New(0, isf, range, unsigned char);
+  memset(isf, 1, range);
+  if (lo == 0) isf[0] = 0;
+
+  { /* Sieve multiples of 2^2,3^2,5^2 */
+    UV p = 2;
+    while (p < 7 && p <= sqrthi) {
+      for (p2=p*p, i = P_GT_LO_0(p2, p2, lo); i < range; i += p2)
+        isf[i] = 0;
+      p += 1 + (p > 2);
+    }
+  }
+  if (sqrthi >= 7) { /* Sieve multiples of higher prime squares */
+    unsigned char* segment;
+    UV seg_base, seg_low, seg_high;
+    void* ctx = start_segment_primes(7, sqrthi, &segment);
+    while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
+      START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high )
+        for (p2=p*p, i = P_GT_LO_0(p2, p2, lo); i < range; i += p2) {
+          isf[i] = 0;
+          if (range-i <= p2)
+            break;
+        }
+      END_DO_FOR_EACH_SIEVE_PRIME
+    }
+    end_segment_primes(ctx);
+  }
+  return isf;
 }

@@ -19,6 +19,43 @@
 
 #define NEWSVINT(sign,v) (((sign) > 0) ? newSVuv(v) : newSViv(v))
 
+/******************************************************************************/
+
+/* Returns 0 if not found, index+1 if found (returns leftmost if dups) */
+static size_t index_in_sorted_uv_array(UV v, const UV* L, size_t len)
+{
+  size_t lo, hi;
+  if (len == 0 || v < L[0] || v > L[len-1])
+    return 0;
+  lo = 0;
+  hi = len-1;
+  while (lo < hi) {
+    size_t mid = lo + ((hi-lo) >> 1);
+    if (L[mid] < v)  lo = mid + 1;
+    else             hi = mid;
+  }
+  return (L[lo] == v)  ?  lo+1  :  0;
+}
+static size_t index_in_sorted_iv_array(IV v, const IV* L, size_t len)
+{
+  size_t lo, hi;
+  if (len == 0 || v < L[0] || v > L[len-1])
+    return 0;
+  lo = 0;
+  hi = len-1;
+  while (lo < hi) {
+    size_t mid = lo + ((hi-lo) >> 1);
+    if (L[mid] < v)  lo = mid + 1;
+    else             hi = mid;
+  }
+  return (L[lo] == v)  ?  lo+1  :  0;
+}
+
+#define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
+#define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
+
+/******************************************************************************/
+
 int type_of_sumset(int typea, int typeb, UV amin, UV amax, UV bmin, UV bmax) {
   if (typea == IARR_TYPE_BAD || typeb == IARR_TYPE_BAD)
     return IARR_TYPE_BAD;
@@ -470,6 +507,8 @@ bool xs_is_sumfree_set(pTHX_ SV* sva, int *ret)
   return 0;
 }
 
+
+/******************************************************************************/
 
 
 /* index of val in a set (array ref of sorted unique integers)

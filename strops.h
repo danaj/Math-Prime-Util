@@ -169,4 +169,6 @@ extern STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k);
  * out needs alen bytes. */
 extern STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k);
 
+extern UV strint_popcount(const char* ptr, STRLEN len);
+
 #endif

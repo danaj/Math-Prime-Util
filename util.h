@@ -18,14 +18,6 @@ extern void* mpu_aligned_alloc(UV count, Size_t size, Size_t alignment);
 extern void  mpu_aligned_free(void* ptr);
 #endif
 
-extern size_t index_in_sorted_uv_array(UV v, const UV* L, size_t len);
-extern size_t index_in_sorted_iv_array(IV v, const IV* L, size_t len);
-#define is_in_sorted_uv_array(v,L,len) (index_in_sorted_uv_array(v,L,len) > 0)
-#define is_in_sorted_iv_array(v,L,len) (index_in_sorted_iv_array(v,L,len) > 0)
-
-extern bool do_arrays_intersect_uv(const UV* A, size_t alen, const UV* B, size_t blen);
-extern bool do_arrays_intersect_iv(const IV* A, size_t alen, const IV* B, size_t blen);
-
 extern bool is_prime(UV x);
 extern UV   next_prime(UV x);
 extern UV   prev_prime(UV x);
@@ -52,9 +44,6 @@ extern UV lcmsafe(UV x, UV u) ISCONSTFUNC;   /* returns 0 if overflows */
 extern UV valuation(UV n, UV k) ISCONSTFUNC;
 extern UV valuation_remainder(UV n, UV k, UV *r);
 extern UV logint(UV n, UV b) ISCONSTFUNC;
-extern UV mpu_popcount_string(const char* ptr, STRLEN len);
-
-extern unsigned char* range_issquarefree(UV lo, UV hi);
 
 extern UV powersum(UV n, UV k) ISCONSTFUNC;
 
@@ -145,14 +134,6 @@ extern UV hclassno(UV n);
 extern IV ramanujan_tau(UV n) ISCONSTFUNC;
 
 extern char* pidigits(uint32_t digits);
-
-
-extern bool from_digit_to_UV(UV* rn, const UV* r, size_t len, UV base);
-/* These return length */
-extern int  to_digit_array(UV* bits, UV n, UV base, int length);
-extern int  to_digit_string(char *s, UV n, UV base, int length);
-extern int  uv_uv_to_str(char s[41], UV hi, UV lo);
-extern int  iv_uv_to_str(char s[41], IV hi, UV lo);
 
 /* Returns 1 if good, 0 if bad, -1 if non canon, 2 ok but out of range */
 extern int validate_zeckendorf(const char* str, size_t len);

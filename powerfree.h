@@ -12,6 +12,8 @@ extern UV powerfree_part_sum(UV n, uint32_t k);
 
 extern UV nth_powerfree(UV n, uint32_t k);
 
-extern UV  squarefree_kernel(UV n);
+extern UV squarefree_kernel(UV n);
+
+extern unsigned char* range_issquarefree(UV lo, UV hi);
 
 #endif

@@ -682,3 +682,120 @@ bool xs_is_sv_scalar_ref(SV *sv)
 {
   return sv && SvOK(sv) && SvROK(sv) && SvTYPE(SvRV(sv)) <= SVt_PVMG;
 }
+
+bool from_digit_to_UV(UV* rn, const UV* r, size_t len, UV base)
+{
+  UV d, n = 0;
+  size_t i;
+  if (base < 2 || len > BITS_PER_WORD)
+    return 0;
+  for (i = 0; i < len; i++) {
+    d = r[i];
+    if (n > (UV_MAX-d)/base) break;  /* overflow */
+    n = n * base + d;
+  }
+  *rn = n;
+  return (i >= len);
+}
+
+
+int to_digit_array(UV* bits, UV n, UV base, int length)
+{
+  int d;
+
+  if (base < 2 || length > 128) return -1;
+
+  if (base == 2) {
+    for (d = 0; n; n >>= 1)
+      bits[d++] = n & 1;
+  } else {
+    for (d = 0; n; n /= base)
+      bits[d++] = n % base;
+  }
+  if (length < 0) length = d;
+  while (d < length)
+    bits[d++] = 0;
+  return length;
+}
+
+int to_digit_string(char* s, UV n, UV base, int length)
+{
+  UV digits[128];
+  int i, len = to_digit_array(digits, n, base, length);
+
+  if (len < 0) return -1;
+  if (base < 2 || base > 36) croak("invalid base for string: %"UVuf, base);
+
+  for (i = 0; i < len; i++) {
+    UV dig = digits[len-i-1];
+    s[i] = (dig < 10) ? '0'+(char)dig : 'a'+(char)(dig-10);
+  }
+  s[len] = '\0';
+  return len;
+}
+
+int uv_uv_to_str(char str[41], UV hi, UV lo)
+{
+  int slen = 0;
+
+#if BITS_PER_WORD == 32 && HAVE_UINT64
+  uint64_t dd, val = (((uint64_t) hi) << BITS_PER_WORD) + lo;
+  do {
+    dd = val / 10;
+    str[slen++] = '0' + (char)(val - dd*10);
+    val = dd;
+  } while (val);
+#elif BITS_PER_WORD == 64 && HAVE_UINT128
+  uint128_t dd, val = (((uint128_t) hi) << BITS_PER_WORD) + lo;
+  do {
+    dd = val / 10;
+    str[slen++] = '0' + (char)(val - dd*10);
+    val = dd;
+  } while (val);
+#else
+  UV d, r;
+  uint32_t a[4];
+  a[0] = hi >> (BITS_PER_WORD/2);
+  a[1] = hi & (UV_MAX >> (BITS_PER_WORD/2));
+  a[2] = lo >> (BITS_PER_WORD/2);
+  a[3] = lo & (UV_MAX >> (BITS_PER_WORD/2));
+  do {
+    r = a[0];
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[1];  a[0] = d;
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[2];  a[1] = d;
+    d = r/10;  r = ((r-d*10) << (BITS_PER_WORD/2)) + a[3];  a[2] = d;
+    d = r/10;  r = r-d*10;  a[3] = d;
+    str[slen++] = '0'+(r%10);
+  } while (a[0] || a[1] || a[2] || a[3]);
+#endif
+
+  str[slen] = '\0';
+  if (slen > 1) {
+    char *L = str, *R = str+slen;
+    while (--R > L) { char t = *R; *R = *L; *L++ = t; } /* Reverse digits. */
+  }
+  return slen;
+}
+
+int iv_uv_to_str(char str[41], IV hi, UV lo)
+{
+  int i, slen, isneg = (hi < 0);
+  UV uhi = (UV)hi;
+
+  if (isneg) {
+    uhi = ~uhi;
+    lo = ~lo + 1;
+    if (lo == 0) uhi++;
+  }
+
+  slen = uv_uv_to_str(str, uhi, lo);
+
+  if (isneg) {  /* Prepend a negative sign */
+    for (i = slen; i > 0; i--)
+      str[i] = str[i-1];
+    str[0] = '-';
+    slen++;
+    str[slen] = '\0';
+  }
+  return slen;
+}

@@ -12,6 +12,7 @@
 #include "constants.h"
 #include "inverse_interpolate.h"
 #include "factor.h"
+#include "powerfree.h"
 
 bool is_powerful(UV n, UV k) {
   UV pk;

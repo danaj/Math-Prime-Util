@@ -181,4 +181,11 @@ int _compare_array_refs(pTHX_ SV* a, SV* b);
 
 bool xs_is_sv_scalar_ref(SV *sv);
 
+extern bool from_digit_to_UV(UV* rn, const UV* r, size_t len, UV base);
+/* These return length */
+extern int  to_digit_array(UV* bits, UV n, UV base, int length);
+extern int  to_digit_string(char *s, UV n, UV base, int length);
+extern int  uv_uv_to_str(char s[41], UV hi, UV lo);
+extern int  iv_uv_to_str(char s[41], IV hi, UV lo);
+
 #endif

@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "mulmod.h"
 #include "strops.h"
+#include "util_bits.h"
 
 /******************************************************************************/
 /* Helper functions. */
@@ -2605,4 +2606,21 @@ STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k)
   rlen = b9_get_str(out, &q);
   b9_free(&n);  b9_free(&pow2);  b9_free(&q);
   return rlen;
+}
+
+UV strint_popcount(const char* ptr, STRLEN len)
+{
+  UV count = 0;
+  b9_t n;
+
+  b9_init_set_str(&n, ptr, len);
+  n.neg = 0;
+  while (n.n > 1) {
+    count += popcnt((UV)(n.d[0] & 15));
+    b9_tdiv16(&n);
+  }
+  if (n.n == 1)
+    count += popcnt((UV)n.d[0]);
+  b9_free(&n);
+  return count;
 }

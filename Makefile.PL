@@ -33,19 +33,20 @@ WriteMakefile1(
     AUTHOR       => 'Dana A Jacobsen <dana@acm.org>',
 
     OBJECT       => 'XS.o '           .
-                    'util.o '         .
                     'factor128.o '    .
+                    'strops.o '       .
+                    'util.o '         .
                     'factor.o '       .
                     'rootmod.o '      .
-                    'strops.o '       .
+                    'znlog.o '        .
                     'primality.o '    .
                     'congruent_numbers.o ' .
                     'totients.o '     .
                     'sieve_cluster.o '.
                     'sieve.o '        .
-                    'znlog.o '        .
                     'inverse_sigma0.o ' .
                     'lucky_numbers.o '.
+                    'moebius.o '      .
                     'factmod.o '      .
                     'lmo.o '          .
                     'almost_primes.o '.
@@ -53,8 +54,9 @@ WriteMakefile1(
                     'legendre_phi.o ' .
                     'lucas_seq.o '    .
                     'aks.o '          .
+                    'xs_internal.o '  .
+                    'xs_set.o '       .
                     'ds_iset.o '      .
-                    'moebius.o '      .
                     'semi_primes.o '  .
                     'twin_primes.o '  .
                     'ramanujan_primes.o ' .
@@ -63,8 +65,6 @@ WriteMakefile1(
                     'real.o '         .
                     'sort.o '         .
                     'chacha.o '       .
-                    'xs_internal.o '  .
-                    'xs_set.o '       .
                     'rational.o '     .
                     'prime_sums.o '   .
                     'prime_powers.o ' .
