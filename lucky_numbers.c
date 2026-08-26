@@ -354,6 +354,10 @@ static UV _lucky_count_lower_from_nth_upper(UV n) {
               "lucky count upper-bound inversion did not find first value");
     ret--;
   }
+  /* Do not return an index beyond the certified native nth-lucky range.
+   * Otherwise its public upper bound dispatches to PP, whose separate
+   * floating-point evaluation can cross UV_MAX on the same input. */
+  if (ret > MPU_MAX_LUCKY_IDX) ret = MPU_MAX_LUCKY_IDX;
   return ret;
 }
 

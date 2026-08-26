@@ -150,8 +150,8 @@ is(check_count_bounds("100000000000", "3790060378"), 1,
 {
   my $n = ~0;
   my $lo = lucky_count_lower($n);
-  ok(nth_lucky_upper($lo) <= $n,
-     "lucky count lower bound at UV_MAX is certified by nth upper bound");
+  cmp_ok(nth_lucky_upper($lo), '<=', $n,
+         "lucky count lower bound at UV_MAX is certified by nth upper bound");
 }
 
 ###### nth_lucky
