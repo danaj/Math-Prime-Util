@@ -1497,19 +1497,13 @@ STRLEN strint_lshiftint(char* out, const char* a, STRLEN alen, UV k)
 
 STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k)
 {
-  b9_t n, pow2, q;
+  b9_t n;
   STRLEN rlen;
-  int neg;
   if (k == 0) { memcpy(out, a, alen); return alen; }
   b9_init_set_str(&n, a, alen);
-  b9_init_set_pow2(&pow2, k);
-  neg = b9_is_negative(&n);
-  b9_abs(&n);
-  b9_init(&q);
-  b9_fdivrem(&q, NULL, &n, &pow2);
-  b9_set_negative(&q, neg);
-  rlen = b9_get_str(out, &q);
-  b9_free(&n);  b9_free(&pow2);  b9_free(&q);
+  b9_tdiv_2exp(&n, &n, k);
+  rlen = b9_get_str(out, &n);
+  b9_free(&n);
   return rlen;
 }
 
@@ -1525,6 +1519,151 @@ STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k)
   rlen = b9_get_str(out, &q);
   b9_free(&n);  b9_free(&pow2);  b9_free(&q);
   return rlen;
+}
+
+bool strint_bittest(const char* a, STRLEN alen, uint32_t k)
+{
+  b9_t n;
+  bool ret;
+
+  b9_init_set_str(&n, a, alen);
+  ret = b9_testbit(&n, k);
+  b9_free(&n);
+  return ret;
+}
+
+static char* strint_b9_result(const b9_t *n, STRLEN* rlen)
+{
+  STRLEN len = b9_length(n);
+  char *out = (char*)strint_xmalloc((size_t)len + 1, 1);
+  len = b9_get_str(out, n);
+  out[len] = '\0';
+  if (rlen != 0) *rlen = len;
+  return out;
+}
+
+/* op: 0 and, 1 or, 2 xor, 3 and-not. */
+static char* strint_binary_bitop(const char* a, STRLEN alen,
+                                 const char* b, STRLEN blen,
+                                 int op, STRLEN* rlen)
+{
+  b9_t A, B, R;
+  char *out;
+
+  b9_init_set_str(&A, a, alen);
+  b9_init_set_str(&B, b, blen);
+  b9_init(&R);
+  switch (op) {
+    case 0:  b9_bitand(&R, &A, &B);     break;
+    case 1:  b9_bitor(&R, &A, &B);      break;
+    case 2:  b9_bitxor(&R, &A, &B);     break;
+    default: b9_bitandnot(&R, &A, &B);  break;
+  }
+  out = strint_b9_result(&R, rlen);
+  b9_free(&A);  b9_free(&B);  b9_free(&R);
+  return out;
+}
+
+char* strint_bitand(const char* a, STRLEN alen,
+                    const char* b, STRLEN blen, STRLEN* rlen)
+{
+  return strint_binary_bitop(a, alen, b, blen, 0, rlen);
+}
+
+char* strint_bitor(const char* a, STRLEN alen,
+                   const char* b, STRLEN blen, STRLEN* rlen)
+{
+  return strint_binary_bitop(a, alen, b, blen, 1, rlen);
+}
+
+char* strint_bitxor(const char* a, STRLEN alen,
+                    const char* b, STRLEN blen, STRLEN* rlen)
+{
+  return strint_binary_bitop(a, alen, b, blen, 2, rlen);
+}
+
+char* strint_bitandnot(const char* a, STRLEN alen,
+                       const char* b, STRLEN blen, STRLEN* rlen)
+{
+  return strint_binary_bitop(a, alen, b, blen, 3, rlen);
+}
+
+char* strint_bitnot(const char* a, STRLEN alen, bool fixed_width,
+                    uint32_t width, STRLEN* rlen)
+{
+  b9_t A, R;
+  char *out;
+
+  b9_init_set_str(&A, a, alen);
+  b9_init(&R);
+  b9_bitnot(&R, &A, fixed_width, width);
+  out = strint_b9_result(&R, rlen);
+  b9_free(&A);  b9_free(&R);
+  return out;
+}
+
+/* op: 0 set, 1 clear, 2 flip. */
+static char* strint_unary_bitop(const char* a, STRLEN alen, uint32_t k,
+                                int op, STRLEN* rlen)
+{
+  b9_t n, mask, result;
+  bool isset, change;
+  char *out;
+
+  b9_init_set_str(&n, a, alen);
+  b9_abs(&n);
+  isset = b9_testbit(&n, k);
+  change = (op == 2) || (op == 0 && !isset) || (op == 1 && isset);
+  if (change) {
+    b9_init_set_pow2(&mask, (UV)k);
+    b9_set_negative(&mask, isset);
+    b9_init(&result);
+    b9_add(&result, &n, &mask);
+    b9_move(&n, &result);
+    b9_free(&mask);
+    b9_free(&result);
+  }
+
+  out = strint_b9_result(&n, rlen);
+  b9_free(&n);
+  return out;
+}
+
+char* strint_bitset(const char* a, STRLEN alen, uint32_t k, STRLEN* rlen)
+{
+  return strint_unary_bitop(a, alen, k, 0, rlen);
+}
+
+char* strint_bitclear(const char* a, STRLEN alen, uint32_t k, STRLEN* rlen)
+{
+  return strint_unary_bitop(a, alen, k, 1, rlen);
+}
+
+char* strint_bitflip(const char* a, STRLEN alen, uint32_t k, STRLEN* rlen)
+{
+  return strint_unary_bitop(a, alen, k, 2, rlen);
+}
+
+bool strint_bitscan0(uint32_t *result, const char *a, STRLEN alen,
+                     uint32_t start)
+{
+  b9_t n;
+  bool found;
+  b9_init_set_str(&n, a, alen);
+  found = b9_bitscan0(result, &n, start);
+  b9_free(&n);
+  return found;
+}
+
+bool strint_bitscan1(uint32_t *result, const char *a, STRLEN alen,
+                     uint32_t start)
+{
+  b9_t n;
+  bool found;
+  b9_init_set_str(&n, a, alen);
+  found = b9_bitscan1(result, &n, start);
+  b9_free(&n);
+  return found;
 }
 
 UV strint_popcount(const char* ptr, STRLEN len)

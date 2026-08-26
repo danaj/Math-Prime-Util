@@ -428,6 +428,17 @@ sub entropy_bytes {
 *subint     = \&Math::Prime::Util::PP::subint;
 *add1int    = \&Math::Prime::Util::PP::add1int;
 *sub1int    = \&Math::Prime::Util::PP::sub1int;
+*bitand     = \&Math::Prime::Util::PP::bitand;
+*bitor      = \&Math::Prime::Util::PP::bitor;
+*bitxor     = \&Math::Prime::Util::PP::bitxor;
+*bitandnot  = \&Math::Prime::Util::PP::bitandnot;
+*bitnot     = \&Math::Prime::Util::PP::bitnot;
+*bitset     = \&Math::Prime::Util::PP::bitset;
+*bitclear   = \&Math::Prime::Util::PP::bitclear;
+*bitflip    = \&Math::Prime::Util::PP::bitflip;
+*bittest    = \&Math::Prime::Util::PP::bittest;
+*bitscan0   = \&Math::Prime::Util::PP::bitscan0;
+*bitscan1   = \&Math::Prime::Util::PP::bitscan1;
 *lshiftint  = \&Math::Prime::Util::PP::lshiftint;
 *rshiftint  = \&Math::Prime::Util::PP::rshiftint;
 *rashiftint = \&Math::Prime::Util::PP::rashiftint;

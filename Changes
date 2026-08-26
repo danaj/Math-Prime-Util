@@ -5,6 +5,17 @@ Revision history for Perl module Math::Prime::Util
     [ADDED]
 
     - is_higgs_prime(n)               is n a Higgs prime (exponent 2)
+    - bitand(x,y)                     bitwise AND of |x| and |y|
+    - bitor(x,y)                      bitwise OR of |x| and |y|
+    - bitxor(x,y)                     bitwise XOR of |x| and |y|
+    - bitandnot(x,y)                  bitwise |x| AND NOT |y|
+    - bitnot(x[,width])               bitwise complement |x|
+    - bitset(x,k)                     set bit k of |x|
+    - bitclear(x,k)                   clear bit k of |x|
+    - bitflip(x,k)                    flip bit k of |x|
+    - bittest(x,k)                    test bit k of |x|
+    - bitscan0(x[,start])             first zero bit at or above start
+    - bitscan1(x[,start])             first one bit at or above start
 
     [FUNCTIONALITY AND PERFORMANCE]
 

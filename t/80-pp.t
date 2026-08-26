@@ -126,6 +126,12 @@ subtest 'arithmetic ops', sub {
   is(lshiftint(677,3),5416,"lshiftint");
   is(rshiftint(677,3),84,"rshiftint");
   is(rashiftint(677,3),84,"rashiftint");
+  is_deeply(
+    [bitand(13,10), bitor(13,10), bitxor(13,10), bitandnot(13,10),
+     bitnot(10), bitset(8,1), bitclear(15,2), bitflip(10,2),
+     bittest(10,1), bitscan0(11), bitscan1(40)],
+    [8,15,7,5,5,10,11,14,1,2,3],
+    "bit operations");
   is(absint(-677),677,"absint");
   is(negint(677),-677,"negint");
   is_deeply([cmpint(-2,0), cmpint(0,2), cmpint(2,2), cmpint(-7,-7), cmpint(-8,-9)], [-1,-1,0,0,1], "cmpint");

@@ -597,6 +597,23 @@ void b9_init_set_pow2(b9_t *x, UV k)
   }
 }
 
+/* Test bit k of |x| without modifying x. */
+bool b9_testbit(const b9_t *x, uint32_t k)
+{
+  b9_t q;
+  bool ret;
+
+  if (b9_is_zero(x)) return 0;
+  if (k < 4) return ((x->d[0] >> k) & 1) != 0;
+
+  b9_init(&q);
+  b9_tdiv_2exp(&q, x, (UV)k);
+  b9_abs(&q);
+  ret = !b9_is_even(&q);
+  b9_free(&q);
+  return ret;
+}
+
 /* out = a * 2^bits.  out may alias a. */
 void b9_mul_2exp(b9_t *out, const b9_t *a, UV bits)
 {
@@ -616,6 +633,270 @@ void b9_mul_2exp(b9_t *out, const b9_t *a, UV bits)
     b9_mul(out, a, &pow2);
     b9_free(&pow2);
   }
+}
+
+#if HAVE_UINT64 /* 2^44 * 10^6 fits in the 64-bit accumulator. */
+  #define B9_TDIV_2EXP_CHUNK_BITS  44
+#else           /* 2^18 * 10^4 fits in the 32-bit accumulator. */
+  #define B9_TDIV_2EXP_CHUNK_BITS  18
+#endif
+
+/* Divide by 2^bits using one pass over the decimal limbs.  The caller limits
+ * bits so carry * B9_BASE fits in b9acc_t. */
+static b9acc_t b9_tdiv_2exp_chunk(b9_t *a, uint32_t bits)
+{
+  b9acc_t carry = 0;
+  b9acc_t mask = ((b9acc_t)1 << bits) - 1;
+  uint32_t i;
+
+  for (i = a->n; i-- > 0; ) {
+    b9acc_t cur = carry * B9_BASE + a->d[i];
+    a->d[i] = (b9limb_t)(cur >> bits);
+    carry = cur & mask;
+  }
+  while (a->n > 0 && a->d[a->n-1] == 0) a->n--;
+  if (a->n == 0) a->neg = 0;
+  return carry;
+}
+
+/* out = trunc(a / 2^bits).  out may alias a. */
+void b9_tdiv_2exp(b9_t *out, const b9_t *a, UV bits)
+{
+  if (out != a) b9_set(out, a);
+  if (bits == 1) { b9_tdiv2(out);  return; }
+  if (bits == 4) { b9_tdiv16(out); return; }
+  while (bits > 0 && !b9_is_zero(out)) {
+    uint32_t chunk = bits > B9_TDIV_2EXP_CHUNK_BITS
+                   ? B9_TDIV_2EXP_CHUNK_BITS : (uint32_t)bits;
+    (void)b9_tdiv_2exp_chunk(out, chunk);
+    bits -= chunk;
+  }
+}
+
+static uint32_t b9_ctz_acc(b9acc_t v)
+{
+  uint32_t count = 0;
+  MPUassert(v != 0, "b9_ctz_acc called with zero");
+  while (!(v & 1)) { v >>= 1; count++; }
+  return count;
+}
+
+/* Find the first set bit, destructively scanning x from bit zero. */
+static bool b9_scan1_from_zero(uint32_t *result, b9_t *x, uint32_t limit)
+{
+  uint32_t count = 0;
+
+  while (!b9_is_zero(x)) {
+    b9acc_t rem = b9_tdiv_2exp_chunk(x, B9_TDIV_2EXP_CHUNK_BITS);
+    if (rem != 0) {
+      uint32_t skip = b9_ctz_acc(rem);
+      if (skip > limit-count) return 0;
+      *result = count + skip;
+      return 1;
+    }
+    if (B9_TDIV_2EXP_CHUNK_BITS > limit-count) return 0;
+    count += B9_TDIV_2EXP_CHUNK_BITS;
+  }
+  return 0;
+}
+
+static bool b9_bitscan(uint32_t *result, const b9_t *x, uint32_t start,
+                       bool want_one)
+{
+  b9_t q;
+  uint32_t skip;
+  bool found;
+
+  b9_init_set(&q, x);
+  b9_abs(&q);
+  if (start != 0) b9_tdiv_2exp(&q, &q, (UV)start);
+  if (!want_one) b9_add_u32(&q, &q, 1);
+  found = b9_scan1_from_zero(&skip, &q, UINT32_MAX-start);
+  if (found) *result = start + skip;
+  b9_free(&q);
+  return found;
+}
+
+bool b9_bitscan0(uint32_t *result, const b9_t *x, uint32_t start)
+{
+  return b9_bitscan(result, x, start, 0);
+}
+
+bool b9_bitscan1(uint32_t *result, const b9_t *x, uint32_t start)
+{
+  return b9_bitscan(result, x, start, 1);
+}
+
+#if HAVE_UINT64
+  #define B9_BINARY_WORD_BITS  32
+  #define B9_BINARY_WORD_MASK  UINT32_MAX
+#else
+  #define B9_BINARY_WORD_BITS  16
+  #define B9_BINARY_WORD_MASK  UINT32_C(65535)
+#endif
+#if B9_DIGS == 9
+  #define B9_BINARY_LIMB_BITS  30
+#elif B9_DIGS == 6
+  #define B9_BINARY_LIMB_BITS  20
+#else
+  #define B9_BINARY_LIMB_BITS  14
+#endif
+
+/* Upper bound on the binary words needed by a. */
+static size_t b9_binary_word_bound(const b9_t *a)
+{
+  size_t bits;
+  if ((size_t)a->n > ((size_t)MAX_SIZET - B9_BINARY_WORD_BITS + 1) /
+                     B9_BINARY_LIMB_BITS)
+    croak("internal: b9 binary value too large");
+  bits = (size_t)a->n * B9_BINARY_LIMB_BITS;
+  return (bits + B9_BINARY_WORD_BITS - 1) / B9_BINARY_WORD_BITS;
+}
+
+static void b9_set_binary(b9_t *out, const uint32_t *words, size_t n)
+{
+  while (n > 0 && words[n-1] == 0) n--;
+  b9_set_uv(out, 0);
+  while (n-- > 0) {
+    b9_mul_2exp(out, out, B9_BINARY_WORD_BITS);
+    b9_add_u32(out, out, words[n]);
+  }
+}
+
+enum {
+  B9_BITOP_AND,
+  B9_BITOP_OR,
+  B9_BITOP_XOR,
+  B9_BITOP_ANDNOT
+};
+
+static void b9_bitop(b9_t *out, const b9_t *a, const b9_t *b, int op)
+{
+  b9_t A, B;
+  uint32_t *words;
+  size_t awords, bwords, alloc, n = 0;
+
+  if (op == B9_BITOP_AND && (b9_is_zero(a) || b9_is_zero(b))) {
+    b9_set_uv(out, 0);
+    return;
+  }
+  if (op == B9_BITOP_ANDNOT && b9_is_zero(a)) {
+    b9_set_uv(out, 0);
+    return;
+  }
+  if ((op == B9_BITOP_OR || op == B9_BITOP_XOR) && b9_is_zero(a)) {
+    b9_set(out, b);  b9_abs(out);
+    return;
+  }
+  if ((op == B9_BITOP_OR || op == B9_BITOP_XOR ||
+       op == B9_BITOP_ANDNOT) && b9_is_zero(b)) {
+    b9_set(out, a);  b9_abs(out);
+    return;
+  }
+
+  awords = b9_binary_word_bound(a);
+  bwords = b9_binary_word_bound(b);
+  if (op == B9_BITOP_AND)
+    alloc = awords < bwords ? awords : bwords;
+  else if (op == B9_BITOP_ANDNOT)
+    alloc = awords;
+  else
+    alloc = awords > bwords ? awords : bwords;
+  words = (uint32_t*)b9_xcalloc(alloc, sizeof(uint32_t));
+  b9_init_set(&A, a);  b9_abs(&A);
+  b9_init_set(&B, b);  b9_abs(&B);
+
+  while (n < alloc) {
+    uint32_t av, bv;
+    if (op == B9_BITOP_AND && (b9_is_zero(&A) || b9_is_zero(&B)))
+      break;
+    if (op == B9_BITOP_ANDNOT && b9_is_zero(&A))
+      break;
+    if (op != B9_BITOP_AND && op != B9_BITOP_ANDNOT &&
+        b9_is_zero(&A) && b9_is_zero(&B))
+      break;
+    av = b9_is_zero(&A) ? 0 :
+         (uint32_t)b9_tdiv_2exp_chunk(&A, B9_BINARY_WORD_BITS);
+    bv = b9_is_zero(&B) ? 0 :
+         (uint32_t)b9_tdiv_2exp_chunk(&B, B9_BINARY_WORD_BITS);
+    switch (op) {
+      case B9_BITOP_AND:    words[n] = av & bv;  break;
+      case B9_BITOP_OR:     words[n] = av | bv;  break;
+      case B9_BITOP_XOR:    words[n] = av ^ bv;  break;
+      default:              words[n] = av & ~bv; break;
+    }
+    n++;
+  }
+
+  b9_set_binary(out, words, n);
+  b9_free(&A);  b9_free(&B);
+  free(words);
+}
+
+void b9_bitand(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  b9_bitop(out, a, b, B9_BITOP_AND);
+}
+
+void b9_bitor(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  b9_bitop(out, a, b, B9_BITOP_OR);
+}
+
+void b9_bitxor(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  b9_bitop(out, a, b, B9_BITOP_XOR);
+}
+
+void b9_bitandnot(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  b9_bitop(out, a, b, B9_BITOP_ANDNOT);
+}
+
+void b9_bitnot(b9_t *out, const b9_t *a, bool fixed_width, uint32_t width)
+{
+  b9_t A;
+  uint32_t *words, topword = 0;
+  size_t alloc, n = 0;
+
+  if (!fixed_width && b9_is_zero(a)) {
+    b9_set_uv(out, 1);
+    return;
+  }
+  if (fixed_width && width == 0) {
+    b9_set_uv(out, 0);
+    return;
+  }
+
+  alloc = fixed_width
+        ? (size_t)(width / B9_BINARY_WORD_BITS) +
+          (width % B9_BINARY_WORD_BITS != 0)
+        : b9_binary_word_bound(a);
+  words = (uint32_t*)b9_xcalloc(alloc, sizeof(uint32_t));
+  b9_init_set(&A, a);  b9_abs(&A);
+
+  while (n < alloc) {
+    uint32_t av = b9_is_zero(&A) ? 0 :
+      (uint32_t)b9_tdiv_2exp_chunk(&A, B9_BINARY_WORD_BITS);
+    words[n++] = (~av) & B9_BINARY_WORD_MASK;
+    topword = av;
+    if (!fixed_width && b9_is_zero(&A)) break;
+  }
+
+  if (fixed_width) {
+    uint32_t topbits = width % B9_BINARY_WORD_BITS;
+    if (topbits != 0)
+      words[n-1] &= (UINT32_C(1) << topbits) - 1;
+  } else {
+    uint32_t topbits = 0;
+    while (topword != 0) { topword >>= 1; topbits++; }
+    if (topbits < B9_BINARY_WORD_BITS)
+      words[n-1] &= (UINT32_C(1) << topbits) - 1;
+  }
+
+  b9_set_binary(out, words, n);
+  b9_free(&A);
+  free(words);
 }
 
 /* Signed floor division and remainder (floor convention: rem has sign of b).
@@ -830,22 +1111,19 @@ void b9_divexact_u32(b9_t* a, uint32_t p) {
 #endif
 }
 
+/* Divide nonnegative a in place by p and return the remainder. */
 uint32_t b9_divrem_u32_inplace(b9_t* a, uint32_t p)
 {
+  if (p == 2 || p == 4 || p == 8 || p == 16) {
+    uint32_t bits = (p == 2) ? 1 : (p == 4) ? 2 : (p == 8) ? 3 : 4;
+    uint32_t rem = (a->n == 0) ? 0 : (a->d[0] & (p-1));
+    b9_tdiv_2exp(a, a, (UV)bits);
+    return rem;
+  }
+
 #if HAVE_UINT64
   uint32_t rem = 0;
   uint32_t i;
-
-  if (p == 2) {
-    rem = (a->n == 0) ? 0 : (a->d[0] & 1);
-    b9_tdiv2(a);
-    return rem;
-  }
-  if (p == 16) {
-    rem = (a->n == 0) ? 0 : (a->d[0] & 15);
-    b9_tdiv16(a);
-    return rem;
-  }
 
   for (i = a->n; i-- > 0; ) {
     uint64_t cur = (uint64_t)rem * B9_BASE + a->d[i];

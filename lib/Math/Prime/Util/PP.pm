@@ -43,6 +43,7 @@ BEGIN {
   use constant PI_TIMES_8      => 25.13274122871834590770114707;
   use constant MAX_RANDOM_BITS => 4294967295;
   use constant MAX_RANDOM_DIGITS => 4294967295;
+  use constant MAX_BIT_INDEX   => 4294967295;
 }
 
 # TODO: Change this whole file to use this / tobigint
@@ -6053,6 +6054,157 @@ sub cmpint {
   $r = -1 if $r == 4294967295 && (ref($a) eq 'Math::Pari' || ref($b) eq 'Math::Pari');
   return $r < 0 ? -1 : $r > 0 ? 1 : 0;
 }
+
+sub _bit_binary_op {
+  my($method, $x, $y) = @_;
+  validate_integer_abs($x);
+  validate_integer_abs($y);
+
+  if (!ref($x) && !ref($y) && $x <= SINTMAX && $y <= SINTMAX) {
+    use integer;
+    return $x & $y   if $method eq 'band';
+    return $x | $y   if $method eq 'bior';
+    return $x ^ $y   if $method eq 'bxor';
+    return $x & ~$y;
+  }
+
+  my $r = Math::BigInt->new("$x");
+  if ($method eq 'bandnot') {
+    my $common = $r->copy->band("$y");
+    $r->bsub($common);
+  } else {
+    $r->$method("$y");
+  }
+  canonicalized_integer($r);
+}
+
+sub bitand {
+  croak "bitand: expected (x,y)" unless @_ == 2;
+  _bit_binary_op('band', @_);
+}
+sub bitor {
+  croak "bitor: expected (x,y)" unless @_ == 2;
+  _bit_binary_op('bior', @_);
+}
+sub bitxor {
+  croak "bitxor: expected (x,y)" unless @_ == 2;
+  _bit_binary_op('bxor', @_);
+}
+sub bitandnot {
+  croak "bitandnot: expected (x,y)" unless @_ == 2;
+  _bit_binary_op('bandnot', @_);
+}
+
+sub _bit_position {
+  my($name, $type, $k) = @_;
+  validate_integer_nonneg($k);
+  croak "$name: $type must be between 0 and 4294967295"
+    if $k > MAX_BIT_INDEX;
+  0+$k;
+}
+
+sub bittest {
+  croak "bittest: expected (x,k)" unless @_ == 2;
+  my($x,$k) = @_;
+  validate_integer_abs($x);
+  $k = _bit_position('bittest', 'bit index', $k);
+  return 0 if $k >= 4 * length("$x");
+  return Mis_odd(Mrshiftint($x,$k));
+}
+
+sub bitset {
+  croak "bitset: expected (x,k)" unless @_ == 2;
+  my($x,$k) = @_;
+  validate_integer_abs($x);
+  $k = _bit_position('bitset', 'bit index', $k);
+  if (!ref($x) && $x <= SINTMAX && $k < MPU_MAXBITS-1) {
+    use integer;
+    return $x | (1 << $k);
+  }
+  return canonicalized_integer($x)
+    if $k < 4 * length("$x") && Mis_odd(Mrshiftint($x,$k));
+  Maddint($x, Mlshiftint(1,$k));
+}
+
+sub bitclear {
+  croak "bitclear: expected (x,k)" unless @_ == 2;
+  my($x,$k) = @_;
+  validate_integer_abs($x);
+  $k = _bit_position('bitclear', 'bit index', $k);
+  if (!ref($x) && $x <= SINTMAX) {
+    return $x if $k >= MPU_MAXBITS-1;
+    use integer;
+    return $x & ~(1 << $k);
+  }
+  return canonicalized_integer($x)
+    if $k >= 4 * length("$x") || Mis_even(Mrshiftint($x,$k));
+  Msubint($x, Mlshiftint(1,$k));
+}
+
+sub bitflip {
+  croak "bitflip: expected (x,k)" unless @_ == 2;
+  my($x,$k) = @_;
+  validate_integer_abs($x);
+  $k = _bit_position('bitflip', 'bit index', $k);
+  if (!ref($x) && $x <= SINTMAX && $k < MPU_MAXBITS-1) {
+    use integer;
+    return $x ^ (1 << $k);
+  }
+  my $mask = Mlshiftint(1,$k);
+  ($k < 4 * length("$x") && Mis_odd(Mrshiftint($x,$k)))
+    ? Msubint($x,$mask) : Maddint($x,$mask);
+}
+
+sub bitnot {
+  croak "bitnot: expected (x) or (x,width)" if @_ < 1 || @_ > 2;
+  my($x,$width) = @_;
+  validate_integer_abs($x);
+
+  if (@_ == 1) {
+    return 1 if $x == 0;
+    if (!ref($x) && $x <= SINTMAX) {
+      use integer;
+      my($bits,$v) = (0,$x);
+      do { $bits++; $v >>= 1; } while $v;
+      my $mask = $bits == MPU_MAXBITS-1
+               ? SINTMAX
+               : (1 << $bits) - 1;
+      return $x ^ $mask;
+    }
+    $width = Madd1int(Mlogint($x,2));
+  } else {
+    $width = _bit_position('bitnot', 'width', $width);
+    return 0 if $width == 0;
+    if (!ref($x) && $x <= SINTMAX && $width <= MPU_MAXBITS-1) {
+      use integer;
+      my $mask = $width == MPU_MAXBITS-1
+               ? SINTMAX
+               : (1 << $width) - 1;
+      return ($x & $mask) ^ $mask;
+    }
+  }
+
+  my $mod = Mlshiftint(1,$width);
+  Msubint(Msub1int($mod), Mmodint($x,$mod));
+}
+
+sub _bitscan {
+  my($name, $want, @args) = @_;
+  croak "$name: expected (x) or (x,start)"
+    if @args < 1 || @args > 2;
+  my($x,$start) = @args;
+  validate_integer_abs($x);
+  $start = @args == 1 ? 0 : _bit_position($name, 'start', $start);
+
+  my $m = $start == 0 ? $x : Mrshiftint($x,$start);
+  return undef if $want && $m == 0;  ## no critic qw(ProhibitExplicitReturnUndef)
+  my $skip = Mvaluation($want ? $m : Madd1int($m), 2);
+  return undef if $skip > MAX_BIT_INDEX-$start;  ## no critic qw(ProhibitExplicitReturnUndef)
+  $start + $skip;
+}
+
+sub bitscan0 { _bitscan('bitscan0', 0, @_); }
+sub bitscan1 { _bitscan('bitscan1', 1, @_); }
 
 sub lshiftint {
   croak "lshiftint: expected (n) or (n,k)" if @_ != 1 && @_ != 2;

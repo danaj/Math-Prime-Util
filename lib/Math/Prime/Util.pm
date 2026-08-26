@@ -37,6 +37,8 @@ our @EXPORT_OK =
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime is_higgs_prime
       sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
+      bitand bitor bitxor bitandnot bitnot
+      bitset bitclear bitflip bittest bitscan0 bitscan1
       absint negint signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem
@@ -3023,7 +3025,6 @@ For non-negative C<n>, this is always equal to L</rshiftint>.
 With negative arguments it is similar to L<Math::BigInt#brsft>, Python,
 and Java's BigInteger, which use floor division by C<2^k>.  The result is equal
 to dividing by the power of 2 using L</divint> or GMP's C<mpz_fdiv_q_2exp>.
-
 
 =head2 signint
 
@@ -6128,6 +6129,78 @@ without sampling or consuming any random data.
 
 This is similar to C<sample> from L<List::Util>, C<choose_multiple> from
 Rust rand, and Raku's C<pick>.
+
+
+
+=head1 BITWISE OPERATIONS
+
+The bit operations in this section operate on the magnitude of each integer,
+not a signed two's-complement representation.  Their defined results are
+therefore non-negative.  Bit positions are zero-based, with position 0 the
+least-significant bit.  A bit position, scan starting position, or explicit
+width must be an integer between 0 and 4294967295 inclusive.
+
+=head2 bitand
+
+Given integers C<x> and C<y>, returns the bitwise AND of C<|x|> and C<|y|>.
+
+=head2 bitor
+
+Given integers C<x> and C<y>, returns the bitwise OR of C<|x|> and C<|y|>.
+
+=head2 bitxor
+
+Given integers C<x> and C<y>, returns the bitwise exclusive OR (XOR) of
+C<|x|> and C<|y|>.
+
+=head2 bitandnot
+
+Given integers C<x> and C<y>, returns the bitwise AND of C<|x|> with the
+bitwise complement of C<|y|>.
+
+=head2 bitnot
+
+Given an integer C<x>, returns the bitwise complement of C<|x|>, using the
+minimum width needed to represent C<|x|>.  Zero is treated as a one-bit value,
+so C<bitnot(0)> returns 1.
+
+An optional non-negative C<width> specifies an exact width.  Only the lowest
+C<width> bits of C<|x|> are used; higher input bits are discarded and implicit
+zero bits within the width are complemented.  A width of zero returns 0.
+
+=head2 bitset
+
+Given an integer C<x> and a non-negative bit position C<k>, returns C<|x|>
+with bit C<k> set to 1.
+
+=head2 bitclear
+
+Given an integer C<x> and a non-negative bit position C<k>, returns C<|x|>
+with bit C<k> cleared to 0.
+
+=head2 bitflip
+
+Given an integer C<x> and a non-negative bit position C<k>, returns C<|x|>
+with bit C<k> complemented.
+
+=head2 bittest
+
+Given an integer C<x> and a non-negative bit position C<k>, returns 1 if bit
+C<k> of C<|x|> is set, and 0 otherwise.
+
+=head2 bitscan0
+
+Given an integer C<x> and an optional non-negative C<start>, returns the
+position of the first zero bit in C<|x|> at or above C<start>.  C<start>
+defaults to zero.  Bits above the highest set bit are zero.  Returns C<undef>
+if the matching position would exceed 4294967295.
+
+=head2 bitscan1
+
+Given an integer C<x> and an optional non-negative C<start>, returns the
+position of the first set bit in C<|x|> at or above C<start>.  C<start>
+defaults to zero.  Returns C<undef> if there is no matching bit at or below
+position 4294967295.
 
 
 

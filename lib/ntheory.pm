@@ -265,6 +265,20 @@ Tags:
   set_is_proper_superset(\@A,\@B)     is set B a proper superset of set A
   set_is_proper_intersection(\@A,\@B) is set B a proper intersection of set A
 
+=head2 BIT OPS
+
+  bitand(x,y)                         bitwise AND of |x| and |y|
+  bitor(x,y)                          bitwise OR of |x| and |y|
+  bitxor(x,y)                         bitwise XOR of |x| and |y|
+  bitandnot(x,y)                      bitwise |x| AND NOT |y|
+  bitnot(x[,width])                   bitwise complement |x|
+  bitset(x,k)                         set bit k of |x|
+  bitclear(x,k)                       clear bit k of |x|
+  bitflip(x,k)                        flip bit k of |x|
+  bittest(x,k)                        test bit k of |x|
+  bitscan0(x[,start])                 first zero bit at or above start
+  bitscan1(x[,start])                 first one bit at or above start
+
 =head2 MATH
 
   toint(n)                            truncate value to integer (best form)

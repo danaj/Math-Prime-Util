@@ -68,6 +68,8 @@ sub mpu_public_regex {
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
       is_harshad is_palindrome is_safe_prime is_higgs_prime
       sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
+      bitand bitor bitxor bitandnot bitnot
+      bitset bitclear bitflip bittest bitscan0 bitscan1
       absint negint signint cmpint addint subint add1int sub1int
       mulint muladdint mulsubint powint
       divint modint cdivint divrem fdivrem cdivrem tdivrem

@@ -1672,6 +1672,16 @@ static bool xs_sv_is_perfect_square(pTHX_ SV *sv, int *ret)
   return 0;
 }
 
+static UV xs_bit_position(pTHX_ SV *sv, const char *opname,
+                          const char *type) {
+  UV k;
+  int status = _validate_and_set(&k, aTHX_ sv, IFLAG_NONNEG);
+
+  if (status != 1 || k > (UV)UINT32_MAX)
+    croak("%s: %s must be between 0 and 4294967295", opname, type);
+  return k;
+}
+
 /******************************************************************************/
 /******************************************************************************/
 
@@ -5297,6 +5307,140 @@ void cmpint(IN SV* sva, IN SV* svb)
   PPCODE:
     ret = xs_cmpint_result(aTHX_ sva, svb);
     RETURN_NPARITY(ret);
+
+void bitand(IN SV* sva, IN SV* svb)
+  ALIAS:
+    bitor = 1
+    bitxor = 2
+    bitandnot = 3
+  PREINIT:
+    int astatus, bstatus;
+    UV a, b, ret;
+    const char *sa, *sb;
+    char *rstr;
+    STRLEN alena, alenb, rlen;
+  PPCODE:
+    astatus = _validate_and_set(&a, aTHX_ sva, IFLAG_ABS);
+    bstatus = _validate_and_set(&b, aTHX_ svb, IFLAG_ABS);
+    if (astatus != 0 && bstatus != 0) {
+      switch (ix) {
+        case 0:  ret = a & b;  break;
+        case 1:  ret = a | b;  break;
+        case 2:  ret = a ^ b;  break;
+        default: ret = a & ~b; break;
+      }
+      XSRETURN_UV(ret);
+    }
+    sa = SvPV_nomg(sva, alena);
+    sb = SvPV_nomg(svb, alenb);
+    switch (ix) {
+      case 0:  rstr = strint_bitand(sa, alena, sb, alenb, &rlen);     break;
+      case 1:  rstr = strint_bitor(sa, alena, sb, alenb, &rlen);      break;
+      case 2:  rstr = strint_bitxor(sa, alena, sb, alenb, &rlen);     break;
+      default: rstr = strint_bitandnot(sa, alena, sb, alenb, &rlen);  break;
+    }
+    RETURN_SIGN_STRINT_STR(1, rstr, rlen);
+
+void bitnot(IN SV* svn, IN SV* svwidth = 0)
+  PREINIT:
+    int nstatus;
+    UV n, width, mask;
+    const char *sn;
+    char *rstr;
+    STRLEN lenn, rlen;
+  PPCODE:
+    width = 0;
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    if (items == 1) {
+      if (nstatus != 0) {
+        if (n == 0) XSRETURN_UV(1);
+        width = log2floor(n) + 1;
+        mask = (width == BITS_PER_WORD)
+             ? UV_MAX : (UVCONST(1) << width) - 1;
+        XSRETURN_UV(n ^ mask);
+      }
+    } else {
+      width = xs_bit_position(aTHX_ svwidth, SUBNAME, "width");
+      if (width == 0) XSRETURN_UV(0);
+      if (nstatus != 0 && width <= BITS_PER_WORD) {
+        mask = (width == BITS_PER_WORD)
+             ? UV_MAX : (UVCONST(1) << width) - 1;
+        XSRETURN_UV((n & mask) ^ mask);
+      }
+    }
+    sn = SvPV_nomg(svn, lenn);
+    rstr = strint_bitnot(sn, lenn, items == 2, (uint32_t)width, &rlen);
+    RETURN_SIGN_STRINT_STR(1, rstr, rlen);
+
+void bitset(IN SV* svn, IN SV* svk)
+  ALIAS:
+    bitclear = 1
+    bitflip = 2
+    bittest = 3
+  PREINIT:
+    int nstatus;
+    UV n, k, mask;
+    const char *sn;
+    char *rstr;
+    STRLEN lenn, rlen;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    k = xs_bit_position(aTHX_ svk, SUBNAME, "bit index");
+    if (nstatus != 0) {
+      if (k >= BITS_PER_WORD) {
+        if (ix == 1) XSRETURN_UV(n);
+        if (ix == 3) XSRETURN_UV(0);
+      } else {
+        mask = UVCONST(1) << k;
+        switch (ix) {
+          case 0:  XSRETURN_UV(n | mask);
+          case 1:  XSRETURN_UV(n & ~mask);
+          case 2:  XSRETURN_UV(n ^ mask);
+          default: XSRETURN_UV((n & mask) != 0);
+        }
+      }
+    }
+    sn = SvPV_nomg(svn, lenn);
+    if (ix == 3)
+      XSRETURN_UV(strint_bittest(sn, lenn, (uint32_t)k));
+    switch (ix) {
+      case 0:  rstr = strint_bitset(  sn, lenn, (uint32_t)k, &rlen);  break;
+      case 1:  rstr = strint_bitclear(sn, lenn, (uint32_t)k, &rlen);  break;
+      default: rstr = strint_bitflip( sn, lenn, (uint32_t)k, &rlen);  break;
+    }
+    RETURN_SIGN_STRINT_STR(1, rstr, rlen);
+
+void bitscan0(IN SV* svn, IN SV* svstart = 0)
+  ALIAS:
+    bitscan1 = 1
+  PREINIT:
+    int nstatus;
+    UV n, start, shifted, match;
+    uint32_t result;
+    const char *sn;
+    STRLEN lenn;
+  PPCODE:
+    nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
+    start = (items == 1)
+          ? 0 : xs_bit_position(aTHX_ svstart, SUBNAME, "start");
+    if (nstatus != 0) {
+      if (start >= BITS_PER_WORD) {
+        if (ix == 0) XSRETURN_UV(start);
+        XSRETURN_UNDEF;
+      }
+      shifted = n >> start;
+      if (ix == 1) {
+        if (shifted == 0) XSRETURN_UNDEF;
+        XSRETURN_UV(start + ctz(shifted));
+      }
+      match = ~shifted;
+      XSRETURN_UV(match == 0 ? BITS_PER_WORD : start + ctz(match));
+    }
+    sn = SvPV_nomg(svn, lenn);
+    if (ix == 0 ? strint_bitscan0(&result, sn, lenn, (uint32_t)start)
+                : strint_bitscan1(&result, sn, lenn, (uint32_t)start))
+      XSRETURN_UV(result);
+    XSRETURN_UNDEF;
 
 void logint(IN SV* svn, IN SV* svb, IN SV* svret = 0)
   PREINIT:

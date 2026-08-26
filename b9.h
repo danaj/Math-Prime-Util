@@ -113,6 +113,12 @@ void b9_init_set_uv(b9_t *x, UV v);
 void b9_init_set_str(b9_t *x, const char *s, STRLEN len);
 void b9_init_set_pow2(b9_t *x, UV k);
 
+/* Test bit k of |x|. */
+bool b9_testbit(const b9_t *x, uint32_t k);
+/* Find the first zero or one bit of |x| at or above start. */
+bool b9_bitscan0(uint32_t *result, const b9_t *x, uint32_t start);
+bool b9_bitscan1(uint32_t *result, const b9_t *x, uint32_t start);
+
 int b9_cmp(const b9_t *a, const b9_t *b);
 void b9_add(b9_t *out, const b9_t *a, const b9_t *b);
 void b9_add_u32(b9_t *out, const b9_t *a, uint32_t v);
@@ -120,6 +126,13 @@ void b9_add_uv(b9_t *out, const b9_t *a, UV v);
 void b9_mul(b9_t *out, const b9_t *a, const b9_t *b);
 void b9_mul_u32(b9_t *out, const b9_t *a, uint32_t v);
 void b9_mul_2exp(b9_t *out, const b9_t *a, UV bits);
+void b9_tdiv_2exp(b9_t *out, const b9_t *a, UV bits);
+void b9_bitand(b9_t *out, const b9_t *a, const b9_t *b);
+void b9_bitor(b9_t *out, const b9_t *a, const b9_t *b);
+void b9_bitxor(b9_t *out, const b9_t *a, const b9_t *b);
+void b9_bitandnot(b9_t *out, const b9_t *a, const b9_t *b);
+void b9_bitnot(b9_t *out, const b9_t *a, bool fixed_width,
+               uint32_t width);
 void b9_pow(b9_t *out, const b9_t *a, UV exp);
 void b9_fdivrem(b9_t *q, b9_t *r, const b9_t *a, const b9_t *b);
 uint32_t b9_mod_u32(const b9_t *a, uint32_t p);

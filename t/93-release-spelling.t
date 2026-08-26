@@ -54,12 +54,15 @@ add_stopwords(qw/-th
                  tozeckendorf fromzeckendorf
                  lucasu lucasv lucasuv lucasumod lucasvmod lucasuvmod
                  lshiftint rshiftint rashiftint signint cmpint
+                 bitand bitor bitxor bitandnot
+                 bitnot bitset bitclear bitflip bittest
+                 bitscan0 bitscan1
                  biquadrate powerfree k-powerfree k-free workaround
                  sumpowerful powersum partitionsq
                  sumset setbinop setunion setintersect setminus setdelta toset
                  setcontains setcontainsany setinsert setremove setinvert
                  contfrac farey convergents bestrational semiconvergent
-                 sopf sopfr min max
+                 sopf sopfr min max bitwise
                  _uvsize _ivsize _nvsize _uvbits _nvmantbits _nvmantdigits
                  pp 100ns/);
 

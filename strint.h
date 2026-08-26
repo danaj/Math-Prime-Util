@@ -169,6 +169,31 @@ extern STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k);
  * out needs alen bytes. */
 extern STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k);
 
+/* Magnitude-oriented bit operations on validated decimal strings.
+ * Results are malloc-owned canonical decimal strings. */
+extern char* strint_bitand(const char* a, STRLEN alen,
+                           const char* b, STRLEN blen, STRLEN* rlen);
+extern char* strint_bitor(const char* a, STRLEN alen,
+                          const char* b, STRLEN blen, STRLEN* rlen);
+extern char* strint_bitxor(const char* a, STRLEN alen,
+                           const char* b, STRLEN blen, STRLEN* rlen);
+extern char* strint_bitandnot(const char* a, STRLEN alen,
+                              const char* b, STRLEN blen, STRLEN* rlen);
+extern char* strint_bitnot(const char* a, STRLEN alen, bool fixed_width,
+                           uint32_t width, STRLEN* rlen);
+extern bool strint_bittest(const char* a, STRLEN alen, uint32_t k);
+extern char* strint_bitset(const char* a, STRLEN alen, uint32_t k,
+                           STRLEN* rlen);
+extern char* strint_bitclear(const char* a, STRLEN alen, uint32_t k,
+                             STRLEN* rlen);
+extern char* strint_bitflip(const char* a, STRLEN alen, uint32_t k,
+                            STRLEN* rlen);
+/* Return false when no matching bit exists within the uint32_t index range. */
+extern bool strint_bitscan0(uint32_t* result, const char* a, STRLEN alen,
+                            uint32_t start);
+extern bool strint_bitscan1(uint32_t* result, const char* a, STRLEN alen,
+                            uint32_t start);
+
 extern UV strint_popcount(const char* ptr, STRLEN len);
 
 #endif

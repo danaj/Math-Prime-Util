@@ -132,6 +132,13 @@ subtest 'reverse_digits', sub {
   is("".reverse_digits("123456789012345678901234567890", 36),
      "".fromdigits([reverse todigits("123456789012345678901234567890",36)],36),
      "reverse_digits bigint base 36");
+  {
+    my $n = "12345678901234567890123456789012345678901234567890";
+    my @bases = (2, 4, 8, 16);
+    is_deeply([map { "".reverse_digits($n,$_) } @bases],
+              [map { "".fromdigits([reverse todigits($n,$_)],$_) } @bases],
+              "reverse_digits bigint power-of-two bases");
+  }
   ok(!eval { reverse_digits(17, 1); 1 } && $@ =~ /reverse_digits: .*invalid base: 1/i,
      "reverse_digits invalid base croak");
 };
