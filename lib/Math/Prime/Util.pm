@@ -6140,6 +6140,14 @@ therefore non-negative.  Bit positions are zero-based, with position 0 the
 least-significant bit.  A bit position, scan starting position, or explicit
 width must be an integer between 0 and 4294967295 inclusive.
 
+For native-sized values, these functions use fast native operations.
+For larger values, conversion of bigint inputs can dominate the operation;
+functions returning a bigint also incur output construction costs.
+Applications performing many operations on a large mask may be better
+served by C<vec>, L<Bit::Vector>, or direct mutation of a L<Math::GMPz> object.
+The functions here are nevertheless substantially faster than
+L<Math::BigInt> with its default Calc backend.
+
 =head2 bitand
 
 Given integers C<x> and C<y>, returns the bitwise AND of C<|x|> and C<|y|>.

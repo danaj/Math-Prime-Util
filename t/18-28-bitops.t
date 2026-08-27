@@ -70,6 +70,10 @@ subtest 'binary operations on big integers' => sub {
     is(bcall('bitxor',$x,$x), 0, 'x XOR x is zero');
     is(bcall('bitandnot',$x,$x), 0, 'x AND NOT x is zero');
   }
+
+  my $large = '1234567890' x 200;
+  is(''.bcall('bitor',$large,0), $large,
+     '2000-digit binary conversion round trip');
 };
 
 subtest 'bitnot width semantics' => sub {

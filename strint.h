@@ -61,7 +61,8 @@ extern char* strint_fromdigits(const UV* d, size_t len, UV base, STRLEN* rlen);
 extern int strint_fromdigitstring(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base);
 
 /* Convert a validated base 2, 8, or 16 digit string to either a UV or decimal
- * string.  Returns 1 for UV, 2 for malloc-allocated string. */
+ * string.  All three output pointers must be non-NULL.
+ * Returns 1 for UV, 2 for malloc-allocated string. */
 extern int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base);
 
 /* Multiply two signed decimal integer strings.

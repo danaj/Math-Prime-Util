@@ -3,9 +3,9 @@ use strict;
 use warnings;
 
 use Test::More;
-use Math::Prime::Util qw/logint powint/;
+use Math::Prime::Util qw/addint logint powint subint/;
 
-plan tests => 2 + 4 + 2 + 3 + 1 + 4;
+plan tests => 2 + 4 + 2 + 3 + 1 + 4 + 6;
 
 ok( !defined eval { logint(0,10) } && !defined eval { logint(-5,10) },
     "logint(n,base): n must be at least 1" );
@@ -38,3 +38,21 @@ is_deeply( [map { logint($_,10) } 1..200], [map { length($_)-1 } 1..200], "login
 is(logint(powint(3,1000), powint(10,24)), 19, "logint with bigint n and bigint base");
 is(logint(58,~0), 0, "logint(58,~0) = 0");
 is(logint("1329227995784915872903807060280344576",2), 120, "logint(2^120,2) = 120");
+
+for my $case (
+  [2,    1000, "B2 power-of-two path"],
+  [2,    7000, "B9 large power-of-two path"],
+  [3,    1000, "B2 general path"],
+  [3,    1100, "B9 general path"],
+  [10,   3000, "base-10 length path"],
+  [1000, 1000, "power-of-10 length path"],
+) {
+  my($base, $k, $name) = @$case;
+  my $power = powint($base, $k);
+  is_deeply(
+    [map { logint($_, $base) }
+       subint($power, 1), $power, addint($power, 1)],
+    [$k-1, $k, $k],
+    $name,
+  );
+}

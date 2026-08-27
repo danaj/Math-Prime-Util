@@ -38,6 +38,8 @@ aks.h
 aks.c
 almost_primes.h
 almost_primes.c
+b2.h
+b2.c
 b9.h
 b9.c
 cache.h
@@ -131,6 +133,8 @@ csprng.h
 csprng.c
 chacha.h
 chacha.c
+bench/bitops-2048.gp
+bench/bitops-2048.pl
 bench/bench-factor.pl
 bench/bench-factor-extra.pl
 bench/bench-factor-semiprime.pl

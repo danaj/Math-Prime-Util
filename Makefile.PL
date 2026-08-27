@@ -40,6 +40,7 @@ WriteMakefile1(
                     'strint.o '       .
                     'znlog.o '        .
                     'b9.o '           .
+                    'b2.o '           .
                     'primality.o '    .
                     'congruent_numbers.o ' .
                     'totients.o '     .

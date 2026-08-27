@@ -41,6 +41,15 @@ typedef struct {
   int       neg;
 } b9_t;
 
+/* Little-endian binary words accepted by b9_set_binary. */
+#if HAVE_UINT64
+  typedef uint32_t b9binary_t;
+  #define B9_BINARY_WORD_BITS  32
+#else
+  typedef uint16_t b9binary_t;
+  #define B9_BINARY_WORD_BITS  16
+#endif
+
 MAYBE_UNUSED static INLINE void b9_init(b9_t *x)
 {
   x->d = (b9limb_t*)x->d_small;
@@ -106,6 +115,8 @@ void b9_set_str(b9_t *x, const char *s, STRLEN len);
 STRLEN b9_get_str(char *buf, const b9_t *x);
 void b9_set_uv(b9_t *x, UV v);
 UV b9_get_uv(const b9_t *x);
+/* Set x to a nonnegative value from n little-endian binary words. */
+void b9_set_binary(b9_t *x, const b9binary_t *words, size_t n);
 
 void b9_set(b9_t *dst, const b9_t *src);
 void b9_init_set(b9_t *x, const b9_t *y);
@@ -127,6 +138,7 @@ void b9_mul(b9_t *out, const b9_t *a, const b9_t *b);
 void b9_mul_u32(b9_t *out, const b9_t *a, uint32_t v);
 void b9_mul_2exp(b9_t *out, const b9_t *a, UV bits);
 void b9_tdiv_2exp(b9_t *out, const b9_t *a, UV bits);
+void b9_fdiv_2exp(b9_t *out, const b9_t *a, UV bits);
 void b9_bitand(b9_t *out, const b9_t *a, const b9_t *b);
 void b9_bitor(b9_t *out, const b9_t *a, const b9_t *b);
 void b9_bitxor(b9_t *out, const b9_t *a, const b9_t *b);

@@ -3,6 +3,9 @@
 
 #include "b9.h"
 
+/* Use schoolbook multiplication below this many limbs (must be >= 3). */
+#define B9_KARATSUBA_THRESHOLD 400
+
 /******************************************************************************/
 /* Internal allocation helpers. */
 /******************************************************************************/
@@ -254,6 +257,21 @@ MAYBE_UNUSED static uint32_t b9_get_u32(const b9_t *x)
   return v;
 }
 
+#if HAVE_UINT64
+static bool b9_get_u32_checked(uint32_t *result, const b9_t *x)
+{
+  uint64_t v = 0;
+  uint32_t i;
+
+  if (x->n > (uint32_t)B9_NLIMBS(10)) return 0;
+  for (i = x->n; i-- > 0; )
+    v = v * B9_BASE + x->d[i];
+  if (v > UINT32_MAX) return 0;
+  *result = (uint32_t)v;
+  return 1;
+}
+#endif
+
 /* Convert b9 to UV, no size check. [n * B9_DIGS < sizeof(UV)*3] */
 UV b9_get_uv(const b9_t* x) {
   UV v = 0;
@@ -471,24 +489,51 @@ void b9_add_uv(b9_t *out, const b9_t *a, UV v)
   }
 }
 
-/* out = a * b (signed).
- * Reads all of a->d and b->d before writing to out->d, so out may alias
- * a or b (b9_ensure is called only after the multiply loop). */
+/* out = a * b (signed).  Every multiplication path permits out to alias
+ * either input. */
 
-/* Small multiplications use a stack buffer to avoid malloc overhead.
- * 64 limbs covers 576 digits (base 10^9), 384 (10^6), 256 (10^4). */
-#define B9_MUL_STACK_LIMBS 64
+/* Keep common schoolbook products and Karatsuba leaves off the heap without
+ * making a 4 KiB stack array when b9acc_t is uint64_t. */
+#define B9_MUL_STACK_LIMBS 448
 
-void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
+/* Multiply a magnitude by one limb.  out may alias a. */
+static void b9_mul_limb_abs(b9_t *out, const b9_t *a, b9limb_t v)
+{
+  b9acc_t carry = 0;
+  uint32_t i;
+
+  if (v == 0 || a->n == 0) {
+    out->n = 0;
+    out->neg = 0;
+    return;
+  }
+  if (v == 1) {
+    b9_set(out, a);
+    out->neg = 0;
+    return;
+  }
+  if (a->n == UINT32_MAX)
+    croak("internal: b9 multiplication too large");
+  b9_ensure(out, a->n + 1);
+  for (i = 0; i < a->n; i++) {
+    b9acc_t product = (b9acc_t)a->d[i] * v + carry;
+    out->d[i] = (b9limb_t)(product % B9_BASE);
+    carry = product / B9_BASE;
+  }
+  out->n = a->n;
+  if (carry != 0) out->d[out->n++] = (b9limb_t)carry;
+  out->neg = 0;
+}
+
+/* All input limbs are consumed before out is resized or written. */
+static void b9_mul_schoolbook(b9_t *out, const b9_t *a, const b9_t *b)
 {
   uint32_t i, j, rn;
   b9acc_t  stack_acc[B9_MUL_STACK_LIMBS + 1];
   b9acc_t *acc;
-  int neg;
 
   if (a->n == 0 || b->n == 0) { out->n = 0;  out->neg = 0;  return; }
 
-  neg = (a->neg != b->neg) ? 1 : 0;
   rn  = a->n + b->n;
 
   if (rn <= B9_MUL_STACK_LIMBS) {
@@ -521,9 +566,197 @@ void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
   }
   if (acc != stack_acc) free(acc);
 
-  while (rn > 1 && out->d[rn-1] == 0) rn--;
-  out->n   = rn;
-  out->neg = (out->n == 1 && out->d[0] == 0) ? 0 : neg;
+  while (rn > 0 && out->d[rn-1] == 0) rn--;
+  out->n = rn;
+  out->neg = 0;
+}
+
+/* Make a read-only, non-owning view of a limb range.  The view must not be
+ * passed as an output or to b9_free. */
+static void b9_init_slice_view(b9_t *view, const b9_t *a,
+                               uint32_t start, uint32_t len)
+{
+  b9_init(view);
+  if (start >= a->n) return;
+  if (len > a->n-start) len = a->n-start;
+  view->d = a->d + start;
+  view->alloc = len;
+  view->n = len;
+  while (view->n > 0 && view->d[view->n-1] == 0) view->n--;
+}
+
+/* Initialize a temporary using its fixed-capacity portion of a work buffer. */
+static void b9_init_work(b9_t *x, b9limb_t **next, uint32_t capacity)
+{
+  x->d = *next;
+  x->alloc = capacity;
+  x->n = 0;
+  x->neg = 0;
+  *next += capacity;
+}
+
+static void b9_add_work_size(size_t *total, uint32_t capacity)
+{
+  if (*total > (size_t)MAX_SIZET - (size_t)capacity)
+    croak("internal: b9 Karatsuba workspace too large");
+  *total += capacity;
+}
+
+/* Subtract |b| from nonnegative a in place. */
+static void b9_sub_abs_inplace(b9_t *a, const b9_t *b)
+{
+  MPUassert(!a->neg && !b->neg &&
+            b9mag_cmp(a->d, a->n, b->d, b->n) >= 0,
+            "b9 Karatsuba subtraction underflow");
+  a->n = b9mag_sub(a->d, a->d, a->n, b->d, b->n);
+  if (a->n == 1 && a->d[0] == 0) a->n = 0;
+  a->neg = 0;
+}
+
+/* Add x at a whole-limb offset into an allocated, zero-padded result. */
+static void b9_add_shifted(b9_t *out, uint32_t outn,
+                           const b9_t *x, uint32_t offset)
+{
+  uint32_t carry = 0, i, pos;
+
+  MPUassert(offset <= outn && x->n <= outn-offset,
+            "b9 Karatsuba result overflow");
+  for (i = 0; i < x->n; i++) {
+    b9acc_t sum = (b9acc_t)out->d[offset+i] + x->d[i] + carry;
+    if (sum >= B9_BASE) {
+      out->d[offset+i] = (b9limb_t)(sum - B9_BASE);
+      carry = 1;
+    } else {
+      out->d[offset+i] = (b9limb_t)sum;
+      carry = 0;
+    }
+  }
+  pos = offset + x->n;
+  while (carry != 0) {
+    b9acc_t sum;
+    MPUassert(pos < outn, "b9 Karatsuba carry overflow");
+    sum = (b9acc_t)out->d[pos] + carry;
+    if (sum >= B9_BASE) {
+      out->d[pos++] = (b9limb_t)(sum - B9_BASE);
+    } else {
+      out->d[pos++] = (b9limb_t)sum;
+      carry = 0;
+    }
+  }
+}
+
+static void b9_mul_abs(b9_t *out, const b9_t *a, const b9_t *b);
+
+static void b9_mul_karatsuba(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  b9_t a0, a1, b0, b1, asum, bsum, z0, z1, z2;
+  uint32_t an = a->n, bn = b->n;
+  uint32_t maxn = an > bn ? an : bn;
+  uint32_t split = maxn >> 1;
+  uint32_t rn = an + bn;
+  uint32_t a0cap = an < split ? an : split;
+  uint32_t b0cap = bn < split ? bn : split;
+  uint32_t a1cap = an-a0cap;
+  uint32_t b1cap = bn-b0cap;
+  uint32_t asumcap = (a0cap > a1cap ? a0cap : a1cap) + 1;
+  uint32_t bsumcap = (b0cap > b1cap ? b0cap : b1cap) + 1;
+  uint32_t z0cap = a0cap + b0cap;
+  uint32_t z1cap = asumcap + bsumcap;
+  uint32_t z2cap = a1cap + b1cap;
+  size_t worklimbs = 0;
+  b9limb_t *work, *next;
+
+  b9_add_work_size(&worklimbs, asumcap);
+  b9_add_work_size(&worklimbs, bsumcap);
+  b9_add_work_size(&worklimbs, z0cap);
+  b9_add_work_size(&worklimbs, z1cap);
+  b9_add_work_size(&worklimbs, z2cap);
+  work = (b9limb_t*)b9_xmalloc(worklimbs, sizeof(b9limb_t));
+  next = work;
+
+  b9_init_work(&asum, &next, asumcap);
+  b9_init_work(&bsum, &next, bsumcap);
+  b9_init_work(&z0, &next, z0cap);
+  b9_init_work(&z1, &next, z1cap);
+  b9_init_work(&z2, &next, z2cap);
+  MPUassert(next == work + worklimbs,
+            "b9 Karatsuba workspace mismatch");
+
+  b9_init_slice_view(&a0, a, 0, split);
+  b9_init_slice_view(&a1, a, split, an-split);
+  b9_init_slice_view(&b0, b, 0, split);
+  b9_init_slice_view(&b1, b, split, bn-split);
+
+  b9_mul_abs(&z0, &a0, &b0);
+  b9_mul_abs(&z2, &a1, &b1);
+  b9_add(&asum, &a0, &a1);
+  b9_add(&bsum, &b0, &b1);
+  b9_mul_abs(&z1, &asum, &bsum);
+  b9_sub_abs_inplace(&z1, &z0);
+  b9_sub_abs_inplace(&z1, &z2);
+
+  b9_ensure(out, rn);
+  memset(out->d, 0, (size_t)rn * sizeof(b9limb_t));
+  b9_add_shifted(out, rn, &z0, 0);
+  b9_add_shifted(out, rn, &z1, split);
+  b9_add_shifted(out, rn, &z2, split + split);
+  out->n = rn;
+  out->neg = 0;
+  while (out->n > 0 && out->d[out->n-1] == 0) out->n--;
+
+  free(work);
+}
+
+static void b9_mul_abs(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  uint32_t minn = a->n < b->n ? a->n : b->n;
+  uint32_t maxn = a->n > b->n ? a->n : b->n;
+
+  /* Very unequal operands do not recover the extra additions and copies. */
+  if (minn >= B9_KARATSUBA_THRESHOLD && maxn-minn <= minn/2)
+    b9_mul_karatsuba(out, a, b);
+  else
+    b9_mul_schoolbook(out, a, b);
+}
+
+void b9_mul(b9_t *out, const b9_t *a, const b9_t *b)
+{
+  const b9_t *large;
+  b9limb_t small;
+  int neg;
+#if HAVE_UINT64
+  uint32_t small32;
+#endif
+
+  if (a->n == 0 || b->n == 0) {
+    out->n = 0;
+    out->neg = 0;
+    return;
+  }
+  neg = a->neg != b->neg;
+  if (a->n == 1 || b->n == 1) {
+    large = a->n == 1 ? b : a;
+    small = a->n == 1 ? a->d[0] : b->d[0];
+    b9_mul_limb_abs(out, large, small);
+    out->neg = neg && out->n != 0;
+    return;
+  }
+#if HAVE_UINT64
+  if (b9_get_u32_checked(&small32, a)) {
+    b9_mul_u32(out, b, small32);
+    out->neg = neg && out->n != 0;
+    return;
+  }
+  if (b9_get_u32_checked(&small32, b)) {
+    b9_mul_u32(out, a, small32);
+    out->neg = neg && out->n != 0;
+    return;
+  }
+#endif
+  if (a->n > UINT32_MAX-b->n)
+    croak("internal: b9 multiplication too large");
+  b9_mul_abs(out, a, b);
+  out->neg = neg && out->n != 0;
 }
 
 MAYBE_UNUSED static void b9_mul_uv(b9_t *out, const b9_t *a, UV v)
@@ -538,7 +771,7 @@ void b9_mul_u32(b9_t *out, const b9_t *a, uint32_t v)
 {
 #if HAVE_UINT64
   uint64_t carry = 0;
-  uint32_t i, need;
+  uint32_t i, need, extra = (uint32_t)B9_NLIMBS(10) + 1;
   int neg = a->neg;
 
   if (v == 0 || a->n == 0) {
@@ -547,7 +780,9 @@ void b9_mul_u32(b9_t *out, const b9_t *a, uint32_t v)
     return;
   }
 
-  need = a->n + (uint32_t)B9_NLIMBS(10) + 1;
+  if (a->n > UINT32_MAX-extra)
+    croak("internal: b9 multiplication too large");
+  need = a->n + extra;
   b9_ensure(out, need);
   for (i = 0; i < a->n; i++) {
     uint64_t t = (uint64_t)a->d[i] * v + carry;
@@ -659,17 +894,47 @@ static b9acc_t b9_tdiv_2exp_chunk(b9_t *a, uint32_t bits)
   return carry;
 }
 
+/* Divide in place by 2^bits and report whether any discarded bit was set. */
+static bool b9_tdiv_2exp_inplace(b9_t *a, UV bits)
+{
+  bool discarded = 0;
+  if (bits == 1) {
+    discarded = !b9_is_even(a);
+    b9_tdiv2(a);
+    return discarded;
+  }
+  if (bits == 4) {
+    discarded = !b9_is_zero(a) && (a->d[0] & 15) != 0;
+    b9_tdiv16(a);
+    return discarded;
+  }
+  while (bits > 0 && !b9_is_zero(a)) {
+    uint32_t chunk = bits > B9_TDIV_2EXP_CHUNK_BITS
+                   ? B9_TDIV_2EXP_CHUNK_BITS : (uint32_t)bits;
+    if (b9_tdiv_2exp_chunk(a, chunk) != 0) discarded = 1;
+    bits -= chunk;
+  }
+  return discarded;
+}
+
 /* out = trunc(a / 2^bits).  out may alias a. */
 void b9_tdiv_2exp(b9_t *out, const b9_t *a, UV bits)
 {
   if (out != a) b9_set(out, a);
-  if (bits == 1) { b9_tdiv2(out);  return; }
-  if (bits == 4) { b9_tdiv16(out); return; }
-  while (bits > 0 && !b9_is_zero(out)) {
-    uint32_t chunk = bits > B9_TDIV_2EXP_CHUNK_BITS
-                   ? B9_TDIV_2EXP_CHUNK_BITS : (uint32_t)bits;
-    (void)b9_tdiv_2exp_chunk(out, chunk);
-    bits -= chunk;
+  (void)b9_tdiv_2exp_inplace(out, bits);
+}
+
+/* out = floor(a / 2^bits).  out may alias a. */
+void b9_fdiv_2exp(b9_t *out, const b9_t *a, UV bits)
+{
+  bool neg = b9_is_negative(a);
+  bool adjust;
+  if (out != a) b9_set(out, a);
+  adjust = b9_tdiv_2exp_inplace(out, bits);
+  if (neg && adjust) {
+    b9_abs(out);
+    b9_add_u32(out, out, 1);
+    b9_set_negative(out, 1);
   }
 }
 
@@ -727,19 +992,17 @@ bool b9_bitscan1(uint32_t *result, const b9_t *x, uint32_t start)
   return b9_bitscan(result, x, start, 1);
 }
 
-#if HAVE_UINT64
-  #define B9_BINARY_WORD_BITS  32
-  #define B9_BINARY_WORD_MASK  UINT32_MAX
-#else
-  #define B9_BINARY_WORD_BITS  16
-  #define B9_BINARY_WORD_MASK  UINT32_C(65535)
-#endif
 #if B9_DIGS == 9
   #define B9_BINARY_LIMB_BITS  30
 #elif B9_DIGS == 6
   #define B9_BINARY_LIMB_BITS  20
 #else
   #define B9_BINARY_LIMB_BITS  14
+#endif
+#if B9_BINARY_WORD_BITS == 32
+  #define B9_BINARY_WORD_MASK  UINT32_MAX
+#else
+  #define B9_BINARY_WORD_MASK  UINT32_C(65535)
 #endif
 
 /* Upper bound on the binary words needed by a. */
@@ -753,14 +1016,71 @@ static size_t b9_binary_word_bound(const b9_t *a)
   return (bits + B9_BINARY_WORD_BITS - 1) / B9_BINARY_WORD_BITS;
 }
 
-static void b9_set_binary(b9_t *out, const uint32_t *words, size_t n)
+#define B9_BINARY_DC_THRESHOLD  16
+
+static unsigned b9_size_log2(size_t n)
 {
-  while (n > 0 && words[n-1] == 0) n--;
+  unsigned log = 0;
+  while (n >>= 1) log++;
+  return log;
+}
+
+static void b9_set_binary_horner(b9_t *out, const b9binary_t *words,
+                                 size_t n)
+{
   b9_set_uv(out, 0);
   while (n-- > 0) {
     b9_mul_2exp(out, out, B9_BINARY_WORD_BITS);
     b9_add_u32(out, out, words[n]);
   }
+}
+
+/* Convert binary words using powers[k] = 2^(word_bits * 2^k). */
+static void b9_set_binary_dc(b9_t *out, const b9binary_t *words, size_t n,
+                             const b9_t powers[])
+{
+  size_t low_n;
+  unsigned power_index;
+  b9_t hi, lo, tmp;
+
+  if (n < B9_BINARY_DC_THRESHOLD) {
+    b9_set_binary_horner(out, words, n);
+    return;
+  }
+  power_index = b9_size_log2(n / 2);
+  low_n = (size_t)1 << power_index;
+  b9_init(&hi);
+  b9_init(&lo);
+  b9_init(&tmp);
+  b9_set_binary_dc(&hi, words+low_n, n-low_n, powers);
+  b9_set_binary_dc(&lo, words, low_n, powers);
+  b9_mul(&tmp, &hi, &powers[power_index]);
+  b9_add(out, &tmp, &lo);
+  b9_free(&hi);
+  b9_free(&lo);
+  b9_free(&tmp);
+}
+
+void b9_set_binary(b9_t *out, const b9binary_t *words, size_t n)
+{
+  b9_t *powers;
+  size_t i, npowers;
+
+  while (n > 0 && words[n-1] == 0) n--;
+  if (n < B9_BINARY_DC_THRESHOLD) {
+    b9_set_binary_horner(out, words, n);
+    return;
+  }
+
+  npowers = (size_t)b9_size_log2(n / 2) + 1;
+  powers = (b9_t*)b9_xmalloc(npowers, sizeof(b9_t));
+  for (i = 0; i < npowers; i++) b9_init(&powers[i]);
+  b9_init_set_pow2(&powers[0], B9_BINARY_WORD_BITS);
+  for (i = 1; i < npowers; i++)
+    b9_mul(&powers[i], &powers[i-1], &powers[i-1]);
+  b9_set_binary_dc(out, words, n, powers);
+  for (i = 0; i < npowers; i++) b9_free(&powers[i]);
+  free(powers);
 }
 
 enum {
@@ -773,7 +1093,7 @@ enum {
 static void b9_bitop(b9_t *out, const b9_t *a, const b9_t *b, int op)
 {
   b9_t A, B;
-  uint32_t *words;
+  b9binary_t *words;
   size_t awords, bwords, alloc, n = 0;
 
   if (op == B9_BITOP_AND && (b9_is_zero(a) || b9_is_zero(b))) {
@@ -802,7 +1122,7 @@ static void b9_bitop(b9_t *out, const b9_t *a, const b9_t *b, int op)
     alloc = awords;
   else
     alloc = awords > bwords ? awords : bwords;
-  words = (uint32_t*)b9_xcalloc(alloc, sizeof(uint32_t));
+  words = (b9binary_t*)b9_xcalloc(alloc, sizeof(b9binary_t));
   b9_init_set(&A, a);  b9_abs(&A);
   b9_init_set(&B, b);  b9_abs(&B);
 
@@ -856,7 +1176,8 @@ void b9_bitandnot(b9_t *out, const b9_t *a, const b9_t *b)
 void b9_bitnot(b9_t *out, const b9_t *a, bool fixed_width, uint32_t width)
 {
   b9_t A;
-  uint32_t *words, topword = 0;
+  b9binary_t *words;
+  uint32_t topword = 0;
   size_t alloc, n = 0;
 
   if (!fixed_width && b9_is_zero(a)) {
@@ -872,7 +1193,7 @@ void b9_bitnot(b9_t *out, const b9_t *a, bool fixed_width, uint32_t width)
         ? (size_t)(width / B9_BINARY_WORD_BITS) +
           (width % B9_BINARY_WORD_BITS != 0)
         : b9_binary_word_bound(a);
-  words = (uint32_t*)b9_xcalloc(alloc, sizeof(uint32_t));
+  words = (b9binary_t*)b9_xcalloc(alloc, sizeof(b9binary_t));
   b9_init_set(&A, a);  b9_abs(&A);
 
   while (n < alloc) {

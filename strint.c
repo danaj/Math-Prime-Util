@@ -3,7 +3,11 @@
 #include <string.h>
 
 #include "ptypes.h"
+#include "b2.h"
 #include "b9.h"
+#if B2_LIMB_BITS != B9_BINARY_WORD_BITS
+  #error "b2 and b9 binary word sizes must match"
+#endif
 #include "strint.h"
 #include "constants.h"
 #include "mulmod.h"
@@ -46,6 +50,33 @@ static void* strint_xmalloc(size_t count, size_t size)
   if (p == 0 && count != 0 && size != 0)
     croak("internal: strint allocation failed");
   return p;
+}
+
+/* Below this size, direct base conversion has less setup overhead. */
+#define STRINT_B2_B9_OUTPUT_BITS   6400
+#define STRINT_B2_B9_OUTPUT_LIMBS  \
+  ((STRINT_B2_B9_OUTPUT_BITS + B2_LIMB_BITS - 1) / B2_LIMB_BITS)
+
+static void strint_b9_set_b2(b9_t *out, const b2_t *x)
+{
+  MPUassert(x->n >= STRINT_B2_B9_OUTPUT_LIMBS,
+            "strint b2 conversion called with small input");
+  b9_set_binary(out, x->d, x->n);
+  b9_set_negative(out, x->neg);
+}
+
+static STRLEN strint_b2_get_str(char *out, const b2_t *n)
+{
+  b9_t decimal;
+  STRLEN len;
+
+  if (n->n < STRINT_B2_B9_OUTPUT_LIMBS)
+    return b2_get_str(out, n);
+  b9_init(&decimal);
+  strint_b9_set_b2(&decimal, n);
+  len = b9_get_str(out, &decimal);
+  b9_free(&decimal);
+  return len;
 }
 
 /* Parse a canonical decimal string (no sign, no leading zeros) to UV.
@@ -276,11 +307,9 @@ char* strint_vecsum(const char* const* a, const STRLEN* alen, size_t n, STRLEN* 
   }
 
   len = b9_length(&sum);
-  out = (char*) malloc((size_t)len + 1);
-  if (out != 0) {
-    len = b9_get_str(out, &sum);
-    out[len] = '\0';
-  }
+  out = (char*)strint_xmalloc((size_t)len + 1, 1);
+  len = b9_get_str(out, &sum);
+  out[len] = '\0';
   if (rlen) *rlen = len;
 
   b9_free(&sum);
@@ -320,7 +349,7 @@ char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN*
   /* Process 1/4 of the items, product tree those, next quarter, etc.
    *
    * There is no performance benefit for the quarter split, but it saves
-   * us high water memory as we allocate only 1/4 of the b9 objects.
+   * us high water memory as we allocate only 1/4 of the bigint objects.
    */
 
   prodn = n/4 + (n % 4 != 0);
@@ -352,12 +381,9 @@ char* strint_vecprod(const char* const* a, const STRLEN* alen, size_t n, STRLEN*
     b9_free(&T[i]);
 
 return_prod:
-  out = (char*) malloc((size_t)b9_length(&prod) + 1);
-  outlen = 0;
-  if (out != 0) {
-    outlen = b9_get_str(out, &prod);
-    out[outlen] = '\0';
-  }
+  out = (char*)strint_xmalloc((size_t)b9_length(&prod) + 1, 1);
+  outlen = b9_get_str(out, &prod);
+  out[outlen] = '\0';
   if (rlen) *rlen = outlen;
 
   b9_free(&prod);
@@ -796,13 +822,15 @@ int strint_fromdigitstring(UV* rn, char** rstr, STRLEN* rlen, const char* s, STR
 
 int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN len, UV base)
 {
-  b9_t R;
+  b2_t R;
   UV n = 0;
-  STRLEN i, start;
+  STRLEN i;
   unsigned shift;
 
-  if (rlen) *rlen = 0;
-  if (rstr) *rstr = 0;
+  MPUassert(rn != 0 && rstr != 0 && rlen != 0,
+            "strint_radix_to_int null output pointer");
+  *rlen = 0;
+  *rstr = 0;
   while (len > 0 && *s == '0') { s++;  len--; }
   if (base != 2 && base != 8 && base != 16) return 0;
   shift = (base == 16) ? 4 : (base == 8) ? 3 : 1;
@@ -819,36 +847,15 @@ int strint_radix_to_int(UV* rn, char** rstr, STRLEN* rlen, const char* s, STRLEN
     return 1;
   }
 
-  b9_init_set_uv(&R, 0);
-  start = 0;
-  while (start < len) {
-    STRLEN chunk_len = len - start;
-    uint32_t chunk = 0;
-    unsigned bits;
-
-    if (chunk_len > 32 / shift)
-      chunk_len = 32 / shift;
-
-    bits = (unsigned)chunk_len * shift;
-    for (i = 0; i < chunk_len; i++) {
-      if (base == 16)
-        chunk = (chunk << 4) | (uint32_t)strint_digit_value((unsigned char)s[start+i]);
-      else
-        chunk = (chunk << shift) | (uint32_t)(s[start+i] - '0');
-    }
-    b9_mul_2exp(&R, &R, bits);
-    b9_add_u32(&R, &R, chunk);
-    start += chunk_len;
-  }
-
-  *rstr = (char*) malloc((size_t)b9_length(&R) + 1);
+  b2_init_set_radix(&R, s, len, (uint32_t)base);
+  *rstr = (char*) malloc((size_t)b2_string_size(&R) + 1);
   if (*rstr == 0) {
-    b9_free(&R);
+    b2_free(&R);
     croak("toint: allocation failed");
   }
-  *rlen = b9_get_str(*rstr, &R);
+  *rlen = strint_b2_get_str(*rstr, &R);
   (*rstr)[*rlen] = '\0';
-  b9_free(&R);
+  b2_free(&R);
   return 2;
 }
 
@@ -970,6 +977,7 @@ STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit)
 
   /* exp = 0: a^0 = 1 for all a (including 0) */
   if (exp == 0) {
+    if (limit < 1) return 0;
     out[0] = '1';
     return 1;
   }
@@ -982,7 +990,7 @@ STRLEN strint_pow(char* out, const char* a, STRLEN alen, UV exp, STRLEN limit)
   b9_init_set_str(&base, a, alen);
   b9_init(&result);
   b9_pow(&result, &base, exp);
-  rlen = b9_length(&result) > limit  ?  0  :  b9_get_str(out, &result);
+  rlen = b9_length(&result) > limit ? 0 : b9_get_str(out, &result);
   b9_free(&base);  b9_free(&result);
   return rlen;
 }
@@ -1230,22 +1238,93 @@ int strint_trial_factor(char* str_out, STRLEN* str_len, UV* uv_out,
 /*                           INTEGER LOG AND ROOT                             */
 /******************************************************************************/
 
+/* Measured decimal-input crossovers between the B2 and B9 parse paths. */
+#define STRINT_LOGINT_B2_DIGITS       512
+#define STRINT_LOGINT_B2_POW2_DIGITS  2048
+
+static UV strint_logint_b2(const char* a, STRLEN alen, UV base, UV k)
+{
+  b2_t bn, bbase, power, tmp;
+
+  b2_init_set_str(&bn, a, alen);
+  b2_init_set_uv(&bbase, base);
+  b2_init(&power);
+  b2_pow(&power, &bbase, k);
+  b2_init(&tmp);
+
+  /* The estimate can very rarely be too high. */
+  while (k > 0 && b2_cmp(&power, &bn) > 0) {
+    k--;
+    b2_pow(&power, &bbase, k);
+  }
+  for (;;) {
+    b2_mul(&tmp, &power, &bbase);
+    if (b2_cmp(&tmp, &bn) > 0) break;
+    b2_swap(&power, &tmp);
+    k++;
+  }
+
+  b2_free(&bn);  b2_free(&bbase);  b2_free(&power);  b2_free(&tmp);
+  return k;
+}
+
+static UV strint_logint_b9(const char* a, STRLEN alen, UV base, UV k)
+{
+  b9_t bn, bbase, power, tmp;
+
+  b9_init_set_str(&bn, a, alen);
+  b9_init_set_uv(&bbase, base);
+  b9_init(&power);
+  b9_pow(&power, &bbase, k);
+  b9_init(&tmp);
+
+  /* The estimate can very rarely be too high. */
+  while (k > 0 && b9_cmp(&power, &bn) > 0) {
+    b9_fdivrem(&tmp, NULL, &power, &bbase);
+    b9_swap(&power, &tmp);
+    k--;
+  }
+  for (;;) {
+    b9_mul(&tmp, &power, &bbase);
+    if (b9_cmp(&tmp, &bn) > 0) break;
+    b9_swap(&power, &tmp);
+    k++;
+  }
+
+  b9_free(&bn);  b9_free(&bbase);  b9_free(&power);  b9_free(&tmp);
+  return k;
+}
+
 /* Returns floor(log_base(a)), or UV_MAX on error (a < 1 or base < 2).
  * Uses a floating-point estimate to land within 1-2 of the answer,
- * then verifies/adjusts with b9 arithmetic. */
+ * then verifies and adjusts with integer arithmetic. */
 UV strint_logint(const char* a, STRLEN alen, UV base)
 {
   STRLEN nd, i;
   UV k;
+  unsigned power;
   double approx, log10_a, k_est_f;
-  b9_t bn, bbase, pow, tmp;
 
   if (base < 2) return UV_MAX;
 
   if (strint_strip(&a, &alen) || (alen == 1 && a[0] == '0'))
     return UV_MAX;
 
-  /* Floating-point estimate: log10(a) via leading digits + digit count */
+  /* Decimal length gives exact logs for bases that are powers of ten. */
+  for (power = 0, k = base; k % 10 == 0; power++) k /= 10;
+  if (k == 1) return ((UV)alen - 1) / power;
+
+  /* Binary length gives exact logs for power-of-two bases. */
+  if ((base & (base-1)) == 0 && alen <= STRINT_LOGINT_B2_POW2_DIGITS) {
+    b2_t bn;
+    size_t bits;
+    b2_init_set_str(&bn, a, alen);
+    bits = b2_bit_length(&bn);
+    b2_free(&bn);
+    return (UV)(bits - 1) / (unsigned)ctz(base);
+  }
+
+  /* Floating-point estimate: log10(a) via leading digits + digit count. */
   nd = (alen < 15) ? alen : 15;
   approx = 0.0;
   for (i = 0; i < nd; i++)
@@ -1254,29 +1333,9 @@ UV strint_logint(const char* a, STRLEN alen, UV base)
   k_est_f = log10_a / log10((double)base);
   k = (k_est_f <= 1.0) ? 0 : (UV)k_est_f - 1;  /* start one below estimate */
 
-  b9_init_set_str(&bn, a, alen);
-  b9_init_set_uv(&bbase, base);
-  b9_init(&pow);
-  b9_pow(&pow, &bbase, k);
-  b9_init(&tmp);
-
-  /* Float overshot (very rare): step down by dividing until base^k ≤ a */
-  while (k > 0 && b9_cmp(&pow, &bn) > 0) {
-    b9_fdivrem(&tmp, NULL, &pow, &bbase);
-    b9_swap(&pow, &tmp);
-    k--;
-  }
-
-  /* Step up while base^(k+1) ≤ a */
-  for (;;) {
-    b9_mul(&tmp, &pow, &bbase);
-    if (b9_cmp(&tmp, &bn) > 0) break;
-    b9_swap(&pow, &tmp);
-    k++;
-  }
-
-  b9_free(&bn);  b9_free(&bbase);  b9_free(&pow);  b9_free(&tmp);
-  return k;
+  return alen <= STRINT_LOGINT_B2_DIGITS
+       ? strint_logint_b2(a, alen, base, k)
+       : strint_logint_b9(a, alen, base, k);
 }
 
 /* floor(n^(1/k)) via Newton's method, starting from above.
@@ -1509,34 +1568,32 @@ STRLEN strint_rshiftint(char* out, const char* a, STRLEN alen, UV k)
 
 STRLEN strint_rashiftint(char* out, const char* a, STRLEN alen, UV k)
 {
-  b9_t n, pow2, q;
+  b9_t n;
   STRLEN rlen;
   if (k == 0) { memcpy(out, a, alen); return alen; }
   b9_init_set_str(&n, a, alen);
-  b9_init_set_pow2(&pow2, k);
-  b9_init(&q);
-  b9_fdivrem(&q, NULL, &n, &pow2);
-  rlen = b9_get_str(out, &q);
-  b9_free(&n);  b9_free(&pow2);  b9_free(&q);
+  b9_fdiv_2exp(&n, &n, k);
+  rlen = b9_get_str(out, &n);
+  b9_free(&n);
   return rlen;
 }
 
 bool strint_bittest(const char* a, STRLEN alen, uint32_t k)
 {
-  b9_t n;
+  b2_t n;
   bool ret;
 
-  b9_init_set_str(&n, a, alen);
-  ret = b9_testbit(&n, k);
-  b9_free(&n);
+  b2_init_set_str(&n, a, alen);
+  ret = b2_testbit(&n, k);
+  b2_free(&n);
   return ret;
 }
 
-static char* strint_b9_result(const b9_t *n, STRLEN* rlen)
+static char* strint_b2_result(const b2_t *n, STRLEN* rlen)
 {
-  STRLEN len = b9_length(n);
+  STRLEN len = b2_string_size(n);
   char *out = (char*)strint_xmalloc((size_t)len + 1, 1);
-  len = b9_get_str(out, n);
+  len = strint_b2_get_str(out, n);
   out[len] = '\0';
   if (rlen != 0) *rlen = len;
   return out;
@@ -1547,20 +1604,20 @@ static char* strint_binary_bitop(const char* a, STRLEN alen,
                                  const char* b, STRLEN blen,
                                  int op, STRLEN* rlen)
 {
-  b9_t A, B, R;
+  b2_t A, B, R;
   char *out;
 
-  b9_init_set_str(&A, a, alen);
-  b9_init_set_str(&B, b, blen);
-  b9_init(&R);
+  b2_init_set_str(&A, a, alen);
+  b2_init_set_str(&B, b, blen);
+  b2_init(&R);
   switch (op) {
-    case 0:  b9_bitand(&R, &A, &B);     break;
-    case 1:  b9_bitor(&R, &A, &B);      break;
-    case 2:  b9_bitxor(&R, &A, &B);     break;
-    default: b9_bitandnot(&R, &A, &B);  break;
+    case 0:  b2_bitand(&R, &A, &B);     break;
+    case 1:  b2_bitor(&R, &A, &B);      break;
+    case 2:  b2_bitxor(&R, &A, &B);     break;
+    default: b2_bitandnot(&R, &A, &B);  break;
   }
-  out = strint_b9_result(&R, rlen);
-  b9_free(&A);  b9_free(&B);  b9_free(&R);
+  out = strint_b2_result(&R, rlen);
+  b2_free(&A);  b2_free(&B);  b2_free(&R);
   return out;
 }
 
@@ -1591,14 +1648,14 @@ char* strint_bitandnot(const char* a, STRLEN alen,
 char* strint_bitnot(const char* a, STRLEN alen, bool fixed_width,
                     uint32_t width, STRLEN* rlen)
 {
-  b9_t A, R;
+  b2_t A, R;
   char *out;
 
-  b9_init_set_str(&A, a, alen);
-  b9_init(&R);
-  b9_bitnot(&R, &A, fixed_width, width);
-  out = strint_b9_result(&R, rlen);
-  b9_free(&A);  b9_free(&R);
+  b2_init_set_str(&A, a, alen);
+  b2_init(&R);
+  b2_bitnot(&R, &A, fixed_width, width);
+  out = strint_b2_result(&R, rlen);
+  b2_free(&A);  b2_free(&R);
   return out;
 }
 
@@ -1606,26 +1663,18 @@ char* strint_bitnot(const char* a, STRLEN alen, bool fixed_width,
 static char* strint_unary_bitop(const char* a, STRLEN alen, uint32_t k,
                                 int op, STRLEN* rlen)
 {
-  b9_t n, mask, result;
-  bool isset, change;
+  b2_t n;
   char *out;
 
-  b9_init_set_str(&n, a, alen);
-  b9_abs(&n);
-  isset = b9_testbit(&n, k);
-  change = (op == 2) || (op == 0 && !isset) || (op == 1 && isset);
-  if (change) {
-    b9_init_set_pow2(&mask, (UV)k);
-    b9_set_negative(&mask, isset);
-    b9_init(&result);
-    b9_add(&result, &n, &mask);
-    b9_move(&n, &result);
-    b9_free(&mask);
-    b9_free(&result);
+  b2_init_set_str(&n, a, alen);
+  b2_abs(&n);
+  switch (op) {
+    case 0:  b2_setbit(&n, k);    break;
+    case 1:  b2_clearbit(&n, k);  break;
+    default: b2_flipbit(&n, k);   break;
   }
-
-  out = strint_b9_result(&n, rlen);
-  b9_free(&n);
+  out = strint_b2_result(&n, rlen);
+  b2_free(&n);
   return out;
 }
 
@@ -1647,38 +1696,32 @@ char* strint_bitflip(const char* a, STRLEN alen, uint32_t k, STRLEN* rlen)
 bool strint_bitscan0(uint32_t *result, const char *a, STRLEN alen,
                      uint32_t start)
 {
-  b9_t n;
+  b2_t n;
   bool found;
-  b9_init_set_str(&n, a, alen);
-  found = b9_bitscan0(result, &n, start);
-  b9_free(&n);
+  b2_init_set_str(&n, a, alen);
+  found = b2_bitscan0(result, &n, start);
+  b2_free(&n);
   return found;
 }
 
 bool strint_bitscan1(uint32_t *result, const char *a, STRLEN alen,
                      uint32_t start)
 {
-  b9_t n;
+  b2_t n;
   bool found;
-  b9_init_set_str(&n, a, alen);
-  found = b9_bitscan1(result, &n, start);
-  b9_free(&n);
+  b2_init_set_str(&n, a, alen);
+  found = b2_bitscan1(result, &n, start);
+  b2_free(&n);
   return found;
 }
 
 UV strint_popcount(const char* ptr, STRLEN len)
 {
-  UV count = 0;
-  b9_t n;
+  UV count;
+  b2_t n;
 
-  b9_init_set_str(&n, ptr, len);
-  b9_abs(&n);
-  while (n.n > 1) {
-    count += popcnt((UV)b9_mod_power2(&n, 16));
-    b9_tdiv16(&n);
-  }
-  if (n.n == 1)
-    count += popcnt((UV)n.d[0]);
-  b9_free(&n);
+  b2_init_set_str(&n, ptr, len);
+  count = b2_popcount(&n);
+  b2_free(&n);
   return count;
 }

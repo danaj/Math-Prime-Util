@@ -31,7 +31,7 @@ my @vals = (
   [qw/18446744073709551615 2 36893488147419103230/],
 );
 
-plan tests => 1 + 2 + 2 + 1;
+plan tests => 1 + 2 + 2 + 1 + 1;
 
 ###### mulint
 { my(@got,@exp);
@@ -64,6 +64,14 @@ is_deeply( [map{"$_"}map { mulint($_->[1],$_->[0]) } @vals],
   is_deeply( [map { "".mulint($_,-1) } @signed, map { "-$_" } @signed],
              [map { strnegint($_)    } @signed, map { "-$_" } @signed],
              "mulint(n,-1) == negint(n)" );
+}
+
+{
+  my $a = '1' . ('0' x 2399) . '1';
+  my $b = '9' x 2400;
+  my $p = '9' x 4800;
+  is_deeply([map { "" . mulint($_, $b) } ($a, "-$a")], [$p, "-$p"],
+            "mulint large decimal conversion and Karatsuba");
 }
 
 sub strnegint {
