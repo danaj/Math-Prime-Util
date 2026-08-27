@@ -1761,62 +1761,63 @@ sub inverse_totient {
       }
     }, $n);
     return (defined $r{$n}) ? $r{$n} : 0;
-
-  } else {
-
-    # To save memory, we split this into two steps.
-
-    my $_verbose = getconfig()->{'verbose'};
-    my %r = ( 1 => [1] );
-    my %needed = ( $n => 0 );
-    my @DIVINFO;
-
-    # 1. For each divisor from 1 .. n, track which values are needed.
-    for my $d (divisors($n)) {
-      my $p = Madd1int($d);
-      next unless Mis_prime($p);
-      my @L;
-      for my $v (0 .. Mvaluation($n, $p)) {
-        my $pv = Mpowint($p, $v);
-        my($dp,$pp) = map { Mmulint($_,$pv) } ($d,$p);
-        Mfordivisors(sub { my $d2 = $_;
-          my $F = Mmulint($d2,$dp);
-          # In phase 2, we will look at the list in d2 to add to list in F.
-          # If F isn't needed later then we ignore it completely.
-          if (defined $needed{$F} && $needed{$F} < $d) {
-            $needed{$d2} = $d unless defined $needed{$d2};
-            push @L, [$d2,$pp,$F];
-          }
-        }, Mdivint($n, $dp));
-      }
-      push @DIVINFO, [$d, @L];
-    }
-
-    print "   ... inverse_totient phase 1 complete ...\n" if $_verbose;
-
-    # 2. Process the divisors in reverse order.
-    for my $dinfo (reverse @DIVINFO) {
-      my($d,@L) = @$dinfo;
-      my %todelete;
-      my @T;
-      # Multiply through by $pp
-      for my $dset (@L) {
-        if (defined $r{$dset->[0]}) {
-          my($d2,$pp,$F) = @$dset;
-          push @T, [$F, [map { Mmulint($pp,$_) } @{$r{$d2}}]];
-          $todelete{$d2} = 1 if $needed{$d2} >= $d;
-        }
-      }
-      # Delete intermediate data that isn't needed any more
-      delete $r{$_} for keys %todelete;
-      # Append the multiplied lists.
-      push @{$r{$_->[0]}}, @{$_->[1]} for @T;
-    }
-    undef %needed;
-    print "   ... inverse_totient phase 2 complete ...\n" if $_verbose;
-
-    return (defined $r{$n}) ? @{Mvecsorti($r{$n})} : ();
   }
+
+  # To save memory, we split this into two steps.
+
+  my $_verbose = getconfig()->{'verbose'};
+  my %r = ( 1 => [1] );
+  my %needed = ( $n => 0 );
+  my @DIVINFO;
+
+  # 1. For each divisor from 1 .. n, track which values are needed.
+  for my $d (divisors($n)) {
+    my $p = Madd1int($d);
+    next unless Mis_prime($p);
+    my @L;
+    for my $v (0 .. Mvaluation($n, $p)) {
+      my $pv = Mpowint($p, $v);
+      my($dp,$pp) = map { Mmulint($_,$pv) } ($d,$p);
+      Mfordivisors(sub { my $d2 = $_;
+        my $F = Mmulint($d2,$dp);
+        # In phase 2, we will look at the list in d2 to add to list in F.
+        # If F isn't needed later then we ignore it completely.
+        if (defined $needed{$F} && $needed{$F} < $d) {
+          $needed{$d2} = $d unless defined $needed{$d2};
+          push @L, [$d2,$pp,$F];
+        }
+      }, Mdivint($n, $dp));
+    }
+    push @DIVINFO, [$d, @L];
+  }
+
+  print "   ... inverse_totient phase 1 complete ...\n" if $_verbose;
+
+  # 2. Process the divisors in reverse order.
+  for my $dinfo (reverse @DIVINFO) {
+    my($d,@L) = @$dinfo;
+    my %todelete;
+    my @T;
+    # Multiply through by $pp
+    for my $dset (@L) {
+      if (defined $r{$dset->[0]}) {
+        my($d2,$pp,$F) = @$dset;
+        push @T, [$F, [map { Mmulint($pp,$_) } @{$r{$d2}}]];
+        $todelete{$d2} = 1 if $needed{$d2} >= $d;
+      }
+    }
+    # Delete intermediate data that isn't needed any more
+    delete $r{$_} for keys %todelete;
+    # Append the multiplied lists.
+    push @{$r{$_->[0]}}, @{$_->[1]} for @T;
+  }
+  undef %needed;
+  print "   ... inverse_totient phase 2 complete ...\n" if $_verbose;
+
+  my $result = $r{$n};
+  return () unless defined $result;
+  Mvecsorti($result);
+  return @$result;
 }
 
 sub _euler_phi_range {
