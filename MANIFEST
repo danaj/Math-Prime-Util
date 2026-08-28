@@ -62,6 +62,8 @@ znlog.h
 znlog.c
 factor128.h
 factor128.c
+tinyqs128.h
+tinyqs128.c
 goldbach.h
 goldbach.c
 intcomplexity.h
@@ -163,6 +165,7 @@ bench/setops.pl
 bench/setreject.pl
 bench/sort.pl
 bench/sort-crossover.pl
+bench/tinyqs128.pl
 bench/vecequal.pl
 examples/README
 examples/csrand.pl
@@ -366,6 +369,7 @@ xt/primality-proofs.pl
 xt/small-is-next-prev.pl
 xt/factor-holf.pl
 xt/factor128-regressions.t
+xt/tinyqs128.t
 xt/bigint-class-differential.t
 xt/kronecker.pl
 xt/legendre_phi.t

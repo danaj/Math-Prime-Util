@@ -7191,8 +7191,8 @@ array in scalar context.
 The exact algorithm depends on the input size, platform, and available
 backend.  Implementations perform trial division and perfect-power checks,
 then use size-appropriate combinations of methods including HOLF, SQUFOF,
-Pollard rho and Brent variants, Pollard C<p-1>, and ECM.  The selected recipe
-is applied recursively to each composite factor found.
+Pollard rho and Brent variants, Pollard C<p-1>, ECM, and Quadratic Sieve.
+The selected recipe is applied recursively to each composite factor found.
 
 Factoring bigints works with pure Perl, and can be very handy on 32-bit
 machines for numbers just over the 32-bit limit, but it can be B<very> slow

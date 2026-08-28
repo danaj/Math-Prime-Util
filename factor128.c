@@ -1,9 +1,8 @@
-#include <math.h>
-
 #include "ptypes.h"
 #include "constants.h"
 #include "factor.h"
 #include "factor128.h"
+#include "tinyqs128.h"
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"       /* for verbose and next_prime */
@@ -590,18 +589,6 @@ bool is_prime128(uint128_t n) {
   return is_bpsw128(n);
 }
 
-/*****************************************************************************
- * 128-bit integer square root and SQUFOF (Square Form Factorization).
- *
- * Adapted from squfof126.c (Dana Jacobsen / Ben Buhrow racing SQUFOF).
- * Internal state stays in uint64_t (values are O(sqrt(N*mult)) < 2^63).
- * Only the three places that need N itself use uint128_t:
- *   • isqrt128()  — initial sqrt
- *   • So = (N - Ro^2)/S  — one division during the reduction phase
- *   • gcd(Ro, N)  — gcd at the end of each inner cycle
- * Limit: N*mult must fit in 126 bits (same bound as the original).
- *****************************************************************************/
-
 /* Integer square root of a 128-bit value: returns floor(sqrt(n)). */
 static uint64_t isqrt128(uint128_t n) {
   if (n == 0) return 0;
@@ -635,179 +622,6 @@ bool is_perfect_square128_ret(uint128_t n, uint64_t *root) {
   r = isqrt128(n);
   if (root != 0) *root = r;
   return (uint128_t)r * r == n;
-}
-
-typedef struct {
-  int      valid;
-  uint64_t P, bn, Qn, Q0, b0, it, imax, mult;
-} squfof128_mult_t;
-
-/* One racing "slice" for a single multiplier.
- * Returns a 64-bit factor (possibly divisible by mult) or 0 to continue. */
-static uint64_t squfof_unit128(uint128_t nn64, squfof128_mult_t *ms) {
-  uint64_t P  = ms->P,  bn = ms->bn, Qn = ms->Qn;
-  uint64_t Q0 = ms->Q0, b0 = ms->b0;
-  uint64_t i  = ms->it, imax = i + ms->imax;
-  uint64_t t1, t2;
-
-#define SQUFOF128_ITER \
-    t1 = P;            \
-    P  = bn*Qn - P;    \
-    t2 = Qn;           \
-    Qn = Q0 + bn*(t1-P); \
-    Q0 = t2;           \
-    bn = (b0 + P) / Qn; \
-    i++;
-
-  /* If iteration count is odd, do one step to make it even */
-  if (i & 1) { SQUFOF128_ITER }
-
-  while (1) {
-    if (i >= imax) {
-      ms->P = P; ms->bn = bn; ms->Qn = Qn; ms->Q0 = Q0; ms->it = i;
-      return 0;
-    }
-
-    SQUFOF128_ITER  /* even iteration */
-
-    /* Check if Qn is a perfect square (quick residue filter) */
-    t2 = Qn & 127;
-    if (!((t2*0x8bc40d7d) & (t2*0xa1e2f5d1) & 0x14020a)) {
-      t1 = (uint32_t) sqrt((double)Qn);
-      if (Qn == t1*t1) break;      /* perfect square found */
-    }
-
-    SQUFOF128_ITER  /* odd iteration */
-  }
-
-  uint64_t S = t1;
-  ms->it = i;
-
-  /* Reduce to G0 using the square root S */
-  uint64_t Ro  = P + S * ((b0 - P) / S);
-  uint64_t So  = (uint64_t)((nn64 - (uint128_t)Ro * Ro) / S);
-  uint64_t bbn = (b0 + Ro) / So;
-
-#define SQUFOF128_SYM \
-    t1 = Ro;                      \
-    Ro = bbn*So - Ro;             \
-    if (Ro == t1) break;          \
-    t2 = So;                      \
-    So = S + bbn*(t1 - Ro);      \
-    S  = t2;                      \
-    bbn = (b0 + Ro) / So;
-
-  /* Walk to the symmetry point */
-  uint64_t j = 0;
-  while (1) {
-    SQUFOF128_SYM SQUFOF128_SYM SQUFOF128_SYM SQUFOF128_SYM
-    if (j++ > imax) { ms->valid = 0; return 0; }
-  }
-
-  /* gcd(Ro, nn64) */
-  t1 = (uint64_t) gcd128((uint128_t)Ro, nn64);
-  return (t1 > 1) ? t1 : 0;
-
-#undef SQUFOF128_ITER
-#undef SQUFOF128_SYM
-}
-
-/* Multiplier table from Gower & Wagstaff 2008, plus 1680-series. */
-static const uint64_t squfof128_multipliers[] = {
-  33*1680, 11*1680, 66*1680,  3*1680,  2*1680,  6*1680, 22*1680, 78*1680,
-   1*1680, 26*1680, 39*1680, 13*1680,102*1680, 30*1680, 34*1680, 10*1680,
-  15*1680, 51*1680,  5*1680, 57*1680, 17*1680, 19*1680,
-  3*5*7*11, 3*5*7,  3*5*7*11*13, 3*5*7*13, 3*5*7*11*17, 3*5*11,
-  3*5*7*17, 3*5,    3*5*7*11*19, 3*5*11*13,3*5*7*19,    3*5*7*13*17,
-  3*5*13,   3*7*11, 3*7,         5*7*11,   3*7*13,      5*7,
-  3*5*17,   5*7*13, 3*5*19,      3*11,     3*7*17,      3,
-  3*11*13,  5*11,   3*7*19,      3*13,     5,           5*11*13,
-  5*7*19,   5*13,   7*11,        7,        3*17,        7*13,
-  11,       1
-};
-#define NSQUFOF128_MULT \
-    (int)(sizeof(squfof128_multipliers)/sizeof(squfof128_multipliers[0]))
-
-/* Returns a nontrivial factor of n (up to 126-bit composites), or 0.
- * rounds: max total inner iterations across all racing multipliers. */
-static uint128_t squfof128(uint128_t n, uint64_t rounds) {
-  /* 126-bit limit: internal state uses uint64_t which holds values < 2^63 */
-  static const uint128_t MAX_NN64 = ((uint128_t)1 << 126) - 1;
-
-  squfof128_mult_t ms[NSQUFOF128_MULT];
-  int i, mults_racing = NSQUFOF128_MULT;
-  uint64_t rounds_done = 0;
-
-  for (i = 0; i < NSQUFOF128_MULT; i++) {
-    ms[i].valid = -1;
-    ms[i].it    = 0;
-  }
-
-  while (mults_racing > 0 && rounds_done < rounds) {
-    for (i = 0; i < NSQUFOF128_MULT && rounds_done < rounds; i++) {
-      if (ms[i].valid == 0) continue;
-
-      uint64_t mult = squfof128_multipliers[i];
-      uint128_t nn64;
-
-      if (ms[i].valid == -1) {
-        if (n > MAX_NN64 / mult) {
-          ms[i].valid = 0; mults_racing--; continue;
-        }
-      }
-      nn64 = n * mult;
-
-      if (ms[i].valid == -1) {
-        uint64_t sqrtnn64 = isqrt128(nn64);
-        uint128_t rem     = nn64 - (uint128_t)sqrtnn64 * sqrtnn64;
-        if (rem == 0) {
-          /* nn64 is a perfect square — find factor via gcd */
-          uint64_t f = (uint64_t)gcd128((uint128_t)sqrtnn64, n);
-          if (f > 1 && f < (uint64_t)-1) return (uint128_t)f;
-        }
-        /* imax ≈ 0.5 * nn64^(1/5): compute via Newton's method on 5th root */
-        uint64_t imax_v;
-        {
-          /* one Newton step: x = (4*x + nn64/(x^4)) / 5 would work but
-           * is complex; simpler: use floating-point with known precision */
-          double fbits = 0;
-          { uint128_t tmp = nn64; while (tmp >>= 1) fbits += 1.0; }
-          imax_v = (uint64_t)(0.5 * pow(2.0, fbits / 5.0));
-          if (imax_v < 20) imax_v = 20;
-        }
-        ms[i].valid = 1;
-        ms[i].Q0    = 1;
-        ms[i].b0    = sqrtnn64;
-        ms[i].P     = sqrtnn64;
-        ms[i].Qn    = (uint64_t)rem;
-        ms[i].bn    = (2 * sqrtnn64) / ms[i].Qn;
-        ms[i].mult  = mult;
-        ms[i].imax  = imax_v;
-      }
-
-      /* Give this multiplier at most (rounds - rounds_done) iterations */
-      if (mults_racing == 1 || ms[i].imax > (rounds - rounds_done))
-        ms[i].imax = rounds - rounds_done;
-
-      uint64_t f64 = squfof_unit128(nn64, &ms[i]);
-      if (f64 > 1) {
-        /* Divide out any factor shared with the multiplier */
-        uint64_t g = (uint64_t)gcd128((uint128_t)f64, (uint128_t)mult);
-        uint64_t f64red = f64 / g;
-        if (f64red > 1) {
-          /* Verify f64red actually divides n (guards against spurious results
-           * from degenerate SQUFOF states, e.g. when Ro computation overflows) */
-          uint128_t factor = gcd128((uint128_t)f64red, n);
-          if (factor > 1 && factor < n) return factor;
-        }
-        /* Trivial or spurious factor — retire this multiplier */
-        ms[i].valid = 0;
-      }
-      if (ms[i].valid == 0) mults_racing--;
-      rounds_done += ms[i].imax;
-    }
-  }
-  return 0;
 }
 
 /*****************************************************************************
@@ -946,7 +760,7 @@ stage2:
 /*****************************************************************************
  * Tiny ECM — elliptic curve factoring.
  *
- * Targets factors in the 40–55 bit range that P-1 and SQUFOF miss.
+ * Targets factors in the 40–55 bit range when earlier methods fail.
  * Uses Suyama's parameterization, the Montgomery ladder, and the existing
  * mont_mulmod128 infrastructure.
  *****************************************************************************/
@@ -1535,24 +1349,19 @@ void factorintp128(factored128_t *nf, uint128_t n) {
     /* Composite: find a factor */
     uint128_t f = 0;
 
+
     /* P-1 stage 1+2: fast first try */
-    if (!f) f = pminus1_128(t, 20000, 200000);
+    if (!f) f = pminus1_128(t, 6000, 120000);
     if (f && show) {show=0;printf("p-1/128 found factor %s\n",u128_str(f));}
 
-    /* SQUFOF: fast for balanced composites.
-     * rounds budget scales with n's bit size: each multiplier needs
-     * ~0.5*(n*mult)^(1/5) iters, so we allow ~10x that per bit-width
-     * to cover enough multipliers before giving up.
-     * At 79+ bits, skipping this for ECM is faster. */
-    if (!f && ((t >> 60) >> 19) == 0) {
-      int b128 = 0;
-      { uint128_t tmp = t; while (tmp >>= 1) b128++; }
-      uint64_t sq_rounds = (uint64_t)(10.0 * pow(2.0, (double)b128 / 5.0));
-      if (sq_rounds < 300000)  sq_rounds = 300000;
-      if (sq_rounds > 5000000) sq_rounds = 5000000;
-      f = squfof128(t, sq_rounds);
-      if (f && show) {show=0;printf("squfof128 found factor %s\n",u128_str(f));}
-    }
+
+    /* tinyqs128 gets the factor quickly. */
+    if (!f) f = tinyqs128(t);
+    if (f && show) {show=0;printf("tinyqs128 found factor %s\n",u128_str(f));}
+
+
+    /* tinyecm128 used to be our main factoring method for 65-128 bit inputs,
+     * but now it's only used as a fallback. */
 
 #define TINYECM_STEP(eb1,b2mult,curves) \
     if (!f) { \

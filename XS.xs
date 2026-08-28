@@ -43,6 +43,7 @@
 #include "lucas_seq.h"
 #include "factor.h"
 #include "factor128.h"
+#include "tinyqs128.h"
 #include "inverse_sigma0.h"
 #include "znlog.h"
 #include "totients.h"
@@ -1967,6 +1968,20 @@ void _canonicalize_integers(SV* svr)
       croak("_canonicalize_integers: expected scalar or array reference");
     }
     XSRETURN(0);
+
+void _XS_tinyqs128(IN SV* svn)
+  PPCODE:
+#if HAVE_FACTOR128
+    {
+      uint128_t n, f;
+      if (!xs_sv_to_uint128(aTHX_ &n, svn))
+        croak("_XS_tinyqs128: parameter must fit uint128_t");
+      f = tinyqs128(n);
+      RETURN_U128(f);
+    }
+#else
+    croak("_XS_tinyqs128: uint128_t support unavailable");
+#endif
 
 void prime_memfree()
   PREINIT:
@@ -4281,45 +4296,43 @@ factor(IN SV* svn)
       }
     } else {
 #if HAVE_FACTOR128
-      if (_XS_get_callgmp() < 49) {  /* Skip this if GMP backend will factor */
-        factored128_t nf;
-        if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
-          uint32_t total;
-          uint16_t fi, ei;
-          if (ix == 0) {
-            /* flat list */
-            total = factored128p_total_factors(&nf);
-            if (gimme_v == G_SCALAR) XSRETURN_UV(total);
-            EXTEND(SP, (EXTEND_TYPE)total);
-            for (fi = 0; fi < nf.nfactors; fi++)
-              for (ei = 0; ei < nf.e[fi]; ei++)
-                PUSH_U128((uint128_t)nf.f[fi]);
-            if (nf.flarge)
-              PUSH_U128(nf.flarge);
-          } else {
-            /* [p, e] pairs */
-            total = factored128p_distinct_factors(&nf);
-            if (gimme_v == G_SCALAR) XSRETURN_UV(total);
-            EXTEND(SP, (EXTEND_TYPE)total);
-            for (fi = 0; fi < nf.nfactors; fi++) {
-              AV* av_ = newAV();
-              SV* sv_;
-              SV_FROM_U128(sv_, (uint128_t) nf.f[fi]);
-              av_push(av_, SvREFCNT_inc(sv_));
-              av_push(av_, newSVuv(nf.e[fi]));
-              PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
-            }
-            if (nf.flarge) {
-              AV* av_ = newAV();
-              SV* sv_;
-              SV_FROM_U128(sv_, nf.flarge);
-              av_push(av_, SvREFCNT_inc(sv_));
-              av_push(av_, newSVuv(1));
-              PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
-            }
+      factored128_t nf;
+      if (xs_factorintp128_sv(aTHX_ &nf, svn)) {
+        uint32_t total;
+        uint16_t fi, ei;
+        if (ix == 0) {
+          /* flat list */
+          total = factored128p_total_factors(&nf);
+          if (gimme_v == G_SCALAR) XSRETURN_UV(total);
+          EXTEND(SP, (EXTEND_TYPE)total);
+          for (fi = 0; fi < nf.nfactors; fi++)
+            for (ei = 0; ei < nf.e[fi]; ei++)
+              PUSH_U128((uint128_t)nf.f[fi]);
+          if (nf.flarge)
+            PUSH_U128(nf.flarge);
+        } else {
+          /* [p, e] pairs */
+          total = factored128p_distinct_factors(&nf);
+          if (gimme_v == G_SCALAR) XSRETURN_UV(total);
+          EXTEND(SP, (EXTEND_TYPE)total);
+          for (fi = 0; fi < nf.nfactors; fi++) {
+            AV* av_ = newAV();
+            SV* sv_;
+            SV_FROM_U128(sv_, (uint128_t) nf.f[fi]);
+            av_push(av_, SvREFCNT_inc(sv_));
+            av_push(av_, newSVuv(nf.e[fi]));
+            PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
           }
-          XSRETURN(total);
+          if (nf.flarge) {
+            AV* av_ = newAV();
+            SV* sv_;
+            SV_FROM_U128(sv_, nf.flarge);
+            av_push(av_, SvREFCNT_inc(sv_));
+            av_push(av_, newSVuv(1));
+            PUSHs(sv_2mortal(newRV_noinc((SV*) av_)));
+          }
         }
+        XSRETURN(total);
       }
 #endif
       DISPATCHPP_RETURN();

@@ -19,6 +19,9 @@ Revision history for Perl module Math::Prime::Util
 
     [FUNCTIONALITY AND PERFORMANCE]
 
+    - tinyqs adapted to 128-bit, so many platforms have much faster factoring
+      for integers larger than UV but within 128-bit.
+
     - CSPRNG streams automatically reseed from entropy in a child process
       after supported forks, while leaving the parent's stream unchanged.
 
