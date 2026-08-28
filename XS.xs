@@ -5068,6 +5068,7 @@ void is_divisible(IN SV* svn, IN SV* svd, ...)
     int nstatus, dstatus;
     size_t i;
   PPCODE:
+    PERL_UNUSED_VAR(svd);
     nstatus = _validate_and_set(&n, aTHX_ svn, IFLAG_ABS);
     ret = 0;
     if (nstatus != 0) {

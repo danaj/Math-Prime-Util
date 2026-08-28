@@ -1979,7 +1979,8 @@ sub is_even {
 }
 
 sub is_divisible {
-  my($n,@d) = @_;
+  my($n, @d) = @_;
+  croak "is_divisible: missing divisor" unless @d;
   validate_integer_abs($n);
   for my $d (@d) {
     validate_integer_abs($d);

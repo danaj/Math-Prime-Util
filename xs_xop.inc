@@ -108,7 +108,7 @@ static vcall_used_t xop_call_backend(pTHX_ const char* name, int nargs, int minv
   PL_op = NULL;
   (void)_vcallsubn(aTHX_ G_SCALAR, VCALL_PP|VCALL_GMP, name, nargs, minversion, &used);
   LEAVE;
-  assert(PL_op == curop);
+  MPUassert(PL_op == curop, "xop callback did not restore current op");
   return used;
 }
 
