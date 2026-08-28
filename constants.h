@@ -50,8 +50,12 @@
 
 /* Small table of primes; 0,2,3,5,7,...   primes_small[n] is the nth prime.
  * Defined in util.c; 306 entries (index 0 + primes 2..2011). */
-extern const unsigned short primes_small[];
 #define NPRIMES_SMALL 306
+extern const unsigned short primes_small[NPRIMES_SMALL];
+/* Mod-30 mask for primes under 16384 */
+#define NPRIME_SIEVE30 547
+extern const unsigned char prime_sieve30[NPRIME_SIEVE30];
+
 
 /****************************************************************************/
 /* Configuration */

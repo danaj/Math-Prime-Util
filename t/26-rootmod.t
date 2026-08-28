@@ -13,6 +13,7 @@ my @sqrtmods = (
 
  # prime moduli
  [ -1, 17, [4,13], 1 ],  # github #51
+ [ 9, 41, [3,38], 1 ],   # Mueller correction path
  [ 58, 101, [19,82], 1 ],
  [ 111, 113, [26,87], 1 ],
  [ 160, 461, undef ],
