@@ -45,25 +45,27 @@ static UV _sqrtmod_prime(UV a, UV p) {
     return powmod(a, (p+1)>>2, p);
   }
   if ((p % 8) == 5) { /* Atkin's algorithm.  Faster than Legendre. */
-    UV a2, alpha, beta, b;
-    a2 = addmod(a,a,p);
-    alpha = powmod(a2,(p-5)>>3,p);
-    beta  = mulmod(a2,sqrmod(alpha,p),p);
-    b     = mulmod(alpha, mulmod(a, (beta ? beta-1 : p-1), p), p);
-    return b;
+    UV alpha, root, beta;
+    alpha = powmod(addmod(a,a,p),(p-5)>>3,p);
+    root  = mulmod(a,alpha,p);
+    beta  = mulmod(root,alpha,p);
+    beta  = addmod(beta,beta,p);
+    return mulmod(root,submod(beta,1,p),p);
   }
   if ((p % 16) == 9) { /* Müller's algorithm extending Atkin */
-    UV a2, alpha, beta, b, d = 1;
-    a2 = addmod(a,a,p);
-    alpha = powmod(a2, (p-9)>>4, p);
-    beta  = mulmod(a2, sqrmod(alpha,p), p);
+    UV v, root, beta, d = 1;
+    v     = powmod(addmod(a,a,p), (p-9)>>4, p);
+    root  = mulmod(a,v,p);
+    beta  = mulmod(root,v,p);
+    beta  = addmod(beta,beta,p);
     if (sqrmod(beta,p) != p-1) {
       do { d += 2; } while (kronecker_uu(d,p) != -1 && d < p);
-      alpha = mulmod(alpha, powmod(d,(p-9)>>3,p), p);
-      beta  = mulmod(a2, mulmod(sqrmod(d,p),sqrmod(alpha,p),p), p);
+      v     = mulmod(v,powmod(d,(p-1)>>3,p),p);
+      root  = mulmod(a,v,p);
+      beta  = mulmod(root,v,p);
+      beta  = addmod(beta,beta,p);
     }
-    b = mulmod(alpha, mulmod(a, mulmod(d,(beta ? beta-1 : p-1),p),p),p);
-    return b;
+    return mulmod(root,submod(beta,1,p),p);
   }
 
   /* Verify Euler condition for odd p */
@@ -114,30 +116,28 @@ static UV _sqrtmod_prime(UV a, UV p) {
   }
 
   if ((p % 8) == 5) { /* Atkin's algorithm.  Faster than Legendre. */
-    UV a2, alpha, beta, b;
-    a2 = addmod(a,a,p);
-    alpha = mont_powmod(a2,(p-5)>>3,p);
-    beta  = mont_mulmod(a2,mont_sqrmod(alpha,p),p);
-    beta  = submod(beta, mont1, p);
-    b     = mont_mulmod(alpha, mont_mulmod(a, beta, p), p);
-    return mont_recover(b, p);
+    UV alpha, root, beta;
+    alpha = mont_powmod(addmod(a,a,p),(p-5)>>3,p);
+    root  = mont_mulmod(a,alpha,p);
+    beta  = mont_mulmod(root,alpha,p);
+    beta  = addmod(beta,beta,p);
+    return mont_recover(mont_mulmod(root,submod(beta,mont1,p),p),p);
   }
   if ((p % 16) == 9) { /* Müller's algorithm extending Atkin */
-    UV a2, alpha, beta, b, d = 1;
-    a2 = addmod(a,a,p);
-    alpha = mont_powmod(a2, (p-9)>>4, p);
-    beta  = mont_mulmod(a2, mont_sqrmod(alpha,p), p);
+    UV v, root, beta, d = 1;
+    v     = mont_powmod(addmod(a,a,p), (p-9)>>4, p);
+    root  = mont_mulmod(a,v,p);
+    beta  = mont_mulmod(root,v,p);
+    beta  = addmod(beta,beta,p);
     if (mont_sqrmod(beta,p) != submod(0,mont1,p)) {
       do { d += 2; } while (kronecker_uu(d,p) != -1 && d < p);
       d = mont_geta(d,p);
-      alpha = mont_mulmod(alpha, mont_powmod(d,(p-9)>>3,p), p);
-      beta  = mont_mulmod(a2, mont_mulmod(mont_sqrmod(d,p),mont_sqrmod(alpha,p),p), p);
-      beta  = mont_mulmod(submod(beta,mont1,p), d, p);
-    } else {
-      beta  = submod(beta, mont1, p);
+      v     = mont_mulmod(v,mont_powmod(d,(p-1)>>3,p),p);
+      root  = mont_mulmod(a,v,p);
+      beta  = mont_mulmod(root,v,p);
+      beta  = addmod(beta,beta,p);
     }
-    b = mont_mulmod(alpha, mont_mulmod(a, beta, p), p);
-    return mont_recover(b, p);
+    return mont_recover(mont_mulmod(root,submod(beta,mont1,p),p),p);
   }
 
   /* Verify Euler condition for odd p */
