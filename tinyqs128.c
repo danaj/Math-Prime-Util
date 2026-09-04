@@ -403,10 +403,8 @@ static const u8 primes_tiny[30] =  /* First 30 primes */
    sieve over this many positive and negative values */
 #define SIEVE_SIZE_TINY 16384
 
-/* value of the sieve root used when sieving is not
-   to be performed for a given FB prime. Since this is
-   larger than SIEVE_SIZE_TINY no special-case code
-   is needed in the core sieve code */
+/* Value of the sieve root used when sieving is not performed for a given
+   FB prime.  It lies outside both the valid root and sieve-index ranges. */
 #define DO_NOT_SIEVE_TINY 65535
 
 /* maximum number of factors a relation can have (the
@@ -918,36 +916,88 @@ static s32 init_fb_tiny(tiny_qs_params *params, s32 fb_size,
 }
 
 
+static INLINE void sieve_one_root_tiny(u8 *sieve_block, u32 root,
+                                       u32 prime, u8 logprime)
+{
+  u32 prime4 = prime << 2;
+
+  while (root + prime4 < SIEVE_SIZE_TINY) {
+    sieve_block[root]             -= logprime;
+    sieve_block[root + prime]     -= logprime;
+    sieve_block[root + 2 * prime] -= logprime;
+    sieve_block[root + 3 * prime] -= logprime;
+    root += prime4;
+  }
+  while (root < SIEVE_SIZE_TINY) {
+    sieve_block[root] -= logprime;
+    root += prime;
+  }
+}
+
+/* Alternating-root-gap sieve structure inspired by PARI/GP's MPQS sieve. */
+static INLINE void sieve_two_roots_tiny(u8 *sieve_block, u32 root1,
+                                        u32 root2, u32 prime, u8 logprime)
+{
+  u32 root, gap1, gap2;
+  u32 prime4 = prime << 2;
+
+  if (root1 > root2) {
+    u32 tmp = root1;
+    root1 = root2;
+    root2 = tmp;
+  }
+
+  /* Visit the sorted roots using their alternating gaps.  This keeps one
+     induction variable and one loop bound for both progressions. */
+  root = root1;
+  gap1 = root2 - root1;
+  gap2 = prime - gap1;
+  while (root + prime4 < SIEVE_SIZE_TINY) {
+    sieve_block[root] -= logprime; root += gap1;
+    sieve_block[root] -= logprime; root += gap2;
+    sieve_block[root] -= logprime; root += gap1;
+    sieve_block[root] -= logprime; root += gap2;
+    sieve_block[root] -= logprime; root += gap1;
+    sieve_block[root] -= logprime; root += gap2;
+    sieve_block[root] -= logprime; root += gap1;
+    sieve_block[root] -= logprime; root += gap2;
+  }
+  while (root < SIEVE_SIZE_TINY) {
+    sieve_block[root] -= logprime;
+    root += gap1;
+    if (root >= SIEVE_SIZE_TINY)
+      break;
+    sieve_block[root] -= logprime;
+    root += gap2;
+  }
+}
+
 /* Core sieving routine */
 static void fill_sieve_block_tiny(tiny_qs_params *params) {
   s32 i, fb_size = params->fb_size;
   u8 *sieve_block = (u8*) params->sieve_block;
   tiny_fb *factor_base = params->factor_base;
 
-  /* Note that since this code will only ever
-     factor small inputs, the sieve interval will
-     always be ridiculously small and does not
-     need to be broken up into chunks. Further,
-     the bottleneck with small inputs is the trial
-     factoring of relations and not the sieving,
-     so no crazy unrolling tricks are needed
-     here either */
+  /* The interval is small enough that it does not need to be segmented.
+     Interleave the two root progressions, however: this removes one of the
+     induction variables and exposes a compact sequence of sieve writes. */
 
   for (i = MIN_FB_OFFSET_TO_SIEVE_TINY; i < fb_size; i++) {
     tiny_fb *fbptr = factor_base + i;
-    s32 prime = fbptr->prime;
+    u32 prime = fbptr->prime;
     u8 logprime = fbptr->logprime;
-    s32 root = fbptr->roots[0];
+    u32 root1 = fbptr->roots[0];
+    u32 root2 = fbptr->roots[1];
 
-    while (root < SIEVE_SIZE_TINY) {
-      sieve_block[root] -= logprime;
-      root += prime;
+    if (root1 == DO_NOT_SIEVE_TINY) {
+      if (root2 != DO_NOT_SIEVE_TINY)
+        sieve_one_root_tiny(sieve_block, root2, prime, logprime);
     }
-
-    root = fbptr->roots[1];
-    while (root < SIEVE_SIZE_TINY) {
-      sieve_block[root] -= logprime;
-      root += prime;
+    else if (root2 == DO_NOT_SIEVE_TINY) {
+      sieve_one_root_tiny(sieve_block, root1, prime, logprime);
+    }
+    else {
+      sieve_two_roots_tiny(sieve_block, root1, root2, prime, logprime);
     }
   }
 }
