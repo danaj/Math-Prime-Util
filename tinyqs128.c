@@ -315,7 +315,11 @@ static void tq_sqrt(tq_t r, const tq_t a)
 
 static double tq_get_d(const tq_t a)
 {
-  double d = (double)a->mag;
+  uint128_t mag = a->mag;
+  double d = (double)(uint32_t)(mag >> 96);
+  d = d * 4294967296.0 + (double)(uint32_t)(mag >> 64);
+  d = d * 4294967296.0 + (double)(uint32_t)(mag >> 32);
+  d = d * 4294967296.0 + (double)(uint32_t)mag;
   return a->neg ? -d : d;
 }
 
