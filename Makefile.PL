@@ -34,7 +34,6 @@ WriteMakefile1(
 
     OBJECT       => 'XS.o '           .
                     'factor128.o '    .
-                    'tinyqs128.o '    .
                     'tinysiqs128.o '  .
                     'util.o '         .
                     'factor.o '       .

@@ -646,4 +646,6 @@ OEIS lucky numbers:
 - is_smith
   See https://arxiv.org/pdf/2609.01955
 
+- update the factoring presentation link in Util.pm
+
 - for some bit sizes under 64, calling tinysiqs128 is faster than factor(n).

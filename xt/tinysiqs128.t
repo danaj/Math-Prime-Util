@@ -36,13 +36,23 @@ for my $p (7, 11, 13, 17, 19, 23, 29, 31, 37) {
   check_factor($p * 1009, "mod-30 trial wheel reaches factor $p", $p);
 }
 
-for my $bits (33, 36, 37, 41, 42, 49, 50, 52, 64, 65, 80, 81, 95,
-              96, 106, 107, 116, 117, 120, 124, 126, 127, 128) {
+for my $bits (33, 36, 37, 40, 41, 42, 48, 49, 50, 52, 56, 64, 65, 80,
+              81, 95, 96, 106, 107, 116, 117, 120, 124, 126, 127, 128) {
   my $pbits = int($bits / 2);
   my $qbits = $bits - $pbits;
   my $p = prev_prime(subint(powint(2, $pbits), 101 + 17*$bits));
   my $q = prev_prime(subint(powint(2, $qbits), 1001 + 31*$bits));
   check_factor(mulint($p, $q), "balanced semiprime near $bits bits", $p, $q);
+}
+
+# Retain the independent balanced corpus from the former tinyqs128 test.
+for my $bits (65, 72, 80, 88, 96, 104, 112, 120, 124, 126, 127, 128) {
+  my $pbits = int($bits / 2);
+  my $qbits = $bits - $pbits;
+  my $p = prev_prime(subint(powint(2, $pbits), 1009 + 17*$bits));
+  my $q = prev_prime(subint(powint(2, $qbits), 100003 + 31*$bits));
+  check_factor(mulint($p, $q), "retained balanced case near $bits bits",
+               $p, $q);
 }
 
 # The historical SIQS-path labels for 8509504187 and 36346174480237 record
@@ -55,14 +65,64 @@ check_factor('1983486546265867',
              '51-bit compact splitter to SIQS fallback regression');
 check_factor('36346174480237', 'q=2 to q=1 recovery regression');
 check_factor('85070591730229016725614958824927593363',
-             '126-bit extra-relations regression');
+             '126-bit extra-relations regression',
+             '9223372036854217439', '9223372036854727117');
 check_factor('170141183460466514018999784278050528421',
-             '127-bit dependency-margin regression');
+             '127-bit dependency-margin regression',
+             '9223372036854750727', '18446744073709307123');
 check_factor('340282366920923092713875188997681850397',
-             '128-bit dependency-margin regression');
+             '128-bit dependency-margin regression',
+             '18446744073708783169', '18446744073709486813');
 check_factor('340282366920938463463374607431768211455',
              'full uint128 input is accepted', 3);
 check_factor('18446744073709551616', 'decimal input at 2^64', 2);
+check_factor('409927641983158062491994823',
+             'retained 89-bit unbalanced split regression',
+             '33316981933', '12303864822075331');
+
+# These difficult high-end inputs formerly exercised tinyqs128's adaptive
+# relation gathering.  Their implementation-specific labels are gone, but
+# they remain useful independent health cases for the SIQS tail.
+my %retained_high_end = (
+  127 => [qw(
+    154527564022878220982748729324103304743
+    161179732548189293760223240490395881353
+    127883814751042649647666397127788550683
+    125318416433446384843272724113296422871
+    140223444857892303368277270633688022093
+    162557045538178298486647651339443005663
+    122923458607306217422801229530464182507
+    115765532451100685824914918408188032091
+  )],
+  128 => [qw(
+    267212883610666843931009408162450623523
+    249916340136674620760793264938393468693
+    236865378567171197852729155721764556063
+    288119424046590105263765021583065156483
+    311864632355300169938435240169024757037
+    210556783077736902179313303657825846647
+  )],
+  126 => [qw(
+    83656988431739306362112439976867878317
+    64754360628803519037675047708191697231
+    83595435226116927807160860895179770021
+    84813749665103582857694079360041304941
+  )],
+  125 => [qw(
+    39931171521012620279401119962518358699
+    24123049789078476044084420737829877593
+    37378683740769755305321586855523751313
+  )],
+  124 => [qw(
+    20319590604088821620875280075918123633
+    17529763909310581579258330658921405041
+  )],
+);
+for my $bits (sort { $a <=> $b } keys %retained_high_end) {
+  my $case = 0;
+  check_factor($_, "retained $bits-bit high-end case " . ++$case)
+    for @{$retained_high_end{$bits}};
+}
 
 my $fifth_base = prev_prime(powint(2, 25));
 check_factor(powint($fifth_base, 5), 'large odd perfect power', $fifth_base);

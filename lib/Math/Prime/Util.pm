@@ -8365,30 +8365,20 @@ are still being tuned.  L<Math::Factor::XS> is very fast when given input with
 only small factors, but it slows down rapidly as the smallest factor increases
 in size.  For numbers larger than 32 bits, L<Math::Prime::Util> can be 100x or
 more faster (a number with only very small factors will be nearly identical,
-while a semiprime may be 3000x faster).  L<Math::Pari>
-is much slower with native sized inputs, probably due to calling
-overhead.  For bigints, the L<Math::Prime::Util::GMP> module is needed or
-performance will be far worse than Math::Pari.  With the GMP module,
-performance is pretty similar from 20 through 70 digits, with the caveat
-that the current MPU factoring uses more memory for 60+ digit numbers.
+while a semiprime may be 3000x faster).
+For bigints, the L<Math::Prime::Util::GMP> module is highly recommended.
 
 
 L<This slide presentation|http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>
 has a lot of data on 64-bit and GMP factoring performance I collected in 2009.
 Assuming you do not know anything about the inputs, trial division and
 optimized Fermat or Lehman work very well for small numbers (<= 10 digits),
-while native SQUFOF is typically the method of choice for 11-18 digits (I've
-seen claims that a lightweight QS can be faster for 15+ digits).  Some form
-of Quadratic Sieve is usually used for inputs in the 19-100 digit range, and
-beyond that is the General Number Field Sieve.  For serious factoring,
-I recommend looking at
-L<yafu|http://sourceforge.net/projects/yafu/>,
-L<msieve|http://sourceforge.net/projects/msieve/>,
-L<gmp-ecm|http://ecm.gforge.inria.fr/>,
-L<GGNFS|http://sourceforge.net/projects/ggnfs/>,
-and L<Pari|http://pari.math.u-bordeaux.fr/>.  The latest yafu should cover most
-uses, with GGNFS likely only providing a benefit for numbers large enough to
-warrant distributed processing.
+while native SQUFOF is typically the method of choice for 11-18 digits.
+A lightweight QS, such as the one inside the C<tinysiqs128> implementation
+written for this module, can be faster than SQUFOF for inputs as small as
+15 digits.
+Some form of Quadratic Sieve is usually used for inputs in the 19-100 digit
+range, and beyond that is the General Number Field Sieve.
 
 =head2 PRIMALITY PROVING
 

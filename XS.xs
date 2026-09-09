@@ -43,7 +43,6 @@
 #include "lucas_seq.h"
 #include "factor.h"
 #include "factor128.h"
-#include "tinyqs128.h"
 #include "tinysiqs128.h"
 #include "inverse_sigma0.h"
 #include "znlog.h"
@@ -1969,20 +1968,6 @@ void _canonicalize_integers(SV* svr)
       croak("_canonicalize_integers: expected scalar or array reference");
     }
     XSRETURN(0);
-
-void _XS_tinyqs128(IN SV* svn)
-  PPCODE:
-#if HAVE_FACTOR128
-    {
-      uint128_t n, f;
-      if (!xs_sv_to_uint128(aTHX_ &n, svn))
-        croak("_XS_tinyqs128: parameter must fit uint128_t");
-      f = tinyqs128(n);
-      RETURN_U128(f);
-    }
-#else
-    croak("_XS_tinyqs128: uint128_t support unavailable");
-#endif
 
 void _XS_tinysiqs128(IN SV* svn)
   PPCODE:
