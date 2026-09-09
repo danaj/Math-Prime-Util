@@ -316,21 +316,6 @@
   need: not, bnot, and, or, xor, gt, lt, geq, leq, eq, neq,
         as_bool, as_string, as_num, clone
 
-- Pari                MPU::GMP            Maybe MPU
-  bitand(x,y)         bitand(x,y)         bitand(x,y)
-  bitor(x,y)          bitor(x,y)          bitor(x,y)
-  bitxor(x,y)         bitxor(x,y)         bitxor(x,y)
-  bitnegimply(x,y)                        bitandnot(x,y)
-  bitneg(x,{n=-1})    bitnot(x)           bitnot(x,width)
-  bitflip(~x,n)       notbit(x,n)         bitflip(x,k)
-  bitclear(~x,n)      clrbit(x,n)         bitclear(x,k)
-  bitset(~x,n)        setbit(x,n)         bitset(x,k)
-  bittest(x,n)        tstbit(x,n)         bittest(x,k)
-
-- Also add:
-  bitscan1(n[,start=0])    valuation(absint(n),2)
-  bitscan0(n[,start=0])    valuation(add1int(absint(n)),2)
-
 - Audit auxiliary Perl modules for class-specific mutating bigint methods.
   Prefer M* operations or call tobigint once and use overloaded
   arithmetic.  Retain Math::BigInt method paths only in measured,
@@ -658,4 +643,7 @@ OEIS lucky numbers:
 
 - srand from :rand should use PERL_RAND_SEED
 
-- GMP backend needs to include fork detection.
+- is_smith
+  See https://arxiv.org/pdf/2609.01955
+
+- for some bit sizes under 64, calling tinysiqs128 is faster than factor(n).

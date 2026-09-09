@@ -2,7 +2,7 @@
 #include "constants.h"
 #include "factor.h"
 #include "factor128.h"
-#include "tinyqs128.h"
+#include "tinysiqs128.h"
 #include "cache.h"
 #include "sieve.h"
 #include "util.h"       /* for verbose and next_prime */
@@ -1350,14 +1350,14 @@ void factorintp128(factored128_t *nf, uint128_t n) {
     uint128_t f = 0;
 
 
-    /* P-1 stage 1+2: fast first try */
-    if (!f) f = pminus1_128(t, 6000, 120000);
+    /* P-1 stage 1+2: inexpensive first try */
+    if (!f) f = pminus1_128(t, 2000, 10000);
     if (f && show) {show=0;printf("p-1/128 found factor %s\n",u128_str(f));}
 
 
-    /* tinyqs128 gets the factor quickly. */
-    if (!f) f = tinyqs128(t);
-    if (f && show) {show=0;printf("tinyqs128 found factor %s\n",u128_str(f));}
+    /* tinysiqs128 gets the factor quickly. */
+    if (!f) f = tinysiqs128(t);
+    if (f && show) {show=0;printf("tinysiqs128 found factor %s\n",u128_str(f));}
 
 
     /* tinyecm128 used to be our main factoring method for 65-128 bit inputs,
