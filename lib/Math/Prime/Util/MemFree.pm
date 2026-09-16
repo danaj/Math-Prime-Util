@@ -22,7 +22,7 @@ sub new {
   return $self;
 }
 sub DESTROY {
-  my $self = shift;
+  #my $self = shift;
   confess "instances count mismatch" unless $memfree_instances > 0;
   Math::Prime::Util::prime_memfree if --$memfree_instances == 0;
   return;

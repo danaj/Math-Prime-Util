@@ -140,7 +140,6 @@ sub entropy_bytes {
              : 52;
   my $nvdigits = int(($nvbits+1) / 3.322);
   my $uvbits = (~0 > 4294967295) ? 64 : 32;
-  my $rsub;
   my $_tonv_32  = 1.0;        $_tonv_32 /= 2.0 for 1..32;
   my $_tonv_64  = $_tonv_32;  $_tonv_64 /= 2.0 for 1..32;
   my $_tonv_96  = $_tonv_64;  $_tonv_96 /= 2.0 for 1..32;

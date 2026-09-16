@@ -154,7 +154,7 @@ sub entropy_bytes {
 
   if (!defined $_method) {
     foreach my $m (@methodlist) {
-      my ($name, $rsub, $isblocking, $isstrong) = $m->();
+      my ($name, $rsub) = $m->();
       if (defined $name) {
         $_method = $rsub;
         last;

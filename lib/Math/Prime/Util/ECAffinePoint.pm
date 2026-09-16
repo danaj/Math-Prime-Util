@@ -124,7 +124,6 @@ sub mul {
 
   my $Bx = $n->copy->bzero;
   my $By = $n->copy->bone;
-  my $v = 1;
 
   while ($k > 0) {
     if ( ($k % 2) != 0) {

@@ -762,7 +762,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
   my $old_counter = $prime_gen_counter;
   my $c02 = lshiftint($c0);  # $c02 = 2*$c0
   my $xstr = '';
-  for my $i (0 .. $iterations) {
+  for (0 .. $iterations) {
     $xstr = Digest::SHA::sha256_hex($seed) . $xstr;
     $seed = _seed_plus_one($seed);
   }
@@ -798,7 +798,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
     if ($looks_prime) {
       # We could use a in (2,3,5,7,11,13), but pedantically use FIPS 186-4.
       my $astr = '';
-      for my $i (0 .. $iterations) {
+      for (0 .. $iterations) {
         $astr = Digest::SHA::sha256_hex($seed) . $astr;
         $seed = _seed_plus_one($seed);
       }
@@ -816,7 +816,7 @@ sub _ST_Random_prime {  # From FIPS 186-4
       }
     } else {
       # Update seed "as if" we performed the Pocklington check from FIPS 186-4
-      for my $i (0 .. $iterations) {
+      for (0 .. $iterations) {
         $seed = _seed_plus_one($seed);
       }
     }

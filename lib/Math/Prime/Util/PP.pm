@@ -536,9 +536,9 @@ my @_prime_next_small = (
    47,47,47,53,53,53,53,53,53,59,59,59,59,59,59,61,61,67,67,67,67,67,67,71);
 
 # For wheel-30
-my @_prime_indices = (1, 7, 11, 13, 17, 19, 23, 29);
-my @_nextwheel30 = (1,7,7,7,7,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,29,29,29,29,29,29,1);
-my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,19,23,23,23,23,23,23);
+#my @_prime_indices = (1, 7, 11, 13, 17, 19, 23, 29);
+#my @_nextwheel30 = (1,7,7,7,7,7,7,11,11,11,11,13,13,17,17,17,17,19,19,23,23,23,23,29,29,29,29,29,29,1);
+#my @_prevwheel30 = (29,29,1,1,1,1,1,1,7,7,7,7,11,11,13,13,13,13,17,17,19,19,19,19,23,23,23,23,23,23);
 my @_wheeladvance30 = (1,6,5,4,3,2,1,4,3,2,1,2,1,4,3,2,1,2,1,4,3,2,1,6,5,4,3,2,1,2);
 my @_wheelretreat30 = (1,2,1,2,3,4,5,6,1,2,3,4,1,2,1,2,3,4,1,2,1,2,3,4,1,2,3,4,5,6);
 
@@ -1751,7 +1751,7 @@ sub inverse_totient {
       my $p = Madd1int($d);
       if (Mis_prime($p)) {
         my($dp,@sumi,@sumv) = ($d);
-        for my $v (0 .. Mvaluation($n, $p)) {
+        foreach (0 .. Mvaluation($n, $p)) {
           Mfordivisors(sub { my $d2 = $_;
             if (defined $r{$d2}) { push @sumi, Mmulint($d2,$dp); push @sumv, $r{$d2}; }
           }, Mdivint($n,$dp));
@@ -4162,7 +4162,7 @@ sub inverse_li_nv {
 
   # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
-  for my $iter (1 .. 10000) {
+  foreach (1 .. 10000) {
     my $dn = MLi($t) - $n;
     $dn = 0.0 + "$dn" if ref($dn);
     my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
@@ -4299,7 +4299,7 @@ sub _inverse_R {
 
   # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
-  for my $iter (1 .. 10000) {
+  foreach (1 .. 10000) {
     my $dn = Math::Prime::Util::RiemannR($t) - $n;
     my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
     last if abs($term) >= abs($old_term);
@@ -4505,8 +4505,8 @@ sub prime_count_lower {
     my $pi8 = ref($x) ? Math::BigFloat->bpi(_find_big_acc($x))*8 : PI_TIMES_8;
     $result = $lix - $fl1 * $sqx / $pi8;
   } else {
-    my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
-    my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
+    #my($fl3,$fl4) = ($fl2*$fl1,$fl2*$fl2);
+    #my($fl5,$fl6) = ($fl4*$fl1,$fl4*$fl2);
     # Axler 2014 Theorem 1.4:
     # $result = $x / ($fl1 - $one - $one/$fl1 - 2.65/$fl2 - 13.35/$fl3 - 70.3/$fl4 - 455.6275/$fl5 - 3404.4225/$fl6);
     # Axler 2022 Theorem 1.4:
@@ -8566,7 +8566,7 @@ sub _bernoulli_seidel {
   my @D = (0, 1, map { 0} 1 .. ($n>>1)-1);
   my ($h, $w) = (1, 1);
 
-  foreach my $i (0 .. $n-1) {
+  foreach (0 .. $n-1) {
     if ($w ^= 1) {
       $D[$_] = Maddint($D[$_],$D[$_-1]) for 1.. $h-1;
     } else {
@@ -8780,7 +8780,7 @@ sub _miller_rabin_2 {
     }
     my $x = _bi_powmod(2,$d,$n);
     return 1 if $x == 1 || $x == $nm1;
-    foreach my $r (1 .. $s-1) {
+    foreach (1 .. $s-1) {
       $x = Mmulmod($x,$x,$n);
       last if $x == 1;
       return 1 if $x == $nm1;
@@ -8801,7 +8801,7 @@ sub _miller_rabin_2 {
     if ($n < MPU_HALFWORD) {
       my $x = _native_powmod(2, $d, $n);
       return 1 if $x == 1 || $x == $nm1;
-      foreach my $r (1 .. $s-1) {
+      foreach (1 .. $s-1) {
         $x = ($x*$x) % $n;
         last if $x == 1;
         return 1 if $x == $n-1;
@@ -8809,7 +8809,7 @@ sub _miller_rabin_2 {
     } else {
       my $x = _powmod(2, $d, $n);
       return 1 if $x == 1 || $x == $nm1;
-      foreach my $r (1 .. $s-1) {
+      foreach (1 .. $s-1) {
         $x = ($x < MPU_HALFWORD) ? ($x*$x) % $n : _mulmod($x, $x, $n);
         last if $x == 1;
         return 1 if $x == $n-1;
@@ -8852,7 +8852,7 @@ sub is_strong_pseudoprime {
     foreach my $ma (@bases) {
       my $x = Mpowmod($ma,$d,$n);
       next if $x == 1 || $x == $nm1;
-      foreach my $r (1 .. $s-1) {
+      foreach (1 .. $s-1) {
         $x = Mmulmod($x,$x,$n);
         return 0 if $x == 1;
         last if $x == $nm1;
@@ -8873,7 +8873,7 @@ sub is_strong_pseudoprime {
     foreach my $ma (@bases) {
       my $x = _native_powmod($ma, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
-      foreach my $r (1 .. $s-1) {
+      foreach (1 .. $s-1) {
         $x = ($x*$x) % $n;
         return 0 if $x == 1;
         last if $x == $n-1;
@@ -8884,7 +8884,7 @@ sub is_strong_pseudoprime {
     foreach my $ma (@bases) {
       my $x = _powmod($ma, $d, $n);
       next if ($x == 1) || ($x == ($n-1));
-      foreach my $r (1 .. $s-1) {
+      foreach (1 .. $s-1) {
         $x = ($x < MPU_HALFWORD) ? ($x*$x) % $n : _mulmod($x, $x, $n);
         return 0 if $x == 1;
         last if $x == $n-1;
@@ -10405,7 +10405,7 @@ sub _pisano_pp {
     $k = Msubint($p, Mkronecker(5,$p));
     for my $f (Mfactor_exp($k)) {
       my($fac,$exp) = @$f;
-      for my $j (1 .. $exp) {
+      for (1 .. $exp) {
         my $rk = Mdivint($k,$fac);
         last if Mlucasumod(1, $p-1, $rk, $p) != 0;
         $k = $rk;
@@ -10497,7 +10497,7 @@ sub is_extra_strong_lucas_pseudoprime {
 
   my($U, $V) = lucasuvmod($P, $Q, $k, $n);
   return 1 if $U == 0 && ($V == 2 || $V == Msubint($n,2));
-  foreach my $r (0 .. $s-2) {
+  foreach (0 .. $s-2) {
     return 1 if $V == 0;
     $V = Mmulsubmod($V, $V, 2, $n);
   }
@@ -10546,7 +10546,7 @@ sub is_almost_extra_strong_lucas_pseudoprime {
     }
   }
   return 1 if $V == 2 || Msubint($n,$V) == 2;
-  foreach my $r (0 .. $s-2) {
+  foreach (0 .. $s-2) {
     return 1 if $V == 0;
     $V = Mmulsubmod($V, $V, 2, $n);
   }
@@ -10815,7 +10815,7 @@ sub is_mersenne_prime {
     if $Math::Prime::Util::_GMPfunc{"lucasuvmod"};
 
   my $V = 4;
-  for my $k (3 .. $p) {
+  foreach (3 .. $p) {
     $V = Mmulsubmod($V, $V, 2, $mp);
   }
   return $V == 0;
@@ -11375,7 +11375,7 @@ sub _factor_prho {
     $rounds = int( ($rounds + $inner-1) / $inner );
     while ($rounds-- > 0) {
       my($m, $oldU, $oldV, $f) = (1, $U, $V);
-      for my $i (1 .. $inner) {
+      foreach (1 .. $inner) {
         $U = Mmuladdmod($U, $U, $pa, $n);
         $V = Mmuladdmod($V, $V, $pa, $n);
         $V = Mmuladdmod($V, $V, $pa, $n);
@@ -11386,7 +11386,7 @@ sub _factor_prho {
       next if $f == 1;
       if ($f == $n) {
         ($U, $V) = ($oldU, $oldV);
-        for my $i (1 .. $inner) {
+        foreach (1 .. $inner) {
           $U = Mmuladdmod($U, $U, $pa, $n);
           $V = Mmuladdmod($V, $V, $pa, $n);
           $V = Mmuladdmod($V, $V, $pa, $n);
@@ -11405,7 +11405,7 @@ sub _factor_prho {
     $rounds = int( ($rounds + $inner-1) / $inner );
     while ($rounds-- > 0) {
       my($m, $oldU, $oldV, $f) = (1, $U, $V);
-      for my $i (1 .. $inner) {
+      foreach (1 .. $inner) {
         $U = ($U * $U + $pa) % $n;
         $V = ($V * $V + $pa) % $n;
         $V = ($V * $V + $pa) % $n;
@@ -11416,12 +11416,12 @@ sub _factor_prho {
       next if $f == 1;
       if ($f == $n) {
         ($U, $V) = ($oldU, $oldV);
-        for my $i (1 .. $inner) {
+        foreach (1 .. $inner) {
           $U = ($U * $U + $pa) % $n;
           $V = ($V * $V + $pa) % $n;
           $V = ($V * $V + $pa) % $n;
           $f = ($U > $V) ? $U-$V : $V-$U;
-          $f = _gcd_ui( $f, $n);
+          $f = _gcd_ui( $f, $n );
           last if $f != 1;
         }
         last if $f == 1 || $f == $n;
@@ -12171,38 +12171,6 @@ sub LogarithmicIntegral {
   }
   my $logx = $xdigits ? $x->copy->blog(undef,$xdigits) : log($x);
 
-  # TODO: See if we can tune this
-  if (0 && $x >= 1) {
-    _upgrade_to_float();
-    my $sum = Math::BigFloat->new(0);
-    my $inner_sum = Math::BigFloat->new(0);
-    my $p = Math::BigFloat->new(-1);
-    my $factorial = 1;
-    my $power2 = 1;
-    my $q;
-    my $k = 0;
-    my $neglogx = -$logx;
-    for my $n (1 .. 1000) {
-      $factorial = mulint($factorial, $n);
-      $q = mulint($factorial, $power2);
-      $power2 = mulint(2, $power2);
-      while ($k <= ($n-1)>>1) {
-        $inner_sum += Math::BigFloat->bone / (2*$k+1);
-        $k++;
-      }
-      $p->bmul($neglogx);
-      my $term = $p->copy->bdiv("$q", $xdigits)->bmul($inner_sum);
-      $term->bround($xdigits) if $xdigits;
-      $sum->badd($term);
-      last if $term->copy->babs < $tol;
-    }
-    $sum *= sqrt($x);
-    return 0.0+_Euler(18) + log($logx) + $sum unless ref($x)=~/^Math::Big/;
-    my $val = Math::BigFloat->new(_Euler(40))->badd("".log($logx))->badd("$sum");
-    $val->accuracy($finalacc) if $xdigits;
-    return $val;
-  }
-
   if ($x > 1e16) {
     my $invx = ref($logx) ? Math::BigFloat->bone / $logx : 1.0/$logx;
     # n = 0  =>  0!/(logx)^0 = 1/1 = 1
@@ -12229,7 +12197,6 @@ sub LogarithmicIntegral {
   # Convergent series.
   if ($x >= 1) {
     my $fact_n = 1.0;
-    my $nfac = 1.0;
     my $sum  = 0.0;
     for my $n (1 .. 200) {
       $fact_n *= $logx/$n;
@@ -12961,11 +12928,11 @@ sub _multiset_permutations {
       $sub->(@$prefix, $n0, $n1);
       $sub->(@$prefix, $n1, $n0) unless Math::Prime::Util::_get_forexit();
     }
-  } elsif (0 && $sum == scalar(@n)) {         # All entries have 1 occurance
+  #} elsif ($sum == scalar(@n)) {         # All entries have 1 occurance
     # TODO:  Figure out a way to use this safely.  We need to capture any
     #        lastfor that was seen in the forperm.
-    my @i = map { $_->[0] } @n;
-    Math::Prime::Util::forperm(sub { $sub->(@$prefix, @i[@_]) }, 1+$#i);
+    #my @i = map { $_->[0] } @n;
+    #Math::Prime::Util::forperm(sub { $sub->(@$prefix, @i[@_]) }, 1+$#i);
   } else {                               # Recurse over each leading value
     for my $v (@n) {
       $v->[1]--;
