@@ -54,6 +54,7 @@
 #define TS_A_TOLERANCE_DEFAULT  8U
 #define TS_MULTIPLIER_MAX       255U
 #define TS_MULTIPLIER_CAPACITY  128U
+#define TS_MULTIPLIER_REFINE_FINALISTS 4U
 #define TS_POSTFILTER_MAX_SMALL 256U
 #define TS_RESIEVE_COEFFICIENT  8U
 #define TS_RESIEVE_FLOOR        1024U
@@ -1050,43 +1051,71 @@ static int ts_squarefree_small(uint32_t n) {
   return 1;
 }
 
+/* Return the analytic part of a candidate multiplier's score. */
+static double ts_multiplier_base_score(uint32_t nmod8, uint32_t k) {
+  uint32_t mod8 = (nmod8 * k) & 7U;
+  double score = -0.5 * M_LN2 * log((double)k);
+  score += mod8 == 1 ? 2.0 * M_LN2
+         : mod8 == 5 ? M_LN2 : 0.5 * M_LN2;
+  if (mod8 == 1)
+    score += 3.0 * M_LN2 / 16.0;
+  return score;
+}
+
 static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
   uint32_t kval[TS_MULTIPLIER_CAPACITY];
   uint16_t accepted[TS_MULTIPLIER_CAPACITY];
   double scores[TS_MULTIPLIER_CAPACITY];
   uint128_t quotient = TS_U128_MAX / n;
+  uint32_t bits = ts_bits128(n);
+  uint32_t nmod8 = (uint32_t)(n & 7U);
   uint32_t max_k = quotient > TS_MULTIPLIER_MAX
                  ? TS_MULTIPLIER_MAX : (uint32_t)quotient;
   uint32_t kcount = 0, wanted = fb_size / 20U;
+  uint32_t refine_divisor = 0, refine_wanted = 0;
   uint32_t k, i, unfinished, p = 2;
   uint32_t best = 1;
   double best_score;
+  /* A deeper comparison of the four shallow-score finalists repays its setup
+   * cost from 81 bits onward.  Above 125 bits too few overflow-safe
+   * multipliers remain for refinement to help. */
+  if (bits >= 81U && bits <= 95U)
+    refine_divisor = 8U;
+  else if (bits >= 96U && bits <= 125U)
+    refine_divisor = 6U;
   if (wanted < 1)
     wanted = 1;
   if (wanted > fb_size)
     wanted = fb_size;
+  if (refine_divisor != 0) {
+    refine_wanted = fb_size / refine_divisor;
+    if (refine_wanted < 1U)
+      refine_wanted = 1U;
+    if (refine_wanted > fb_size)
+      refine_wanted = fb_size;
+    if (refine_wanted <= wanted)
+      refine_divisor = 0;
+  }
   memset(accepted, 0, sizeof(accepted));
   for (k = 1; k <= max_k; k += 2) {
-    uint32_t mod8;
     if (!ts_squarefree_small(k))
       continue;
     kval[kcount] = k;
-    mod8 = (uint32_t)((n & 7U) * k) & 7U;
-    scores[kcount] = -0.5 * M_LN2 * log((double)k);
-    scores[kcount] += mod8 == 1 ? 2.0 * M_LN2
-                       : mod8 == 5 ? M_LN2 : 0.5 * M_LN2;
-    if (mod8 == 1)
-      scores[kcount] += 3.0 * M_LN2 / 16.0;
+    scores[kcount] = ts_multiplier_base_score(nmod8, k);
     kcount++;
   }
   if (kcount == 0)
     return 1;
+  if (kcount < 2U)
+    refine_divisor = 0;
   unfinished = kcount;
   while (unfinished != 0) {
     uint32_t nmod;
+    double logp;
     int nsymbol;
     p = ts_next_prime_u32(p);
     nmod = (uint32_t)(n % p);
+    logp = log((double)p);
     nsymbol = nmod == 0 ? 0 : ts_jacobi_odd_u32(nmod, p);
     for (i = 0; i < kcount; i++) {
       uint32_t km;
@@ -1095,17 +1124,85 @@ static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
         continue;
       km = kval[i] % p;
       if (km == 0) {
-        scores[i] += log((double)p) / p;
+        scores[i] += logp / p;
         match = 1;
       } else if (nsymbol != 0 &&
                  ts_jacobi_odd_u32(km, p) == nsymbol) {
-        scores[i] += 2.0 * log((double)p) / (p - 1U);
+        scores[i] += 2.0 * logp / (p - 1U);
         match = 1;
       }
       if (match && ++accepted[i] == wanted)
         unfinished--;
     }
   }
+
+  /* The shallow score is cheap for the complete multiplier set but can
+   * misorder its best few candidates.  Rescore only those finalists from the
+   * analytic baseline to capture most of a deep global search's benefit. */
+  if (refine_divisor != 0) {
+    uint8_t chosen[TS_MULTIPLIER_CAPACITY] = { 0 };
+    uint32_t finalist[TS_MULTIPLIER_REFINE_FINALISTS];
+    uint32_t finalist_count = TS_MULTIPLIER_REFINE_FINALISTS;
+    uint32_t selected;
+    if (finalist_count > kcount)
+      finalist_count = kcount;
+    for (selected = 0; selected < finalist_count; selected++) {
+      uint32_t best_index = UINT32_MAX;
+      for (i = 0; i < kcount; i++)
+        if (!chosen[i] &&
+            (best_index == UINT32_MAX || scores[i] > scores[best_index]))
+          best_index = i;
+      chosen[best_index] = 1;
+      finalist[selected] = best_index;
+      accepted[best_index] = 0;
+      scores[best_index] = ts_multiplier_base_score(nmod8, kval[best_index]);
+    }
+
+    unfinished = finalist_count;
+    p = 2;
+    while (unfinished != 0) {
+      uint32_t nmod;
+      double logp;
+      int nsymbol;
+      p = ts_next_prime_u32(p);
+      nmod = (uint32_t)(n % p);
+      logp = log((double)p);
+      nsymbol = nmod == 0 ? 0 : ts_jacobi_odd_u32(nmod, p);
+      for (selected = 0; selected < finalist_count; selected++) {
+        uint32_t index = finalist[selected];
+        uint32_t km;
+        int match = 0;
+        if (accepted[index] == refine_wanted)
+          continue;
+        km = kval[index] % p;
+        if (km == 0) {
+          scores[index] += logp / p;
+          match = 1;
+        } else if (nsymbol != 0 &&
+                   ts_jacobi_odd_u32(km, p) == nsymbol) {
+          scores[index] += 2.0 * logp / (p - 1U);
+          match = 1;
+        }
+        if (match && ++accepted[index] == refine_wanted)
+          unfinished--;
+      }
+    }
+
+    i = finalist[0];
+    best = kval[i];
+    best_score = scores[i];
+    for (selected = 1; selected < finalist_count; selected++) {
+      uint32_t index = finalist[selected];
+      if (scores[index] > best_score ||
+          (scores[index] == best_score && index < i)) {
+        i = index;
+        best = kval[index];
+        best_score = scores[index];
+      }
+    }
+    return best;
+  }
+
   best_score = scores[0];
   for (i = 1; i < kcount; i++)
     if (scores[i] > best_score) {
