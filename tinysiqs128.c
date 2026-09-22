@@ -698,10 +698,15 @@ static uint64_t ts_squfof_unit(uint64_t n, ts_squfof_state_t *state) {
 }
 
 static uint64_t ts_squfof64(uint64_t n, uint32_t rounds) {
-  /* Gower and Wagstaff 2008, section 5.3, with MPU's 13, 17, and 19
-   * extensions in analytic-score order.  Large tuning corpora found this
-   * complete race both faster and safer than reduced portfolios. */
+  /* Race the full GMP SQUFOF multiplier set.  The larger 1680-based
+   * candidates help at the low end; invalid high-end products are skipped. */
   static const uint32_t multipliers[] = {
+    33U*1680U, 11U*1680U, 66U*1680U,  3U*1680U,
+     2U*1680U,  6U*1680U, 22U*1680U, 78U*1680U,
+     1U*1680U, 26U*1680U, 39U*1680U, 13U*1680U,
+   102U*1680U, 30U*1680U, 34U*1680U, 10U*1680U,
+    15U*1680U, 51U*1680U,  5U*1680U, 57U*1680U,
+    17U*1680U, 19U*1680U,
     3U*5U*7U*11U, 3U*5U*7U, 3U*5U*7U*11U*13U, 3U*5U*7U*13U,
     3U*5U*7U*11U*17U, 3U*5U*11U, 3U*5U*7U*17U, 3U*5U,
     3U*5U*7U*11U*19U, 3U*5U*11U*13U, 3U*5U*7U*19U,
@@ -751,7 +756,7 @@ static uint64_t ts_squfof64(uint64_t n, uint32_t rounds) {
           continue;
         }
         state->bn = (2U * sqrt_nn) / state->qn;
-        state->batch = (uint32_t)(sqrt((double)sqrt_nn) / 16.0);
+        state->batch = (uint32_t)(sqrt((double)sqrt_nn) / 32.0);
         if (state->batch < 20U)
           state->batch = 20U;
         if (state->batch > rounds)
