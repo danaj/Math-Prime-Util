@@ -43,11 +43,21 @@
 #ifndef M_LN2
 # define M_LN2 0.69314718055994530942
 #endif
+#ifndef RESTRICT
+# if defined(_MSC_VER)
+#  define RESTRICT __restrict
+# elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#  define RESTRICT restrict
+# elif defined(__GNUC__) || defined(__clang__)
+#  define RESTRICT __restrict__
+# else
+#  define RESTRICT
+# endif
+#endif
 
 #define TS_U128_MAX             ((uint128_t)-1)
 #define TS_I128_MAX_MAG         (TS_U128_MAX >> 1)
 #define TS_NO_INDEX             UINT32_MAX
-#define TS_NO_ROOT              UINT32_MAX
 #define TS_SIEVE_ALIGN          256U
 #define TS_MAX_EXTRA_RELS       512U
 #define TS_RETRY_BATCH_MAX      128U
@@ -183,6 +193,10 @@ typedef struct {
   uint32_t q_count;
   uint32_t b_index;
   uint32_t b_limit;
+  uint32_t a_search_ready;
+  uint32_t a_search_stage;
+  uint32_t a_search_center;
+  uint32_t a_search_variance;
 } ts_poly_t;
 
 typedef struct {
@@ -218,6 +232,7 @@ typedef struct {
   uint32_t *prime;
   uint32_t *root1;
   uint32_t *root2;
+  uint8_t *sieve_logp;
   uint32_t *reciprocal;
   uint32_t largest_fb_prime;
   uint32_t resieve_one_subtract_index;
@@ -564,7 +579,7 @@ static uint128_t ts_exact_root(uint128_t n, uint32_t exponent) {
   return 0;
 }
 
-static uint128_t ts_trial_factor32(uint32_t n) {
+static uint128_t MAYBE_UNUSED ts_trial_factor32(uint32_t n) {
   static const uint8_t steps[8] = {4, 2, 4, 2, 4, 6, 2, 6};
   uint32_t p = 7, step_index = 0;
   while ((uint64_t)p * p <= n) {
@@ -697,7 +712,7 @@ static uint64_t ts_squfof_unit(uint64_t n, ts_squfof_state_t *state) {
   }
 }
 
-static uint64_t ts_squfof64(uint64_t n, uint32_t rounds) {
+static uint64_t MAYBE_UNUSED ts_squfof64(uint64_t n, uint32_t rounds) {
   /* Race the full GMP SQUFOF multiplier set.  The larger 1680-based
    * candidates help at the low end; invalid high-end products are skipped. */
   static const uint32_t multipliers[] = {
@@ -909,10 +924,9 @@ static uint32_t ts_next_prime_u32(uint32_t n) {
  *----------------------------------------------------------------------------*/
 
 static const ts_policy_band_t ts_primary_policies[] = {
-  /* Inputs through 31 bits use the wheel splitter, while 32 bits first use
-   * compact SQUFOF.  The smaller FB32 q=1 primary keeps 33--36 bits compact;
-   * the floor-40 interval recoveries below absorb its rare underfills. */
-  { "smooth_k1_q1_33_36_4k_fb32", 33, 36, 1, 1, 0, 0, 0,
+  /* Study-only: expose the low range to SIQS after the cheap early checks.
+   * Keep the existing FB32 q=1 geometry and floor-40 interval recoveries. */
+  { "smooth_k1_q1_1_36_4k_fb32", 1, 36, 1, 1, 0, 0, 0,
     8, 32, 2, 8, 4096,
     0.315, 0.0, 65, 0.0, 0.0, 1, 0.0 },
   { "smooth_k1_q2_low", 37, 41, 2, 1, 0, 0, 0,
@@ -946,18 +960,20 @@ static const ts_policy_band_t ts_primary_policies[] = {
     3.125, 0.0, 117, 0.45 }
 };
 
+/* q=1 underfill and q=2 exhaustion through 41 bits share smooth-only
+ * q=1 recoveries.  Increasing M changes the one available A family. */
 static const ts_policy_band_t ts_recovery_q1_8k = {
-  "smooth_k1_q1_low_recovery_8k", 33, 36, 1, 1, 0, 0, 0,
+  "smooth_k1_q1_low_recovery_8k", 1, 41, 1, 1, 0, 0, 0,
   8, 40, 2, 8, 8192,
   0.315, 0.0, 65, 0.0, 0.0, 1, 0.0
 };
 static const ts_policy_band_t ts_recovery_q1_16k = {
-  "smooth_k1_q1_low_recovery_16k", 33, 36, 1, 1, 0, 0, 0,
+  "smooth_k1_q1_low_recovery_16k", 1, 41, 1, 1, 0, 0, 0,
   8, 40, 2, 8, 16384,
   0.315, 0.0, 65, 0.0, 0.0, 1, 0.0
 };
 static const ts_policy_band_t ts_recovery_q1_legacy = {
-  "smooth_k1_q1_low_recovery_legacy", 33, 36, 1, 1, 0, 0, 0,
+  "smooth_k1_q1_low_recovery_legacy", 1, 41, 1, 1, 0, 0, 0,
   8, 40, 2, 8, 0,
   0.315, 0.0, 65, 4.0, 0.0, 1, 0.0
 };
@@ -981,6 +997,55 @@ static const ts_policy_band_t ts_recovery_42_1m = {
   8, 40, 4, 8, 1U << 20,
   0.315, 0.0, 42, 0.0, 0.0, 42, 0.0
 };
+
+/* Smooth-only q=3 can exhaust with only trivial dependencies.  Keep each
+ * primary band's geometry, but admit one-LP pairs after that policy fails. */
+static const ts_policy_band_t ts_recovery_q3_low = {
+  "one_lp_k60_q3_recovery", 50, 64, 3, 60, 0, 0, 0,
+  8, 40, 4, 8, 0,
+  0.315, 0.0, 65, 0.0, 0.041666666666666667, 50, 0.0
+};
+/* Extend the same safety fallback to the higher q=3 band's own geometry. */
+static const ts_policy_band_t ts_recovery_q3_high = {
+  "one_lp_k60_q3_fb_low_recovery", 65, 80, 3, 60, 6, 0, 0,
+  8, 48, 4, 8, 0,
+  0.306956091, 0.0000655453, 65,
+    0.0, 0.041666666666666667, 50, 0.0
+};
+
+/* A low q=3 input can have too few admissible triples even with K60.
+ * Change to pair families only after both q=3 attempts fail.  Keep the
+ * 50--64 primary's FB/interval geometry and admit one-LP pairs.  The larger
+ * targets at 65--80 need not fit any pair, so do not extend this row there. */
+static const ts_policy_band_t ts_recovery_q2_geometry = {
+  "one_lp_k60_q2_geometry_recovery", 50, 64, 2, 60, 0, 0, 0,
+  8, 40, 4, 8, 0,
+  0.315, 0.0, 65, 0.0, 0.041666666666666667, 50, 0.0
+};
+
+static const ts_policy_band_t *const ts_recovery_policies[] = {
+  &ts_recovery_q1_8k,
+  &ts_recovery_q1_16k,
+  &ts_recovery_q1_legacy,
+  &ts_recovery_42_96k,
+  &ts_recovery_42_192k,
+  &ts_recovery_42_384k,
+  &ts_recovery_42_1m,
+  &ts_recovery_q3_low,
+  &ts_recovery_q3_high,
+  &ts_recovery_q2_geometry
+};
+
+/* Enumerate matching recoveries in table order; initialize *next to zero. */
+static const ts_policy_band_t *ts_next_policy(uint32_t bits, uint32_t *next) {
+  while (*next < (uint32_t)(sizeof(ts_recovery_policies) /
+                              sizeof(ts_recovery_policies[0]))) {
+    const ts_policy_band_t *policy = ts_recovery_policies[(*next)++];
+    if (bits >= policy->first_bits && bits <= policy->last_bits)
+      return policy;
+  }
+  return NULL;
+}
 
 static const ts_policy_band_t *ts_primary_policy(uint32_t bits) {
   uint32_t i;
@@ -1048,27 +1113,25 @@ static int ts_resolve_parameters(ts_parameters_t *p, uint128_t n,
   return 1;
 }
 
-static int ts_squarefree_small(uint32_t n) {
-  uint32_t p;
-  for (p = 3; p * p <= n; p += 2)
-    if (n % (p * p) == 0)
-      return 0;
-  return 1;
-}
+/* Squarefree membership through 255, using the same mask as siqs.c.
+ * The selector uses odd entries plus k=2; no wider multiplier pool is used. */
+static const uint32_t ts_squarefree_mask[8] = {
+  3840601326U, 1856556782U, 3941394158U, 2362371810U,
+  3970362990U, 3471729898U, 4008603310U, 3938642668U
+};
 
 /* Return the analytic part of a candidate multiplier's score. */
 static double ts_multiplier_base_score(uint32_t nmod8, uint32_t k) {
   uint32_t mod8 = (nmod8 * k) & 7U;
-  double score = -0.5 * M_LN2 * log((double)k);
-  score += mod8 == 1 ? 2.0 * M_LN2
+  double score = -0.5 * log((double)k);
+  score += mod8 == 1 ? 3.0 * M_LN2
          : mod8 == 5 ? M_LN2 : 0.5 * M_LN2;
-  if (mod8 == 1)
-    score += 3.0 * M_LN2 / 16.0;
   return score;
 }
 
 static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
   uint32_t kval[TS_MULTIPLIER_CAPACITY];
+  uint32_t last_prime[TS_MULTIPLIER_CAPACITY];
   uint16_t accepted[TS_MULTIPLIER_CAPACITY];
   double scores[TS_MULTIPLIER_CAPACITY];
   uint128_t quotient = TS_U128_MAX / n;
@@ -1081,6 +1144,9 @@ static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
   uint32_t k, i, unfinished, p = 2;
   uint32_t best = 1;
   double best_score;
+  /* If k=2 would overflow, k=1 is the only candidate. */
+  if (max_k < 2U)
+    return 1U;
   /* A deeper comparison of the four shallow-score finalists repays its setup
    * cost from 81 bits onward.  Above 125 bits too few overflow-safe
    * multipliers remain for refinement to help. */
@@ -1102,17 +1168,20 @@ static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
       refine_divisor = 0;
   }
   memset(accepted, 0, sizeof(accepted));
-  for (k = 1; k <= max_k; k += 2) {
-    if (!ts_squarefree_small(k))
+  /* Keep numeric order so exact score ties still prefer the smaller k.
+   * k=2 is admitted only when 2N fits; its even kN uses d=1. */
+  kval[0] = 1U;
+  kval[1] = 2U;
+  scores[0] = ts_multiplier_base_score(nmod8, 1U);
+  scores[1] = ts_multiplier_base_score(nmod8, 2U);
+  kcount = 2U;
+  for (k = 3; k <= max_k; k += 2) {
+    if ((ts_squarefree_mask[k >> 5] & (1U << (k & 31U))) == 0U)
       continue;
     kval[kcount] = k;
     scores[kcount] = ts_multiplier_base_score(nmod8, k);
     kcount++;
   }
-  if (kcount == 0)
-    return 1;
-  if (kcount < 2U)
-    refine_divisor = 0;
   unfinished = kcount;
   while (unfinished != 0) {
     uint32_t nmod;
@@ -1136,19 +1205,22 @@ static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
         scores[i] += 2.0 * logp / (p - 1U);
         match = 1;
       }
-      if (match && ++accepted[i] == wanted)
+      if (match && ++accepted[i] == wanted) {
+        if (refine_divisor != 0U)
+          last_prime[i] = p;
         unfinished--;
+      }
     }
   }
 
   /* The shallow score is cheap for the complete multiplier set but can
-   * misorder its best few candidates.  Rescore only those finalists from the
-   * analytic baseline to capture most of a deep global search's benefit. */
+   * misorder its best few candidates.  Extend only those finalists' scores,
+   * retaining their credited prefixes and the original addition order. */
   if (refine_divisor != 0) {
     uint8_t chosen[TS_MULTIPLIER_CAPACITY] = { 0 };
     uint32_t finalist[TS_MULTIPLIER_REFINE_FINALISTS];
     uint32_t finalist_count = TS_MULTIPLIER_REFINE_FINALISTS;
-    uint32_t selected;
+    uint32_t selected, first_prime = UINT32_MAX;
     if (finalist_count > kcount)
       finalist_count = kcount;
     for (selected = 0; selected < finalist_count; selected++) {
@@ -1159,12 +1231,14 @@ static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
           best_index = i;
       chosen[best_index] = 1;
       finalist[selected] = best_index;
-      accepted[best_index] = 0;
-      scores[best_index] = ts_multiplier_base_score(nmod8, kval[best_index]);
+      if (last_prime[best_index] < first_prime)
+        first_prime = last_prime[best_index];
     }
 
     unfinished = finalist_count;
-    p = 2;
+    /* Finalists may have finished their prefixes at different primes.
+     * Resume after the earliest, skipping each until its own prefix ends. */
+    p = first_prime;
     while (unfinished != 0) {
       uint32_t nmod;
       double logp;
@@ -1177,7 +1251,7 @@ static uint32_t ts_choose_multiplier(uint128_t n, uint32_t fb_size) {
         uint32_t index = finalist[selected];
         uint32_t km;
         int match = 0;
-        if (accepted[index] == refine_wanted)
+        if (accepted[index] == refine_wanted || p <= last_prime[index])
           continue;
         km = kval[index] % p;
         if (km == 0) {
@@ -1304,10 +1378,24 @@ static int ts_hashset_insert(ts_hashset_t *set, uint64_t value) {
  * Polynomial construction
  *----------------------------------------------------------------------------*/
 
-static int ts_u16_cmp(const void *va, const void *vb) {
-  uint16_t a = *(const uint16_t *)va;
-  uint16_t b = *(const uint16_t *)vb;
-  return a < b ? -1 : a > b ? 1 : 0;
+/* A has at most TS_MAX_Q indices; sort only a newly accepted family. */
+static void ts_sort_a_indices(uint16_t *indices, uint32_t count) {
+  uint32_t i, j;
+  for (i = 1U; i < count; i++) {
+    uint16_t value = indices[i];
+    for (j = i; j > 0 && indices[j - 1U] > value; j--)
+      indices[j] = indices[j - 1U];
+    indices[j] = value;
+  }
+}
+
+/* A u64 times a u32 fits u128; narrow only after checking the high half. */
+static int ts_a_mul_u64(uint64_t product, uint32_t factor, uint64_t *result) {
+  uint128_t wide = (uint128_t)product * factor;
+  if (wide > UINT64_MAX)
+    return 0;
+  *result = (uint64_t)wide;
+  return 1;
 }
 
 static uint64_t ts_target_A(uint128_t kn, uint32_t M, uint32_t d) {
@@ -1345,8 +1433,9 @@ static uint32_t ts_nearest_fb_index(const ts_ctx_t *ctx, uint32_t wanted) {
   return lo;
 }
 
-static uint32_t ts_nearest_available_fb(ts_ctx_t *ctx, uint32_t wanted) {
-  uint32_t center = ts_nearest_fb_index(ctx, wanted);
+/* Preserve the upward-first scan, including unavailable center primes. */
+static uint32_t ts_nearest_available_fb_from_index(const ts_ctx_t *ctx,
+                                                 uint32_t center) {
   uint32_t step;
   for (step = 0; step < ctx->params.fb_size; step++) {
     uint32_t up = center + step;
@@ -1363,15 +1452,71 @@ static uint32_t ts_nearest_available_fb(ts_ctx_t *ctx, uint32_t wanted) {
   return TS_NO_INDEX;
 }
 
+static uint32_t ts_nearest_available_fb(ts_ctx_t *ctx, uint32_t wanted) {
+  return ts_nearest_available_fb_from_index(
+      ctx, ts_nearest_fb_index(ctx, wanted));
+}
+
+/* A uses q distinct eligible odd primes.  These exact product bounds can
+ * reject impossible small-q windows, but do not guarantee an unused A exists.
+ * Three uint32 primes, even scaled by a uint32 tolerance, fit uint128. */
+static uint32_t ts_initial_A_stage(const ts_ctx_t *ctx, const ts_poly_t *poly,
+                                   const uint32_t tolerances[3]) {
+  uint128_t minimum = 1, maximum = 1;
+  uint32_t i, count = 0, stage;
+  if (poly->q_count < 2U || poly->q_count > 3U)
+    return 1U;
+  for (i = 1U; i < ctx->params.fb_size && count < poly->q_count; i++) {
+    if (ctx->fb[i].sqrt_kn == 0)
+      continue;
+    minimum *= ctx->fb[i].p;
+    count++;
+  }
+  if (count < poly->q_count)
+    return 0;
+  count = 0;
+  for (i = ctx->params.fb_size; i > 1U && count < poly->q_count; ) {
+    i--;
+    if (ctx->fb[i].sqrt_kn == 0)
+      continue;
+    maximum *= ctx->fb[i].p;
+    count++;
+  }
+  for (stage = 0; stage < 3U; stage++)
+    if (minimum <= (uint128_t)poly->target_A * tolerances[stage] &&
+        maximum * tolerances[stage] >= poly->target_A)
+      return stage + 1U;
+  return 0;
+}
+
+/* Target, q, FB primes and policy stay fixed for this polynomial generator.
+ * Initialize lazily so callers can finish setting the target before its first
+ * family.  Remember impossible geometry too, without doing floating work. */
+static void ts_prepare_A_search(const ts_ctx_t *ctx, ts_poly_t *poly) {
+  uint32_t tolerances[3] = { 2U, 4U, 0U };
+  double ideal_d;
+  uint32_t ideal;
+  tolerances[2] = ctx->params.a_tolerance;
+  poly->a_search_stage = ts_initial_A_stage(ctx, poly, tolerances);
+  poly->a_search_center = poly->a_search_variance = 0;
+  poly->a_search_ready = 1U;
+  if (poly->a_search_stage == 0)
+    return;
+  ideal_d = pow((double)poly->target_A, 1.0 / poly->q_count);
+  ideal = ideal_d < 3.0 ? 3U
+        : ideal_d >= UINT32_MAX ? UINT32_MAX : (uint32_t)ideal_d;
+  poly->a_search_center = ts_nearest_fb_index(ctx, ideal);
+  poly->a_search_variance =
+      (uint32_t)(0.75 * sqrt((double)ctx->params.fb_size));
+  if (poly->a_search_variance < 8U)
+    poly->a_search_variance = 8U;
+}
+
 static int ts_choose_A(ts_ctx_t *ctx, ts_poly_t *poly) {
-  uint32_t attempt, i;
-  uint32_t attempt_limit = poly->q_count <= 3 ? 30000U : 10000U;
-  double ideal_d = pow((double)poly->target_A, 1.0 / poly->q_count);
-  uint32_t ideal = ideal_d < 3.0 ? 3U : (uint32_t)ideal_d;
-  uint32_t center = ts_nearest_fb_index(ctx, ideal);
-  uint32_t variance = (uint32_t)(0.75 * sqrt((double)ctx->params.fb_size));
-  if (variance < 8U)
-    variance = 8U;
+  static const uint32_t small_q_attempt_limits[3] = { 1000U, 1000U, 10000U };
+  uint32_t tolerances[3] = { 2U, 4U, 0U };
+  uint32_t stage, init_stage, last_stage, attempt, i;
+  uint32_t center, variance;
 
   for (i = 0; i < poly->q_count; i++) {
     if (poly->a_index[i] < ctx->params.fb_size)
@@ -1379,77 +1524,89 @@ static int ts_choose_A(ts_ctx_t *ctx, ts_poly_t *poly) {
     poly->a_index[i] = UINT16_MAX;
   }
 
-  for (attempt = 0; attempt < attempt_limit; attempt++) {
-    uint32_t tolerance = attempt < 10000U ? 2U
-                       : attempt < 20000U ? 4U
-                       : ctx->params.a_tolerance;
-    uint64_t product = 1;
-    int acceptable = poly->q_count == 1;
+  tolerances[2] = ctx->params.a_tolerance;
+  if (!poly->a_search_ready)
+    ts_prepare_A_search(ctx, poly);
+  init_stage = poly->a_search_stage;
+  if (init_stage == 0)
+    return 0;
+  center = poly->a_search_center;
+  variance = poly->a_search_variance;
+  last_stage = poly->q_count >= 2U && poly->q_count <= 3U ? 3U : 1U;
+  /* Preserve q>=4's existing 10K tolerance-2 search and q=1's one attempt.
+   * q=2/3 skip impossible stages, then use 1K/1K/10K attempts as in SIQS. */
+  for (stage = init_stage; stage <= last_stage; stage++) {
+    uint32_t tolerance = tolerances[stage - 1U];
+    uint32_t attempt_limit = poly->q_count == 1U ? 1U
+                          : last_stage == 3U
+                            ? small_q_attempt_limits[stage - 1U] : 10000U;
+    for (attempt = 0; attempt < attempt_limit; attempt++) {
+      uint64_t product = 1;
+      int acceptable = poly->q_count == 1;
 
-    for (i = 0; i + 1U < poly->q_count; i++) {
-      int64_t wanted_index;
-      uint32_t search_variance, index;
-      if (attempt >= 20000U) {
-        wanted_index = 1 + (int64_t)ts_rand_range(
-            &ctx->poly_rng, ctx->params.fb_size - 1U);
-      } else {
-        int64_t offset;
-        search_variance = attempt < 10000U ? variance : 2U * variance;
-        offset = (int64_t)ts_rand_range(
-            &ctx->poly_rng, 2U * search_variance + 1U) - search_variance;
-        wanted_index = (int64_t)center + offset;
-        if (wanted_index < 1)
-          wanted_index = 1;
-        if (wanted_index >= (int64_t)ctx->params.fb_size)
-          wanted_index = ctx->params.fb_size - 1U;
-      }
-      index = ts_nearest_available_fb(
-          ctx, ctx->fb[(uint32_t)wanted_index].p);
-      if (index == TS_NO_INDEX || product > UINT64_MAX / ctx->fb[index].p)
-        goto reject_A;
-      poly->a_index[i] = (uint16_t)index;
-      ctx->fb[index].in_a = 1;
-      product *= ctx->fb[index].p;
-    }
-    {
-      uint64_t remaining = product == 0 ? 0 : poly->target_A / product;
-      uint32_t wanted = remaining > UINT32_MAX
-                      ? UINT32_MAX : (uint32_t)remaining;
-      uint32_t index = ts_nearest_available_fb(ctx, wanted);
-      if (index == TS_NO_INDEX || product > UINT64_MAX / ctx->fb[index].p)
-        goto reject_A;
-      poly->a_index[poly->q_count - 1U] = (uint16_t)index;
-      ctx->fb[index].in_a = 1;
-      product *= ctx->fb[index].p;
-    }
-    qsort(poly->a_index, poly->q_count, sizeof(poly->a_index[0]),
-          ts_u16_cmp);
-    if (!acceptable) {
-      uint128_t scaled_product = (uint128_t)product * tolerance;
-      uint128_t scaled_target = (uint128_t)poly->target_A * tolerance;
-      acceptable = scaled_product >= poly->target_A &&
-                   product <= scaled_target;
-    }
-    if (acceptable) {
-      /* A is square-free, so its exact product uniquely identifies the
-       * selected factor-base set without a fingerprint collision. */
-      if (ts_hashset_insert(&ctx->a_hashes, product)) {
-        poly->A = product;
-        if (product > UINT64_MAX / ctx->params.d)
+      for (i = 0; i + 1U < poly->q_count; i++) {
+        int64_t wanted_index;
+        uint32_t search_variance, index;
+        if (stage == 3U) {
+          wanted_index = 1 + (int64_t)ts_rand_range(
+              &ctx->poly_rng, ctx->params.fb_size - 1U);
+        } else {
+          int64_t offset;
+          search_variance = stage == 1U ? variance : 2U * variance;
+          offset = (int64_t)ts_rand_range(
+              &ctx->poly_rng, 2U * search_variance + 1U) - search_variance;
+          wanted_index = (int64_t)center + offset;
+          if (wanted_index < 1)
+            wanted_index = 1;
+          if (wanted_index >= (int64_t)ctx->params.fb_size)
+            wanted_index = ctx->params.fb_size - 1U;
+        }
+        index = ts_nearest_available_fb_from_index(
+            ctx, (uint32_t)wanted_index);
+        if (index == TS_NO_INDEX ||
+            !ts_a_mul_u64(product, ctx->fb[index].p, &product))
           goto reject_A;
-        poly->D = product * ctx->params.d;
-        return 1;
+        poly->a_index[i] = (uint16_t)index;
+        ctx->fb[index].in_a = 1;
       }
-    }
+      {
+        uint64_t remaining = product == 0 ? 0 : poly->target_A / product;
+        uint32_t wanted = remaining > UINT32_MAX
+                        ? UINT32_MAX : (uint32_t)remaining;
+        uint32_t index = ts_nearest_available_fb(ctx, wanted);
+        if (index == TS_NO_INDEX ||
+            !ts_a_mul_u64(product, ctx->fb[index].p, &product))
+          goto reject_A;
+        poly->a_index[poly->q_count - 1U] = (uint16_t)index;
+        ctx->fb[index].in_a = 1;
+      }
+      if (!acceptable) {
+        uint128_t scaled_product = (uint128_t)product * tolerance;
+        uint128_t scaled_target = (uint128_t)poly->target_A * tolerance;
+        acceptable = scaled_product >= poly->target_A &&
+                     product <= scaled_target;
+      }
+      if (acceptable) {
+        uint64_t D;
+        if (!ts_a_mul_u64(product, ctx->params.d, &D))
+          goto reject_A;
+        /* A is square-free, so its exact product uniquely identifies the
+         * selected factor-base set without a fingerprint collision. */
+        if (ts_hashset_insert(&ctx->a_hashes, product)) {
+          ts_sort_a_indices(poly->a_index, poly->q_count);
+          poly->A = product;
+          poly->D = D;
+          return 1;
+        }
+      }
 
 reject_A:
-    for (i = 0; i < poly->q_count; i++) {
-      if (poly->a_index[i] < ctx->params.fb_size)
-        ctx->fb[poly->a_index[i]].in_a = 0;
-      poly->a_index[i] = UINT16_MAX;
+      for (i = 0; i < poly->q_count; i++) {
+        if (poly->a_index[i] < ctx->params.fb_size)
+          ctx->fb[poly->a_index[i]].in_a = 0;
+        poly->a_index[i] = UINT16_MAX;
+      }
     }
-    if (poly->q_count == 1)
-      break;
   }
   return 0;
 }
@@ -1520,7 +1677,7 @@ static void ts_set_special_roots(ts_ctx_t *ctx, const ts_poly_t *poly) {
     ctx->root2[0] = 1;
   } else {
     ctx->root1[0] = (ts_signed_mod_u32(poly->C, 2) + (M & 1U)) & 1U;
-    ctx->root2[0] = TS_NO_ROOT;
+    ctx->root2[0] = ctx->root1[0];
   }
   for (i = 0; i < poly->q_count; i++) {
     uint32_t index = poly->a_index[i];
@@ -1534,7 +1691,54 @@ static void ts_set_special_roots(ts_ctx_t *ctx, const ts_poly_t *poly) {
       croak("tinysiqs128: singular polynomial root");
     x = (uint32_t)((uint64_t)(c ? p - c : 0) * inv % p);
     ctx->root1[index] = (x + M % p) % p;
-    ctx->root2[index] = TS_NO_ROOT;
+    ctx->root2[index] = ctx->root1[index];
+  }
+}
+
+/* For p_i in A, the normalized polynomial has one linear root.  With
+ * D_i = D/p_i, its correction for Gray-code term H_j is
+ *   2*(H_j/p_i)/D_i                       when i != j,
+ *   ((H_i^2-kN)/p_i)/(H_i*D_i)            when i == j.
+ * Fill the unused entries so every odd prime uses the same update loop. */
+static void ts_set_special_corrections(ts_ctx_t *ctx, ts_poly_t *poly) {
+  uint32_t i, bit;
+  if (poly->q_count < 2U)
+    return;
+  for (i = 0; i < poly->q_count; i++) {
+    uint32_t index = poly->a_index[i], p = ctx->fb[index].p;
+    uint32_t inv_d = ts_inverse_u32((uint32_t)((poly->D / p) % p), p);
+    if (inv_d == 0)
+      croak("tinysiqs128: singular special-root correction");
+    for (bit = 0; bit + 1U < poly->q_count; bit++) {
+      uint32_t value, correction;
+      if (i == bit) {
+        uint128_t h2 = (uint128_t)poly->H[bit] * poly->H[bit];
+        uint128_t magnitude = h2 >= ctx->kn ? h2 - ctx->kn : ctx->kn - h2;
+        uint32_t inv_h = ts_inverse_u32((uint32_t)(poly->H[bit] % p), p);
+        /* H is uint64_t, so its square fits unsigned 128 bits.  Keep the
+         * possibly negative difference unsigned; its magnitude need not
+         * fit signed 128 bits.  Reduce the exact quotient before negating. */
+#if TS_DEBUG
+        if (magnitude % p != 0)
+          croak("tinysiqs128: nonintegral special-root correction");
+#endif
+        if (inv_h == 0)
+          croak("tinysiqs128: singular diagonal special-root correction");
+        value = (uint32_t)((magnitude / p) % p);
+        if (h2 < ctx->kn && value != 0)
+          value = p - value;
+        correction = (uint32_t)((uint64_t)value * inv_h % p);
+      } else {
+#if TS_DEBUG
+        if (poly->H[bit] % p != 0)
+          croak("tinysiqs128: nonintegral off-diagonal correction");
+#endif
+        value = (uint32_t)((poly->H[bit] / p) % p);
+        correction = (uint32_t)((2ULL * value) % p);
+      }
+      poly->corrections[(size_t)bit * ctx->params.fb_size + index] =
+          (uint32_t)((uint64_t)correction * inv_d % p);
+    }
   }
 }
 
@@ -1576,7 +1780,7 @@ static void ts_verify_polynomial(const ts_ctx_t *ctx,
     uint32_t p = ctx->fb[i].p;
     int expect_two = i == 0 ? ctx->params.d == 2
                    : !ctx->fb[i].in_a && ctx->fb[i].sqrt_kn != 0;
-    if (ctx->root1[i] >= p ||
+    if (ctx->root1[i] > ctx->root2[i] || ctx->root2[i] >= p ||
         ts_debug_polynomial_at_root(ctx, poly, i, ctx->root1[i]) != 0)
       croak("tinysiqs128: first polynomial root invariant failed");
     if (expect_two) {
@@ -1584,7 +1788,7 @@ static void ts_verify_polynomial(const ts_ctx_t *ctx,
           ts_debug_polynomial_at_root(ctx, poly, i,
                                       ctx->root2[i]) != 0)
         croak("tinysiqs128: second polynomial root invariant failed");
-    } else if (ctx->root2[i] != TS_NO_ROOT) {
+    } else if (ctx->root2[i] != ctx->root1[i]) {
       croak("tinysiqs128: unexpected second polynomial root");
     }
   }
@@ -1625,9 +1829,10 @@ static int ts_first_B_and_roots(ts_ctx_t *ctx, ts_poly_t *poly) {
       uint32_t s = ctx->fb[j].sqrt_kn;
       uint32_t x1 = (uint32_t)((uint64_t)((negb + s) % p) * inva % p);
       uint32_t x2 = (uint32_t)((uint64_t)((negb + p - s) % p) * inva % p);
-      ctx->root1[j] = (x1 + ctx->params.M % p) % p;
-      ctx->root2[j] = x1 == x2 ? TS_NO_ROOT
-                    : (x2 + ctx->params.M % p) % p;
+      x1 = (x1 + ctx->params.M % p) % p;
+      x2 = (x2 + ctx->params.M % p) % p;
+      ctx->root1[j] = x1 < x2 ? x1 : x2;
+      ctx->root2[j] = x1 < x2 ? x2 : x1;
       for (i = 0; i + 1U < poly->q_count; i++) {
         uint32_t hmod = (uint32_t)(poly->H[i] % p);
         poly->corrections[(size_t)i * ctx->params.fb_size + j] =
@@ -1636,6 +1841,7 @@ static int ts_first_B_and_roots(ts_ctx_t *ctx, ts_poly_t *poly) {
     }
   }
   ts_set_special_roots(ctx, poly);
+  ts_set_special_corrections(ctx, poly);
 #if TS_DEBUG
   ts_verify_polynomial(ctx, poly);
 #endif
@@ -1649,7 +1855,7 @@ static void ts_set_family_sieve_initial(ts_ctx_t *ctx) {
   if (ctx->params.d == 2)
     expected += ctx->fb[0].logp;
   for (i = 0; i < ctx->params.sieve_start; i++) {
-    uint32_t roots = ctx->root2[i] == TS_NO_ROOT ? 1U : 2U;
+    uint32_t roots = ctx->root2[i] == ctx->root1[i] ? 1U : 2U;
     expected += roots * (double)ctx->fb[i].logp / ctx->fb[i].p;
   }
   initial = (uint32_t)(expected + 0.5);
@@ -1681,33 +1887,40 @@ static int ts_new_family(ts_ctx_t *ctx, ts_poly_t *poly) {
   return 1;
 }
 
-static void ts_update_roots(ts_ctx_t *ctx, const ts_poly_t *poly,
-                            uint32_t bit, int subtract,
+/* Equal roots represent a single root.  Restore ordering after each modular
+ * shift so all consumers can use root1 <= root2 without a local swap. */
+static INLINE void ts_update_roots(const uint32_t *RESTRICT correction,
+                            const uint32_t *RESTRICT prime,
+                            uint32_t *RESTRICT root1,
+                            uint32_t *RESTRICT root2, int subtract_from_B,
                             uint32_t first, uint32_t end) {
-  const uint32_t *correction = poly->corrections +
-      (size_t)bit * ctx->params.fb_size;
   uint32_t j;
-  for (j = first; j < end; j++) {
-    uint32_t p = ctx->prime[j], corr = correction[j];
-    if (subtract) {
-      ctx->root1[j] += corr;
-      if (ctx->root1[j] >= p) ctx->root1[j] -= p;
-      if (ctx->root2[j] != TS_NO_ROOT) {
-        ctx->root2[j] += corr;
-        if (ctx->root2[j] >= p) ctx->root2[j] -= p;
-      }
-    } else {
-      ctx->root1[j] = ctx->root1[j] >= corr
-                    ? ctx->root1[j] - corr : ctx->root1[j] + p - corr;
-      if (ctx->root2[j] != TS_NO_ROOT)
-        ctx->root2[j] = ctx->root2[j] >= corr
-                      ? ctx->root2[j] - corr : ctx->root2[j] + p - corr;
+  if (subtract_from_B) {
+    for (j = first; j < end; j++) {
+      uint32_t p = prime[j], corr = correction[j];
+      uint32_t r1 = root1[j], r2 = root2[j];
+      r1 += corr;
+      if (r1 >= p) r1 -= p;
+      r2 += corr;
+      if (r2 >= p) r2 -= p;
+      root1[j] = r1 < r2 ? r1 : r2;
+      root2[j] = r1 < r2 ? r2 : r1;
+    }
+  } else {
+    for (j = first; j < end; j++) {
+      uint32_t p = prime[j], corr = correction[j];
+      uint32_t r1 = root1[j], r2 = root2[j];
+      r1 = r1 >= corr ? r1 - corr : r1 + p - corr;
+      r2 = r2 >= corr ? r2 - corr : r2 + p - corr;
+      root1[j] = r1 < r2 ? r1 : r2;
+      root2[j] = r1 < r2 ? r2 : r1;
     }
   }
 }
 
 static int ts_next_B(ts_ctx_t *ctx, ts_poly_t *poly) {
-  uint32_t bit, gray, i, first;
+  uint32_t bit, gray;
+  const uint32_t *correction;
   int subtract;
   if (poly->b_index + 1U >= poly->b_limit)
     return 0;
@@ -1719,16 +1932,13 @@ static int ts_next_B(ts_ctx_t *ctx, ts_poly_t *poly) {
     poly->B -= (int128_t)(2U * poly->H[bit]);
   else
     poly->B += (int128_t)(2U * poly->H[bit]);
-  first = 1;
-  for (i = 0; i < poly->q_count; i++) {
-    uint32_t a_index = poly->a_index[i];
-    ts_update_roots(ctx, poly, bit, subtract, first, a_index);
-    first = a_index + 1U;
-  }
-  ts_update_roots(ctx, poly, bit, subtract, first, ctx->params.fb_size);
+  correction = poly->corrections + (size_t)bit * ctx->params.fb_size;
+  ts_update_roots(correction, ctx->prime, ctx->root1, ctx->root2,
+                  subtract, 1U, ctx->params.fb_size);
   if (!ts_compute_C(ctx, poly))
     croak("tinysiqs128: Gray polynomial is not integral");
-  ts_set_special_roots(ctx, poly);
+  /* The root at 2 is unchanged: d=2 always has both roots; with odd D=A,
+   * changing B by an even amount changes C by a multiple of four. */
 #if TS_DEBUG
   ts_verify_polynomial(ctx, poly);
 #endif
@@ -1747,7 +1957,9 @@ static int ts_poly_init(ts_ctx_t *ctx, ts_poly_t *poly) {
   poly->corrections = (uint32_t *)ts_calloc_array(
       correction_count, sizeof(*poly->corrections));
   poly->target_A = ts_target_A(ctx->kn, ctx->params.M, ctx->params.d);
-  if (poly->target_A == 0) {
+  /* With q=1, target_A is only a nearest-prime hint: even zero selects a
+   * nonzero eligible FB prime, without a product-tolerance window. */
+  if (poly->target_A == 0 && poly->q_count != 1U) {
     free(poly->corrections);
     memset(poly, 0, sizeof(*poly));
     return 0;
@@ -1772,6 +1984,21 @@ static void ts_set_log_weights(ts_ctx_t *ctx) {
                        ctx->largest_fb_prime;
   double denom, scale, expected;
   uint32_t i, initial;
+  if (ctx->params.q_count == 1U &&
+      ts_target_A(ctx->kn, ctx->params.M, ctx->params.d) == 0) {
+    uint32_t index = ts_nearest_available_fb(ctx, 0U);
+    if (index != TS_NO_INDEX) {
+      double a = ctx->fb[index].p, m = ctx->params.M;
+      double da = ctx->params.d * a;
+      /* A cannot shrink below the first eligible prime.  With q=1,
+       * |B| <= 3*A/2 and |C| <= kN/(d*A) + 3*A, so bound the actual
+       * polynomial instead of the unattainable ideal-A geometry. */
+      double bound_log = log(da * m * m + 3.0 * a * m +
+                            (double)ctx->kn / da + 3.0 * a);
+      if (bound_log > log_q)
+        log_q = bound_log;
+    }
+  }
   if (bound < nominal)
     bound = nominal;
   ctx->params.sieve_hit_bound = bound;
@@ -1785,6 +2012,7 @@ static void ts_set_log_weights(ts_ctx_t *ctx) {
     if (weight == 0) weight = 1;
     if (weight > 127U) weight = 127U;
     ctx->fb[i].logp = (uint8_t)weight;
+    ctx->sieve_logp[i] = (uint8_t)weight;
   }
   ctx->params.sieve_start = (uint32_t)cbrt((double)ctx->params.fb_size);
   if (ctx->params.sieve_start < 1U)
@@ -2086,32 +2314,28 @@ static void ts_sieve_add(uint8_t *cell, uint8_t logp) {
 #endif
 }
 
-static void ts_sieve_one_root(uint8_t *sieve, uint32_t length,
+static INLINE void ts_sieve_one_root(uint8_t *sieve, uint32_t length,
                               uint32_t root, uint32_t p, uint8_t logp) {
-  uint32_t pos = root;
-  for (; pos + 4U * p < length; pos += 4U * p) {
-    ts_sieve_add(sieve + pos, logp);
-    ts_sieve_add(sieve + pos + p, logp);
-    ts_sieve_add(sieve + pos + 2U * p, logp);
-    ts_sieve_add(sieve + pos + 3U * p, logp);
+  size_t pos = root, gap = p, p3 = (size_t)3 * p;
+  /* The fourth store is at pos + 3*p, not the next-cycle pos + 4*p. */
+  while (pos + p3 < length) {
+    ts_sieve_add(sieve + pos, logp); pos += gap;
+    ts_sieve_add(sieve + pos, logp); pos += gap;
+    ts_sieve_add(sieve + pos, logp); pos += gap;
+    ts_sieve_add(sieve + pos, logp); pos += gap;
   }
-  for (; pos < length; pos += p)
-    ts_sieve_add(sieve + pos, logp);
+  if (pos < length) { ts_sieve_add(sieve + pos, logp); pos += gap; }
+  if (pos < length) { ts_sieve_add(sieve + pos, logp); pos += gap; }
+  if (pos < length)   ts_sieve_add(sieve + pos, logp);
 }
 
-static void ts_sieve_two_roots(uint8_t *sieve, uint32_t length,
+static INLINE void ts_sieve_two_roots(uint8_t *sieve, uint32_t length,
                                uint32_t root1, uint32_t root2,
                                uint32_t p, uint8_t logp) {
-  uint32_t pos, gap1, gap2, p4 = 4U * p;
-  if (root1 > root2) {
-    uint32_t t = root1;
-    root1 = root2;
-    root2 = t;
-  }
-  pos = root1;
-  gap1 = root2 - root1;
-  gap2 = p - gap1;
-  while (pos + p4 < length) {
+  size_t pos = root1, gap1 = root2 - root1, gap2 = p - gap1;
+  /* The eighth store precedes the next cycle by gap2. */
+  size_t final_offset = (size_t)3 * p + gap1;
+  while (pos + final_offset < length) {
     ts_sieve_add(sieve + pos, logp); pos += gap1;
     ts_sieve_add(sieve + pos, logp); pos += gap2;
     ts_sieve_add(sieve + pos, logp); pos += gap1;
@@ -2131,17 +2355,18 @@ static void ts_sieve_two_roots(uint8_t *sieve, uint32_t length,
   }
 }
 
-static void ts_sieve_large(uint8_t *sieve, uint32_t length,
+static INLINE void ts_sieve_large(uint8_t *sieve, uint32_t length,
                            uint32_t root1, uint32_t root2,
                            uint32_t p, uint8_t logp, uint32_t count) {
-  uint32_t i, pos = root1;
+  uint32_t i;
+  size_t pos = root1;
   for (i = 0; i < count; i++, pos += p) {
 #if TS_DEBUG
     if (pos < length)
 #endif
       ts_sieve_add(sieve + pos, logp);
   }
-  if (root2 != TS_NO_ROOT) {
+  if (root2 != root1) {
     pos = root2;
     for (i = 0; i < count; i++, pos += p) {
 #if TS_DEBUG
@@ -2155,25 +2380,24 @@ static void ts_sieve_large(uint8_t *sieve, uint32_t length,
 #endif
 }
 
-static void ts_run_sieve(ts_ctx_t *ctx) {
-  uint32_t i, length = ctx->sieve_length;
-  uint32_t initial = ctx->active_sieve_initial + ctx->params.stage1_bias;
-  if (initial > UINT8_MAX)
-    croak("tinysiqs128: sieve initializer overflow");
-  memset(ctx->sieve, (uint8_t)initial, length);
-  for (i = ctx->params.sieve_start;
-       i < ctx->params.fb_size && ctx->prime[i] <= length / 6U; i++) {
-    if (ctx->root2[i] == TS_NO_ROOT)
-      ts_sieve_one_root(ctx->sieve, length, ctx->root1[i],
-                        ctx->prime[i], ctx->fb[i].logp);
+/* Add prime contributions to the caller-initialized logical sieve. */
+static void ts_run_sieve_kernel(uint8_t *RESTRICT sieve, uint32_t length,
+                                const uint32_t *RESTRICT prime,
+                                const uint32_t *RESTRICT root1,
+                                const uint32_t *RESTRICT root2,
+                                const uint8_t *RESTRICT logp,
+                                size_t first, size_t end) {
+  size_t i;
+  for (i = first; i < end && prime[i] <= length / 6U; i++) {
+    if (root2[i] == root1[i])
+      ts_sieve_one_root(sieve, length, root1[i], prime[i], logp[i]);
     else
-      ts_sieve_two_roots(ctx->sieve, length, ctx->root1[i], ctx->root2[i],
-                         ctx->prime[i], ctx->fb[i].logp);
+      ts_sieve_two_roots(sieve, length, root1[i], root2[i], prime[i], logp[i]);
   }
 #define TS_LARGE_RANGE(bound, count) do {                                  \
-    for (; i < ctx->params.fb_size && ctx->prime[i] <= (bound); i++)       \
-      ts_sieve_large(ctx->sieve, length, ctx->root1[i], ctx->root2[i],     \
-                     ctx->prime[i], ctx->fb[i].logp, (count));             \
+    for (; i < end && prime[i] <= (bound); i++)                            \
+      ts_sieve_large(sieve, length, root1[i], root2[i], prime[i],          \
+                     logp[i], (count));                                    \
   } while (0)
   TS_LARGE_RANGE(length / 5U, 6U);
   TS_LARGE_RANGE(length / 4U, 5U);
@@ -2182,6 +2406,16 @@ static void ts_run_sieve(ts_ctx_t *ctx) {
   TS_LARGE_RANGE(length, 2U);
   TS_LARGE_RANGE(UINT32_MAX, 1U);
 #undef TS_LARGE_RANGE
+}
+
+static void ts_run_sieve(ts_ctx_t *ctx) {
+  uint32_t initial = ctx->active_sieve_initial + ctx->params.stage1_bias;
+  if (initial > UINT8_MAX)
+    croak("tinysiqs128: sieve initializer overflow");
+  memset(ctx->sieve, (uint8_t)initial, ctx->sieve_length);
+  ts_run_sieve_kernel(ctx->sieve, ctx->sieve_length, ctx->prime, ctx->root1,
+                      ctx->root2, ctx->sieve_logp, ctx->params.sieve_start,
+                      ctx->params.fb_size);
 }
 
 static void ts_clear_candidates(ts_ctx_t *ctx) {
@@ -2237,9 +2471,17 @@ static void ts_add_candidate(ts_ctx_t *ctx, uint32_t pos) {
   ctx->candidate_count++;
 }
 
+/* Keep the uncommon bytewise scan out of the bulk word-at-a-time loop. */
+static NOINLINE void ts_scan_candidate_word(ts_ctx_t *ctx, uint32_t pos) {
+  uint32_t b;
+  for (b = 0; b < 8U; b++)
+    if (ctx->sieve[pos + b] & 0x80U)
+      ts_add_candidate(ctx, pos + b);
+}
+
 static void ts_find_candidates(ts_ctx_t *ctx) {
   static const uint64_t high_bits = UINT64_C(0x8080808080808080);
-  uint32_t pos, b, bulk = ctx->sieve_length & ~31U;
+  uint32_t pos, bulk = ctx->sieve_length & ~31U;
   ts_clear_candidates(ctx);
   for (pos = 0; pos < bulk; pos += 32U) {
     uint64_t w0, w1, w2, w3;
@@ -2249,9 +2491,10 @@ static void ts_find_candidates(ts_ctx_t *ctx) {
     memcpy(&w3, ctx->sieve + pos + 24U, sizeof(w3));
     if (!((w0 | w1 | w2 | w3) & high_bits))
       continue;
-    for (b = 0; b < 32U; b++)
-      if (ctx->sieve[pos + b] & 0x80U)
-        ts_add_candidate(ctx, pos + b);
+    if (w0 & high_bits) ts_scan_candidate_word(ctx, pos);
+    if (w1 & high_bits) ts_scan_candidate_word(ctx, pos + 8U);
+    if (w2 & high_bits) ts_scan_candidate_word(ctx, pos + 16U);
+    if (w3 & high_bits) ts_scan_candidate_word(ctx, pos + 24U);
   }
   for (; pos < ctx->sieve_length; pos++)
     if (ctx->sieve[pos] & 0x80U)
@@ -2372,46 +2615,65 @@ static void ts_resieve_root32(ts_ctx_t *ctx, uint32_t fb_index,
 }
 
 static void ts_resieve_candidates(ts_ctx_t *ctx) {
+  const uint32_t *prime = ctx->prime;
+  const uint32_t *root1 = ctx->root1;
+  const uint32_t *root2 = ctx->root2;
+  const uint32_t *reciprocal = ctx->reciprocal;
+  const ts_candidate_t *candidates = ctx->candidates;
+  int32_t half_interval = (int32_t)ctx->params.M;
+  uint32_t end = ctx->params.fb_size, count = ctx->candidate_count;
   uint32_t begin = ctx->params.sieve_start, cutoff = begin;
   uint32_t cutoff_prime, barrett_end, i, c;
-  if (ctx->candidate_count == 0)
+  if (count == 0)
     return;
   {
     uint64_t proposed = (uint64_t)TS_RESIEVE_COEFFICIENT *
-                        ctx->sieve_length / ctx->candidate_count;
+                        ctx->sieve_length / count;
     cutoff_prime = proposed > UINT32_MAX ? UINT32_MAX : (uint32_t)proposed;
   }
   if (cutoff_prime < TS_RESIEVE_FLOOR)
     cutoff_prime = TS_RESIEVE_FLOOR;
-  while (cutoff < ctx->params.fb_size &&
-         ctx->prime[cutoff] <= cutoff_prime)
-    cutoff++;
+  /* The sorted base often fits entirely below the cutoff.  Otherwise find
+   * the first prime above it without walking the direct-test prefix. */
+  if (cutoff < end && prime[end - 1U] <= cutoff_prime) {
+    cutoff = end;
+  } else {
+    uint32_t high = end;
+    while (cutoff < high) {
+      uint32_t middle = cutoff + (high - cutoff) / 2U;
+      if (prime[middle] <= cutoff_prime)
+        cutoff = middle + 1U;
+      else
+        high = middle;
+    }
+  }
   barrett_end = cutoff < ctx->resieve_one_subtract_index
               ? cutoff : ctx->resieve_one_subtract_index;
-  for (c = 0; c < ctx->candidate_count; c++) {
-    uint32_t pos = (uint32_t)(ctx->candidates[c].x +
-                              (int32_t)ctx->params.M);
+  for (c = 0; c < count; c++) {
+    uint32_t pos = (uint32_t)(candidates[c].x + half_interval);
     for (i = begin; i < barrett_end; i++) {
-      uint32_t rem = ts_reduce_u32(pos, ctx->prime[i], ctx->reciprocal[i]);
-      if (rem == ctx->root1[i] || rem == ctx->root2[i])
+      uint32_t rem = ts_reduce_u32(pos, prime[i], reciprocal[i]);
+      if (rem == root1[i] || rem == root2[i])
         ts_add_hit(ctx, c, i);
     }
     for (; i < cutoff; i++) {
-      uint32_t p = ctx->prime[i];
+      uint32_t p = prime[i];
       uint32_t rem = pos >= p ? pos - p : pos;
-      if (rem == ctx->root1[i] || rem == ctx->root2[i])
+      if (rem == root1[i] || rem == root2[i])
         ts_add_hit(ctx, c, i);
     }
   }
-  for (i = cutoff; i < ctx->params.fb_size; i++) {
-    if (ctx->candidate_wide) {
-      ts_resieve_root32(ctx, i, ctx->root1[i], ctx->prime[i]);
-      if (ctx->root2[i] != TS_NO_ROOT)
-        ts_resieve_root32(ctx, i, ctx->root2[i], ctx->prime[i]);
-    } else {
-      ts_resieve_root16(ctx, i, ctx->root1[i], ctx->prime[i]);
-      if (ctx->root2[i] != TS_NO_ROOT)
-        ts_resieve_root16(ctx, i, ctx->root2[i], ctx->prime[i]);
+  if (ctx->candidate_wide) {
+    for (i = cutoff; i < end; i++) {
+      ts_resieve_root32(ctx, i, root1[i], prime[i]);
+      if (root2[i] != root1[i])
+        ts_resieve_root32(ctx, i, root2[i], prime[i]);
+    }
+  } else {
+    for (i = cutoff; i < end; i++) {
+      ts_resieve_root16(ctx, i, root1[i], prime[i]);
+      if (root2[i] != root1[i])
+        ts_resieve_root16(ctx, i, root2[i], prime[i]);
     }
   }
 }
@@ -2594,48 +2856,146 @@ static ts_la_col_t *ts_build_matrix(const ts_ctx_t *ctx,
  * including zero and duplicate columns that can be immediately useful. */
 static void ts_reduce_matrix(unsigned long nrows, unsigned long *ncols,
                              ts_la_col_t *columns) {
-  unsigned long previous_rows, previous_cols, reduced_rows, reduced_cols;
+  unsigned long reduced_cols;
   unsigned long *counts;
   unsigned long c, i, j, k;
   counts = (unsigned long *)ts_calloc_array(nrows, sizeof(*counts));
   for (i = 0; i < *ncols; i++)
     for (j = 0; j < columns[i].weight; j++)
       counts[columns[i].data[j]]++;
-  reduced_rows = nrows;
   reduced_cols = *ncols;
   do {
-    previous_rows = reduced_rows;
-    previous_cols = reduced_cols;
-    do {
-      c = reduced_cols;
-      for (i = j = 0; i < reduced_cols; i++) {
-        ts_la_col_t *column = columns + i;
+    c = reduced_cols;
+    for (i = j = 0; i < reduced_cols; i++) {
+      ts_la_col_t *column = columns + i;
+      for (k = 0; k < column->weight; k++)
+        if (counts[column->data[k]] < 2UL)
+          break;
+      if (k < column->weight) {
         for (k = 0; k < column->weight; k++)
-          if (counts[column->data[k]] < 2UL)
-            break;
-        if (k < column->weight) {
-          for (k = 0; k < column->weight; k++)
-            counts[column->data[k]]--;
-          free(column->data);
-          column->data = NULL;
-        } else {
-          if (j != i) {
-            columns[j] = columns[i];
-            columns[i].data = NULL;
-          }
-          j++;
+          counts[column->data[k]]--;
+        free(column->data);
+        column->data = NULL;
+      } else {
+        if (j != i) {
+          columns[j] = columns[i];
+          columns[i].data = NULL;
         }
+        j++;
       }
-      reduced_cols = j;
-    } while (c != reduced_cols);
-    reduced_rows = 0;
-    for (i = 0; i < nrows; i++)
-      if (counts[i] != 0)
-        reduced_rows++;
-  } while (previous_rows != reduced_rows ||
-           previous_cols != reduced_cols);
+    }
+    reduced_cols = j;
+  } while (c != reduced_cols);
   free(counts);
   *ncols = reduced_cols;
+}
+
+/* Eliminate whole columns, including earlier pivot bits: those bits retain
+ * the coefficients used to reconstruct dependencies.  Clear the current
+ * pivot bit during each XOR, then restore it in the pivot column. */
+static void ts_dense_eliminate_generic(
+    unsigned long ncols, unsigned long row_words, uint64_t *matrix,
+    uint64_t *used_rows, unsigned long *pivot_row) {
+  const unsigned long no_row = ~0UL;
+  unsigned long c, i, j, word;
+  for (c = 0; c < ncols; c++) {
+    uint64_t *pivot_column = matrix + (size_t)c * row_words;
+    unsigned long pivot = no_row, pivot_word;
+    uint64_t pivot_bit;
+    for (word = 0; word < row_words; word++) {
+      uint64_t available = pivot_column[word] & ~used_rows[word];
+      if (available != 0) {
+        pivot = word * 64UL + ts_ctz64(available);
+        break;
+      }
+    }
+    if (pivot == no_row)
+      continue;
+    pivot_row[c] = pivot;
+    pivot_word = pivot >> 6;
+    pivot_bit = TS_BIT64(pivot & 63UL);
+    used_rows[pivot_word] |= pivot_bit;
+    pivot_column[pivot_word] &= ~pivot_bit;
+    for (i = c + 1UL; i < ncols; i++) {
+      uint64_t *other = matrix + (size_t)i * row_words;
+      if (other[pivot_word] & pivot_bit)
+        for (j = 0; j < row_words; j++)
+          other[j] ^= pivot_column[j];
+    }
+    pivot_column[pivot_word] |= pivot_bit;
+  }
+}
+
+/* Specialize on packed active-row width, not the number of columns.  A mask
+ * lets the compiler choose branchless updates for the narrowest matrices;
+ * constant bounds expose the small whole-column XORs without SIMD-specific
+ * code.  Larger matrices retain the branched generic loop above. */
+#define TS_DEFINE_DENSE_ELIMINATE(words)                                    \
+  static void ts_dense_eliminate_##words(                                   \
+      unsigned long ncols, uint64_t *matrix, uint64_t *used_rows,           \
+      unsigned long *pivot_row) {                                           \
+    const unsigned long no_row = ~0UL;                                      \
+    uint64_t *pivot_column = matrix;                                        \
+    unsigned long c, i, j, word;                                            \
+    for (c = 0; c < ncols; c++, pivot_column += (words)) {                  \
+      uint64_t *other;                                                      \
+      unsigned long pivot = no_row, pivot_word;                             \
+      uint64_t pivot_bit;                                                   \
+      for (word = 0; word < (words); word++) {                              \
+        uint64_t available = pivot_column[word] & ~used_rows[word];         \
+        if (available != 0) {                                               \
+          pivot = word * 64UL + ts_ctz64(available);                        \
+          break;                                                            \
+        }                                                                   \
+      }                                                                     \
+      if (pivot == no_row)                                                  \
+        continue;                                                           \
+      pivot_row[c] = pivot;                                                 \
+      pivot_word = pivot >> 6;                                              \
+      pivot_bit = TS_BIT64(pivot & 63UL);                                   \
+      used_rows[pivot_word] |= pivot_bit;                                   \
+      pivot_column[pivot_word] &= ~pivot_bit;                               \
+      other = pivot_column + (words);                                       \
+      for (i = c + 1UL; i < ncols; i++, other += (words)) {                 \
+        uint64_t update_mask = UINT64_C(0) -                                \
+            (uint64_t)((other[pivot_word] & pivot_bit) != 0);               \
+        for (j = 0; j < (words); j++)                                       \
+          other[j] ^= pivot_column[j] & update_mask;                        \
+      }                                                                     \
+      pivot_column[pivot_word] |= pivot_bit;                                \
+    }                                                                       \
+  }
+
+TS_DEFINE_DENSE_ELIMINATE(1)
+TS_DEFINE_DENSE_ELIMINATE(2)
+TS_DEFINE_DENSE_ELIMINATE(3)
+TS_DEFINE_DENSE_ELIMINATE(4)
+TS_DEFINE_DENSE_ELIMINATE(5)
+TS_DEFINE_DENSE_ELIMINATE(6)
+TS_DEFINE_DENSE_ELIMINATE(7)
+TS_DEFINE_DENSE_ELIMINATE(8)
+#undef TS_DEFINE_DENSE_ELIMINATE
+
+static void ts_dense_eliminate(
+    unsigned long ncols, unsigned long row_words, uint64_t *matrix,
+    uint64_t *used_rows, unsigned long *pivot_row) {
+#define TS_DENSE_CASE(words)                                                   \
+  case words: ts_dense_eliminate_##words(ncols, matrix, used_rows, pivot_row); \
+              break
+  switch (row_words) {
+    TS_DENSE_CASE(1);
+    TS_DENSE_CASE(2);
+    TS_DENSE_CASE(3);
+    TS_DENSE_CASE(4);
+    TS_DENSE_CASE(5);
+    TS_DENSE_CASE(6);
+    TS_DENSE_CASE(7);
+    TS_DENSE_CASE(8);
+    default:
+      ts_dense_eliminate_generic(ncols, row_words, matrix, used_rows, pivot_row);
+      break;
+  }
+#undef TS_DENSE_CASE
 }
 
 /* Return one successive batch of at most 64 exact nullspace basis vectors.
@@ -2649,7 +3009,7 @@ static uint64_t *ts_dense_nullspace_batch(
   unsigned long *row_map, *pivot_row;
   uint64_t *matrix, *used_rows, *result, *check;
   unsigned long active_rows = 0, row_words, dependencies = 0, packed = 0;
-  unsigned long c, i, j, word;
+  unsigned long c, i;
   size_t matrix_words;
 
   *mask = 0;
@@ -2682,32 +3042,7 @@ static uint64_t *ts_dense_nullspace_batch(
       dense[row >> 6] ^= TS_BIT64(row & 63UL);
     }
   }
-  for (c = 0; c < ncols; c++) {
-    uint64_t *pivot_column = matrix + (size_t)c * row_words;
-    unsigned long pivot = no_row, pivot_word;
-    uint64_t pivot_bit;
-    for (word = 0; word < row_words; word++) {
-      uint64_t available = pivot_column[word] & ~used_rows[word];
-      if (available != 0) {
-        pivot = word * 64UL + ts_ctz64(available);
-        break;
-      }
-    }
-    if (pivot == no_row)
-      continue;
-    pivot_row[c] = pivot;
-    pivot_word = pivot >> 6;
-    pivot_bit = TS_BIT64(pivot & 63UL);
-    used_rows[pivot_word] |= pivot_bit;
-    pivot_column[pivot_word] &= ~pivot_bit;
-    for (i = c + 1UL; i < ncols; i++) {
-      uint64_t *other = matrix + (size_t)i * row_words;
-      if (other[pivot_word] & pivot_bit)
-        for (j = 0; j < row_words; j++)
-          other[j] ^= pivot_column[j];
-    }
-    pivot_column[pivot_word] |= pivot_bit;
-  }
+  ts_dense_eliminate(ncols, row_words, matrix, used_rows, pivot_row);
 
   for (c = 0; c < ncols; c++) {
     const uint64_t *column;
@@ -2807,7 +3142,13 @@ static int ts_test_dependencies(ts_ctx_t *ctx,
       if (!(nullrows[i] & TS_BIT64(dependency)))
         continue;
       relation = &ctx->full[columns[i].orig];
-      lhs = ts_mont_mul(lhs, ts_mont_enter(relation->y, &ctx->mont),
+#if TS_DEBUG
+      if (relation->y >= ctx->n)
+        croak("tinysiqs128: dependency y is not reduced");
+#endif
+      /* Stored relation y is already reduced modulo n. */
+      lhs = ts_mont_mul(lhs,
+                        ts_mont_mul(relation->y, ctx->mont.r2, &ctx->mont),
                         &ctx->mont);
       {
         const ts_factor_t *factors =
@@ -2920,12 +3261,14 @@ static int ts_ctx_allocate(ts_ctx_t *ctx) {
                                            sizeof(*ctx->root1));
   ctx->root2 = (uint32_t *)ts_malloc_array(ctx->params.fb_size,
                                            sizeof(*ctx->root2));
+  ctx->sieve_logp = (uint8_t *)ts_malloc_array(ctx->params.fb_size,
+                                              sizeof(*ctx->sieve_logp));
   ctx->reciprocal = (uint32_t *)ts_malloc_array(
       ctx->params.fb_size, sizeof(*ctx->reciprocal));
   for (i = 0; i < ctx->params.fb_size; i++) {
     ctx->prime[i] = ctx->fb[i].p;
     ctx->root1[i] = 0;
-    ctx->root2[i] = TS_NO_ROOT;
+    ctx->root2[i] = 0;
     ctx->reciprocal[i] =
         (uint32_t)(UINT64_C(0x100000000) / ctx->prime[i]);
   }
@@ -2971,6 +3314,7 @@ static void ts_ctx_clear(ts_ctx_t *ctx) {
   free(ctx->prime);
   free(ctx->root1);
   free(ctx->root2);
+  free(ctx->sieve_logp);
   free(ctx->reciprocal);
   free(ctx->sieve);
   free(ctx->candidate_at);
@@ -3075,75 +3419,61 @@ static uint128_t ts_try_policy(uint128_t n,
   return factor > 1 && factor < n && n % factor == 0 ? factor : 0;
 }
 
-uint128_t tinysiqs128(uint128_t n) {
-  static const ts_policy_band_t *const q1_recoveries[] = {
-    &ts_recovery_q1_8k,
-    &ts_recovery_q1_16k,
-    &ts_recovery_q1_legacy
-  };
-  static const ts_policy_band_t *const q2_recoveries[] = {
-    &ts_recovery_42_96k,
-    &ts_recovery_42_192k,
-    &ts_recovery_42_384k,
-    &ts_recovery_42_1m
-  };
-  const ts_policy_band_t *primary;
+static uint128_t _tinysiqs128(uint128_t n, int doprimality) {
+  const ts_policy_band_t *primary, *secondary;
   uint128_t factor, root;
-  uint32_t bits, i, exponent;
+  uint32_t bits, next = 0, exponent;
+
   if (n < 4)
-    return 0;
-  if (!(n & 1U))
-    return 2;
-  if (n % 3U == 0)
-    return 3;
-  if (n % 5U == 0)
-    return n == 5 ? 0 : 5;
+    return n;
+  if (!(n & 1U))    return 2;
+  if (n %  3U == 0) return 3;
+  if (n %  5U == 0) return 5;
+  if (n %  7U == 0) return 7;
+  if (n % 11U == 0) return 11;
+  if (n % 13U == 0) return 13;
+
   root = ts_isqrt128(n);
   if (root > 1 && root < n && root * root == n)
     return root;
+
   bits = ts_bits128(n);
-  if (bits <= 31U)
-    return ts_trial_factor32((uint32_t)n);
+
+  /* PERF: below 2^26, full-policy tests generally favor trial division. */
+  if (bits <= 26U) {
+    factor = ts_trial_factor32((uint32_t)n);
+    return factor != 0 ? factor : n;
+  }
 
   root = ts_exact_root(n, 3U);
   if (root > 1 && root < n)
     return root;
-  if (is_prime128(n))
-    return 0;
 
-  /* Compact SQUFOF avoids the SIQS setup cliff through 51 bits.  Failure is
-   * harmless; the normal SIQS policy and its recoveries remain authoritative. */
-  if (bits <= 51U) {
+  /* Only do primality if asked, and skip trial pretests. */
+  if (doprimality && is_bpsw128(n))
+    return n;
+
+  /* PERF: below 2^49, SQUFOF measured faster than SIQS. */
+  if (bits <= 49U) {
     factor = ts_squfof64((uint64_t)n, 100000U);
     if (factor != 0)
       return factor;
-    if (bits == 32U)
-      return ts_trial_factor32((uint32_t)n);
   }
 
+  /* Run SIQS */
   primary = ts_primary_policy(bits);
   factor = ts_try_policy(n, primary);
+  /* If the primary failed, try the matching secondary profiles. */
+  while (factor == 0 && (secondary = ts_next_policy(bits, &next)) != NULL)
+    factor = ts_try_policy(n, secondary);
   if (factor != 0)
     return factor;
-  if (bits <= 36U) {
-    for (i = 0; i < (uint32_t)(sizeof(q1_recoveries) /
-                                sizeof(q1_recoveries[0])); i++) {
-      factor = ts_try_policy(n, q1_recoveries[i]);
-      if (factor != 0)
-        return factor;
-    }
-  } else if (bits >= 42U && bits <= 49U) {
-    for (i = 0; i < (uint32_t)(sizeof(q2_recoveries) /
-                                sizeof(q2_recoveries[0])); i++) {
-      factor = ts_try_policy(n, q2_recoveries[i]);
-      if (factor != 0)
-        return factor;
-    }
-  }
 
   /* Prime powers can make every QS dependency trivial.  Cubes were screened
    * before collection; test the remaining odd prime exponents on exhaustion. */
-  for (exponent = 5U; exponent <= bits; exponent += 2U) {
+  if (n % 17U == 0) return 17;
+  if (n % 19U == 0) return 19;
+  for (exponent = 5U; exponent <= 23U; exponent += 2U) {
     if (!ts_is_prime_u32(exponent))
       continue;
     root = ts_exact_root(n, exponent);
@@ -3151,6 +3481,14 @@ uint128_t tinysiqs128(uint128_t n) {
       return root;
   }
   return 0;
+}
+
+uint128_t tinysiqs128(uint128_t n) {
+  return _tinysiqs128(n, 1);
+}
+
+uint128_t tinysiqs128_composite(uint128_t n) {
+  return _tinysiqs128(n, 0);
 }
 
 #endif /* HAVE_FACTOR128 */

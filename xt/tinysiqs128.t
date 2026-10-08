@@ -9,9 +9,9 @@ plan skip_all => 'tinysiqs128 requires XS with uint128_t support'
   unless Math::Prime::Util->can('_XS_tinysiqs128') &&
          Math::Prime::Util::_XS_has_uint128();
 
-sub check_zero {
+sub check_unchanged {
   my ($n, $name) = @_;
-  is(Math::Prime::Util::_XS_tinysiqs128($n), 0, $name);
+  is(Math::Prime::Util::_XS_tinysiqs128($n), "$n", $name);
 }
 
 sub check_factor {
@@ -22,10 +22,12 @@ sub check_factor {
     or diag("n=$n factor=$f");
 }
 
-check_zero($_, "no proper factor for $_") for qw(0 1 2 3 5 7 97 65537);
-check_zero('4294967291', '32-bit prime returns zero');
-check_zero(prev_prime(powint(2, 33)), '33-bit prime returns zero');
-check_zero(prev_prime(powint(2, 128)), '128-bit prime returns zero');
+check_unchanged($_, "input $_ returns itself") for qw(0 1 2 3 5 7 97 65537);
+check_unchanged(prev_prime(powint(2, 26)), '26-bit prime returns itself');
+check_unchanged(prev_prime(powint(2, 27)), '27-bit prime returns itself');
+check_unchanged('4294967291', '32-bit prime returns itself');
+check_unchanged(prev_prime(powint(2, 33)), '33-bit prime returns itself');
+check_unchanged(prev_prime(powint(2, 128)), '128-bit probable prime returns itself');
 
 check_factor(4, 'small even composite', 2);
 check_factor(9, 'small square', 3);
@@ -36,7 +38,7 @@ for my $p (7, 11, 13, 17, 19, 23, 29, 31, 37) {
   check_factor($p * 1009, "mod-30 trial wheel reaches factor $p", $p);
 }
 
-for my $bits (33, 36, 37, 40, 41, 42, 48, 49, 50, 52, 56, 64, 65, 80,
+for my $bits (26, 27, 33, 36, 37, 40, 41, 42, 48, 49, 50, 52, 56, 64, 65, 80,
               81, 95, 96, 106, 107, 116, 117, 120, 124, 126, 127, 128) {
   my $pbits = int($bits / 2);
   my $qbits = $bits - $pbits;
@@ -60,10 +62,18 @@ for my $bits (65, 72, 80, 88, 96, 104, 112, 120, 124, 126, 127, 128) {
 check_factor('8509504187', '33-bit polynomial regression',
              '65423', '130069');
 check_factor('991947540576721',
-             '50-bit compact splitter to SIQS fallback regression');
+             '50-bit post-SQUFOF-cutoff SIQS regression');
 check_factor('1983486546265867',
-             '51-bit compact splitter to SIQS fallback regression');
+             '51-bit post-SQUFOF-cutoff SIQS regression');
 check_factor('36346174480237', 'q=2 to q=1 recovery regression');
+check_factor('3215031751', 'base-2 pseudoprime is split as composite');
+check_factor('597107386758137', 'q=2 geometry regression, first case',
+             '19084649', '31287313');
+check_factor('610235247872417', 'q=2 geometry regression, second case',
+             '19489627', '31310771');
+check_factor('39586268787172817', '56-bit recovery regression');
+check_factor('1909146488367441859628303', 'multiplier-2 split regression',
+             '1075638064601', '1774896734503');
 check_factor('85070591730229016725614958824927593363',
              '126-bit extra-relations regression',
              '9223372036854217439', '9223372036854727117');
@@ -167,7 +177,7 @@ for my $bad ('-1', '340282366920938463463374607431768211456',
 for (1 .. 3) {
   check_factor('340282366920923092713875188997681850397',
                "repeated 128-bit call $_");
-  check_zero('18446744073709551557', "interleaved prime call $_");
+  check_unchanged('18446744073709551557', "interleaved prime call $_");
 }
 
 done_testing();

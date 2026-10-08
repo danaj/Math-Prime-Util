@@ -1355,8 +1355,8 @@ void factorintp128(factored128_t *nf, uint128_t n) {
     if (f && show) {show=0;printf("p-1/128 found factor %s\n",u128_str(f));}
 
 
-    /* tinysiqs128 gets the factor quickly. */
-    if (!f) f = tinysiqs128(t);
+    /* t already failed BPSW; avoid repeating that test in TinySIQS. */
+    if (!f) f = tinysiqs128_composite(t);
     if (f && show) {show=0;printf("tinysiqs128 found factor %s\n",u128_str(f));}
 
 

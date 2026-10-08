@@ -99,6 +99,13 @@ is(prime_bigomega($twom127), 2, "prime_bigomega 2*(2^127-1)");
 is(is_omega_prime(2, $twom127), 1, "is_omega_prime 2*(2^127-1)");
 is(is_almost_prime(2, $twom127), 1, "is_almost_prime 2*(2^127-1)");
 
+progress("balanced 128-bit composite uses the TinySIQS composite entry");
+my $balanced128 = '340282366920923092713875188997681850397';
+my @balanced128_factors = ('18446744073708783169', '18446744073709486813');
+factor_is($balanced128, \@balanced128_factors, "factor balanced 128-bit composite");
+factor_exp_is($balanced128, [ map { [$_, 1] } @balanced128_factors ],
+              "factor_exp balanced 128-bit composite");
+
 progress("2^128-1 exact upper bound");
 factor_is($u128max, $u128max_fac, "factor 2^128-1");
 factor_exp_is($u128max, [ map { [$_, 1] } @$u128max_fac ], "factor_exp 2^128-1");
