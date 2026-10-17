@@ -5025,12 +5025,18 @@ void
 is_smooth(IN SV* svn, IN SV* svk)
   ALIAS:
     is_rough = 1
+    has_no_factors_above = 2
+    has_no_factors_below = 3
+    has_factors_above = 4
+    has_factors_below = 5
   PREINIT:
     UV n, k;
+    bool ret;
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_ABS) &&
         _validate_and_set(&k, aTHX_ svk, IFLAG_NONNEG)) {
-      RETURN_NPARITY( (ix == 0) ? is_smooth(n,k) : is_rough(n,k) );
+      ret = (ix & 1) ? is_rough(n,k) : is_smooth(n,k);
+      RETURN_NPARITY( (ix >= 4) ? !ret : ret );
     }
     DISPATCHPP_RETURN();
 

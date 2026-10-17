@@ -2001,6 +2001,11 @@ sub is_congruent {
   return 0+($n == $c);
 }
 
+sub has_factors_above    { 1 - Math::Prime::Util::is_smooth($_[0], $_[1]); }
+sub has_factors_below    { 1 - Math::Prime::Util::is_rough($_[0], $_[1]); }
+sub has_no_factors_above { Math::Prime::Util::is_smooth($_[0], $_[1]); }
+sub has_no_factors_below { Math::Prime::Util::is_rough($_[0], $_[1]); }
+
 sub is_smooth {
   my($n, $k) = @_;
   validate_integer_abs($n);

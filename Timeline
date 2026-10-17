@@ -2,6 +2,8 @@
 A timeline of when each function was added.
 
 2026-??-??  v0.76
+2026-10-17  has_factor_above(n,k)  has_factor_below(n,k)
+2026-10-17  has_no_factor_above(n,k)  has_no_factor_below(n,k)
 2026-08-26  bitand(x,y)  bitor(x,y)  bitxor(x,y)  bitandnot(x,y)
 2026-08-26  bitset(x,k)  bitclear(x,k)  bitflip(x,k)  bittest(x,k)
 2026-08-26  bitnot(x[,width])

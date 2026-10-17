@@ -29,6 +29,8 @@ my @functions =  qw(
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
+      has_factors_above has_factors_below
+      has_no_factors_above has_no_factors_below
       is_harshad is_palindrome is_safe_prime is_higgs_prime
       sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
       bitand bitor bitxor bitandnot bitnot

@@ -35,6 +35,8 @@ our @EXPORT_OK =
       is_primitive_root is_carmichael is_quasi_carmichael is_cyclic
       is_fundamental is_totient is_gaussian_prime is_sum_of_squares
       is_smooth is_rough is_powerful is_practical is_lucky is_happy
+      has_factors_above has_factors_below
+      has_no_factors_above has_no_factors_below
       is_harshad is_palindrome is_safe_prime is_higgs_prime
       sqrtint rootint crootint logint lshiftint rshiftint rashiftint toint
       bitand bitor bitxor bitandnot bitnot
@@ -5481,6 +5483,9 @@ but shortcuts are taken to avoid fully factoring if possible.
 
 This corresponds to Mathematica's C<SmoothIntegerQ[n]> resource function.
 
+Also available as L</has_no_factors_above>, with complement
+L</has_factors_above>.
+
 =head2 is_rough
 
   my $is_23_rough = is_rough($n, 23);
@@ -5498,6 +5503,59 @@ The result is identical to:
   sub is_rough { my($n,$k)=@_; return 0+(vecnone { $_ < $k } factor($n)); }
 
 but shortcuts are taken to avoid fully factoring if possible.
+
+Also available as L</has_no_factors_below>, with complement
+L</has_factors_below>.
+
+=head2 has_factors_above
+
+  has_factors_above(77, 7);    # 1: the prime factor 11 is above 7
+
+Given an integer C<n> and a non-negative integer C<k>, returns C<1>
+if C<|n|> has a B<prime factor> strictly greater than C<k>, and C<0>
+otherwise.  Prime factors equal to C<k> do not count.
+This is equivalent to C<1 - is_smooth(n,k)>.
+
+By convention, returns C<0> for C<n=0> and C<n=1> for all C<k>,
+following L</is_smooth>.
+
+=head2 has_factors_below
+
+  has_factors_below(77, 8);    # 1: the prime factor 7 is below 8
+
+Given an integer C<n> and a non-negative integer C<k>, returns C<1>
+if C<|n|> has a B<prime factor> strictly less than C<k>, and C<0>
+otherwise.  Prime factors equal to C<k> do not count.
+This is equivalent to C<1 - is_rough(n,k)>.
+
+Returns C<0> for C<n=1> for all C<k>.  By convention, for C<n=0>
+returns C<0> when C<k=0>, and C<1> when C<k E<gt> 0>, following
+L</is_rough>.
+
+=head2 has_no_factors_above
+
+  has_no_factors_above(49, 7); # 1: the only prime factor is 7
+
+Given an integer C<n> and a non-negative integer C<k>, returns C<1>
+if C<|n|> has no B<prime factor> strictly greater than C<k>, and C<0>
+otherwise.  Prime factors equal to C<k> are allowed.
+This is equivalent to L<C<is_smooth(n,k)>|/is_smooth>.
+
+By convention, returns C<1> for C<n=0> and C<n=1> for all C<k>,
+following C<is_smooth>.
+
+=head2 has_no_factors_below
+
+  has_no_factors_below(121, 8); # 1: the only prime factor is 11
+
+Given an integer C<n> and a non-negative integer C<k>, returns C<1>
+if C<|n|> has no B<prime factor> strictly less than C<k>, and C<0>
+otherwise.  Prime factors equal to C<k> are allowed.
+This is equivalent to L<C<is_rough(n,k)>|/is_rough>.
+
+Returns C<1> for C<n=1> for all C<k>.  By convention, for C<n=0>
+returns C<1> when C<k=0>, and C<0> when C<k E<gt> 0>, following
+C<is_rough>.
 
 
 =head2 is_powerful

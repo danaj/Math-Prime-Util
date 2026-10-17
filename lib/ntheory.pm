@@ -326,6 +326,10 @@ Tags:
   is_happy(n,base,exponent)           if n a S_b_e happy number, returns height
   is_smooth(n,k)                      is n a k-smooth number
   is_rough(n,k)                       is n a k-rough number
+  has_factors_above(n,k)              does n have a prime factor > k
+  has_factors_below(n,k)              does n have a prime factor < k
+  has_no_factors_above(n,k)           does n have no prime factor > k
+  has_no_factors_below(n,k)           does n have no prime factor < k
   is_powerful(n[,k])                  is n a k-powerful number
   is_practical(n)                     is n a practical number
   is_delicate_prime(n)                is n a digitally delicate prime

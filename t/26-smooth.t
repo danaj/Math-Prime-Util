@@ -4,6 +4,8 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_smooth is_rough smooth_count rough_count
+                         has_factors_above has_factors_below
+                         has_no_factors_above has_no_factors_below
                          factor vecnone/;
 
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -13,7 +15,8 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 plan tests => 4          # small is_smooth / is_rough
             + 4+3        # special case is_smooth / is_rough
             + 4+4        # is_smooth large
-            + 4+4;       # smooth_count / rough_count
+            + 4+4        # smooth_count / rough_count
+            + 3;         # factor predicates
 
 ###### is_smooth / is_rough
 
@@ -58,6 +61,78 @@ is(is_rough("137438953529",3000),1,"137438953529 is 3000-rough");
   is( is_rough($n, 2081), 1, "large 4073-smooth, 2081-rough number" );
   is( is_rough($n, 2082), 0, "large 4073-smooth, 2081-rough number" );
 }
+
+subtest 'factor predicates and boundary conventions' => sub {
+  # n, k, has_above, has_below, has_no_above, has_no_below
+  my @cases = (
+    [  0, 0, 0, 0, 1, 1 ],
+    [  0, 1, 0, 1, 1, 0 ],
+    [  0, 8, 0, 1, 1, 0 ],
+    [  1, 0, 0, 0, 1, 1 ],
+    [  1, 1, 0, 0, 1, 1 ],
+    [  1, 8, 0, 0, 1, 1 ],
+    [  2, 0, 1, 0, 0, 1 ],
+    [  2, 1, 1, 0, 0, 1 ],
+    [  2, 2, 0, 0, 1, 1 ],
+    [  2, 3, 0, 1, 1, 0 ],
+    [ 49, 7, 0, 0, 1, 1 ],
+    [ 77, 7, 1, 0, 0, 1 ],
+    [ 77, 8, 1, 1, 0, 0 ],
+    [121, 8, 1, 0, 0, 1 ],
+    [210, 8, 0, 1, 1, 0 ],
+  );
+  for my $case (@cases) {
+    my($n, $k, @exp) = @$case;
+    for my $signed_n ($n ? ($n, -$n) : (0)) {
+      is_deeply([has_factors_above($signed_n, $k),
+                 has_factors_below($signed_n, $k),
+                 has_no_factors_above($signed_n, $k),
+                 has_no_factors_below($signed_n, $k)],
+                \@exp, "factor predicates($signed_n,$k)");
+    }
+  }
+};
+
+subtest 'factor predicates with large integers' => sub {
+  require Math::BigInt;
+  my $smooth = '1377276413364943226363244108454842276965894752197358387200000';
+  my $rough = '172864518041328651521584134678230948270774322090771071422829';
+  my $bigk = '18446744073709551616';
+  my @cases = (
+    [$smooth,   96, 1, 1, 0, 0],
+    [$smooth,   97, 0, 1, 1, 0],
+    [$rough,  2081, 1, 0, 0, 1],
+    [$rough,  2082, 1, 1, 0, 0],
+    [     0, $bigk, 0, 1, 1, 0],
+    [     1, $bigk, 0, 0, 1, 1],
+    [    12, $bigk, 0, 1, 1, 0],
+  );
+  for my $case (@cases) {
+    my($n, $k, @exp) = @$case;
+    for my $signed_n ($n ? ($n, "-$n") : (0)) {
+      for my $args ([$signed_n, $k],
+                    [Math::BigInt->new($signed_n), Math::BigInt->new($k)]) {
+        is_deeply([has_factors_above($args->[0], $args->[1]),
+                   has_factors_below($args->[0], $args->[1]),
+                   has_no_factors_above($args->[0], $args->[1]),
+                   has_no_factors_below($args->[0], $args->[1])],
+                  \@exp, 'factor predicates with large strings or objects');
+      }
+    }
+  }
+};
+
+subtest 'factor predicate argument validation' => sub {
+  for my $name (qw/has_factors_above has_factors_below
+                   has_no_factors_above has_no_factors_below/) {
+    my $func = Math::Prime::Util->can($name);
+    for my $args ([undef, 2], ['1.5', 2], ['invalid', 2],
+                  [2, undef], [2, -1], [2, '1.5']) {
+      my $ok = eval { $func->(@$args); 1 };
+      ok(!$ok && $@, "$name rejects invalid arguments");
+    }
+  }
+};
 
 ###### smooth_count
 {

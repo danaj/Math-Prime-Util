@@ -16,6 +16,11 @@ Revision history for Perl module Math::Prime::Util
     - bittest(x,k)                    test bit k of |x|
     - bitscan0(x[,start])             first zero bit at or above start
     - bitscan1(x[,start])             first one bit at or above start
+    - has_factors_above(n,k)          does n have a prime factor > k
+    - has_factors_below(n,k)          does n have a prime factor < k
+    - has_no_factors_above(n,k)       does n have no prime factor > k
+    - has_no_factors_below(n,k)       does n have no prime factor < k
+
 
     [FUNCTIONALITY AND PERFORMANCE]
 

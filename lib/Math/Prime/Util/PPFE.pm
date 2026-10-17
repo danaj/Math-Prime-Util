@@ -288,6 +288,10 @@ sub entropy_bytes {
 *is_polygonal = \&Math::Prime::Util::PP::is_polygonal;
 *is_smooth = \&Math::Prime::Util::PP::is_smooth;
 *is_rough = \&Math::Prime::Util::PP::is_rough;
+*has_factors_above = \&Math::Prime::Util::PP::has_factors_above;
+*has_factors_below = \&Math::Prime::Util::PP::has_factors_below;
+*has_no_factors_above = \&Math::Prime::Util::PP::has_no_factors_above;
+*has_no_factors_below = \&Math::Prime::Util::PP::has_no_factors_below;
 *is_perfect_power = \&Math::Prime::Util::PP::is_perfect_power;
 *is_powerful = \&Math::Prime::Util::PP::is_powerful;
 *is_odd = \&Math::Prime::Util::PP::is_odd;
