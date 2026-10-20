@@ -8447,7 +8447,7 @@ range, while historically the General Number Field Sieve is used beyond that.
 The exact crossover between SIQS and GNFS depends on implementations,
 hardware, and input shape. SIQS remains practical beyond 100 digits.
 The implementation in our GMP module supports inputs up to 512 bits,
-with complete factorings tested through 400 bits.
+with complete factoring tested through 400 bits.
 
 Even without GMP, on XS builds with compiler support for unsigned 128-bit
 integers, MPU can factor inputs up to 128 bits using native C code.

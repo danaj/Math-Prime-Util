@@ -121,6 +121,14 @@ Revision history for Perl module Math::Prime::Util
 
     [FIXES]
 
+    - Correct XS is_smooth and abundance results near native integer limits.
+
+    - Fix PP bigint handling in is_power, is_aks_prime, semiprime_count,
+      powerful_numbers, and nth_powerful.
+
+    - Fix PP Ramanujan prime bounds below 4 and modular square roots for
+      moduli containing 2^k with 33 <= k <= 63.
+
     - drand now always returns below 1 before scaling in both XS and PP.
 
     - PP drand, srand, and csrand reject extra arguments, and csrand returns

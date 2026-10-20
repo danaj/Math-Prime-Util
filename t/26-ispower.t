@@ -4,7 +4,7 @@ use warnings;
 
 use Test::More;
 use Math::Prime::Util qw/is_power is_prime_power is_square is_sum_of_squares
-                         vecsum/;
+                         powint vecsum/;
 
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64 = Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
@@ -73,6 +73,7 @@ plan tests => 0
             + 5  # is_power
             + 2*scalar(keys %powers) + scalar(@negpowers)
             + 5  # large explicit exponent
+            + 1  # bigint residue masks
             + 13  # tests for 3,5,7 power
             + 15 # is_power/is_prime_power interface
             + 4  # is_square
@@ -81,6 +82,8 @@ plan tests => 0
 
 is_deeply( [map { is_power($_) } 0 .. $#pow1],        \@pow1,  "is_power 0 .. $#pow1" );
 is_deeply( [map { is_prime_power($_) } 0 .. $#ppow1], \@ppow1, "is_prime_power 0 .. $#ppow1" );
+is_deeply([map { is_power(powint(33,$_),$_) } 2..40], [(1) x 39],
+          "bigint k-th powers pass residue masks for 2 <= k <= 40");
 
 is( vecsum(map { is_power(2099*$_+$_+1) } 0..200), 8, "is_power 200 small ints" );
 is( vecsum(map { is_prime_power(2099*$_+$_+1) } 0..200), 77, "is_prime_power 200 small ints" );

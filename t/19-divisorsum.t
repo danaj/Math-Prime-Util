@@ -70,6 +70,8 @@ subtest 'abundance' => sub {
   is( abundance(945), 30, "abundance(945) = 30 (first odd abundant)" );
   # For a prime p, sigma(p) = p+1, so abundance(p) = 1-p
   is( abundance(999999937), -999999936, "abundance of large prime = 1-p" );
+  is("".abundance("18446744073709551557"), "-18446744073709551556",
+     "abundance returns a negative bigint without unsigned wraparound");
   # bigint
   is("".abundance("927208363107752634625925"),"-609754326198706049867530", "abundance(927208363107752634625925)");
 };

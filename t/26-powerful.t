@@ -114,6 +114,9 @@ subtest 'powerful_count', sub {
 subtest 'nth_powerful', sub {
   is(nth_powerful(0), undef, "nth_powerful(0) returns undef");
   is(nth_powerful(100),3136,"3136 is the 100th powerful number");
+  require Math::BigInt;
+  is(nth_powerful(Math::BigInt->new(100)),3136,
+     "nth_powerful accepts a bigint index");
   SKIP: {
     skip "nth_powerful for k>2 in PP", 2 unless $usexs;
     is(nth_powerful(100,6),43046721,"43046721 is the 100th 6-powerful number");
@@ -186,6 +189,11 @@ subtest 'powerful_numbers', sub {
              "powerful_numbers(1e12,1e12+1e10,5)");
   is_deeply( [map{"$_"} @{powerful_numbers(~0, ~0, 1)}], [~0],
              "powerful_numbers(UV_MAX,UV_MAX,1)");
+  is_deeply([map { "$_" }
+                 @{powerful_numbers("18446744073709551616",
+                                    "18446744073709552616",10)}],
+            ["18446744073709551616"],
+            "powerful_numbers handles products crossing UV_MAX");
   my $largek = $use64 ? "9223372036854775809" : "2147483649";
   is_deeply( powerful_numbers(1,121,$largek), [1],
              "powerful_numbers handles very large native k");

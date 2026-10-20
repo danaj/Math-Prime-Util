@@ -130,7 +130,7 @@ plan tests => 0 + 1
                 + 9 + 2*$extra # prime count specific methods
                 + 3 + $isxs + (($isxs && $use64) ? 1+2*scalar(keys %tpcs) : 0) # twin pc
                 + 2 + (($isxs && $use64) ? 2+1*scalar(keys %spcs) : 0) # semi pc
-                + 2 + (($isxs && $use64) ? 2+1*scalar(keys %rpcs) : 0) # ram pc
+                + 4 + (($isxs && $use64) ? 2+1*scalar(keys %rpcs) : 0) # ram pc
                 + 0;
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
@@ -250,6 +250,8 @@ if ($isxs && $use64) {
 }
 
 ####### Ramanujan prime counts
+is(ramanujan_prime_count(2),     1, "Ramanujan prime count through 2");
+is(ramanujan_prime_count(2,3),   1, "Ramanujan prime count from 2 to 3");
 is(ramanujan_prime_count(13,31), 2, "Ramanujan prime count 13 to 31");
 is(ramanujan_prime_count(1357), 94, "Ramanujan prime count 1357");
 if ($isxs && $use64) {

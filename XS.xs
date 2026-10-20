@@ -4516,8 +4516,11 @@ void abundance(IN SV* svn)
   PPCODE:
     if (_validate_and_set(&n, aTHX_ svn, IFLAG_NONNEG)) {
       UV sum = aliquot_sum(n);
-      if (n <= 1 || sum != 0)
-        XSRETURN_IV((IV)(sum-n));
+      if (n <= 1 || sum != 0) {
+        if (sum >= n)
+          XSRETURN_UV(sum-n);
+        RETURN_SIGNMAG_UV_UV(-1, 0, n-sum);
+      }
     }
     DISPATCHPP_RETURN();
 

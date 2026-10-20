@@ -145,9 +145,19 @@ plan tests => 0
             + scalar(@rootmods)*2    # allrootmod
             + scalar(@allroot_context_tests)*2
             + 2                      # more rootmod
+            + 2                      # 63-bit power-of-two modulus
             + 0;
 
 ###### sqrtmod
+
+my $m2_63 = "9223372036854775808";
+is_deeply([map { "$_" } allsqrtmod(17,$m2_63)],
+          [qw/405959429219100393 4205726589208287511
+              5017645447646488297 8817412607635675415/],
+          "allsqrtmod handles a 63-bit power-of-two modulus");
+my $r2_63 = rootmod(17,2,$m2_63);
+is(powmod($r2_63,2,$m2_63),17,
+   "rootmod returns a valid root for a 63-bit power-of-two modulus");
 foreach my $r (@sqrtmods) {
   my($a, $n, $exp, $prime) = @$r;
   if (!defined $exp) {

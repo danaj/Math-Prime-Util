@@ -7,6 +7,11 @@ $| = 1;  # fast pipes
 my $limit = shift || 2_000_000_000;
 my $nrand = 8000;
 
+die "65-bit composite reported prime\n"
+  if is_aks_prime("18446744073709551617");       # 2^64 + 1
+die "129-bit composite reported prime\n"
+  if is_aks_prime("340282366920938463463374607431768211457"); # 2^128 + 1
+
 my %isprime = map { $_ => 1 } @{primes(160_000)};
 
 print "Testing AKS for all numbers from 1 to 160,000:\n";

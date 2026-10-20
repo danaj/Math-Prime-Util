@@ -13,7 +13,7 @@ my $usexs = Math::Prime::Util::prime_get_config->{'xs'};
 my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 
 plan tests => 4          # small is_smooth / is_rough
-            + 4+3        # special case is_smooth / is_rough
+            + 4+4        # special case is_smooth / is_rough
             + 4+4        # is_smooth large
             + 4+4        # smooth_count / rough_count
             + 3;         # factor predicates
@@ -40,6 +40,8 @@ plan tests => 4          # small is_smooth / is_rough
 
 is(is_smooth(1000000,10000),1,"1000000 is 10000-smooth");
 is(is_smooth(1000127,10000),0,"1000127 is not 10000-smooth");
+is(is_smooth("4294967297","4294967296"),1,
+   "residual prime below smoothness bound");
 is(is_rough(1000127,3000),0,"1000127 is not 3000-rough");
 is(is_rough(1000157,3000),0,"1000157 is not 3000-rough");
 

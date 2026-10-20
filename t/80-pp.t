@@ -193,6 +193,14 @@ subtest 'arithmetic ops', sub {
 
   is_deeply([allsqrtmod(4,72)],[2,34,38,70],"allsqrtmod highly composite mod");
   is_deeply([allsqrtmod(4,4725)],[2,677,1402,2077,2648,3323,4048,4723],"allsqrtmod highly composite mod");
+  my $m2_63 = Math::BigInt->new(2)->bpow(63);
+  is_deeply([map { "$_" } allsqrtmod(17,$m2_63)],
+            [qw/405959429219100393 4205726589208287511
+                5017645447646488297 8817412607635675415/],
+            "allsqrtmod with 63-bit power-of-two modulus");
+  my $r2_63 = rootmod(17,2,$m2_63);
+  is(powmod($r2_63,2,$m2_63),17,
+     "rootmod with 63-bit power-of-two modulus");
 
   is_deeply([allrootmod(406, 72, 9450)],
             [qw/112 238 266 434 616 784 812 938 1162 1288 1316 1484 1666 1834 1862 1988 2212 2338 2366 2534 2716 2884 2912 3038 3262 3388 3416 3584 3766 3934 3962 4088 4312 4438 4466 4634 4816 4984 5012 5138 5362 5488 5516 5684 5866 6034 6062 6188 6412 6538 6566 6734 6916 7084 7112 7238 7462 7588 7616 7784 7966 8134 8162 8288 8512 8638 8666 8834 9016 9184 9212 9338/],
@@ -648,6 +656,8 @@ subtest 'Clusters', sub {
 ###############################################################################
 subtest 'Ramanujan primes', sub {
   is_deeply(ramanujan_primes(0,100), [2,11,17,29,41,47,59,67,71,97], "Ramanujan primes under 100");
+  is_deeply(ramanujan_primes(2,3), [2], "Ramanujan primes from 2 to 3");
+  is(ramanujan_prime_count(2,3), 1, "Ramanujan prime count from 2 to 3");
 
   {
     my($n,$c) = (8840,500);
@@ -1451,6 +1461,7 @@ subtest 'powerful', sub {
   is(powerful_count(1234567),2255,"powerful_count(1234567)");
   is(powerful_count(1234567,3),329,"powerful_count(1234567,3)");
   is(nth_powerful(1000),253472,"nth_powerful");
+  is(nth_powerful(Math::BigInt->new(100)),3136,"nth_powerful bigint index");
 
   is_deeply([map {sumpowerful(5443,$_)} 1..8],[14815846,262303,66879,30528,14445,11045,10252,7937],"sumpowerful");
 };

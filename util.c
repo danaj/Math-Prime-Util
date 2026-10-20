@@ -2814,7 +2814,7 @@ bool is_smooth(UV n, UV k) {
   }                                           /* suppose pn = 503, then ... */
   if (k < pn || n < pn*pn) return (n <= k);   /* k >= 503 and n >= 503*503. */
 
-  if (is_prime(n)) return 0;
+  if (is_prime(n)) return (n <= k);
   if (k <= 290000) {
     nfac = trial_factor(n, fac, pn, k);
     return (fac[nfac-1] <= k);

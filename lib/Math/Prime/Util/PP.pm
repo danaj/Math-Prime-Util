@@ -1181,7 +1181,7 @@ sub _n_ramanujan_primes {
   my($n) = @_;
   return [] if $n <= 0;
   my $max = Mnth_prime_upper(int(48/19*$n)+1);
-  my @L = (2, (0) x $n-1);
+  my @L = (2, (0) x ($n-1));
   my $s = 1;
   for (my $k = 7; $k <= $max; $k += 2) {
     $s++ if Mis_prime($k);
@@ -1196,6 +1196,7 @@ sub ramanujan_primes {
   my($low,$high) = _parse_range_args("ramanujan_primes",2,@_);
   return [] if ($low > $high) || ($high < 2);
   my $nn = Math::Prime::Util::prime_count_upper($high) >> 1;
+  $nn = 1 if $nn < 1;
   my $L = _n_ramanujan_primes($nn);
   shift @$L while @$L && $L->[0] < $low;
   pop @$L while @$L && $L->[-1] > $high;
@@ -2185,9 +2186,11 @@ sub nth_powerful {
   my $lo = Mpowint(2, $k+1);
   my $hi = ~0;
   if ($k == 2) {
-    $lo = int( $n*$n/4.72303430688484 + 0.3 * $n**(5/3) );
-    $hi = int( $n*$n/4.72303430688484 + 0.5 * $n**(5/3) );  # for n >= 170
-    $hi = ~0 if $hi > ~0;
+    my $n2 = Mmulint($n,$n);
+    my $nc = Mdivint(Mmulint($n2,"100000000000000"),"472303430688484");
+    my $npow = Mmulint($n,Mrootint($n2,3));
+    $lo = Maddint($nc,Mdivint(Mmulint($npow,3),10));
+    $hi = Maddint($nc,Mrshiftint($npow));
     $lo = $hi >> 1 if $lo > $hi;
   }
   # We should use some power estimate here.
@@ -2283,15 +2286,15 @@ sub _pcg {
         $beg = 2;
       } else {
         $beg = Mrootint($lom,$r);
-        $beg++ if Mpowint($beg,$r) != $lom;
+        $beg = Madd1int($beg) if Mpowint($beg,$r) != $lom;
       }
     }
-    push @$pn, $m * Mpowint($_,$r) for ($beg .. $end);
+    push @$pn, Mmulint($m,Mpowint($_,$r)) for ($beg .. $end);
     return;
   }
 
   for my $v ($beg .. $end) {
-    _pcg($lo, $hi, $k, $m * Mpowint($v,$r), $r-1, $pn)
+    _pcg($lo, $hi, $k, Mmulint($m,Mpowint($v,$r)), $r-1, $pn)
        if Mgcd($m,$v) == 1 && Mis_square_free($v);
   }
 }
@@ -4652,7 +4655,7 @@ sub semiprime_count {
     my $sum = 0;
     while ($lo <= $hi) {
       $sum++ if Mis_semiprime($lo);
-      $lo++;
+      $lo = Madd1int($lo);
     }
     return $sum;
   }
@@ -6873,7 +6876,7 @@ sub _allsqrtmodpk {
   return ($q) if $k == 1;
   return ($q, $pk - $q) if $k == 2;
   my $pj = Mdivint($pk,$p);
-  my $q2 = ($q * ($pj - 1)) % $pk;
+  my $q2 = Mmulmod($q, Msub1int($pj), $pk);
   return ($q, $pk - $q, $q2, $pk - $q2);
 }
 
@@ -7796,14 +7799,15 @@ sub is_power {
       }
     } else {
 
+      # Bit r is set when r is not an a-th power modulo 32.
       my @rootmask = (
   0x00000000,0x00000000,0xfdfcfdec,0x54555454,0xfffcfffc,           # 0-4
   0x55555554,0xfdfdfdfc,0x55555554,0xfffffffc,0x55555554,0xfdfdfdfc,# 5-10
-  0x55555554,0xfffdfffc,0xd5555556,0xfdfdfdfc,0xf57d57d6,0xfffffffc,# 11-16
-  0xffffd556,0xfdfdfdfe,0xd57ffffe,0xfffdfffc,0xffd7ff7e,0xfdfdfdfe,# 17-22
-  0xffffd7fe,0xfffffffc,0xffffffd6,0xfdfffdfe,0xd7fffffe,0xfffdfffe,# 23-28
-  0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc,0xfffffff6,0xfffffdfe,# 29-34
-  0xf7fffffe,0xfffdfffe,0xfff7fffe,0xfdfffffe,0xfffff7fe,0xfffffffc # 35-40
+  0x55555554,0xfffdfffc,0x55555554,0xfdfdfdfc,0x55555554,0xfffffffc,# 11-16
+  0x55555554,0xfdfdfdfc,0x55555554,0xfffdfffc,0x55555554,0xfdfdfdfc,# 17-22
+  0x55555554,0xfffffffc,0x55555554,0xfdfdfdfc,0x55555554,0xfffdfffc,# 23-28
+  0x55555554,0xfdfdfdfc,0x55555554,0xfffffffc,0x55555554,0xfdfdfdfc,# 29-34
+  0x55555554,0xfffdfffc,0x55555554,0xfdfdfdfc,0x55555554,0xfffffffc # 35-40
       );
       if ($a <= 40) {
         my $n32 = 1 << (ref($n) ? Mmodint($n,32) : $n & 31);
@@ -10939,7 +10943,12 @@ sub is_aks_prime {
   my($starta, $s);
   my $_verbose = getconfig()->{'verbose'};
 
-  my $log2n = log($n)/log(2) + 0.0001;      # Error on large side.
+  # Use a native leading prefix; the final bias exceeds truncation error.
+  my $log2i = Mlogint($n,2);
+  my $shift = ($log2i > 30) ? $log2i-30 : 0;
+  my $ntop = $shift ? Mrshiftint($n,$shift) : $n;
+  $ntop = 0+"$ntop" if ref($ntop);  # At most 31 bits, native on all Perls.
+  my $log2n = $shift + log($ntop)/log(2) + 0.0001; # Error on large side.
   my $r0    = ($log2n > 32 ? 0.010 : 0.003) * $log2n * $log2n;
   my $rmult =  $log2n > 32 ? 6     : 30;
 
