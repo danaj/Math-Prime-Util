@@ -7252,6 +7252,9 @@ then use size-appropriate combinations of methods including HOLF, SQUFOF,
 Pollard rho and Brent variants, Pollard C<p-1>, ECM, and Quadratic Sieve.
 The selected recipe is applied recursively to each composite factor found.
 
+If all factoring methods are exhausted without splitting a composite,
+the function croaks rather than returning it as a prime factor.
+
 Factoring bigints works with pure Perl, and can be very handy on 32-bit
 machines for numbers just over the 32-bit limit, but it can be B<very> slow
 for "hard" numbers.  Installing the L<Math::Prime::Util::GMP> module will
@@ -8187,10 +8190,10 @@ and L</factor_exp> for an array of factor/exponent pairs where:
 Pari/GP returns an array similar to the latter.  L<Math::Pari> returns
 a transposed matrix like:
    n = p1^e1 * p2^e2 * ...  as ([p1,p2,...],[e1,e2,...])
-Slower than MPU for all 64-bit inputs on an x86_64 platform, it may be
-faster for large values on other platforms.  With the newer
-L<Math::Prime::Util::GMP> releases, bigint factoring is slightly
-faster on average in MPU.
+MPU was faster for all 64-bit inputs tested.
+With L<Math::Prime::Util::GMP> 0.55 or later, factoring balanced
+semiprimes is substantially faster than Pari.  Benchmarks in 2026
+found speedups over 8x for 95+ digit inputs.
 
 =item C<divisors>
 
@@ -8299,9 +8302,13 @@ and Andreas Enge's L<CM|https://www.multiprecision.org/cm/> (added in 2022).
 
 L<yafu|http://sourceforge.net/projects/yafu/>,
 L<msieve|http://sourceforge.net/projects/msieve/>, and
-L<gmp-ecm|http://ecm.gforge.inria.fr/> are all good choices for large
-inputs.  The factoring code in this module (and all other CPAN modules) is
-very limited compared to those.
+L<gmp-ecm|http://ecm.gforge.inria.fr/> are all good choices for large inputs.
+The SIQS implementation in L<Math::Prime::Util::GMP> 0.55 is state
+of the art and was faster than the QS implementations in YAFU and
+msieve in our 2026 balanced-semiprime benchmarks.
+YAFU and Msieve are excellent all-around factoring tools that
+also include NFS and are highly recommended.
+GMP-ECM is a better workhorse for deep ECM work.
 
 =item Primes
 
@@ -8430,13 +8437,20 @@ For bigints, the L<Math::Prime::Util::GMP> module is highly recommended.
 L<This slide presentation|http://math.boisestate.edu/~liljanab/BOISECRYPTFall09/Jacobsen.pdf>
 has a lot of data on 64-bit and GMP factoring performance I collected in 2009.
 Assuming you do not know anything about the inputs, trial division and
-optimized Fermat or Lehman work very well for small numbers (<= 10 digits),
-while native SQUFOF is typically the method of choice for 11-18 digits.
+optimized Fermat or Lehman work very well for small numbers (< 10 digits),
+while native SQUFOF is typically the method of choice for 10-18 digits.
 A lightweight QS, such as the one inside the C<tinysiqs128> implementation
 written for this module, can be faster than SQUFOF for inputs as small as
 15 digits.
 Some form of Quadratic Sieve is usually used for inputs in the 19-100 digit
-range, and beyond that is the General Number Field Sieve.
+range, while historically the General Number Field Sieve is used beyond that.
+The exact crossover between SIQS and GNFS depends on implementations,
+hardware, and input shape. SIQS remains practical beyond 100 digits.
+The implementation in our GMP module supports inputs up to 512 bits,
+with complete factorings tested through 400 bits.
+
+Even without GMP, on XS builds with compiler support for unsigned 128-bit
+integers, MPU can factor inputs up to 128 bits using native C code.
 
 =head2 PRIMALITY PROVING
 

@@ -5,7 +5,7 @@ It provides over 370 functions covering:
 
   - Prime sieving, generation, and iteration
   - Primality testing (BPSW, Miller-Rabin, Lucas, Frobenius, AKS) and proving
-  - Integer factoring (trial, Pollard rho, p-1, p+1, SQUFOF, ECM)
+  - Integer factoring (trial, Pollard rho, p-1, p+1, SQUFOF, ECM, SIQS)
   - Prime counting: exact (Lehmer/LMO), bounds, and approximations
   - Nth prime, twin primes, almost primes, semiprimes
   - Random prime generation (cryptographic CSPRNG)
