@@ -2309,8 +2309,9 @@ void almost_primes(IN UV k, IN SV* svlo, IN SV* svhi = 0)
         (items >= 3 && _validate_and_set(&lo, aTHX_ svlo, IFLAG_NONNEG) && _validate_and_set(&hi, aTHX_ svhi, IFLAG_NONNEG))) {
       CREATE_RETURN_AV(av);
       S = 0;
-      if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
-      else         n = range_omega_prime_sieve(&S, k, lo, hi);
+      if (lo > hi)      n = 0;
+      else if (ix == 0) n = generate_almost_primes(&S, k, lo, hi);
+      else              n = range_omega_prime_sieve(&S, k, lo, hi);
       for (i = 0; i < n; i++)
         av_push(av, newSVuv(S[i]));
       if (S != 0) Safefree(S);

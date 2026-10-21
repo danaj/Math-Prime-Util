@@ -126,6 +126,12 @@ Revision history for Perl module Math::Prime::Util
     - Fix PP bigint handling in is_power, is_aks_prime, semiprime_count,
       powerful_numbers, and nth_powerful.
 
+    - PP semi_primes and semiprime_count handle zero and empty ranges like XS.
+
+    - Fix small PP semiprime count approximations and almost-prime bounds.
+
+    - XS omega_primes handles zero and reversed ranges like PP.
+
     - Fix PP Ramanujan prime bounds below 4 and modular square roots for
       moduli containing 2^k with 33 <= k <= 63.
 

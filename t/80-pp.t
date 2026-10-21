@@ -520,6 +520,13 @@ subtest 'almost primes', sub {
   is_deeply(almost_primes(3,20),[8,12,18,20],"almost_primes(3,20)");
   is_deeply(almost_primes(4,60),[16,24,36,40,54,56,60],"almost_primes(4,60)");
 
+  is(almost_prime_count_approx(0,0), 0,
+     "almost_prime_count_approx(0,0) returns zero");
+  is_deeply([map { almost_prime_count_approx(2,$_) } 4..6], [1,1,2],
+            "small semiprime count approximations are exact");
+  is_deeply([map { almost_prime_count_lower(2,$_) } 19,20,31,32],
+            [6,6,10,10], "small semiprime lower bounds are valid");
+
   my @n12 = (37,34,52,100,200,400,800,1600,3200,6400,12800,25600);
   is_deeply([map { nth_almost_prime($_,12) } 1..12],\@n12,"nth_almost_prime(k,12)");
   is_deeply([map { almost_prime_count($_,$n12[$_-1]-1) } 1..12],[(11) x 12],"almost_prime_count(k,n)");

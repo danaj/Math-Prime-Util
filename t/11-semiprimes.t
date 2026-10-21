@@ -73,9 +73,26 @@ plan tests => 2
             + scalar(keys %range_counts)
             + scalar(keys %big_counts)
             + scalar(keys %big_semis)
-            + 4;
+            + 7;
 
 is_deeply( semi_primes($small_semis[-1]), \@small_semis, "semi_primes($small_semis[-1])" );
+
+is_deeply(
+  [semi_primes(0), semi_primes(0,0), semi_primes(0,3), semi_primes(5,0)],
+  [[], [], [], []],
+  "semi_primes returns empty for zero, low, and reversed bounds"
+);
+is_deeply(
+  [semiprime_count(0), semiprime_count(0,0),
+   semiprime_count(0,3), semiprime_count(5,0)],
+  [0, 0, 0, 0],
+  "semiprime_count returns zero for zero, low, and reversed bounds"
+);
+is_deeply(
+  [map { semiprime_count_approx($_) } 0 .. 255],
+  [map { semiprime_count($_) } 0 .. 255],
+  "semiprime_count_approx is exact below 256"
+);
 
 {
   my @tp = map { nth_semiprime($_) } 1 .. scalar(@small_semis);

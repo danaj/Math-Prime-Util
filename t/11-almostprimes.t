@@ -59,6 +59,8 @@ subtest 'generate almost primes', sub {
 subtest 'counting almost primes', sub {
   my @counts_at_1e6 = (1,78498,210035,250853,198062,124465,68963,35585,17572,8491,4016,1878,865,400,179,79,35,14,7,2,0);
   is_deeply([map { almost_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-almost prime counts at 1000000 for k=1..20");
+  is_deeply([map { almost_prime_count($_, 0) } 0..20], [(0) x 21],
+            "all almost-prime counts are zero at n=0");
 
   is(almost_prime_count(17,1e9), 38537, "There are 38537 17-almost-primes <= 1,000,000,000");
 
@@ -104,10 +106,22 @@ subtest 'nth almost prime', sub {
 subtest 'limits', sub {
   is( cmp_kap(3,59643,234618), 234618, "3-almost prime limits for 59643" );
   is( cmp_kap(32,12,"26843545600"), "26843545600", "32-almost prime limits for 12" );
+
+  my @small_semiprime_counts = map { almost_prime_count(2,$_) } 0 .. 255;
+  is_deeply([map { almost_prime_count_lower(2,$_) } 0 .. 255],
+            \@small_semiprime_counts, "small 2-almost-prime lower bounds are exact");
+  is_deeply([map { almost_prime_count_upper(2,$_) } 0 .. 255],
+            \@small_semiprime_counts, "small 2-almost-prime upper bounds are exact");
 };
 
 ###### Test approx
 subtest 'approx', sub {
+  is(almost_prime_count_approx(0,0), 0,
+     "almost_prime_count_approx returns a literal zero");
+  is_deeply([map { almost_prime_count_approx(2,$_) } 0 .. 255],
+            [map { almost_prime_count(2,$_) } 0 .. 255],
+            "small 2-almost-prime approximations are exact");
+
   is(approx_in_range(3,59643,234618), 234618, "approx 59643-th 3-almost prime)");
   is(approx_in_range(32,12,"26843545600"), "26843545600", "approx 12-th 32-almost prime");
   is(approx_in_range(63,2011,"4742290407621132288000"), "4742290407621132288000", "approx 2011-th 63-almost prime");

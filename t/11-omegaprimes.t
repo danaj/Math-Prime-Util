@@ -20,7 +20,7 @@ my @small_kops = (
 my @counts_at_1e6 = (1,78734,288726,379720,208034,42492,2285,8,0,0,0,0,0,0,0,0,0,0,0,0,0);
 my @counts_at_1e4 = (1,1280,4097,3695,894,33,0,0,0,0,0);
 
-plan tests =>   6   # omega_primes sieve
+plan tests =>   9   # omega_primes sieve
               + 2   # omega_primes recursive and chunked construction
               + 7   # count
               + 9   # nth_omega_prime
@@ -33,6 +33,15 @@ for my $k (1..5) {
   is_deeply(omega_primes($k,$kop->[-1]), $kop, "small $k-omega-primes");
 }
 is_deeply(omega_primes(0,1,200000002), [1], "omega_primes(0,1,200000002)");
+is_deeply([map { omega_primes($_,0) } 0..5], [map { [] } 0..5],
+          "omega_primes returns empty at upper bound zero");
+is_deeply([map { omega_primes($_,10,9) } 0..5], [map { [] } 0..5],
+          "omega_primes returns empty for reversed ranges");
+is_deeply(
+  [map { my $k = $_; map { scalar(@{omega_primes($k,$_)}) } 0..10 } 0..5],
+  [map { my $k = $_; map { omega_prime_count($k,$_) } 0..10 } 0..5],
+  "omega_primes cardinality agrees with omega_prime_count through 10"
+);
 SKIP: {
   skip "native recursive construction requires 64-bit XS", 2
     unless $usexs && $use64;

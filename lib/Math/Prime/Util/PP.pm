@@ -1167,6 +1167,7 @@ sub twin_primes {
 
 sub semi_primes {
   my($low,$high) = _parse_range_args("semi_primes",4,@_);
+  return [] if $low > $high;
   my @sp;
   Math::Prime::Util::forsemiprimes(sub { push @sp,$_; }, $low, $high);
   \@sp;
@@ -4650,6 +4651,7 @@ sub semiprime_count {
   if (defined $hi) { validate_integer_nonneg($lo); }
   else             { ($lo,$hi) = (2, $lo);         }
   validate_integer_nonneg($hi);
+  return 0 if $lo > $hi || $hi < 4;
   # todo: threshold of fast count vs. walk
   if (($hi-$lo+1) < $hi / (sqrt($hi)/4)) {
     my $sum = 0;
@@ -4700,12 +4702,12 @@ sub almost_prime_count {
   validate_integer_nonneg($k);
   validate_integer_nonneg($n);
 
-  return ($n >= 1) if $k == 0;
+  return $n >= 1 ? 1 : 0 if $k == 0;
   return 0 if ($n >> $k) == 0;
 
   my $ok = $k;
   ($k, $n) = _kap_reduce_count($k, $n);
-  return ($n >= 1) if $k == 0;
+  return $n >= 1 ? 1 : 0 if $k == 0;
   # If we reduced parameters, try again if XS might be able to do it.
   return Math::Prime::Util::almost_prime_count($k,$n) if $ok != $k && !ref($n) && getconfig()->{'xs'};
   return Mprime_count($n) if $k == 1;
@@ -4824,7 +4826,7 @@ sub twin_prime_count_approx {
 sub semiprime_count_approx {
   my($n) = @_;
   validate_integer_nonneg($n);
-  return 0 if $n < 4;
+  return Msemiprime_count($n) if $n < 256;
   $n = "$n" + 0.00000001;
   my $l1 = log($n);
   my $l2 = log($l1);
@@ -4838,7 +4840,7 @@ sub almost_prime_count_approx {
   my($k,$n) = @_;
   validate_integer_nonneg($k);
   validate_integer_nonneg($n);
-  return ($n >= 1) if $k == 0;
+  return 0+($n >= 1) if $k == 0;
   return Math::Prime::Util::prime_count_approx($n) if $k == 1;
   return Math::Prime::Util::semiprime_count_approx($n) if $k == 2;
   return 0 if ($n >> $k) == 0;
@@ -5025,8 +5027,9 @@ sub almost_prime_count_lower {
 
   return 0 if ($n >> $k) == 0;
   ($k, $n) = _kap_reduce_count($k, $n);
-  return ($n >= 1) if $k == 0;
+  return 0+($n >= 1) if $k == 0;
   return Math::Prime::Util::prime_count_lower($n) if $k == 1;
+  return Msemiprime_count($n) if $k == 2 && $n < 256;
 
   my $bound = 0;
   my $x = 0.0 + "$n";
@@ -5095,8 +5098,9 @@ sub almost_prime_count_upper {
 
   return 0 if ($n >> $k) == 0;
   ($k, $n) = _kap_reduce_count($k, $n);
-  return ($n >= 1) if $k == 0;
+  return 0+($n >= 1) if $k == 0;
   return Math::Prime::Util::prime_count_upper($n) if $k == 1;
+  return Msemiprime_count($n) if $k == 2 && $n < 256;
 
   # In theory we might have reduced k/n to where XS can handle it.
   # We should consider handling that, especially for k >= 5.
