@@ -3457,6 +3457,9 @@ validates and compares all values as integers.  The validation step will make
 it a little slower than L<List::Util/min> but prevents accidental and
 unintentional use of floats.
 
+With equal minimum values, the first argument is selected, matching PARI/GP,
+Python, and Raku.
+
 =head2 vecmax
 
   say "Largest Totient 100k-200k: ", vecmax(euler_phi(100_000,200_000));
@@ -3468,6 +3471,9 @@ point values, which can make it select the wrong input entry.  C<vecmax>
 validates and compares all values as integers.  The validation step will make
 it a little slower than L<List::Util/max> but prevents accidental and
 unintentional use of floats.
+
+With equal maximum values, the first argument is selected, matching PARI/GP,
+Python, and Raku.
 
 =head2 vecreduce
 
@@ -4543,13 +4549,12 @@ full count or list.
 
 =head2 is_pillai
 
-Given a non-negative integer C<n>, if there exists a C<v> where C<v! % n == n-1>
-and C<n % v != 1>, then the least C<v> is returned.  Otherwise 0.
+Given a non-negative integer C<n>, returns the least C<v> where
+C<v! % n == n-1> and C<n % v != 1>.  Returns 0 if no such C<v> exists.
 
-For n prime, non-zero return values give
-L<OEIS series A063980|http://oeis.org/A063980>.
-The non-zero values returned produce
-L<OEIS series A063828|http://oeis.org/A063828>.
+For prime C<n>, the values of C<n> for which this function returns non-zero
+form L<OEIS series A063980|http://oeis.org/A063980>.  The corresponding least
+C<v> values form L<OEIS series A063828|http://oeis.org/A063828>.
 
 
 =head2 is_polygonal

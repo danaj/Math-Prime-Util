@@ -189,6 +189,7 @@ subtest 'vecmin', sub {
       is("".vecmin(@vals), $exp, "vecmin(@vals) = $exp");
     }
   }
+  is("".vecmin("2","02"), "2", "vecmin selects the first equal argument");
 };
 ###### vecmax
 subtest 'vecmax', sub {
@@ -200,6 +201,7 @@ subtest 'vecmax', sub {
       is("".vecmax(@vals), $exp, "vecmax(@vals) = $exp");
     }
   }
+  is("".vecmax("2","02"), "2", "vecmax selects the first equal argument");
 };
 
 ###### vecsum
@@ -429,6 +431,14 @@ subtest 'vecuniq', sub {
   is_deeply([vecuniq(0)], [0], "vecuniq with one input returns it");
   is_deeply([vecuniq("2","02","2","02")], ["2","02"], "vecuniq preserves string semantics");
   is(2, scalar(vecuniq("2","02","2","02")), "vecuniq scalar count preserves string semantics");
+  {
+    my ($two, $zero_two) = ("2", "02");
+    my $numeric = 0+$two + 0+$zero_two;
+    is_deeply([vecuniq($two,$zero_two,$two,$zero_two)], ["2","02"],
+              "vecuniq preserves numericized string semantics");
+    is(2, scalar(vecuniq($two,$zero_two,$two,$zero_two)),
+          "vecuniq scalar count preserves numericized string semantics");
+  }
   is_deeply([vecuniq(0,"18446744073709551615",0,4294967295,"18446744073709551615",4294967295)], [0,"18446744073709551615",4294967295], "vecuniq with 64-bit inputs");
   is_deeply([vecuniq("-9223372036854775808","9223372036854775807",4294967295,"9223372036854775807",4294967295,"-9223372036854775808")], ["-9223372036854775808","9223372036854775807",4294967295], "vecuniq with signed 64-bit inputs");
   eval { vecuniq(undef,1,2) };
@@ -454,6 +464,14 @@ subtest 'vecsingleton', sub {
 
   is_deeply([vecsingleton('a','b','',undef,'b','c','')],['a',undef,'c'],"vecsingleton with strings and one undef");
   is_deeply([vecsingleton('a','b','',undef,'b','c',undef)],['a','','c'],"vecsingleton with strings and two undefs");
+  {
+    my ($two, $zero_two) = ("2", "02");
+    my $numeric = 0+$two + 0+$zero_two;
+    is_deeply([vecsingleton($two,$zero_two)], ["2","02"],
+              "vecsingleton preserves numericized string semantics");
+    is(2, scalar(vecsingleton($two,$zero_two)),
+          "vecsingleton scalar count preserves numericized string semantics");
+  }
 };
 
 ###### vecfreq
@@ -487,6 +505,16 @@ subtest 'vecfreq', sub {
   %exp = (hello=>1, 14=>1, world=>2, tree=>1);
   is_deeply(\%got, \%exp, "vecfreq strings");
   is(0+vecfreq(@L), 4, "vecfreq strings (scalar)");
+
+  {
+    my ($two, $zero_two) = ("2", "02");
+    my $numeric = 0+$two + 0+$zero_two;
+    %got = vecfreq($two,$zero_two);
+    %exp = ("2"=>1, "02"=>1);
+    is_deeply(\%got, \%exp, "vecfreq preserves numericized string semantics");
+    is(0+vecfreq($two,$zero_two), 2,
+       "vecfreq scalar count preserves numericized string semantics");
+  }
 
   { # from List::MoreUtils::frequency test
     @L = ('a', 'b', '', undef, 'b', 'c', '', undef);

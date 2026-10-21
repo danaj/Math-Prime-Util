@@ -2749,9 +2749,9 @@ vecmin(...)
       for (i = 1; i < items; i++) {
         status = _validate_and_set(&n, aTHX_ ST(i), IFLAG_ANY);
         if (status == 0) break;
-        if (( (sign == -1 && status == 1) ||
-              (n >= ret && sign == status)
-            ) ? !minmax : minmax ) {
+        if ( (sign == status)
+             ? (minmax ? n < ret : n > ret)
+             : (minmax ? status == -1 : status == 1) ) {
           sign = status;
           ret = n;
           retindex = i;
@@ -8680,7 +8680,8 @@ void vecuniq(...)
     for (j = 0, typemask = 0; j < items; j++) {
       SV *sv = ST(j);
       SvGETMAGIC(sv);
-      if (!SvOK(sv) || !SVNUMTEST(sv))
+      /* String-backed dualvars must retain Perl hash semantics. */
+      if (!SvOK(sv) || !SVNUMTEST(sv) || SvPOK(sv))
         break;
       if ((UV)SvIVX(sv) > (UV)IV_MAX)
         typemask |= (SvIsUV(sv) ? ISET_TYPE_UV : ISET_TYPE_IV);
@@ -8755,7 +8756,8 @@ void vecfreq(...)
     len = (size_t) items;
     New(0, L, len, UV);
     itype = IARR_TYPE_ANY;
-    for (i = 0; i < len && itype != IARR_TYPE_BAD && SVNUMTEST(ST(i)); i++) {
+    for (i = 0; i < len && itype != IARR_TYPE_BAD &&
+                    SVNUMTEST(ST(i)) && !SvPOK(ST(i)); i++) {
       IV n = SvIVX(ST(i));
       if (n < 0) {
         if (SvIsUV(ST(i)))  itype |= IARR_TYPE_POS;
@@ -8814,7 +8816,8 @@ void vecsingleton(...)
     iset_create(&seen, len);
     iset_create(&dups, len>>1);
     itype = IARR_TYPE_ANY;
-    for (i = 0; i < len && itype != IARR_TYPE_BAD && SVNUMTEST(ST(i)); i++) {
+    for (i = 0; i < len && itype != IARR_TYPE_BAD &&
+                    SVNUMTEST(ST(i)) && !SvPOK(ST(i)); i++) {
       IV n = SvIVX(ST(i));
       int sign = 1;
       if (n < 0) {
