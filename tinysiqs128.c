@@ -330,6 +330,14 @@ static double ts_log128(uint128_t n) {
   return log((double)hi + ldexp((double)lo, -64)) + 64.0 * M_LN2;
 }
 
+/* Avoid compiler runtime helpers for uint128_t-to-double conversion. */
+static double ts_get_d(uint128_t n) {
+  double d = (double)(uint32_t)(n >> 96);
+  d = d * 4294967296.0 + (double)(uint32_t)(n >> 64);
+  d = d * 4294967296.0 + (double)(uint32_t)(n >> 32);
+  return d * 4294967296.0 + (double)(uint32_t)n;
+}
+
 static uint128_t ts_abs_i128(int128_t value) {
   uint128_t u = (uint128_t)value;
   return value < 0 ? (uint128_t)0 - u : u;
@@ -1994,7 +2002,7 @@ static void ts_set_log_weights(ts_ctx_t *ctx) {
        * |B| <= 3*A/2 and |C| <= kN/(d*A) + 3*A, so bound the actual
        * polynomial instead of the unattainable ideal-A geometry. */
       double bound_log = log(da * m * m + 3.0 * a * m +
-                            (double)ctx->kn / da + 3.0 * a);
+                            ts_get_d(ctx->kn) / da + 3.0 * a);
       if (bound_log > log_q)
         log_q = bound_log;
     }

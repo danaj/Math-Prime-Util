@@ -9053,7 +9053,7 @@ sub binomial {
   } elsif ($n > INTMAX && $k < 100) {
     # This is higher performance than bnok for most cases.
     # More importantly, some versions of Math::BigInt pre-2.003003 will crash
-    # on these cases, so this works around them.
+    # on these cases, so this works around them.  See RT #153736.
     $R = Mdivint(Mfalling_factorial($n,$k),Mfactorial($k));
   } else {
     $R = Math::BigInt::bnok("$n","$k");
