@@ -64,6 +64,9 @@ factor128.h
 factor128.c
 tinysiqs128.h
 tinysiqs128.c
+mont64.h
+tinyecm64.h
+tinyecm64.c
 goldbach.h
 goldbach.c
 intcomplexity.h

@@ -12,6 +12,7 @@ my $extra = defined $ENV{EXTENDED_TESTING} && $ENV{EXTENDED_TESTING};
 my $use64  = prime_get_config->{'maxbits'} > 32;
 my $usexs  = prime_get_config->{'xs'};
 my $usegmp = prime_get_config->{'gmp'};
+my $has_u64 = $usexs && Math::Prime::Util::_XS_has_uint64();
 
 my @testn = qw/7 8 16 57 64 377 9592 78498 664579 5761455
                114256942 2214143 999999929 50847534 455052511 2147483647
@@ -252,11 +253,22 @@ subtest 'specific cases for factoring code coverage', sub {
                "cheb factor reduces its initial value modulo n" );
   }
   SKIP: {
-    skip "tinyecm64 C path", 4 unless $use64 && $usexs && !$usegmp;
-    is_deeply( [Math::Prime::Util::ecm_factor(1111,10,10,1)], [11,101], "tinyecm64 setup denominator factor" );
-    is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,0,3)], [3289045043,4060989437], "tinyecm64 64-bit Montgomery reduction" );
-    is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791",2000,40000,3)], [3289045043,4060989437], "tinyecm64 explicit B2 path" );
-    is_deeply( [Math::Prime::Util::ecm_factor("2949544710425713",500,600,30)], [7051211,418303283], "tinyecm64 stage 2 path" );
+    skip "tinyecm64 C path", 1 unless $has_u64;
+    is_deeply( [Math::Prime::Util::ecm_factor(1111)], [11,101],
+               "tinyecm64 native path" );
+  }
+  SKIP: {
+    skip "tinyecm64 64-bit inputs", 2 unless $use64 && $has_u64;
+    is_deeply( [Math::Prime::Util::ecm_factor("13356777177440210791")],
+               [3289045043,4060989437], "tinyecm64 64-bit Montgomery reduction" );
+    is_deeply( [Math::Prime::Util::ecm_factor("2949544710425713")],
+               [7051211,418303283], "tinyecm64 stage 2" );
+  }
+  {
+    my @factors = Math::Prime::Util::ecm_factor(1111,10,10,1);
+    my $product = 1;
+    $product *= $_ for @factors;
+    is($product, 1111, "ecm_factor accepts implementation hints" );
   }
 };
 

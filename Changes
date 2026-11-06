@@ -29,6 +29,10 @@ Revision history for Perl module Math::Prime::Util
       adaptation here called tinyqs128.  This lets many platforms have much
       faster factoring for integers larger than UV but fit within 128-bit.
 
+    - tecm64 was greatly improved to make the new tinyecm64, which replaces
+      the old one.  This greatly speeds up XS 64-bit factoring.  The ECM ladder
+      is built in, so ecm_factor when given arguments dispatches to GMP or PP.
+
     - CSPRNG streams automatically reseed from entropy in a child process
       after supported forks, while leaving the parent's stream unchanged.
 

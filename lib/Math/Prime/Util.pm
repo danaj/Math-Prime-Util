@@ -7454,6 +7454,11 @@ L</pminus1_factor>.
 Produces factors, not necessarily prime, of the positive number input.  This
 is the elliptic curve method using two stages.
 
+The fast XS implementation has a built-in ladder, so does not use B1/B2/curves
+arguments, and uses a deterministic seed.  If you call C<ecm_factor(n)>, where
+the input is a UV (native integer) and no other arguments are given, then it
+uses XS.  Otherwise it will dispatch to GMP or PP.
+
 The optional arguments are considered hints.
 In particular, B2 will often be calculated internally (a value of 0 for B2
 indicates to do this for all implementations).

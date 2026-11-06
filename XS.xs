@@ -4437,7 +4437,7 @@ trial_factor(IN SV* svn, ...)
     }
 
     if (nstatus==0 || a1status==0 || a2status==0 || a3status==0 ||
-        (ix==10 && (_XS_get_callgmp() || !HAS_ECM64)))
+        (ix==10 && (items > 1 || !HAVE_UINT64)))
       DISPATCHPP_RETURN();
 
     if (n == 0)  XSRETURN_UV(0);
@@ -4454,7 +4454,6 @@ trial_factor(IN SV* svn, ...)
         if (ix ==  8) arg2 = 1;        /* use X*X + 1 */
         if (ix ==  9) arg2 = 10*arg1;  /* B2 = 10*B1  */
       }
-      if (ix == 10) arg3 = (items < 4) ? 100 : arg3;  /* 100 curves */
       switch (ix) {
         case 0:  nfactors = trial_factor    (n, factors, 2, arg1);  break;
         case 1:  nfactors = fermat_factor   (n, factors, arg1);  break;
@@ -4466,9 +4465,7 @@ trial_factor(IN SV* svn, ...)
         case 7:  nfactors = pplus1_factor   (n, factors, arg1);          break;
         case 8:  nfactors = pbrent_factor   (n, factors, arg1, arg2);    break;
         case 9:  nfactors = pminus1_factor  (n, factors, arg1, arg2);    break;
-#if HAS_ECM64
-        case 10: nfactors = tinyecm64_factor(n, factors, arg1, arg2, arg3, 0); break;
-#endif
+        case 10: nfactors = ecm_factor      (n, factors);                break;
         default: break;
       }
       EXTEND(SP, (EXTEND_TYPE)nfactors);
