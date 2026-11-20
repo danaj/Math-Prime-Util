@@ -122,6 +122,7 @@ my %rpcs = (
 );
 
 plan tests => 0 + 1
+                + 1 # small count table and crossover
                 + 3*scalar(keys %pivals32)
                 + scalar(keys %pivals_small)
                 + $use64 * 3 * scalar(keys %pivals64)
@@ -134,6 +135,11 @@ plan tests => 0 + 1
                 + 0;
 
 ok( eval { prime_count(13); 1; }, "prime_count in void context");
+is_deeply(
+  [map { prime_count($_) } 0..7, 29..31, 119..121, 239..241, 262142..262148],
+  [0,0,1,2,2,3,3,4, 10,10,11, 30,30,30, 52,52,53,
+   23000,23000,23000,23000,23000,23001,23001],
+  "prime_count at wheel boundaries and the small-table crossover");
 
 while (my($n, $pin) = each (%pivals32)) {
   cmp_ok( prime_count_upper($n), '>=', $pin, "Pi($n) <= upper estimate" );

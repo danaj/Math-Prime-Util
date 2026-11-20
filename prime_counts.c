@@ -225,6 +225,35 @@ static UV count_segment_ranged(const unsigned char* sieve, UV nbytes, UV lowp, U
 
 #include "prime_count_tables.h"
 
+#ifndef BENCH_SEGCOUNT
+#include "prime_count_small.h"
+
+static UV _prime_count_small(UV n)
+{
+  static const unsigned char endmask[30] = {
+    0,1,1,1,1,1,1,3,3,3,3,7,7,15,15,15,15,31,31,63,63,63,63,
+    127,127,127,127,127,127,255
+  };
+  UV pos = n / 30, block = pos / 8, word = 2*block, bits, mask;
+  UV count = pc_small_rank[block];
+  unsigned shift = 8 * (pos % sizeof(UV));
+
+  if (n < 6) return (n >= 2) + (n >= 3) + (n >= 5);
+
+#if BITS_PER_WORD == 64
+  bits = ((UV)pc_small_bits[word+1] << 32) | pc_small_bits[word];
+#else
+  if (pos & 4) {
+    count += popcnt(pc_small_bits[word]);
+    word++;
+  }
+  bits = pc_small_bits[word];
+#endif
+  mask = ((UV)endmask[n - 30*pos] << shift) | ((UVCONST(1) << shift) - 1);
+  return count + popcnt(bits & mask);
+}
+#endif
+
 UV segment_prime_count(UV low, UV high)
 {
   const unsigned char* cache_sieve;
@@ -305,6 +334,7 @@ UV prime_count_range(UV lo, UV hi)
 #if defined(BENCH_SEGCOUNT)
   return segment_prime_count(lo, hi);
 #endif
+  if (lo <= 2) return prime_count(hi);
 
   /* We use table acceleration so this is preferable for small inputs */
   if (hi < _MPU_LMO_CROSSOVER)  return segment_prime_count(lo, hi);
@@ -319,7 +349,9 @@ UV prime_count_range(UV lo, UV hi)
 
 UV prime_count(UV n)
 {
-  if (n < 2) return 0;
+#ifndef BENCH_SEGCOUNT
+  if (n <= PRIME_COUNT_SMALL_LIMIT) return _prime_count_small(n);
+#endif
 
   /* We use table acceleration so this is preferable for small inputs */
   if (n < _MPU_LMO_CROSSOVER)  return segment_prime_count(0, n);

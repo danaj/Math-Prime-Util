@@ -98,6 +98,7 @@ primality.h
 primality.c
 prime_count_cache.c
 prime_count_cache.h
+prime_count_small.h
 prime_count_tables.h
 prime_counts.h
 prime_counts.c
@@ -413,6 +414,7 @@ xt/twin_prime_count.t
 xt/nth_twin_prime.t
 xt/lucasuv.pl
 xt/make-perrin-data.pl
+xt/make-prime-count-small.pl
 xt/test-pcbounds.pl
 xt/xop-differential.t
 xt/xop-hardening.t
