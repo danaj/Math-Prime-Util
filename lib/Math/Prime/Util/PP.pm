@@ -4717,42 +4717,29 @@ sub almost_prime_count {
 }
 
 sub _omega_prime_count_rec {
-  my($k, $n,  $m, $p, $s, $j) = @_;
-  $s = Mrootint(Mdivint($n,$m),$k) unless defined $s;
-  $j = 1 unless defined $j;
+  my($k, $n, $p, $s, $j) = @_;
+  my $big = ref($n);
   my $count = 0;
 
-  if ($k == 2) {
-
-    for (;  $p <= $s  ;  ++$j) {
-      my $r = Mnext_prime($p);
-      for (my $t = Mmulint($m, $p) ; $t <= $n ; $t = Mmulint($t, $p)) {
-        my $w = Mdivint($n, $t);
-        last if $r > $w;
-        $count += Mprime_count($w) - $j;
-        for (my $r2 = $r ; $r2 <= $w ; $r2 = Mnext_prime($r2)) {
-          my $u = Mvecprod($t, $r2, $r2);
-          last if $u > $n;
-          for (; $u <= $n ; $u = Mmulint($u, $r2)) {
-             ++$count;
-          }
+  for (my $r; $p <= $s; $p = $r, ++$j) {
+    $r = Mnext_prime($p);
+    # Repeated division gives floor(n / p**a) without forming p**a.
+    for (my $w = Mdivint($n,$p); $w >= $r; $w = Mdivint($w,$p)) {
+      if ($k == 2) {
+        # For each exponent, count the primes q > p with q**e <= w.
+        for (my ($e,$root) = (1,$w); $root >= $r; $root = Mrootint($w,++$e)) {
+          my $pc = Mprime_count($root);
+          if ($big) { $count = Maddint($count, Msubint($pc,$j)); }
+          else      { $count += $pc - $j; }
         }
+      } else {
+        my $lim = Mrootint($w,$k-1);
+        last if $r > $lim;
+        my $subcount = _omega_prime_count_rec($k-1, $w, $r, $lim, $j+1);
+        if ($big) { $count = Maddint($count,$subcount); }
+        else      { $count += $subcount; }
       }
-      $p = $r;
     }
-
-  }  else  {
-
-    for (;  $p <= $s  ;  ++$j) {
-      my $r = Mnext_prime($p);
-      for (my $t = Mmulint($m, $p) ; $t <= $n ; $t = Mmulint($t, $p)) {
-        my $s = Mrootint(Mdivint($n, $t), $k - 1);
-        last if $r > $s;
-        $count += _omega_prime_count_rec($k-1, $n,  $t, $r, $s, $j+1);
-      }
-      $p = $r;
-    }
-
   }
   $count;
 }
@@ -4763,17 +4750,9 @@ sub omega_prime_count {
 
   return ($n >= 1) ? 1 : 0 if $k == 0;
   return Mprime_power_count($n) if $k == 1;
-  # find a simple formula for k=2.
 
-  # Naive method
-  # my ($sum, $low) = (0, Mpn_primorial($k));
-  # for (my $i = $low; $i <= $n; $i++) {
-  #   $sum++ if Mprime_omega($i) == $k;
-  # }
-  # return $sum;
-
-  # Recursive method from trizen
-  return _omega_prime_count_rec($k, $n,  1, 2);
+  # Recursive method from trizen.
+  return _omega_prime_count_rec($k, $n, 2, Mrootint($n,$k), 1);
 }
 sub ramanujan_prime_count {
   my($low,$high) = @_;

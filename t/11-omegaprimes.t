@@ -22,7 +22,7 @@ my @counts_at_1e4 = (1,1280,4097,3695,894,33,0,0,0,0,0);
 
 plan tests =>   9   # omega_primes sieve
               + 2   # omega_primes recursive and chunked construction
-              + 7   # count
+              + 10  # count
               + 9   # nth_omega_prime
                 ;
 
@@ -65,6 +65,13 @@ is_deeply([map { omega_prime_count($_, 1e4) } 0..10], \@counts_at_1e4, "k-omega 
 
 is(omega_prime_count(6,9e4), 19, "There are 19 6-omega-primes <= 90,000");
 is(omega_prime_count(8,2e7), 10, "There are 10 8-omega-primes <= 20,000,000");
+for my $k (2,3) {
+  my @known = @{$small_kops[$k]};
+  my @bounds = map { $_-1, $_, $_+1 } @known[0..$#known-1];
+  is_deeply([map { omega_prime_count($k,$_) } @bounds],
+            [map { my $n = $_; scalar grep { $_ <= $n } @known } @bounds],
+            "$k-omega-prime counts around exact product bounds");
+}
 eval { omega_prime_count(-2,100); };
 like($@, qr/non-negative integer/, "omega_prime_count rejects negative k");
 
@@ -72,6 +79,13 @@ SKIP: {
   skip "Slow in PP", 2 unless $usexs || $extra;
   is_deeply([map { omega_prime_count($_, 1e6) } 0..20], \@counts_at_1e6, "k-omega prime counts at 1000000 for k=1..20");
   is_deeply([map{omega_prime_count($_,206111)}1..10],[18613,66025,79801,36364,5182,125,0,0,0,0],"omega_prime_count n=206111, k 1..10");
+}
+SKIP: {
+  skip "Bigint omega_prime_count boundary test", 1 unless $extra;
+  my ($k, @bounds) = $use64 ? (16, qw/32589158477190044729 32589158477190044730/)
+                            : (10, qw/6469693229 6469693230/);
+  is_deeply([map { omega_prime_count($k,$_) } @bounds], [0,1],
+            "Counts at the first $k-omega-prime, beyond the native range");
 }
 
 ###### nth_omega_prime
