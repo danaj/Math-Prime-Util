@@ -338,8 +338,8 @@ static void _mid2_of_4_iv(IV* L) {
   L += 1;   x = (L[0]  > L[2]) * 2;  L[0] = L[x];
 }
 
-/* Using scandum's median of 9 gives better partitions than the median of
- * three medians, and gives better actual run times for large inputs.
+/* Using scandum's quasi-median of 9 gives better partitions than the median
+ * of three medians, and gives better actual run times for large inputs.
  */
 static size_t _partition_uv(UV* L, size_t lo, size_t hi) {
   size_t i = lo-1, j = hi+1, len = hi-lo+1;

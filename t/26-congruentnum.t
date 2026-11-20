@@ -24,7 +24,7 @@ my @ncfilters = (
   ["2pq 33",      [66,114,258]],
   ["2pq 15",      [170,730,970]],
   ["2pq 37",      [42,186,266]],
-  ["2pq 77",      [1442,2338,2786,4354,4738,6146,7042]],
+  ["2pq 77",      [322,1442,2338,2786,4354,4738,6146,7042]],
   ["2pq 11",      [1394,2482,7922,7954]],
 
   ["pqr 133",     [969,2193,2409]],
@@ -66,25 +66,22 @@ my @ncfilters = (
 
 my @ncfilters2 = (
   # Most of the 1/2/3/4-factor results are in the first filter set.
-  [1,"Iskra 1996",[qw/161601 255057 293073 317361 323202 340689 348513/]],
-  #[1,"Reinholz 2013",[qw/26961 36993 42009 52041 67089 82137 83721 87153/]],
-  [1,"Reinholz 2013",[qw/203433 615201 717369 924801 1085793 1988673/]],
-  [1,"Cheng 2019",[qw/761442 981618 1155858 1201794 1490082 1550274/]],
-  [1,"Cheng 2018 T1.1",[qw/2679170 4102930 7181330 7681570 8118370/]],
-  [1,"Cheng 2018 T1.2",[qw/15073995 24459690 24649707 26534010 28219395/]],
-  [1,"Cheng 2018 T1.3",[qw/4451145 5322345 5488305 5676555 9122505 12063594/]],
-  [1,"Cheng 2018 T1.4",[qw/505155 1147755 1404795 1529745 2129505 2172345/]],
-  [1,"Das 2020",[qw/432502235 1085236971 1332878635 1445059707 1641579115/]],
-
-  # These only work if the factor ordering is allowed to permute.
-  # The 0 indicates we're going to skip them.
-  [0,"Reinholz 2013",[qw/26961 36993 42009 52041 82137 83721 87153 112233/]],
-  [0,"Cheng 2019 (ord)",[qw/53922 73986 84018 104082 164274 167442 174306/]],
-  [0,"Cheng 2018 T1.1",[qw/71885379 83674803 106112739 112768059 159654099/]],
-  [0,"Cheng 2018 T1.2 (ord)",[qw/5221227 7981347 11477499 14789643 15709683/]],
-  [0,"Cheng 2018 T1.3 (ord)",[qw/1334058 1978305 4069905 4072593 4190298/]],
-  [0,"Cheng 2018 T1.4 (ord)",[qw/405195 504339 2239755 3403995/]],
-  [0,"Das 2020 (ord)",[qw/332868235 682507315 881126547 932968715 1180617347/]],
+  ["Iskra 1996",[qw/161601 255057 293073 317361 323202 340689 348513/]],
+  ["Reinholz 2013",[qw/203433 615201 717369 924801 1085793 1988673/]],
+  ["Cheng 2019",[qw/761442 981618 1155858 1201794 1490082 1550274/]],
+  ["Cheng 2018 T1.1",[qw/2679170 4102930 7181330 7681570 8118370/]],
+  ["Cheng 2018 T1.2",[qw/15073995 24459690 24649707 26534010 28219395/]],
+  ["Cheng 2018 T1.3",[qw/4451145 5322345 5488305 5676555 9122505 12063594/]],
+  ["Cheng 2018 T1.4",[qw/505155 1147755 1404795 1529745 2129505 2172345/]],
+  ["Cheng 2018 T1.1 (ord)",[qw/71885379 83674803 106112739 112768059 159654099/]],
+  ["Cheng 2018 T1.2 (ord)",[qw/5221227 7981347 11477499 14789643 15709683/]],
+  ["Cheng 2018 T1.3 (ord)",[qw/1334058 1978305 4069905 4072593 4190298/]],
+  ["Cheng 2018 T1.4 (ord)",[qw/405195 504339 2239755 3403995/]],
+  ["Das 2020",[qw/432502235 1085236971 1332878635 1445059707 1641579115/]],
+  ["Das 2020 (ord)",[qw/332868235 682507315 881126547 932968715 1180617347/]],
+  ["Das 2020 (mixed q order)",[503904531]],
+  ["Reinholz 2013 (ord)",[qw/26961 36993 42009 52041 82137 83721 87153 112233/]],
+  ["Cheng 2019 (ord)",[qw/53922 73986 84018 104082 164274 167442 174306/]],
 );
 
 
@@ -92,7 +89,7 @@ plan tests => 0
             + 3
             + scalar(@ncfilters)
             + scalar(@ncfilters2)
-            + 1
+            + 9
             ;
 
 # This covers all simple special cases in the code
@@ -109,26 +106,14 @@ SKIP: {
 
 # Test the various filters finding non-congruent families
 SKIP: {
-  skip "PP doesn't have all the NC families",scalar(@ncfilters) unless $usexs;
-  for my $td (@ncfilters) {
+  skip "PP doesn't have all the NC families",
+       scalar(@ncfilters) + scalar(@ncfilters2) unless $usexs;
+  for my $td (@ncfilters, @ncfilters2) {
     my($name,$narr) = @$td;
     my @got = map {Math::Prime::Util::_is_congruent_number_filter($_)} @$narr;
     my @exp = map {0} @$narr;
     # Any return value of -1 means the filter didn't work.
     is_deeply(\@got, \@exp, "Non-congruent family of $name");
-  }
-}
-SKIP: {
-  skip "PP doesn't have all the NC families",scalar(@ncfilters2) unless $usexs;
-  for my $td (@ncfilters2) {
-    my($order,$name,$narr) = @$td;
-    SKIP: {
-      skip "NC filters don't use arbitrary factor order", 1 unless $order;
-      my @got = map {Math::Prime::Util::_is_congruent_number_filter($_)} @$narr;
-      my @exp = map {0} @$narr;
-      # Any return value of -1 means the filter didn't work.
-      is_deeply(\@got, \@exp, "Non-congruent family of $name");
-    }
   }
 }
 
@@ -143,6 +128,22 @@ SKIP: {
   # 311199575628433           8 factors  (probably not the smallest)
 
 SKIP: {
-  skip "test the filter permutation in XS", 1 unless $usexs;
+  skip "test the filter ordering in XS", 9 unless $usexs;
   is(Math::Prime::Util::_is_congruent_number_filter(58654083),0,"58654083 is rejected by the filter");
+  is(Math::Prime::Util::_is_congruent_number_filter(66234), -1,
+     "Cheng filter cannot order a cyclic residue group");
+  is(Math::Prime::Util::_is_congruent_number_filter(27258), -1,
+     "Cheng filter does not reorder across residue groups");
+  is(Math::Prime::Util::_is_congruent_number_filter(1325807067), -1,
+     "Das filter rejects two negative q symbols for one p");
+  is(Math::Prime::Util::_is_congruent_number_filter(1996153107), -1,
+     "Das filter rejects two p's matched to one q");
+  is(Math::Prime::Util::_is_congruent_number_filter(1004690531), -1,
+     "Das filter rejects matches across the wrong residues");
+  is(Math::Prime::Util::_is_congruent_number_filter("2562408147"), -1,
+     "Das filter cannot order a cyclic q group");
+  is(Math::Prime::Util::_is_congruent_number_filter(102201), -1,
+     "One reversed edge does not suffice if its gap is even");
+  is(Math::Prime::Util::_is_congruent_number_filter("3094748481"), 0,
+     "An interior reversed edge with an odd gap qualifies");
 }

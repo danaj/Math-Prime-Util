@@ -8549,7 +8549,7 @@ are significantly faster, albeit requiring more memory and disk space.
 All congruent numbers less than 300,000 can be identified in under 2 seconds.
 
 Giovanni Resta's list of 213318 square-free and C<mod 8 <= 4>
-congruent numbers less than C<10^7> can be generated in 19 minutes on
+congruent numbers less than C<10^7> can be generated in 18 minutes on
 a single core of an M1 laptop.
 
 

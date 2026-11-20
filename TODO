@@ -468,9 +468,6 @@ OEIS lucky numbers:
   - refill return have
   - refill not zero key from buf
 
-- congruent_numbers
-  - permuted factors
-
 = lobby email
   - almost_prime_count ranged
 
@@ -649,3 +646,15 @@ OEIS lucky numbers:
 - update the factoring presentation link in Util.pm
 
 - for some bit sizes under 64, calling tinysiqs128 is faster than factor(n).
+
+- Should csrand mix all input instead of taking the first 40 bytes?
+
+- programmable RNG.
+  Chacha20, Chacha8, ISAAC, Biski64, xoroshiro256++ / 128++, PCG
+  See Biski64 issue 10, rotation 17/39 better.
+
+- newer mark_primes from MPU-GMP
+
+- do a check that we don't use uint64_t without support
+
+- Consider pushing montmath x86 inside mont64.h, everyone uses that.

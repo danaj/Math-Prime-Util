@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*
  * A nice discussion of congruent numbers can be found in:
@@ -11,11 +12,10 @@
 #include "ptypes.h"
 #include "congruent_numbers.h"
 #include "util.h"
+#include "util_bits.h"
 #include "util_math.h"
 #include "factor.h"
 #include "rootmod.h"
-
-#define SWAP2(x,y) { UV t; t=x; x=y; y=t; }
 
 /******************************************************************************/
 
@@ -40,25 +40,6 @@ static void remove_square_part(factored_t *nf)   /* Turn n*c^2 into n */
     }
   }
   /* factoredp_validate(nf); */
-}
-
-/* Cycle through n! permutations of factors (if used). */
-static void permute_odd_factors(factored_t *nf, const factored_t *NF, UV k)
-{
-  int      permvec[MPU_MAX_DFACTORS];
-  bool     iseven = NF->f[0] == 2;
-  uint32_t noddfac = NF->nfactors - iseven;
-  uint16_t i;
-
-  nf->n = NF->n;
-  nf->nfactors = NF->nfactors;
-  if (iseven) { nf->f[0] = 2;  nf->e[0] = NF->e[0]; }
-
-  num_to_perm(k, noddfac, permvec);
-  for (i = 0; i < noddfac; i++) {
-    nf->f[i + iseven] = NF->f[permvec[i] + iseven];
-    nf->e[i + iseven] = NF->e[permvec[i] + iseven];
-  }
 }
 
 /******************************************************************************/
@@ -143,30 +124,6 @@ static bool _can_order_kronecker4(UV p, UV q, UV r, UV s) {
          (KQP==-1 && KRP==-1 && KSP==-1 && _can_order_kronecker3(q,r,s));
 }
 
-/* Can we order s.t. (p|q) == (p|r) == (q|r) == -1 */
-static bool _can_orderk_r(uint32_t nfac, UV fac[]) {
-  uint32_t i,j;
-  bool orderk = 0;
-  if (nfac <= 1) return TRUE;
-  if (nfac == 2) return _can_order_kronecker2(fac[0],fac[1]);
-  for (i = 0; i < nfac && !orderk; i++) {
-    SWAP2(fac[i], fac[nfac-1]);  /* Test with this factor at the end */
-    for (j = 0; j < nfac-1; j++)
-      if (kronecker_uu(fac[j],fac[nfac-1]) != -1)
-        break;
-    if (j == nfac-1 && _can_orderk_r(nfac-1, fac))
-      orderk = 1;
-    SWAP2(fac[i], fac[nfac-1]); /* Restore */
-  }
-  return orderk;
-}
-static bool _can_orderk(uint32_t nfac, const UV fac[]) {
-  UV F[MPU_MAX_DFACTORS];
-  if (nfac > MPU_MAX_DFACTORS) return FALSE;
-  memcpy(F, fac, nfac*sizeof(UV));  /* We can safely permute the ordering */
-  return _can_orderk_r(nfac, F);
-}
-
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
 static int _is_congruent_number_filter1(const factored_t *nf) {
   const UV n         = nf->n;
@@ -216,7 +173,7 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
     /* https://arxiv.org/pdf/2105.01450.pdf, Prop 2.1.2 */
     if (sqrtmodp(&root, 2, p) && kronecker_uu(1+root, p) == -1)
       return 0;
-#if 0
+#if 0   /* Requires mulmod.h */
     { /* Evink 2021 shows these are equivalent to the sqrt test above */
       UV a,b;
       if (1 && cornacchia(&a, &b, 1, p)) {
@@ -262,7 +219,8 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
     if (p8 == 3 && q8 == 3) return 0;
     if (p8 == 1 && q8 == 5 && KPQ == -1) return 0;
     if (p8 == 3 && q8 == 7 && KPQ == -1) return 0;
-    if (p8 == 7 && q8 == 7 && KPQ == 1 && q % 16 == 7) return 0;
+    if (p8 == 7 && q8 == 7 && ((q % 16 == 7 && KPQ == 1) ||
+                               (p % 16 == 7 && KQP == 1) )) return 0;
     if (p8 == 1 && q8 == 1 && KPQ == -1 && (p*q) % 16 == 9) return 0;
 
   } else if (isodd && nfac == 3) {  /* n = pqr */
@@ -399,221 +357,210 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
  * and have to handle permutations.
  */
 
+/* One bit per distinct odd prime factor (at most 15).  The diagonal is unused. */
+typedef struct {
+  const UV *fac;
+  uint16_t known[MPU_MAX_DFACTORS];
+  uint16_t neg[MPU_MAX_DFACTORS];
+} cn_symbols;
+
+static bool _cn_negative(cn_symbols *K, unsigned i, unsigned j) {
+  const uint16_t jbit = (uint16_t)(1U << j);
+  if (!(K->known[i] & jbit)) {
+    const uint16_t ibit = (uint16_t)(1U << i);
+    UV p = K->fac[i], q = K->fac[j];
+    bool neg = kronecker_uu(p,q) == -1;
+    if (neg) K->neg[i] |= jbit;
+    /* Reciprocity reverses the sign only when both primes are 3 mod 4. */
+    if (neg != ((p & q & 2) != 0)) K->neg[j] |= ibit;
+    K->known[i] |= jbit;
+    K->known[j] |= ibit;
+  }
+  return (K->neg[i] & jbit) != 0;
+}
+
+static unsigned _cn_outdegree(cn_symbols *K, unsigned group, unsigned i) {
+  unsigned missing = group & ~(K->known[i] | (1U << i));
+  for (; missing; missing &= missing-1)
+    _cn_negative(K, i, ctz(missing));
+  return popcnt(K->neg[i] & group);
+}
+
+/* For primes all 3 mod 4, each pair forces one direction.  The resulting
+ * tournament can be ordered iff its outdegrees are all distinct. */
+static bool _cn_can_order(cn_symbols *K, unsigned group) {
+  unsigned left, degrees = 0;
+  if (popcnt(group) <= 2) return TRUE;
+  for (left = group; left; left &= left-1) {
+    unsigned bit = 1U << _cn_outdegree(K, group, ctz(left));
+    if (degrees & bit) return FALSE;
+    degrees |= bit;
+  }
+  return TRUE;
+}
+
+/* Can one reversal give an order with an odd gap between its endpoints?
+ * Only the two endpoint degrees change, and in an order the degrees give
+ * the positions counted from the end. */
+static bool _cn_can_order_one_flip(cn_symbols *K, unsigned group) {
+  unsigned left, edges, rest;
+  unsigned degree[MPU_MAX_DFACTORS];
+
+  for (left = group; left; left &= left-1) {
+    unsigned i = ctz(left);
+    degree[i] = _cn_outdegree(K, group, i);
+  }
+  for (left = group; left; left &= left-1) {
+    unsigned i = ctz(left);
+    for (edges = K->neg[i] & group; edges; edges &= edges-1) {
+      unsigned j = ctz(edges);
+      unsigned di = degree[i]-1, dj = degree[j]+1;
+      unsigned used;
+      if (dj <= di || !((dj-di) & 1)) continue;
+      used = (1U << di) | (1U << dj);
+      for (rest = group & ~((1U << i) | (1U << j)); rest; rest &= rest-1) {
+        unsigned bit = 1U << degree[ctz(rest)];
+        if (used & bit) break;
+        used |= bit;
+      }
+      if (!rest) return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/* Cheng / Guo, "The non-congruent numbers via Monsky's formula".
+ * Test the residue counts before computing any Legendre symbols. */
+static bool _cheng_guo_shape(unsigned eps, const unsigned g[8]) {
+  /* Theorem 1.1 */
+  if ( (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 2 && g[3] % 2 == 0)
+    || (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 1)
+    || (g[1] == 0 && g[3] == 0 && g[7] == 0 && eps == 2 && g[5] % 2 == 0))
+    return TRUE;
+
+  /* Theorem 1.2 */
+  if ( (g[1] == 0 && g[7] == 0 && eps == 1 && (g[3] % 2) == 1 && g[5] >= 1 && g[5] % 2 == 0)
+    || (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] >= 1 && g[3] % 2 == 0 && g[5] % 2 == 0)
+    || (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] == 1 && g[3] % 2 == 0)
+    || (g[1] == 0 && g[5] == 0 && eps == 2 && g[7] == 1 && g[3] % 2 == 1)
+    || (g[1] == 0 && g[3] == 0 && eps == 1 && g[5] == 1 && g[7] == 1)
+    || (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] > 1 && g[1] % 2 == 0 && g[3] % 2 == 1)
+    || (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] == 1 && g[3] % 2 == 1)
+    || (g[3] == 0 && g[7] == 0 && eps == 2 && g[1] == 1 && g[5] % 2 == 1)
+    || (g[3] == 0 && g[7] == 0 && eps == 2 && g[5] == 1 && g[1] > 1 && g[1] % 2 == 0) )
+    return TRUE;
+
+  /* Theorem 1.3 */
+  if ( (g[1] == 0 && eps == 1 && g[5] == 1 && g[7] == 1 && g[3] >= 1)
+    || (g[1] == 0 && eps == 1 && g[5] >= 2 && g[7] == 1 && g[3] % 2 == 1 && g[5] % 2 == 1)
+    || (g[1] == 0 && eps == 2 && g[5] >= 1 && g[7] == 1 && g[3] % 2 == 1 && g[5] % 2 == 0)
+    || (g[3] == 0 && eps == 1 && g[7] == 1 && g[1] % 2 == 1 && g[5] % 2 == 1)
+  /* No examples 1.3.4 */
+    || (g[3] == 0 && eps == 2 && g[5] == 1 && g[7] == 1 && g[1] % 2 == 1)
+  /* No examples 1.3.5 */
+    || (g[5] == 0 && eps == 1 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 0 && g[3] % 2 == 0)
+    || (g[5] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 1 && g[3] % 2 == 1)
+    || (g[7] == 0 && eps == 1 && g[1] >= 1 && g[5] >= 1 && g[1] % 2 == 0 && g[5] % 2 == 0 && g[3] % 2 == 1)
+    || (g[7] == 0 && eps == 2 && g[1] == 1 && g[3] >= 1 && g[3] % 2 == 0 && g[5] % 2 == 1)
+    || (g[7] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[5] == 1 && g[1] % 2 == 0 && g[3] % 2 == 0) )
+    return TRUE;
+
+  /* Theorem 1.4 */
+  if ( (eps == 1 && g[1] >= 1 && g[7] == 1 && g[1] % 2 == 0 && g[3] % 2 == 1 && g[5] % 2 == 1)
+    || (eps == 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 1 && g[5] % 2 == 1 && g[3] % 2 == 0) )
+    return TRUE;
+
+  return FALSE;
+}
+
+static bool _cheng_guo_symbols(cn_symbols *K, unsigned n, const unsigned groups[8]) {
+  unsigned i, j;
+  /* Across residue groups the direction is fixed.  Within the 1 and 5
+   * groups reciprocity makes the direction irrelevant. */
+  for (i = 0; i < n; i++) {
+    unsigned ri = K->fac[i] & 7;
+    for (j = i+1; j < n; j++) {
+      unsigned rj = K->fac[j] & 7;
+      if (ri == rj && (ri & 2)) continue;
+      if (!(ri <= rj ? _cn_negative(K, i, j) : _cn_negative(K, j, i)))
+        return FALSE;
+    }
+  }
+  return _cn_can_order(K, groups[3]) && _cn_can_order(K, groups[7]);
+}
+
+/* Das / Saikia 2020: https://math.colgate.edu/~integers/u55/u55.pdf */
+static bool _das_saikia_symbols(cn_symbols *K, const unsigned groups[8]) {
+  const unsigned qs = groups[3] | groups[7];
+  unsigned ps, left, used = 0;
+
+  for (ps = groups[1] | groups[5]; ps; ps &= ps-1) {
+    unsigned i = ctz(ps), match = 0;
+    unsigned compatible = groups[(K->fac[i] & 7) + 2];
+
+    /* All p-p symbols must be positive, in either direction. */
+    for (left = ps & (ps-1); left; left &= left-1)
+      if (_cn_negative(K, i, ctz(left))) return FALSE;
+
+    /* One negative q per p, with the right residue and no shared matches. */
+    for (left = qs; left; left &= left-1) {
+      unsigned j = ctz(left), bit = 1U << j;
+      if (!_cn_negative(K, i, j)) continue;
+      if (match || !(compatible & bit) || (used & bit)) return FALSE;
+      match = bit;
+    }
+    if (!match) return FALSE;
+    used |= match;
+  }
+  /* Order all q's together; the two residue classes may interleave. */
+  return _cn_can_order(K, qs);
+}
+
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
 static int _is_congruent_number_filter2(const factored_t *nf) {
-  const bool     iseven  = nf->f[0] == 2;
-  const uint32_t noddfac = nf->nfactors - iseven;
-  const UV      *oddfac  = nf->f + iseven;
-  uint16_t i;
-  bool allmod3;
+  const unsigned iseven = !(nf->n & 1);
+  const unsigned noddfac = nf->nfactors - iseven;
+  const UV *oddfac = nf->f + iseven;
+  unsigned i, g[8] = {0}, groups[8] = {0};
+  bool allmod3, cheng, das;
+  cn_symbols K;
 
-  for (i = 0; i < noddfac; i++)
-    if (oddfac[i] % 8 != 3)
-      break;
-  allmod3 = !(i < noddfac);
+  for (i = 0; i < noddfac; i++) {
+    unsigned r = oddfac[i] & 7;
+    g[r]++;
+    groups[r] |= 1U << i;
+  }
+  allmod3 = g[3] == noddfac;
+  cheng = !allmod3 && _cheng_guo_shape(1 + iseven, g);
+  das = !iseven && noddfac >= 4 && g[1] == g[3] && g[5] == g[7];
+  if (!allmod3 && !cheng && !das) return -1;
+  memset(&K, 0, sizeof K);
+  K.fac = oddfac;
 
-  /* Iskra 1996 (odd) ; Cheng/Guo 2019 Theorem 1.1.1 (even) */
-  if (allmod3 && _can_orderk(noddfac, oddfac)) return 0;
+  if (allmod3) {
+    /* Iskra 1996 (odd); Cheng/Guo 2019 Theorem 1.1.1 (even). */
+    if (_cn_can_order(&K, groups[3])) return 0;
+    /* Cheng/Guo 2019 and Reinholz/Spearman/Yang 2013.  Reversing the
+     * entire order interchanges positive and negative forward symbols
+     * but preserves the gap.  Reinholz's first-position rule is a
+     * special case of the odd-gap rule.
+     * https://www.sciencedirect.com/science/article/pii/S0022314X18302774
+     * https://central.bac-lac.gc.ca/.item?id=TC-BVAU-44941&op=pdf
+     */
+    return _cn_can_order_one_flip(&K, groups[3]) ? 0 : -1;
+  }
+
+  /* Cheng/Guo 2018   http://maths.nju.edu.cn/~guoxj/articles/IJNT2019.pdf */
+  if (cheng && _cheng_guo_symbols(&K, noddfac, groups)) return 0;
+
+  /* Das/Saikia 2020  https://math.colgate.edu/~integers/u55/u55.pdf */
+  if (das && _das_saikia_symbols(&K, groups)) return 0;
 
   return -1;
 }
 
 /******************************************************************************/
 
-/* More complicated filters that are factor-permutation dependent, but don't
- * yet have code to understand that.  Ideally that would get done, they would
- * be moved to _filter2, and this function would go away.
- *
- * Currently all inputs with fewer than 4 odd factors are handled earlier.
- *
- * For now we either call it once optimistically, or we call it multiple times
- * with permuted factors.
- */
-
-/* Returns -1 if not known, 0 or 1 indicate definite results. */
-static int _is_congruent_number_filter3(const factored_t *nf) {
-  const UV *fac      = nf->f;
-  const UV n         = nf->n;
-  const int nfactors = nf->nfactors;
-  int i, j;
-
-  /* Reinholz 2013 https://central.bac-lac.gc.ca/.item?id=TC-BVAU-44941&op=pdf
-   * Cheng 2018    http://maths.nju.edu.cn/~guoxj/articles/IJNT2019.pdf
-   * Cheng 2019    https://www.sciencedirect.com/science/article/pii/S0022314X18302774
-   * Das 2020      https://math.colgate.edu/~integers/u55/u55.pdf
-   */
-
-  {
-    const int noddfactors  = (n&1)  ?  nfactors  :  nfactors-1;
-    const UV* oddfac       = (n&1)  ?  fac       :  fac+1;
-    int k, l, allmod3 = 1;
-
-    for (i = 1;  allmod3 && i <= noddfactors;  i++)
-      if ((oddfac[i-1] % 8) != 3)
-        allmod3 = 0;
-
-    /* Reinholz, Spearman, Yang 2013 */
-    if (allmod3 && (n&1)) {
-      int m;
-      for (m = 2; m <= nfactors; m += 2) {
-        int reinholz = 1;
-        for (i = 1; reinholz && i < nfactors; i++)
-          for (j = 0; reinholz && j < i; j++)
-            if (j == 0 && i == m-1)
-              reinholz &= kronecker_uu(fac[j],fac[i]) ==  1;
-            else
-              reinholz &= kronecker_uu(fac[j],fac[i]) == -1;
-        if (reinholz) return 0;
-      }
-    }
-
-    /* Cheng/Guo 2019 "Some new families of non-congruent numbers" */
-    if (allmod3) {
-      for (k = 2;  k <= noddfactors;  k++) {
-        for (l = 1;  l < k; l++) {
-          int cheng = 1;
-          if (!((k - l) & 1)) continue;
-          for (i = 2; cheng && i <= noddfactors; i++)
-            for (j = 1; cheng && j < i; j++)
-              if (i == k && j == l)
-                cheng &= kronecker_uu(oddfac[j-1],oddfac[i-1]) == -1;
-              else
-                cheng &= kronecker_uu(oddfac[j-1],oddfac[i-1]) ==  1;
-          if (cheng) return 0;
-        }
-      }
-    }
-
-    /* Cheng / Guo 2018 "The non-congruent numbers via Monsky’s formula" */
-    if (1) {
-      bool quad;
-      int g[8] = {0};  /* The number in each mod */
-      UV P[MPU_MAX_DFACTORS], Q[MPU_MAX_DFACTORS], R[MPU_MAX_DFACTORS], S[MPU_MAX_DFACTORS];
-      const int eps = (n&1) ? 1 : 2;
-      for (i = 0; i < noddfactors; i++)  {
-        UV m = oddfac[i] % 8;
-        if (m == 1) P[ g[m]++ ] = oddfac[i];
-        if (m == 3) Q[ g[m]++ ] = oddfac[i];
-        if (m == 5) R[ g[m]++ ] = oddfac[i];
-        if (m == 7) S[ g[m]++ ] = oddfac[i];
-      }
-      quad = 1;
-      for (i = 2; quad && i <= g[1]; i++)
-        for (j = 1; j < i; j++)
-          quad &= kronecker_uu(P[j-1],P[i-1]) == -1;
-      for (i = 2; quad && i <= g[3]; i++)
-        for (j = 1; j < i; j++)
-          quad &= kronecker_uu(Q[j-1],Q[i-1]) == -1;
-      for (i = 2; quad && i <= g[5]; i++)
-        for (j = 1; j < i; j++)
-          quad &= kronecker_uu(R[j-1],R[i-1]) == -1;
-      for (i = 2; quad && i <= g[7]; i++)
-        for (j = 1; j < i; j++)
-          quad &= kronecker_uu(S[j-1],S[i-1]) == -1;
-      for (i = 1; quad && i <= g[3]; i++)
-        for (j = 1; j <= g[1]; j++)
-          quad &= kronecker_uu(P[j-1],Q[i-1]) == -1;
-      for (i = 1; quad && i <= g[5]; i++)
-        for (j = 1; j <= g[1]; j++)
-          quad &= kronecker_uu(P[j-1],R[i-1]) == -1;
-      for (i = 1; quad && i <= g[7]; i++)
-        for (j = 1; j <= g[1]; j++)
-          quad &= kronecker_uu(P[j-1],S[i-1]) == -1;
-      for (i = 1; quad && i <= g[5]; i++)
-        for (j = 1; j <= g[3]; j++)
-          quad &= kronecker_uu(Q[j-1],R[i-1]) == -1;
-      for (i = 1; quad && i <= g[7]; i++)
-        for (j = 1; j <= g[3]; j++)
-          quad &= kronecker_uu(Q[j-1],S[i-1]) == -1;
-      for (i = 1; quad && i <= g[7]; i++)
-        for (j = 1; j <= g[5]; j++)
-          quad &= kronecker_uu(R[j-1],S[i-1]) == -1;
-      if (quad) {
-#if 1  /* Theorem 1.1 */
-        if ( (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 2 && g[3] % 2 == 0)
-          || (g[1] == 0 && g[5] == 0 && g[7] == 0 && eps == 1)
-          || (g[1] == 0 && g[3] == 0 && g[7] == 0 && eps == 2 && g[5] % 2 == 0))
-          return 0;
-#endif
-#if 1  /* Theorem 1.2 */
-        if ( (g[1] == 0 && g[7] == 0 && eps == 1 && (g[3] % 2) == 1 && g[5] >= 1 && g[5] % 2 == 0)
-          || (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] >= 1 && g[3] % 2 == 0 && g[5] % 2 == 0)
-          || (g[1] == 0 && g[7] == 0 && eps == 2 && g[3] >= 1 && g[5] == 1 && g[3] % 2 == 0)
-          || (g[1] == 0 && g[5] == 0 && eps == 2 && g[7] == 1 && g[3] % 2 == 1)
-          || (g[1] == 0 && g[3] == 0 && eps == 1 && g[5] == 1 && g[7] == 1)
-          || (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] > 1 && g[1] % 2 == 0 && g[3] % 2 == 1)
-          || (g[5] == 0 && g[7] == 0 && eps == 1 && g[1] == 1 && g[3] % 2 == 1)
-          || (g[3] == 0 && g[7] == 0 && eps == 2 && g[1] == 1 && g[5] % 2 == 1)
-          || (g[3] == 0 && g[7] == 0 && eps == 2 && g[5] == 1 && g[1] > 1 && g[1] % 2 == 0) )
-          return 0;
-#endif
-#if 1  /* Theorem 1.3 */
-        if ( (g[1] == 0 && eps == 1 && g[5] == 1 && g[7] == 1 && g[3] >= 1)
-          || (g[1] == 0 && eps == 1 && g[5] >= 2 && g[7] == 1 && g[3] % 2 == 1 && g[5] % 2 == 1)
-          || (g[1] == 0 && eps == 2 && g[5] >= 1 && g[7] == 1 && g[3] % 2 == 1 && g[5] % 2 == 0)
-          || (g[3] == 0 && eps == 1 && g[7] == 1 && g[1] % 2 == 1 && g[5] % 2 == 1)
-        /* No examples 1.3.4 */
-          || (g[3] == 0 && eps == 2 && g[5] == 1 && g[7] == 1 && g[1] % 2 == 1)
-        /* No examples 1.3.5 */
-          || (g[5] == 0 && eps == 1 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 0 && g[3] % 2 == 0)
-          || (g[5] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 1 && g[3] % 2 == 1)
-          || (g[7] == 0 && eps == 1 && g[1] >= 1 && g[5] >= 1 && g[1] % 2 == 0 && g[5] % 2 == 0 && g[3] % 2 == 1)
-          || (g[7] == 0 && eps == 2 && g[1] == 1 && g[3] >= 1 && g[3] % 2 == 0 && g[5] % 2 == 1)
-          || (g[7] == 0 && eps == 2 && g[1] >= 1 && g[3] >= 1 && g[5] == 1 && g[1] % 2 == 0 && g[3] % 2 == 0) )
-          return 0;
-#endif
-#if 1  /* Theorem 1.4 */
-        if ( (eps == 1 && g[1] >= 1 && g[7] == 1 && g[1] % 2 == 0 && g[3] % 2 == 1 && g[5] % 2 == 1)
-          || (eps == 1 && g[3] >= 1 && g[7] == 1 && g[1] % 2 == 1 && g[5] % 2 == 1 && g[3] % 2 == 0) )
-          return 0;
-#endif
-      }
-    }
-  }
-
-  /**************************************************************************/
-
-  /* Das / Saikia 2020, extending Lagrange 1974 and Serf 1989 */
-  if ((n&1) && nfactors % 2 == 0 && nfactors >= 4 && nfactors <= 20) {
-    int cntmod[8] = {0};
-    for (i = 0; i < nfactors; i++)  {
-      int m = fac[i] % 8;
-      cntmod[m]++;
-    }
-    if (cntmod[1] == cntmod[3] && cntmod[5] == cntmod[7]) {
-      /* We can separate all factors into (1,3) and (5,7) pairs. */
-      UV pf[10], qf[10];
-      int pindexbymod[8], qindexbymod[8];
-      const int npairs = nfactors >> 1;
-      bool das;
-
-      pindexbymod[1] = qindexbymod[3] = 0;
-      pindexbymod[5] = qindexbymod[7] = cntmod[1];
-      for (i = 0; i < nfactors; i++) {
-        int m = fac[i] % 8;
-        if (m == 1 || m == 5) pf[pindexbymod[m]++] = fac[i];
-        else                  qf[qindexbymod[m]++] = fac[i];
-      }
-
-      /* See if these conditions hold for all pairs */
-      das = TRUE;
-      for (i = 0; i < npairs; i++)
-        das &= kronecker_uu(pf[i],qf[i]) == -1;
-      for (i = 0; das && i < npairs; i++) {
-        for (j = 0; j < npairs; j++) {
-          if (i  > j && kronecker_uu(qf[j],qf[i]) != -1) das = FALSE;
-          if (i != j && kronecker_uu(pf[i],pf[j]) !=  1) das = FALSE;
-          if (i != j && kronecker_uu(pf[i],qf[j]) !=  1) das = FALSE;
-        }
-      }
-      if (das) return 0;
-    }
-  }
-
-  return -1;
-}
-
-/******************************************************************************/
 /* Allow testing the filters and the counting functions separately */
 
 int is_congruent_number_filter(UV n) {
@@ -625,26 +572,7 @@ int is_congruent_number_filter(UV n) {
 
   res = _is_congruent_number_filter1(&nf);
   if (res != -1) return res;
-  res = _is_congruent_number_filter2(&nf);
-  if (res != -1) return res;
-  res = _is_congruent_number_filter3(&nf);
-  if (res != -1) return res;
-
-#if 0
-  if (1 && res == -1) {
-    uint32_t noddfac = nf.nfactors - (nf.f[0] == 2);
-    if (noddfac > 3) {
-      UV i, nperms = factorial(noddfac);
-      for (i = 1; res == -1 && i < nperms; i++) {
-        factored_t trynf;
-        permute_odd_factors(&trynf, &nf, i);
-        res = _is_congruent_number_filter3(&trynf);
-      }
-    }
-  }
-  /* if (res != -1) printf("%lu\n", nf.n); */
-#endif
-  return res;
+  return _is_congruent_number_filter2(&nf);
 }
 bool is_congruent_number_tunnell(UV n) {
   factored_t nf;
@@ -672,22 +600,6 @@ bool is_congruent_number(UV n)
   /* More complicated filters.  Permutation is handled. */
   res = _is_congruent_number_filter2(&nf);
   if (res != -1) return res;
-  /* More complicated filters.  We haven't implemented permutations. */
-  res = _is_congruent_number_filter3(&nf);
-  if (res != -1) return res;
-
-  if (0) {  /* Try filter3 with all odd factor permutations */
-    uint32_t noddfac = nf.nfactors - (nf.f[0] == 2);
-    if (noddfac > 3) {
-      UV i, nperms = factorial(noddfac);
-      for (i = 1; res == -1 && i < nperms; i++) {
-        factored_t trynf;
-        permute_odd_factors(&trynf, &nf, i);
-        res = _is_congruent_number_filter3(&trynf);
-      }
-    }
-    if (res != -1) return res;
-  }
 
   return _is_congruent_number_tunnell(nf.n);
 }
