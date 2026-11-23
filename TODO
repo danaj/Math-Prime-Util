@@ -16,6 +16,8 @@
 - finish test suite for bignum.  Work on making it faster.
 
 - An assembler version of mulmod for i386.
+  use explicit mull/divl -- clang rejects %z0.
+  This todo is from 2013, I question whether anyone cares any more.
 
 - It may be possible to have a more efficient ranged totient.  We're using
   the sieve up to n/2, which is better than most people seem to use, but I'm

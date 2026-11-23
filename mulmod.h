@@ -32,8 +32,8 @@
 
 #elif defined(__GNUC__) && defined(__x86_64__)
 
-  /* GCC on a 64-bit Intel x86, help from WraithX and Wojciech Izykowski */
-  /* Beware: if (a*b)/c > 2^64, there will be an FP exception */
+  /* GNU-style asm for x86-64, help from WraithX and Wojciech Izykowski */
+  /* Beware: divq traps if n is zero or the quotient doesn't fit in 64 bits */
   static INLINE UV _mulmod(UV a, UV b, UV n) {
     UV d, dummy;                    /* d will get a*b mod c */
     __asm__ ("mulq %3\n\t"              /* mul a*b -> rdx:rax */
