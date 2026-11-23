@@ -137,12 +137,6 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
 
   MPUassert(n >= 13, "n too small in icn_filter");
 
-  /* The ACK conjecture (Alter, Curtz, and Kubota 1972):
-   *     n = {5,6,7} mod 8   =>  n is a congruent number
-   * also follows from the weak BSD conjecture.
-   */
-  if ((n % 8) >= 5) return 1;
-
   /* No filter here handles more than 4 odd factors */
   if (nf->nfactors-iseven > 4)  return -1;
 
@@ -189,7 +183,6 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
 
   } else if (iseven && nfac == 1) {  /* n = 2p */
 
-    if (p8 == 3 || p8 == 7)     return 1;  /* we already returned 1 earlier */
     if (p8 == 5)                return 0;  /* Genocchi 1855 */
     if (p % 16 == 9)            return 0;  /* Bastien 1915 */
 
@@ -219,8 +212,11 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
     if (p8 == 3 && q8 == 3) return 0;
     if (p8 == 1 && q8 == 5 && KPQ == -1) return 0;
     if (p8 == 3 && q8 == 7 && KPQ == -1) return 0;
-    if (p8 == 7 && q8 == 7 && ((q % 16 == 7 && KPQ == 1) ||
-                               (p % 16 == 7 && KQP == 1) )) return 0;
+    if (p8 == 7 && q8 == 7 && (p & q) % 16 == 7) {
+      /* At least one is 7 mod 16.  If both are, no symbol is needed;
+       * otherwise reciprocity tells us which prime to check. */
+      if ((p | q) % 16 == 7 || (KPQ == 1 ? q : p) % 16 == 7) return 0;
+    }
     if (p8 == 1 && q8 == 1 && KPQ == -1 && (p*q) % 16 == 9) return 0;
 
   } else if (isodd && nfac == 3) {  /* n = pqr */
@@ -353,9 +349,7 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
 
 /******************************************************************************/
 
-/* This has more complicated filters that take arbitrary numbers of factors,
- * and have to handle permutations.
- */
+/* These filters handle arbitrary factor order without permuting factors. */
 
 /* One bit per distinct odd prime factor (at most 15).  The diagonal is unused. */
 typedef struct {
@@ -561,19 +555,34 @@ static int _is_congruent_number_filter2(const factored_t *nf) {
 
 /******************************************************************************/
 
-/* Allow testing the filters and the counting functions separately */
-
-int is_congruent_number_filter(UV n) {
+/* If the filters are inconclusive, leave the squarefree n for Tunnell. */
+static int _filter_congruent_number(UV *n) {
+  UV v = *n;
   int res;
   factored_t nf;
-  factorintp(&nf, n);
+
+  /* Strip powers of four.  Any remaining square factor is 1 mod 8. */
+  if ((v & 3) == 0 && v != 0) v >>= ctz(v) & ~1U;
+  if (v < 13) return (v >= 5 && v <= 7);
+
+  /* ACK (Alter, Curtz, and Kubota 1972), also implied by weak BSD:
+   * squarefree n = 5, 6, or 7 mod 8 is congruent. */
+  if ((v & 7) >= 5) return 1;
+
+  factorintp(&nf, v);
   remove_square_part(&nf);
+  *n = nf.n;
   if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
 
   res = _is_congruent_number_filter1(&nf);
-  if (res != -1) return res;
-  return _is_congruent_number_filter2(&nf);
+  return (res != -1) ? res : _is_congruent_number_filter2(&nf);
 }
+
+/* Allow testing the filters and the counting functions separately */
+int is_congruent_number_filter(UV n) {
+  return _filter_congruent_number(&n);
+}
+
 bool is_congruent_number_tunnell(UV n) {
   factored_t nf;
   factorintp(&nf, n);
@@ -588,18 +597,6 @@ bool is_congruent_number_tunnell(UV n) {
 /* is_congruent_number(n).  OEIS A003273. */
 bool is_congruent_number(UV n)
 {
-  int res;
-  factored_t nf;
-  factorintp(&nf, n);
-  remove_square_part(&nf);
-  if (nf.n < 13) return (nf.n >= 5 && nf.n <= 7);
-
-  /* Relatively simple filters.  Order doesn't matter. */
-  res = _is_congruent_number_filter1(&nf);
-  if (res != -1) return res;
-  /* More complicated filters.  Permutation is handled. */
-  res = _is_congruent_number_filter2(&nf);
-  if (res != -1) return res;
-
-  return _is_congruent_number_tunnell(nf.n);
+  int res = _filter_congruent_number(&n);
+  return (res != -1) ? res : _is_congruent_number_tunnell(n);
 }

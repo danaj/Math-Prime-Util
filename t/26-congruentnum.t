@@ -86,16 +86,19 @@ my @ncfilters2 = (
 
 
 plan tests => 0
-            + 3
+            + 4
             + scalar(@ncfilters)
             + scalar(@ncfilters2)
-            + 9
+            + 10
             ;
 
 # This covers all simple special cases in the code
 is_deeply([grep { is_congruent_number($_) } 1..200], \@cn200, "congruent numbers to 200");
 
 is_deeply([grep { is_congruent_number(1000000+$_) } 1..10], \@cn1e6, "congruent numbers 10^6 + (1..10)");
+
+is_deeply([map { 0+is_congruent_number($_) } 108,36,117,216,448,468],
+          [0,0,1,1,1,1], "congruent number with even and odd square factors");
 
 # Skip the filters and directly test the Tunnell loop
 SKIP: {
@@ -128,7 +131,10 @@ SKIP: {
   # 311199575628433           8 factors  (probably not the smallest)
 
 SKIP: {
-  skip "test the filter ordering in XS", 9 unless $usexs;
+  skip "test the filters in XS", 10 unless $usexs;
+  is_deeply([map { Math::Prime::Util::_is_congruent_number_filter($_) }
+             322,1426,9362,434,4402,2914], [0,0,0,-1,-1,-1],
+            "Lagrange 2pq filter for both, one, or neither prime 7 mod 16");
   is(Math::Prime::Util::_is_congruent_number_filter(58654083),0,"58654083 is rejected by the filter");
   is(Math::Prime::Util::_is_congruent_number_filter(66234), -1,
      "Cheng filter cannot order a cyclic residue group");
