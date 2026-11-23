@@ -101,27 +101,35 @@ static bool _is_congruent_number_tunnell(UV n)
 #define KPS kronecker_uu(p,s)
 #define KQS kronecker_uu(q,s)
 #define KRS kronecker_uu(r,s)
-#define KSP kronecker_uu(s,p)
-#define KSQ kronecker_uu(s,q)
-#define KSR kronecker_uu(s,r)
 
 #define LAGRANGE_COND1 (KPQ==KPR || KQR==KQP || KRP==KRQ)
 #define LAGRANGE_COND2 ((KPQ==1 && KPR==1) || (KQR==1 && KQP==1) || (KRP==1 && KRQ==1))
 #define LAGRANGE_COND3 ((KPQ==-1 && KPR==-1) || (KQR==-1 && KQP==-1) || (KRP==-1 && KRQ==-1))
 
-static bool _can_order_kronecker2(UV p, UV q) {
-  return KPQ==-1 || KQP == -1;
+/* The primes are distinct and all in the same class modulo 4.
+ * For 1 mod 4 the signs are symmetric, so all pairs must be negative.
+ * For 3 mod 4 the signs form a tournament, which must have no 3-cycle. */
+static bool _can_order_legendre3(UV p, UV q, UV r) {
+  int pq;
+  if (!(p & 2)) return KPQ == -1 && KPR == -1 && KQR == -1;
+  pq = KPQ;
+  return pq != KQR || pq == KPR;
 }
-static bool _can_order_kronecker3(UV p, UV q, UV r) {
-  return (KPR==-1 && KQR==-1 && _can_order_kronecker2(p,q)) ||
-         (KPQ==-1 && KRQ==-1 && _can_order_kronecker2(p,r)) ||
-         (KQP==-1 && KRP==-1 && _can_order_kronecker2(q,r));
+static INLINE bool _legendre_triangle_acyclic(int pq, int qr, int pr) {
+  return pq != qr || pq == pr;
 }
-static bool _can_order_kronecker4(UV p, UV q, UV r, UV s) {
-  return (KPS==-1 && KQS==-1 && KRS==-1 && _can_order_kronecker3(p,q,r)) ||
-         (KPR==-1 && KQR==-1 && KSR==-1 && _can_order_kronecker3(p,q,s)) ||
-         (KPQ==-1 && KRQ==-1 && KSQ==-1 && _can_order_kronecker3(p,r,s)) ||
-         (KQP==-1 && KRP==-1 && KSP==-1 && _can_order_kronecker3(q,r,s));
+static bool _can_order_legendre4(UV p, UV q, UV r, UV s) {
+  int pq, qr, pr, ps, qs, rs;
+  if (!(p & 2))
+    return KPQ == -1 && KPR == -1 && KQR == -1 &&
+           KPS == -1 && KQS == -1 && KRS == -1;
+  pq = KPQ;  qr = KQR;  pr = KPR;
+  if (!_legendre_triangle_acyclic(pq, qr, pr)) return FALSE;
+  ps = KPS;  qs = KQS;
+  if (!_legendre_triangle_acyclic(pq, qs, ps)) return FALSE;
+  rs = KRS;
+  return _legendre_triangle_acyclic(pr, rs, ps) &&
+         _legendre_triangle_acyclic(qr, rs, qs);
 }
 
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
@@ -276,26 +284,24 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
       return 0;
     /* Cheng/Guo 2018, Theorem 1.3.1 */
     if (p8 == 3 && q8 == 3 && r8 == 5 && s8 == 7 &&
-        (KPQ == -1 || KQP == -1) &&
         KPR == -1 && KQR == -1 && KPS == -1 && KQS == -1 && KRS == -1)
       return 0;
     /* Cheng/Guo 2018, Theorem 1.2.5 */
     if (p8 == 1 && q8 == 3 && r8 == 3 && s8 == 3 &&
         KPQ == -1 && KPR == -1 && KPS == -1 &&
-        _can_order_kronecker3(q,r,s))
+        _can_order_legendre3(q,r,s))
       return 0;
     /* Iskra 1996 (also Cheng/Guo 2018, Theorem 1.1.2) */
     if (p8 == 3 && q8 == 3 && r8 == 3 && s8 == 3 &&
-        _can_order_kronecker4(p,q,r,s))
+        _can_order_legendre4(p,q,r,s))
       return 0;
     /* Das 2020 4 factors */
     if (p8 == 1 && q8 == 3 && r8 == 5 && s8 == 7 &&
-        (KQS == -1 || KSQ == -1) &&
-         KPR == 1 && KRP == 1 && KPS == 1 && KRQ == 1 && KPQ == -1 && KRS == -1)
+        KPR == 1 && KPS == 1 && KRQ == 1 && KPQ == -1 && KRS == -1)
       return 0;
     /* Das 2020 4 factors */
     if (p8 == 1 && q8 == 1 && r8 == 3 && s8 == 3 &&
-        (KRS == -1 || KSR == -1) && KPQ == 1 && KQP == 1 &&
+        KPQ == 1 &&
         ( (KPR == -1 && KQS == -1 && KPS == 1 && KQR == 1) ||
           (KQR == -1 && KPS == -1 && KQS == 1 && KPR == 1) ))
       return 0;
@@ -310,35 +316,34 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
       return 0;
     /* Cheng/Guo 2018, Theorem 1.3.2 */
     if (p8 == 3 && q8 == 5 && r8 == 5 && s8 == 7 &&
-        (KQR == -1 || KRQ == -1) &&
+        KQR == -1 &&
         KPQ == -1 && KPR == -1 && KPS == -1 && KQS == -1 && KRS == -1)
       return 0;
     /* Cheng/Guo 2018, Theorem 1.3.8 */
     if (p8 == 1 && q8 == 3 && r8 == 3 && s8 == 5 &&
-        (KQR == -1 || KRQ == -1) &&
         KPQ == -1 && KPR == -1 && KPS == -1 && KQS == -1 && KRS == -1)
       return 0;
     /* Cheng/Guo 2018, Theorem 1.2.3 */
     if (p8 == 3 && q8 == 3 && r8 == 3 && s8 == 7 &&
         KPS == -1 && KQS == -1 && KRS == -1 &&
-        _can_order_kronecker3(p,q,r))
+        _can_order_legendre3(p,q,r))
       return 0;
     /* Cheng/Guo 2018, Theorem 1.2.6 */
     if (p8 == 1 && q8 == 5 && r8 == 5 && s8 == 5 &&
         KPQ == -1 && KPR == -1 && KPS == -1 &&
-        _can_order_kronecker3(q,r,s))
+        _can_order_legendre3(q,r,s))
       return 0;
     /* Cheng/Guo 2018, Theorem 1.1.1 (even analog of Iskra 1996) */
     if (p8 == 3 && q8 == 3 && r8 == 3 && s8 == 3 &&
-        _can_order_kronecker4(p,q,r,s))
+        _can_order_legendre4(p,q,r,s))
       return 0;
     /* Cheng/Guo 2018, Theorem 1.1.3 */
     if (p8 == 5 && q8 == 5 && r8 == 5 && s8 == 5 &&
-        _can_order_kronecker4(p,q,r,s))
+        _can_order_legendre4(p,q,r,s))
       return 0;
     /* Cheng/Guo 2018, Theorem 1.2.1 */
     if (p8 == 3 && q8 == 3 && r8 == 5 && s8 == 5 &&
-        (KPQ == -1 || KQP == -1) && (KRS == -1 || KSR == -1) &&
+        KRS == -1 &&
         KPR == -1 && KQR == -1 && KPS == -1 && KQS == -1)
       return 0;
 
