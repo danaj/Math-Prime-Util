@@ -331,20 +331,31 @@ UV prime_count_range(UV lo, UV hi)
   if (lo > hi || hi < 2)
     return 0;
 
-#if defined(BENCH_SEGCOUNT)
+#ifdef BENCH_SEGCOUNT
   return segment_prime_count(lo, hi);
-#endif
+#else
   if (lo <= 2) return prime_count(hi);
+  if (hi <= PRIME_COUNT_SMALL_LIMIT)
+    return _prime_count_small(hi) - _prime_count_small(lo-1);
+  if (lo == hi) return is_prime(lo);
+
+  /* Avoid setting up a sieve for a short uncached range. */
+  if (hi-lo <= 128 && hi >= UVCONST(100000000) && lo >= get_prime_cache(0,0)) {
+    UV p, count = 0;
+    UV last = (hi < MPU_MAX_PRIME) ? hi : MPU_MAX_PRIME;
+    for (p = lo|1; p <= last; p += 2)
+      count += is_prime(p);
+    return count;
+  }
 
   /* We use table acceleration so this is preferable for small inputs */
   if (hi < _MPU_LMO_CROSSOVER)  return segment_prime_count(lo, hi);
 
-  { /* Rough empirical threshold for when segment faster than LMO */
-    UV range_threshold = hi / (isqrt(hi)/200);
-    if ((hi-lo) < range_threshold)  /* avoid the +1 so we don't overflow */
-      return segment_prime_count(lo, hi);
-  }
-  return LMO_prime_count(hi) - ((lo < 2) ? 0 : LMO_prime_count(lo-1));
+  /* Rough empirical threshold for when a segment is faster than LMO. */
+  if (hi-lo < UVCONST(200) * isqrt(hi))
+    return segment_prime_count(lo, hi);
+  return LMO_prime_count(hi) - prime_count(lo-1);
+#endif
 }
 
 UV prime_count(UV n)
