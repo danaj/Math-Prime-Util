@@ -24,7 +24,7 @@ typedef struct {
   UV       n;
   UV       f[MPU_MAX_DFACTORS];
   uint8_t  e[MPU_MAX_DFACTORS];
-  uint16_t nfactors;
+  uint8_t  nfactors;
 } factored_t;
 extern void factorintp(factored_t *nf, UV n);
 

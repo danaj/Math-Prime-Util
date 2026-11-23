@@ -230,7 +230,10 @@ int factor_one(UV n, UV *factors, bool primality, bool trial)
 /******************************************************************************/
 int factor(UV n, UV *factors)
 {
-  UV tofac_stack[MPU_MAX_FACTORS+1];
+  /* Trial division leaves primes >= 431 (> 2^8), so even with both
+   * outputs of a split on the stack, this many slots suffice. */
+  enum { SPLIT_STACK_SIZE = BITS_PER_WORD/8 };
+  UV tofac_stack[SPLIT_STACK_SIZE];
   int nsmallfactors, npowerfactors, nfactors, i, j, ntofac = 0;
   uint32_t f;
 
@@ -255,7 +258,9 @@ int factor(UV n, UV *factors)
   /* loop over each remaining factor, until ntofac == 0 */
   do {
     while ( (n >= f*f) && (!is_def_prime(n)) ) {
-      int split_success = factor_one(n, tofac_stack+ntofac, 0, 0) - 1;
+      int split_success;
+      MPUassert(ntofac+1 < SPLIT_STACK_SIZE, "factor split stack overflow");
+      split_success = factor_one(n, tofac_stack+ntofac, 0, 0) - 1;
       if (split_success != 1 || tofac_stack[ntofac] == 1 || tofac_stack[ntofac] == n)
         croak("internal: factor_one failed to factor %"UVuf"\n", n);
       ntofac++; /* Leave one on the to-be-factored stack */
@@ -281,7 +286,7 @@ void factorintp(factored_t *nf, UV n)
 {
   UV fac[MPU_MAX_FACTORS], *f = nf->f;
   uint8_t *e = nf->e;
-  uint32_t nfactors, i, j;
+  uint32_t nfactors, i, j = 0;
 
   nf->n = n;
   if (n < 4) {
@@ -290,16 +295,28 @@ void factorintp(factored_t *nf, UV n)
     nf->nfactors = 1 - (n==1);
     return;
   }
+  /* Store the run of twos directly instead of flattening it first. */
+  if (!(n & 1)) {
+    unsigned e2 = ctz(n);
+    f[0] = 2;
+    e[0] = (uint8_t)e2;
+    n >>= e2;
+    if (n == 1) {
+      nf->nfactors = 1;
+      return;
+    }
+    j = 1;
+  }
   nfactors = factor(n, fac);
-  f[0] = fac[0];
-  e[0] = 1;
-  for (i = 1, j = 0; i < nfactors; i++) {
+  f[j] = fac[0];
+  e[j] = 1;
+  for (i = 1; i < nfactors; i++) {
     if (fac[i] == fac[i-1])
       e[j]++;
     else
       f[++j] = fac[i], e[j] = 1;
   }
-  nf->nfactors = (uint16_t)j+1;
+  nf->nfactors = (uint8_t)(j+1);
 }
 
 void factoredp_validate(const factored_t *nf)
@@ -310,24 +327,23 @@ void factoredp_validate(const factored_t *nf)
   } else if (nf->n == 1) {
     MPUassert(nf->nfactors == 0, "factored_t n=1  =>  nfactors = 0");
   } else {
-    UV lf = 0, N = 1, t;
+    UV lf = 0, n = nf->n;
     uint32_t i;
     MPUassert(nf->nfactors <= MPU_MAX_DFACTORS, "factored_t n has too many factors");
     for (i = 0; i < nf->nfactors; i++) {
-      MPUassert(is_prime(nf->f[i]), "factored_t n has non-prime factor");
-      MPUassert(lf < nf->f[i], "factored_t factors not in order");
-      lf = nf->f[i];
-      MPUassert(nf->e[i] < BITS_PER_WORD, "factored_t exponent k too high");
-      MPUassert(nf->e[i] > 0, "factored_t exponent k too low");
-      if (nf->e[i] == 1) {
-        N *= nf->f[i];
-      } else {
-        t = ipowsafe(nf->f[i], nf->e[i]);
-        MPUassert(t != UV_MAX, "factored_t f^e overflows")
-        N *= t;
+      UV f = nf->f[i];
+      unsigned e = nf->e[i];
+      MPUassert(is_prime(f), "factored_t n has non-prime factor");
+      MPUassert(lf < f, "factored_t factors not in order");
+      lf = f;
+      MPUassert(e < BITS_PER_WORD, "factored_t exponent k too high");
+      MPUassert(e > 0, "factored_t exponent k too low");
+      for (; e != 0; --e) {
+        MPUassert(n % f == 0, "factored_t factor does not divide remaining n");
+        n /= f;
       }
     }
-    MPUassert(N == nf->n, "factored_t n is not equal to f^e * f^e ...");
+    MPUassert(n == 1, "factored_t factorization is incomplete");
   }
 }
 uint32_t factoredp_total_factors(const factored_t *nf) {
