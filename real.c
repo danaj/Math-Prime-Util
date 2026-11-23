@@ -819,6 +819,8 @@ NV chebyshev_psi(UV n)
 }
 
 #if BITS_PER_WORD == 64
+/* We could store the residual from n-isqrt(n) instead of the raw value.
+ * This would save space only if we also changed the representation. */
 typedef struct {
   UV n;
   LNV theta;
@@ -953,7 +955,7 @@ static const cheby_theta_t _cheby_theta[] = { /* >= quad math precision */
 
 NV chebyshev_theta(UV n)
 {
-  uint16_t i = 0;
+  unsigned i = 0, batch;
   UV tp, startn, seg_base, seg_low, seg_high;
   unsigned char* segment;
   void* ctx;
@@ -969,23 +971,24 @@ NV chebyshev_theta(UV n)
         prod = (LNV) tp;
       }
     }
-    if (prod > LNV_ONE) SUM_ADD(sum, loglnv(prod));
+    if (i > 1) SUM_ADD(sum, loglnv(prod));
     return SUM_FINAL(sum);
   }
 
 #if defined NCHEBY_VALS
   if (n >= _cheby_theta[0].n) {
-    for (i = 1; i < NCHEBY_VALS; i++)
-      if (n < _cheby_theta[i].n)
+    size_t j;
+    for (j = 1; j < NCHEBY_VALS; j++)
+      if (n < _cheby_theta[j].n)
         break;
-    startn = _cheby_theta[i-1].n;
-    initial_sum = _cheby_theta[i-1].theta;
+    initial_sum = _cheby_theta[j-1].theta;
+    if (n == _cheby_theta[j-1].n) return initial_sum;
+    startn = _cheby_theta[j-1].n + 1;
   } else
 #endif
   {
-    SUM_ADD(sum, loglnv(2*3*5*7*11*13));
-    startn = 17;
-    initial_sum = 0;
+    initial_sum = loglnv(LNVCONST(13082761331670030.0)); /* 43#, exact in binary64 */
+    startn = 47;
   }
 
   ctx = start_segment_primes(startn, n, &segment);
@@ -996,21 +999,30 @@ NV chebyshev_theta(UV n)
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
 #else
+  /* Bound the product even if a prime rounds up to the next power of two.
+   * When logl falls back to log, the product must also fit in double. */
+#if LNV_IS_QUAD
+  batch = (FLT128_MAX_EXP - 1) / (log2floor(n) + 1);
+#elif defined(HAS_LDBL_FUNCS)
+  batch = (LDBL_MAX_EXP - 1) / (log2floor(n) + 1);
+#else
+  batch = (DBL_MAX_EXP - 1) / (log2floor(n) + 1);
+#endif
   while (next_segment_primes(ctx, &seg_base, &seg_low, &seg_high)) {
     START_DO_FOR_EACH_SIEVE_PRIME( segment, seg_base, seg_low, seg_high ) {
       prod *= (LNV) p;
-      if (++i >= (LNV_IS_QUAD ? 64 : 8)) {
+      if (++i == batch) {
         SUM_ADD(sum, loglnv(prod));
         prod = LNV_ONE;
         i = 0;
       }
     } END_DO_FOR_EACH_SIEVE_PRIME
   }
-  if (prod > 1.0) { SUM_ADD(sum, loglnv(prod));  prod = LNV_ONE; }
+  if (i != 0) SUM_ADD(sum, loglnv(prod));
 #endif
   end_segment_primes(ctx);
 
-  if (initial_sum > 0) SUM_ADD(sum, initial_sum);
+  SUM_ADD(sum, initial_sum);
   return SUM_FINAL(sum);
 }
 

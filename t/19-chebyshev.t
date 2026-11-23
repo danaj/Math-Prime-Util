@@ -18,6 +18,8 @@ my %chebyshev1 = (
          4 =>         1.79175946922805,
          5 =>         3.40119738166216,
        243 =>       226.59350713646702688959187294159019343,
+      2010 =>      1947.44160163822684808718124934809069276,
+      2011 =>      1955.04798902799950013394060154173889009,
     123456 =>    123034.09173991353285470434178654771360,
   69201234 =>  69192285.907794531021524894279820294952,
 );
@@ -40,11 +42,20 @@ if (!$usexs && !$extra) {
   delete $chebyshev2{$_} for grep { $_ > 50000 } keys %chebyshev2;
 }
 
-plan tests => scalar(keys %chebyshev1) + scalar(keys %chebyshev2);
+plan tests => scalar(keys %chebyshev1) + scalar(keys %chebyshev2) + 3;
 
 ###### first Chebyshev function
 while (my($n, $c1) = each (%chebyshev1)) {
   cmp_closeto( chebyshev_theta(0+$n), $c1, 1e-9*abs($n), "chebyshev_theta($n)" );
+}
+SKIP: {
+  skip "Chebyshev checkpoint tests require 64-bit XS", 3 unless $usexs && $use64;
+  my $n = 10000000000000;
+  my $theta = 9999996988293.03419965318214160283774190;
+  cmp_closeto(chebyshev_theta($n), $theta, 0.004, "theta at a checkpoint");
+  cmp_closeto(chebyshev_theta($n+36), $theta, 0.004, "theta before the next prime");
+  cmp_closeto(chebyshev_theta($n+37), 9999996988322.96780586210843549507162, 0.004,
+             "theta includes the first prime after the checkpoint");
 }
 ###### second Chebyshev function
 while (my($n, $c2) = each (%chebyshev2)) {
