@@ -5,6 +5,7 @@ use warnings;
 # TODO: These tolerances are too tight for NV = float.
 
 use Test::More;
+use Config;
 use Math::Prime::Util qw/ExponentialIntegral LogarithmicIntegral
                          RiemannR RiemannZeta LambertW/;
 
@@ -90,6 +91,7 @@ plan tests => 3 + 6 + 6 + 1
               + scalar(keys(%rvals))
               + scalar(keys(%rzvals))
               + scalar(keys(%lamvals))
+              + 4 # LambertW branch point and quadmath range
               + 1
               ;
 
@@ -141,6 +143,23 @@ while (my($n, $lin) = each (%lamvals)) {
   cmp_closeto( LambertW($n), $lin, 0.0000001 * abs($lin), "LambertW($n) ~= $lin");
 }
 
+my $xs = Math::Prime::Util::prime_get_config->{'xs'};
+SKIP: {
+  skip "Testing the native LambertW implementation", 1 unless $xs;
+  # This input is exactly representable in binary64.  References from PARI/GP.
+  my $x = '-0.367879441171442278513126211691997013986110687255859375';
+  cmp_closeto(LambertW($x), -0.99999998469574587150482869393934215, 2e-16,
+             "LambertW of the first binary64 value above -1/e");
+}
+SKIP: {
+  skip "Testing quadmath LambertW", 3 unless $xs && $Config{'nvtype'} eq '__float128';
+  cmp_closeto(LambertW('-0.3676910400390625'), -0.96833251202271975393069495109084701, 2e-33,
+             "LambertW retains quad precision near -1/e");
+  cmp_closeto(LambertW('1e400'), 914.21597036265132525583096075576279134, 2e-30,
+             "LambertW of a huge finite quadmath input");
+  my $tiny = '1e-400' + 0;
+  cmp_ok(LambertW($tiny), '==', $tiny, "LambertW of a tiny nonzero quadmath input");
+}
 
 # Put at end to not hit bug in pre-0.53 MPU::GMP
 {

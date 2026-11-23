@@ -647,19 +647,53 @@ long double RiemannR(long double x, long double eps) {
  * and Johannson (2017,2020) for lots of discussion and solutions.
  * Use Vazquez-Leal (PSEM Approximations) for the rest.
  */
+static LNV _lambertw_puiseux(LNV x, bool direct)
+{
+  /* Compute e*(x+1/e) without the cancellation in 1+e*x.  The high
+   * part is exactly representable in binary64. */
+  const LNV inv_e_hi = LNVCONST(0.367879441171442334024277442949824035167694091796875);
+  const LNV inv_e_lo = -LNVCONST(1.24287536727883631677218829607651071655e-17);
+  const LNV e = LNVCONST(2.71828182845904523536028747135266249776);
+  LNV z = ((x + inv_e_hi) + inv_e_lo) * e;
+  LNV p, u;
+
+  if (z <= 0) return -LNV_ONE;
+  p = sqrtlnv(2*z);
+  /* Puiseux series for u = 1+W(x).  See Fukushima (2013), section 2.5. */
+  u = LNVCONST(226287557.0)/LNVCONST(37623398400.0);
+  u = -LNVCONST(1963.0)/204120 + p*u;
+  u = LNVCONST(680863.0)/43545600 + p*u;
+  u = -LNVCONST(221.0)/8505 + p*u;
+  u = LNVCONST(769.0)/17280 + p*u;
+  u = -LNVCONST(43.0)/540 + p*u;
+  u = LNVCONST(11.0)/72 + p*u;
+  u = -LNV_ONE/3 + p*u;
+  u = p*(1 + p*u);
+
+#if LNV_IS_QUAD
+  if (direct) {
+    /* Solve z = (u-1)*exp(u)+1 in u.  Sum the integral of t*exp(t)
+     * from 0 to u to avoid subtracting nearly equal values. */
+    int i, j;
+    for (i = 0; i < 2; i++) {
+      LNV term = LNVCONST(0.5), sum = term;
+      for (j = 0; j < 19; j++) {
+        term *= u*(j+2)/((j+1)*(j+3));
+        sum += term;
+      }
+      u -= (u*u*sum - z)/(u*explnv(u));
+    }
+  }
+#else
+  (void)direct;
+#endif
+  return u-1;
+}
+
 static long double _lambertw_approx(long double x) {
   long double w, k1, k2, k3;
 
-  if (x < -0.312) {
-    /* Use Puiseux series, e.g. Verberic 2009, Boost, Johannson (2020). */
-    /* Near the branch point.  See Fukushima (2013) section 2.5. */
-    k2 = 2.0L * (1.0L + 2.7182818284590452353603L * x);
-    if (k2 <= 0) return -1.0L + 1*LDBL_EPSILON;
-    k1 = sqrtl(k2);
-    w = -1.0L + (1.0L + (-1.0L/3.0L + (11.0L/72.0L + (-43.0L/540.0L + (769.0L/17280.0L + (-221.0L/8505.0L + (680863.0L/43545600.0L + (-1963.0L/204120.0L + 226287557.0L/37623398400.0L
-    * k1) * k1) * k1) * k1) * k1) * k1) * k1) * k1) * k1;
-
-  } else if (x > -0.14 && x < 0.085) {
+  if (x > -0.14 && x < 0.085) {
     /* Around zero.  See Fukushima (2013) section 2.6. */
     w = (1.0L + (-1.0L + (3.0L/2.0L + (-8.0L/3.0L + (125.0L/24.0L + (-54.0L/5.0L + (16807.0L/720.0L + (-16384.0L/315.0L + 531441.0L/4480.0L
         * x) * x) * x) * x) * x) * x) * x) * x) * x;
@@ -685,8 +719,8 @@ static long double _lambertw_approx(long double x) {
     w = 0.9898045358731312e-1L * logl(k1);
 
   } else {
-    k1 = 1.0L / (1.0L + logl(1.0L + x));
-    k2 = 1.0L / k1;
+    k2 = 1.0L + logl(1.0L + x);
+    k1 = 1.0L / k2;
     k3 = logl(k2);
     w = k2-1-k3+(1+k3+(-1.0L/2.0L+(1.0L/2.0L)*k3*k3 +
         (-1.0L/6.0L+(-1.0L+(-1.0L/2.0L+(1.0L/3.0L)*k3)*k3)*k3) * k1) * k1) * k1;
@@ -694,8 +728,18 @@ static long double _lambertw_approx(long double x) {
   return w;
 }
 
+#if LNV_IS_QUAD
+static LNV _lambertw_fritsch_quad(LNV x, LNV w)
+{
+  LNV w1 = 1 + w;
+  LNV zn = loglnv(x/w) - w;
+  LNV qn = 2 * w1 * (w1+(LNVCONST(2.0)/3)*zn);
+  LNV en = (zn/w1) * (qn-zn)/(qn-2*zn);
+  return w + w*en;
+}
+#endif
+
 NV lambertw(NV x) {
-  const NV branch_point = (NV)(-LNV_ONE / explnv(LNV_ONE));
   const NV branch_limit = -(NV)LNVCONST(0.36787944117145);
   long double w;
   int i;
@@ -704,18 +748,28 @@ NV lambertw(NV x) {
   /* Match GMP and absorb small conversion errors around the branch point. */
   if (x < branch_limit)
     croak("Invalid input to LambertW:  x must be >= -1/e");
-  if (x <= branch_point) return -1.0;
   if (x == INFINITY) return x;
   if (x == 0.0L) return 0.0L;
 
-  /* Estimate initial value */
-  w = _lambertw_approx(x);
+#if LNV_IS_QUAD
+  /* Don't narrow tiny or huge inputs to long double. */
+  if (fabslnv(x) < LNV_EPSILON/4) return x;  /* W(x) rounds to x. */
+  if (x > (NV)LDBL_MAX) {
+    LNV lw = loglnv(x);
+    lw -= loglnv(lw);
+    lw = _lambertw_fritsch_quad(x, lw);
+    return _lambertw_fritsch_quad(x, lw);
+  }
+#endif
 
-  /* TODO: this section might not be best for quad precision */
-  /* If input is too small, return .99999.... */
-  /* if (w <= -1.0L) return -1.0L + LDBL_EPSILON; */
-  /* For very small inputs, don't iterate, return approx directly. */
-  if (x < -0.36768) return w;
+  if (x < -0.312) {
+    bool direct = x < -0.36768;
+    LNV lw = _lambertw_puiseux(x, direct);
+    if (direct) return lw;
+    w = lw;
+  } else {
+    w = _lambertw_approx(x);
+  }
 
 #if 0  /* Halley */
   long double lastw = w;
@@ -743,21 +797,8 @@ NV lambertw(NV x) {
 #endif
 
 #if LNV_IS_QUAD /* For quadmath, one high precision correction */
-  if (w != LNV_ZERO) {
-    LNV lw = w;
-    LNV w1 = LNV_ONE + lw;
-    LNV zn = loglnv((LNV)x/lw) - lw;
-    LNV qn = LNVCONST(2.0) * w1 * (w1+(LNVCONST(2.0)/LNVCONST(3.0))*zn);
-    LNV en = (zn/w1) * (qn-zn)/(qn-LNVCONST(2.0)*zn);
-    return lw + lw * en;
-  }
+  if (w != 0) return _lambertw_fritsch_quad(x, w);
 #endif
-
-  /* With long double = 64-bit double, we have 15 digits precision
-   * near the branch point, and 16 over the rest of the range.
-   * With long double = x86 extended precision, we have over 17 digits
-   * over the entire range.
-   * Correcting to the exact LDBL_EPSILON does not improve this. */
 
   return w;
 }
