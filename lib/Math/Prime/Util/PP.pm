@@ -4166,15 +4166,22 @@ sub inverse_li_nv {
   croak "inverse_li_nv: x must be a finite non-negative real number"
     if $n < 0.0 || $n*0 != 0;
 
-  my $t = ($n < 2.719) ? 2.0 + ($n >= 1.668)
-                       : $n * (log($n) + log(log($n)));
+  my $t;
+  if ($n < 2.719) {
+    $t = 2.0 + ($n >= 1.668);
+  } else {
+    my $L = log($n);
+    $t = $n * ($L + log($L));
+    $t = $n * $L if $t == MPU_INFINITY;  # The larger estimate can overflow.
+  }
 
   # Iterate Halley's method until error term grows
   my $old_term = MPU_INFINITY;
   foreach (1 .. 10000) {
+    last if $t*0 != 0;
     my $dn = MLi($t) - $n;
     $dn = 0.0 + "$dn" if ref($dn);
-    my $term = $dn * log($t) / (1.0 + $dn/(2*$t));
+    my $term = $dn * log($t) / (1.0 + ($dn/$t)/2);
     last if abs($term) >= abs($old_term);
     $old_term = $term;
     $t -= $term;

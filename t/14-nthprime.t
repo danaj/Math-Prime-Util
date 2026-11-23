@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Config;
 use Math::Prime::Util qw/primes nth_prime nth_twin_prime
                          nth_prime_lower nth_prime_upper
                          nth_prime_approx nth_twin_prime_approx
@@ -253,6 +254,24 @@ subtest 'inverse_li and inverse_li_nv', sub {
     my($x, $expect, $tolerance) = @$v;
     cmp_closeto(inverse_li_nv($x), $expect, $tolerance,
                 "inverse_li_nv($x)");
+  }
+  SKIP: {
+    my $x = '2.535e305';
+    skip "requires a binary64 or wider exponent range", 1 unless (0.0+$x)*0 == 0;
+    cmp_ok(abs(inverse_li_nv($x) / 1.796759273259845857e308 - 1),
+           '<=', 1e-12, "inverse_li_nv when the seed overflows binary64 but the result fits");
+  }
+  if ($Config{'nvtype'} eq 'double') {
+    ok(!eval { inverse_li_nv('2.537e305'); 1 } &&
+       $@ =~ /result is outside native floating-point range/,
+       "inverse_li_nv rejects a result beyond binary64 range");
+  }
+  if ($Config{'nvtype'} eq '__float128') {
+    cmp_ok(abs(inverse_li_nv('1e400') / (0.0+'9.268647636235199236e402') - 1),
+           '<=', 1e-12, "inverse_li_nv accepts values beyond binary64 range in quadmath");
+    ok(!eval { inverse_li_nv('1.05e4928'); 1 } &&
+       $@ =~ /result is outside native floating-point range/,
+       "inverse_li_nv rejects a result beyond quadmath range");
   }
   for my $x (-1, "NaN", "Inf") {
     ok(!eval { inverse_li_nv($x); 1 } &&

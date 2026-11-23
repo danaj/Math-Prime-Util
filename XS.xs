@@ -3422,7 +3422,7 @@ void inverse_li_nv(IN SV* svx)
       if (xtype && !(xtype & (IS_NUMBER_INFINITY | IS_NUMBER_NAN))) {
         x = SvROK(svx) ? STRTONV(xstr) : SvNV(svx);
         if (x >= 0.0 && MPU_NV_ISFINITE(x)) {
-          ret = (NV)ld_inverse_li(x,0);
+          ret = (NV)lnv_inverse_li(x,0);
           if (MPU_NV_ISFINITE(ret))
             XSRETURN_NV(ret);
           croak("inverse_li_nv: result is outside native floating-point range");

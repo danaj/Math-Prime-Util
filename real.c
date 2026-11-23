@@ -321,30 +321,47 @@ NV Li(NV x) {
   return (NV) _Li((LNV)x);
 }
 
-long double ld_inverse_li(long double lx, UV *ierr) {
+LNV lnv_inverse_li(LNV lx, UV *ierr) {
+#if LNV_IS_QUAD
+  const LNV limit = FLT128_MAX;
+#elif defined(HAS_LDBL_FUNCS)
+  const LNV limit = LDBL_MAX;
+#else
+  const LNV limit = DBL_MAX;
+#endif
   int i;
-  long double t, term, old_term = 0;
+  LNV t, term, old_term = 0;
   /* Initial estimate */
-  if (lx < 2.719) { t = 2 + (lx>=1.668);
-  } else          { long double L=logl(lx);  t = lx * (L+logl(L)); }
+  if (lx < 2.719) {
+    t = 2 + (lx >= 1.668);
+  } else {
+    LNV L = loglnv(lx), factor = L + loglnv(L);
+    /* The estimate can overflow even if the answer fits. */
+    if (lx >= limit/factor) {
+      t = limit;
+      if (lx > _Li(t)) return INFINITY;
+    } else {
+      t = lx * factor;
+    }
+  }
   /* Iterate Halley's method until error grows. */
   for (i = 0; i < 4; i++) {
-    long double dn = _Li(t) - lx;
-    term = dn*logl(t) / (1.0L + dn/(2*t));
-    if (i > 0 && fabsl(term) >= fabsl(old_term)) break;
+    LNV dn = _Li(t) - lx;
+    term = dn*loglnv(t) / (1 + (dn/t)/2);
+    if (i > 0 && fabslnv(term) >= fabslnv(old_term)) break;
     old_term = term;
     t -= term;
   }
-  if (ierr != 0) *ierr = (UV) fabsl(old_term) + 2;
+  if (ierr != 0) *ierr = (UV) fabslnv(old_term) + 2;
   return t;
 }
 
 UV inverse_li(UV x) {
   UV r, i;
-  long double lx = (long double) x;
+  LNV lx = (LNV) x;
 
   if (x <= 2) return x + (x > 0);
-  r = (UV) ceill( ld_inverse_li(lx,&i) ); /* 'i' set to about expected error */
+  r = (UV) ceill( lnv_inverse_li(lx,&i) ); /* 'i' set to about expected error */
   /* Meet our more stringent goal of an exact answer. */
   if (_Li((LNV)(r-1)) >= lx) {
     while (_Li((LNV)(r-i)) >= lx) r -= i;
