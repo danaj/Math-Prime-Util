@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "ptypes.h"
 #include "inverse_interpolate.h"
 #include "util.h"
-#include "mathl.h"
 
 static const int _dbgprint = 0;
 
@@ -92,11 +92,13 @@ static UV _inverse_interpolate(UV bound_lo, UV bound_hi, UV n,
     rlo = MPU_CALLBACK(lo);
     if (rlo == n)  RETURNI(lo);  /* Possible bad limit */
     for (;;) {
-      double estf = (double)n/(double)rlo - 0.004;
+      double next, estf = rlo ? (double)n/(double)rlo - 0.004 : 8.0;
       if      (estf <= 1.004) estf = 1.004;
       else if (estf > 8.0)    estf = 8.0;
-      mid =  ((double)UV_MAX/(double)lo <= estf)  ?  UV_MAX
-          :  (UV) (estf * (double)lo + 1);
+      next = estf * (double)lo;
+      /* UV_MAX+1 is exactly representable as a double. */
+      mid = next >= 2.0 * (double)((UV_MAX >> 1) + 1) ? UV_MAX : (UV)next;
+      if (mid < UV_MAX) mid++;
       if(_dbgprint)printf("  0s lo %"UVuf"  mid %"UVuf"  hi %"UVuf"\n", lo, mid, hi);
       rmid = MPU_CALLBACK(mid);
       if (rmid >= n) {
@@ -159,11 +161,10 @@ static UV _inverse_interpolate(UV bound_lo, UV bound_hi, UV n,
     UV x0 = lo,  x1 = lo + ((hi-lo)>>1);   /* x2 = hi */
     UV rx1 = MPU_CALLBACK(x1);
     double d0 = (double) (n-rlo);     /* > 0 */
-    double d1 = (double) (rx1 >= n ? rx1-n : n-rx1);
+    double d1 = rx1 >= n ? (double)(rx1-n) : -(double)(n-rx1);
     double d2 = (double) (rhi-n+1);   /* > 0 */
     double den = d1*d1 + d0*d2;       /* f1^2 - f0*f2 */
-    double sgn = (rx1 >= n) ? 1.0L : -1.0L;
-    double pos = sgn * ((double)(x1 - x0) * d1) / sqrtl(den);
+    double pos = ((double)(x1 - x0) * d1) / sqrt(den);
     UV x3 = x1 - (IV)(pos + (pos >= 0 ? 0.5L : -0.5L));
 
     if(_dbgprint)printf("  2s lo %"UVuf"  mid %"UVuf"  hi %"UVuf"  (%"UVuf")\n", lo, x1, hi, (rx1>n) ? rx1-n : n-rx1);
@@ -186,14 +187,15 @@ static UV _inverse_interpolate(UV bound_lo, UV bound_hi, UV n,
 
   /* Step 3.  Binary search. */
 
-  /* Binary search until within threshold */
+  /* Only stop early if the upper endpoint hits the target. */
   while ((hi-lo) > 1 && ((hi-lo) > threshold || rhi > n)) {
     mid = lo + ((hi-lo)>>1);
-    if (MPU_CALLBACK(mid) < n) lo = mid;   /* Keeps invariant f(lo) < n */
-    else                   hi = mid;
+    rmid = MPU_CALLBACK(mid);
+    if (rmid < n) lo = mid;
+    else        { hi = mid; rhi = rmid; }
   }
   if(_dbgprint)printf("final %"UVuf" - %"UVuf" threshold %"UVuf"\n", lo, hi, threshold);
-  RETURNI(hi);
+  RETURNI(rhi > n ? lo : hi);
 }
 
 

@@ -34,7 +34,7 @@ my %small_range = (
   "10000 to 10100" => [10061,10067,10079,10091,10093],
 );
 
-plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 2 + 3 + 3 + 2 + 1;
+plan tests => 1 + scalar(keys %small_range) + 2 + 1 + 2 + 3 + 3 + 1 + 2 + 1;
 
 is_deeply( ramanujan_primes($a104272[-1]), \@a104272, "ramanujan_primes($a104272[-1])" );
 
@@ -84,6 +84,16 @@ is(cmp_rn(5964377,225792607), 225792607, "ramanujan prime limits for 5964377");
 is(approx_in_range(85,1151,.04), 1151, "ramanujan prime approx for 85");
 is(approx_in_range(59643,1673993,.02), 1673993, "ramanujan prime approx for 59643");
 is(approx_in_range(5964377,225792607,.02), 225792607, "ramanujan prime approx for 5964377");
+
+SKIP: {
+  skip "Large interpolation regression requires 64-bit XS", 1
+    unless $usexs && Math::Prime::Util::prime_get_config->{'maxbits'} > 32;
+  my $n = '10691088545596292';
+  my $x = nth_ramanujan_prime_approx($n);
+  my $count = ramanujan_prime_count_approx($x);
+  ok($count == $n || ($count < $n && ramanujan_prime_count_approx($x+1) > $n),
+     "ramanujan prime approx returns the lower side if the count skips the target");
+}
 
 SKIP: {
   skip "UV_MAX bound fallback requires XS", 2 unless $usexs;
