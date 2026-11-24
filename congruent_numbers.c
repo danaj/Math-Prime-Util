@@ -228,6 +228,10 @@ static int _is_congruent_number_filter1(const factored_t *nf) {
     }
     if (p8 == 1 && q8 == 1 && KPQ == -1 && (p*q) % 16 == 9) return 0;
 
+    /* Cai 2026, h(-pq) => modular exponentiation check */
+    if (p8 == 1 && q8 == 5 && powmod(q,(p-1)>>2,p) != ((p & 8) ? p-1 : 1)) return 0;
+    /* Cai's (7,3) case takes more work (hclassno or solve a quadratic equation) */
+
   } else if (isodd && nfac == 3) {  /* n = pqr */
 
 #if 0 /* Serf 1991, all produce n mod 8 = 5 or 7: we already returned 1 */

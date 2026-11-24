@@ -26,6 +26,7 @@ my @ncfilters = (
   ["2pq 37",      [42,186,266]],
   ["2pq 77",      [322,1442,2338,2786,4354,4738,6146,7042]],
   ["2pq 11",      [1394,2482,7922,7954]],
+  ["2pq Cai",     [1802,2410,2938,3034]],
 
   ["pqr 133",     [969,2193,2409]],
   ["pqr 357",     [105,273,345]],
@@ -90,7 +91,7 @@ plan tests => 0
             + 4
             + scalar(@ncfilters)
             + scalar(@ncfilters2)
-            + 11
+            + 12
             ;
 
 # This covers all simple special cases in the code
@@ -132,7 +133,7 @@ SKIP: {
   # 311199575628433           8 factors  (probably not the smallest)
 
 SKIP: {
-  skip "test the filters in XS", 11 unless $usexs;
+  skip "test the filters in XS", 12 unless $usexs;
   is_deeply([map { Math::Prime::Util::_is_congruent_number_filter($_) }
              322,1426,9362,434,4402,2914], [0,0,0,-1,-1,-1],
             "Lagrange 2pq filter for both, one, or neither prime 7 mod 16");
@@ -156,4 +157,7 @@ SKIP: {
   is_deeply([map { Math::Prime::Util::_is_congruent_number_filter($_) }
              219,52779,94963], [-1,-1,-1],
             "Das-Mondal filter leaves matching signs and rank deficiency undecided");
+  is_deeply([map { Math::Prime::Util::_is_congruent_number_filter($_) }
+             410,442], [-1,-1],
+            "Cai 2026 filter correctly falls through");
 }
