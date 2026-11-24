@@ -82,6 +82,7 @@ my @ncfilters2 = (
   ["Das 2020 (mixed q order)",[503904531]],
   ["Reinholz 2013 (ord)",[qw/26961 36993 42009 52041 82137 83721 87153 112233/]],
   ["Cheng 2019 (ord)",[qw/53922 73986 84018 104082 164274 167442 174306/]],
+  ["Das-Mondal 2026",[qw/579 979 29971 42267 7158891/]],
 );
 
 
@@ -89,7 +90,7 @@ plan tests => 0
             + 4
             + scalar(@ncfilters)
             + scalar(@ncfilters2)
-            + 10
+            + 11
             ;
 
 # This covers all simple special cases in the code
@@ -131,7 +132,7 @@ SKIP: {
   # 311199575628433           8 factors  (probably not the smallest)
 
 SKIP: {
-  skip "test the filters in XS", 10 unless $usexs;
+  skip "test the filters in XS", 11 unless $usexs;
   is_deeply([map { Math::Prime::Util::_is_congruent_number_filter($_) }
              322,1426,9362,434,4402,2914], [0,0,0,-1,-1,-1],
             "Lagrange 2pq filter for both, one, or neither prime 7 mod 16");
@@ -152,4 +153,7 @@ SKIP: {
      "One reversed edge does not suffice if its gap is even");
   is(Math::Prime::Util::_is_congruent_number_filter("3094748481"), 0,
      "An interior reversed edge with an odd gap qualifies");
+  is_deeply([map { Math::Prime::Util::_is_congruent_number_filter($_) }
+             219,52779,94963], [-1,-1,-1],
+            "Das-Mondal filter leaves matching signs and rank deficiency undecided");
 }

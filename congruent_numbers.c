@@ -14,6 +14,7 @@
 #include "util.h"
 #include "util_bits.h"
 #include "util_math.h"
+#include "mulmod.h"
 #include "factor.h"
 #include "rootmod.h"
 
@@ -515,13 +516,51 @@ static bool _das_saikia_symbols(cn_symbols *K, const unsigned groups[8]) {
   return _cn_can_order(K, qs);
 }
 
+/* Das / Mondal 2026, Theorem 1.1: https://arxiv.org/abs/2604.23450
+ * n = q * product(p_i), with q = 3 mod 8 and all p_i = 1 mod 8. */
+static bool _das_mondal_rejects(cn_symbols *K, unsigned ps, unsigned qi) {
+  unsigned left, minor = ps & (ps-1);
+  UV q = K->fac[qi];
+  bool mismatch = FALSE;
+
+  for (left = ps; left; left &= left-1)
+    if (_cn_negative(K, qi, ctz(left))) return FALSE;
+
+  if (minor) {
+    unsigned basis[MPU_MAX_DFACTORS] = {0};
+    /* A has zero row and column sums, so dropping the same row and column
+     * leaves its rank unchanged.  Require full rank in the minor over F2. */
+    for (left = minor; left; left &= left-1) {
+      unsigned i = ctz(left), degree = _cn_outdegree(K, ps, i);
+      unsigned row = (K->neg[i] & minor) | ((degree & 1) << i);
+      while (row) {
+        unsigned j = ctz(row);
+        if (basis[j] == 0) { basis[j] = row; break; }
+        row ^= basis[j];
+      }
+      if (row == 0) return FALSE;
+    }
+  }
+
+  /* Compare the signs in the proof instead of computing two class numbers.
+   * For p_i = u_i^2 + 2*v_i^2, u_i is odd and v_i is even.  On multiplying
+   * these norms, the new v is the sum of the v_i modulo 4.  Lemma 3.1 makes
+   * its v/2 parity the sign bit to compare with the product of quartic symbols. */
+  for (left = ps; left; left &= left-1) {
+    UV p = K->fac[ctz(left)], u, v;
+    if (!cornacchia(&u, &v, 2, p)) return FALSE;
+    mismatch ^= ((v & 2) != 0) ^ (powmod(q, (p-1) >> 2, p) == p-1);
+  }
+  return mismatch;
+}
+
 /* Returns -1 if not known, 0 or 1 indicate definite results. */
 static int _is_congruent_number_filter2(const factored_t *nf) {
   const unsigned iseven = !(nf->n & 1);
   const unsigned noddfac = nf->nfactors - iseven;
   const UV *oddfac = nf->f + iseven;
   unsigned i, g[8] = {0}, groups[8] = {0};
-  bool allmod3, cheng, das;
+  bool allmod3, cheng, das, mondal;
   cn_symbols K;
 
   for (i = 0; i < noddfac; i++) {
@@ -532,7 +571,8 @@ static int _is_congruent_number_filter2(const factored_t *nf) {
   allmod3 = g[3] == noddfac;
   cheng = !allmod3 && _cheng_guo_shape(1 + iseven, g);
   das = !iseven && noddfac >= 4 && g[1] == g[3] && g[5] == g[7];
-  if (!allmod3 && !cheng && !das) return -1;
+  mondal = !iseven && g[3] == 1 && g[1] != 0 && g[1]+1 == noddfac;
+  if (!allmod3 && !cheng && !das && !mondal) return -1;
   memset(&K, 0, sizeof K);
   K.fac = oddfac;
 
@@ -554,6 +594,8 @@ static int _is_congruent_number_filter2(const factored_t *nf) {
 
   /* Das/Saikia 2020  https://math.colgate.edu/~integers/u55/u55.pdf */
   if (das && _das_saikia_symbols(&K, groups)) return 0;
+
+  if (mondal && _das_mondal_rejects(&K, groups[1], ctz(groups[3]))) return 0;
 
   return -1;
 }
