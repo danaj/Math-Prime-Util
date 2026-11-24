@@ -245,8 +245,10 @@ void iset_union_of(iset_t *set, const iset_t *A, const iset_t *B) {
   if (A->contains_zero || B->contains_zero)  iset_add(set,0,1);
 }
 
+/* Bit patterns above IV_MAX match only when both sets interpret them alike. */
 void iset_intersection_of(iset_t *set, const iset_t *A, const iset_t *B) {
-  int asign, bsign, samesign;
+  const UV vmax = (iset_sign(A) == iset_sign(B)) ? UV_MAX : (UV)IV_MAX;
+  int asign;
   size_t i;
   UV v;
   const iset_t *tmp;
@@ -255,49 +257,47 @@ void iset_intersection_of(iset_t *set, const iset_t *A, const iset_t *B) {
     tmp = A; A = B; B = tmp;
   }
   asign = iset_sign(A);
-  bsign = iset_sign(B);
-  samesign = (asign == bsign);
 
   iset_create(set, A->size);
 
   for (i = 0; i < A->maxsize; i++)
     if (v = A->arr[i], v != 0)
-      if ( !((v > (UV)IV_MAX) && !samesign) && iset_contains(B, v))
+      if (v <= vmax && iset_contains(B, v))
         iset_add(set, v, asign);
   if (A->contains_zero && B->contains_zero)  iset_add(set,0,1);
 }
 void iset_difference_of(iset_t *set, const iset_t *A, const iset_t *B) {
-  int asign = iset_sign(A), bsign = iset_sign(B);
-  int samesign = (asign == bsign);
+  int asign = iset_sign(A);
+  const UV vmax = (asign == iset_sign(B)) ? UV_MAX : (UV)IV_MAX;
   size_t i;
   UV v;
   iset_create(set, (A->size > B->size) ? A->size : B->size);
 
   for (i = 0; i < A->maxsize; i++)
     if (v = A->arr[i], v != 0)
-      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
+      if (v > vmax || !iset_contains(B, v))
         iset_add(set, v, asign);
   if (A->contains_zero && !B->contains_zero)  iset_add(set,0,1);
 }
 void iset_symdiff_of(iset_t *set, const iset_t *A, const iset_t *B) {
   int asign = iset_sign(A), bsign = iset_sign(B);
-  int samesign = (asign == bsign);
+  const UV vmax = (asign == bsign) ? UV_MAX : (UV)IV_MAX;
   size_t i;
   UV v;
   iset_create(set, (A->size > B->size) ? A->size : B->size);
 
   for (i = 0; i < A->maxsize; i++)
     if (v = A->arr[i], v != 0)
-      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
+      if (v > vmax || !iset_contains(B, v))
         iset_add(set, v, asign);
   for (i = 0; i < B->maxsize; i++)
     if (v = B->arr[i], v != 0)
-      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(A, v) )
+      if (v > vmax || !iset_contains(A, v))
         iset_add(set, v, bsign);
   if ((A->contains_zero + B->contains_zero) == 1)  iset_add(set,0,1);
 }
 bool iset_is_subset_of(const iset_t *A, const iset_t *B) {
-  int samesign = (iset_sign(A) == iset_sign(B));
+  const UV vmax = (iset_sign(A) == iset_sign(B)) ? UV_MAX : (UV)IV_MAX;
   size_t i;
   UV v;
 
@@ -307,7 +307,7 @@ bool iset_is_subset_of(const iset_t *A, const iset_t *B) {
     return 0;
   for (i = 0; i < A->maxsize; i++)
     if (v = A->arr[i], v != 0)
-      if ( ((v > (UV)IV_MAX) && !samesign) || !iset_contains(B, v) )
+      if (v > vmax || !iset_contains(B, v))
         return 0;
   return 1;
 }
