@@ -604,6 +604,12 @@ subtest 'vecsort', sub {
                         | ((($_ * 151) & 255) << 16) } 0 .. 1023] ],
     [ "mixed signed 8-bit",
       [map { (($_ * 73) & 0xFF) - 0x80 } 0 .. 1023] ],
+    [ "mixed signed byte at histogram cutoff",
+      [map { (($_ * 73) & 0xFF) - 0x80 } 0 .. 4095] ],
+    [ "varying signed high byte, fixed low byte",
+      [map { ((($_ * 73) & 0xFF) - 0x80) * 256 + 0x53 } 0 .. 4096] ],
+    [ "varying low byte, fixed negative sign byte",
+      [map { -32768 + (($_ * 73) & 0xFF) } 0 .. 4095] ],
     [ "mixed signed 16-bit",
       [map { (($_ * 15401) & 0xFFFF) - 0x8000 } 0 .. 1023] ],
     [ "mixed signed 24-bit",
@@ -616,6 +622,10 @@ subtest 'vecsort', sub {
       [map { $_ & 1 ? -($_ * 7919) : $_ * 6151 } 0 .. 1023] ],
     [ "already ascending", [0 .. 1023] ],
     [ "already descending", [reverse 0 .. 1023] ],
+    [ "already descending, odd signed length", [reverse -513 .. 513] ],
+    [ "descending after an equal prefix", [(511) x 16, reverse -512 .. 510] ],
+    [ "ascending until a late inversion", [-512 .. 510, 509] ],
+    [ "all equal", [(-7) x 1024] ],
   );
   if ($use64) {
     push @radix_cases, [ "full signed width",

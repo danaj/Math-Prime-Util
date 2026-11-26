@@ -115,40 +115,69 @@ static void shellsort_iv(IV *array, size_t len) {
 /******************************************************************************/
 #define RADIX_BIT 8
 #define RADIX     (1u<<RADIX_BIT)
+static void _reverse_halves(UV *RESTRICT left, UV *RESTRICT right, size_t len)
+{
+  size_t i;
+  for (i = 0; i < len; i++) {
+    UV t = left[i];
+    left[i] = right[len-1-i];
+    right[len-1-i] = t;
+  }
+}
+
+/* Return 1 for ascending, -1 for descending, or 0 for unordered. */
+static int _radix_order(const UV *a, size_t n, bool is_iv)
+{
+  size_t i, lim = n < 8 ? n : 8;
+  unsigned asc = 1, desc = 1;
+
+  /* Reject most unordered inputs before starting the vectorizable scan. */
+  for (i = 1; i < lim; i++) {
+    asc  &= is_iv ? (IV)a[i-1] <= (IV)a[i] : a[i-1] <= a[i];
+    desc &= is_iv ? (IV)a[i-1] >= (IV)a[i] : a[i-1] >= a[i];
+    if (!(asc | desc)) return 0;
+  }
+  if (is_iv) {
+    for (; i < n; i++) {
+      asc  &= (IV)a[i-1] <= (IV)a[i];
+      desc &= (IV)a[i-1] >= (IV)a[i];
+    }
+  } else {
+    for (; i < n; i++) {
+      asc  &= a[i-1] <= a[i];
+      desc &= a[i-1] >= a[i];
+    }
+  }
+  return asc ? 1 : desc ? -1 : 0;
+}
+
 static bool _radixsort(UV *array, size_t n, bool is_iv)
 {
   size_t i, j, count[RADIX];
   unsigned r, pass, npass = 0, signshift, shifts[sizeof(UV)];
   UV *a, *b, *ptr[RADIX];
-  UV first, prev, varymask = 0, widthmask = 0;
-  bool ascending = 1, descending = 1;
+  UV first, varymask = 0, widthmask = 0;
+  int order;
 
   if (n < 2) return 1;
+  order = _radix_order(array,n,is_iv);
+  if (order > 0) return 1;
+  if (order < 0) {
+    size_t half = n/2;
+    /* The halves do not overlap; an odd middle element stays in place. */
+    _reverse_halves(array, array+(n-half), half);
+    return 1;
+  }
 
   first = array[0];
-  prev = first;
   memset(count, 0, sizeof count);
   for (i = 0; i < n; i++) {
     UV d = array[i];
     varymask |= d ^ first;
     count[d & (RADIX-1)]++;
-    if (is_iv) {
-      /* Complement negative values so repeated sign bits do not add width. */
+    /* Complement negative values so repeated sign bits do not add width. */
+    if (is_iv)
       widthmask |= d ^ ((UV)0 - (d >> (BITS_PER_WORD-1)));
-      ascending  &= (IV)prev <= (IV)d;
-      descending &= (IV)prev >= (IV)d;
-    } else {
-      ascending  &= prev <= d;
-      descending &= prev >= d;
-    }
-    prev = d;
-  }
-  if (ascending) return 1;
-  if (descending) {
-    for (i = 0, j = n-1; i < j; i++, j--) {
-      UV t = array[i]; array[i] = array[j]; array[j] = t;
-    }
-    return 1;
   }
 
   /* Signed values only need enough bytes to include their effective sign
@@ -165,7 +194,7 @@ static bool _radixsort(UV *array, size_t n, bool is_iv)
   for (r = 0; r <= signshift; r += RADIX_BIT)
     if ((varymask >> r) & (RADIX-1))
       shifts[npass++] = r;
-  if (npass == 0) return 1;  /* All equal; normally caught by ascending. */
+  if (npass == 0) return 1;  /* All equal; normally caught by the order scan. */
 
   /* The initial scan counted byte zero.  Recount if it is constant and the
    * first varying byte is elsewhere. */
@@ -176,21 +205,24 @@ static bool _radixsort(UV *array, size_t n, bool is_iv)
       count[(array[i] >> sh) & (RADIX-1)]++;
   }
 
-  /* With one varying byte, reconstruct directly from its histogram.  Keep
-   * narrowed signed values on the normal path so their original sign
-   * extension is preserved. */
-  if (npass == 1 && (!is_iv || signshift == BITS_PER_WORD-RADIX_BIT)) {
+  /* With one varying byte, reconstruct directly from its histogram.
+   * For narrowed signed data, scattering wins on small arrays. */
+  if (npass == 1 && (!is_iv || signshift == BITS_PER_WORD-RADIX_BIT ||
+                    n >= 4096)) {
     unsigned sh = shifts[0];
     unsigned signbit = is_iv && sh == signshift
                      ? RADIX >> 1 : 0;
     UV base = first & ~((UV)(RADIX-1) << sh);
-    size_t lim = 0;
-    j = 0;
+    /* Retain only the lower bytes when the varying byte contains the sign.
+     * Subtracting the bias in UV arithmetic restores sign extension. */
+    if (signbit) base = first & (((UV)1 << sh) - 1);
     for (r = 0; r < RADIX; r++) {
       unsigned d = r ^ signbit;
-      UV v = base | ((UV)d << sh);
-      for (lim += count[d]; j < lim; j++)
+      UV v = base | (((UV)r - signbit) << sh);
+      size_t num = count[d];
+      for (j = 0; j < num; j++)
         array[j] = v;
+      array += num;
     }
     return 1;
   }
