@@ -2887,6 +2887,15 @@ static void ts_reduce_matrix(unsigned long nrows, unsigned long *ncols,
   *ncols = reduced_cols;
 }
 
+/* The pivot column and each later column occupy disjoint ranges. */
+static INLINE void ts_xor_column(uint64_t *RESTRICT dst,
+                                 const uint64_t *RESTRICT src,
+                                 unsigned long n, uint64_t mask) {
+  unsigned long j;
+  for (j = 0; j < n; j++)
+    dst[j] ^= src[j] & mask;
+}
+
 /* Eliminate whole columns, including earlier pivot bits: those bits retain
  * the coefficients used to reconstruct dependencies.  Clear the current
  * pivot bit during each XOR, then restore it in the pivot column. */
@@ -2894,7 +2903,7 @@ static void ts_dense_eliminate_generic(
     unsigned long ncols, unsigned long row_words, uint64_t *matrix,
     uint64_t *used_rows, unsigned long *pivot_row) {
   const unsigned long no_row = ~0UL;
-  unsigned long c, i, j, word;
+  unsigned long c, i, word;
   for (c = 0; c < ncols; c++) {
     uint64_t *pivot_column = matrix + (size_t)c * row_words;
     unsigned long pivot = no_row, pivot_word;
@@ -2916,8 +2925,7 @@ static void ts_dense_eliminate_generic(
     for (i = c + 1UL; i < ncols; i++) {
       uint64_t *other = matrix + (size_t)i * row_words;
       if (other[pivot_word] & pivot_bit)
-        for (j = 0; j < row_words; j++)
-          other[j] ^= pivot_column[j];
+        ts_xor_column(other, pivot_column, row_words, UINT64_MAX);
     }
     pivot_column[pivot_word] |= pivot_bit;
   }
@@ -2933,7 +2941,7 @@ static void ts_dense_eliminate_generic(
       unsigned long *pivot_row) {                                           \
     const unsigned long no_row = ~0UL;                                      \
     uint64_t *pivot_column = matrix;                                        \
-    unsigned long c, i, j, word;                                            \
+    unsigned long c, i, word;                                               \
     for (c = 0; c < ncols; c++, pivot_column += (words)) {                  \
       uint64_t *other;                                                      \
       unsigned long pivot = no_row, pivot_word;                             \
@@ -2956,8 +2964,7 @@ static void ts_dense_eliminate_generic(
       for (i = c + 1UL; i < ncols; i++, other += (words)) {                 \
         uint64_t update_mask = UINT64_C(0) -                                \
             (uint64_t)((other[pivot_word] & pivot_bit) != 0);               \
-        for (j = 0; j < (words); j++)                                       \
-          other[j] ^= pivot_column[j] & update_mask;                        \
+        ts_xor_column(other, pivot_column, (words), update_mask);           \
       }                                                                     \
       pivot_column[pivot_word] |= pivot_bit;                                \
     }                                                                       \
