@@ -340,18 +340,17 @@ static void _mid2_of_4_iv(IV* L) {
 
 /* Using scandum's quasi-median of 9 gives better partitions than the median
  * of three medians, and gives better actual run times for large inputs.
+ * The partition returns the length of the left side of the Hoare split.
  */
-static size_t _partition_uv(UV* L, size_t lo, size_t hi) {
-  size_t i = lo-1, j = hi+1, len = hi-lo+1;
+static size_t _partition_uv(UV* L, size_t len) {
+  UV *i = L, *j = L+len;
   UV pivot;
-  if (len <= 7) {
-    pivot = L[lo + len/2];
-  } else if (len <= 40) {
-    pivot = _mid3_uv_val(L, lo, lo+(hi-lo)/2, hi);
+  if (len <= 40) {
+    pivot = _mid3_uv_val(L, 0, (len-1)/2, len-1);
   } else { /* Fluxsort's median_of_nine */
-    UV swap[9], *Llo = L+lo;
+    UV swap[9];
     size_t x, step = (len-1)/8;
-    for (x = 0; x < 9; x++) { swap[x] = Llo[x*step]; }
+    for (x = 0; x < 9; x++) { swap[x] = L[x*step]; }
     _mid2_of_4_uv(swap);     /* [X v v X v v v v v] */
     _mid2_of_4_uv(swap+4);   /* [X v v X X v v X v] */
     swap[0] = swap[5];  swap[3] = swap[8];
@@ -359,23 +358,22 @@ static size_t _partition_uv(UV* L, size_t lo, size_t hi) {
     pivot = _mid3_uv_val(swap, 6, 1, 2);
   }
   while (1) {
-    do { i++; } while (L[i] < pivot);
-    do { j--; } while (L[j] > pivot);
-    if (i >= j) return j;
-    { UV t = L[i];  L[i] = L[j];  L[j] = t; }
+    while (*i < pivot) i++;
+    do { j--; } while (*j > pivot);
+    if (i >= j) return (size_t)(j-L)+1;
+    { UV t = *i;  *i = *j;  *j = t; }
+    i++;
   }
 }
-static size_t _partition_iv(IV* L, size_t lo, size_t hi) {
-  size_t i = lo-1, j = hi+1, len = hi-lo+1;
+static size_t _partition_iv(IV* L, size_t len) {
+  IV *i = L, *j = L+len;
   IV pivot;
-  if (len <= 7) {
-    pivot = L[lo + len/2];
-  } else if (len <= 40) {
-    pivot = _mid3_iv_val(L, lo, lo+(hi-lo)/2, hi);
+  if (len <= 40) {
+    pivot = _mid3_iv_val(L, 0, (len-1)/2, len-1);
   } else { /* Fluxsort's median_of_nine */
-    IV swap[9], *Llo = L+lo;
+    IV swap[9];
     size_t x, step = (len-1)/8;
-    for (x = 0; x < 9; x++) { swap[x] = Llo[x*step]; }
+    for (x = 0; x < 9; x++) { swap[x] = L[x*step]; }
     _mid2_of_4_iv(swap);     /* [X v v X v v v v v] */
     _mid2_of_4_iv(swap+4);   /* [X v v X X v v X v] */
     swap[0] = swap[5];  swap[3] = swap[8];
@@ -383,57 +381,52 @@ static size_t _partition_iv(IV* L, size_t lo, size_t hi) {
     pivot = _mid3_iv_val(swap, 6, 1, 2);
   }
   while (1) {
-    do { i++; } while (L[i] < pivot);
-    do { j--; } while (L[j] > pivot);
-    if (i >= j) return j;
-    { IV t = L[i];  L[i] = L[j];  L[j] = t; }
+    while (*i < pivot) i++;
+    do { j--; } while (*j > pivot);
+    if (i >= j) return (size_t)(j-L)+1;
+    { IV t = *i;  *i = *j;  *j = t; }
+    i++;
   }
 }
 
-static void _qs_uv(UV* L, size_t lo, size_t hi, int badpartsleft) {
-  size_t p, size = hi-lo+1;
+static void _qs_uv(UV* L, size_t len, int badpartsleft) {
+  size_t left, right;
 
-  if (size <= 16)
-    { insertionsort_uv(L+lo, size);  return; }
+  if (len <= 16)
+    { insertionsort_uv(L, len);  return; }
 
-  p = _partition_uv(L, lo, hi);
+  left = _partition_uv(L, len);
+  right = len-left;
 
-  { /* check for unbalanced partitions, same as pdqsort */
-    size_t l_size = p - lo + 1;
-    size_t r_size = hi - (p+1) + 1;
-    bool highly_unbalanced = l_size < size / 8 || r_size < size / 8;
-    if (highly_unbalanced && --badpartsleft <= 0)
-      { heapsort_uv(L+lo, size);  return; }
-  }
+  /* Check for unbalanced partitions, same as pdqsort. */
+  if ((left < len/8 || right < len/8) && --badpartsleft <= 0)
+    { heapsort_uv(L, len);  return; }
 
-  _qs_uv(L, lo, p, badpartsleft);
-  _qs_uv(L, p+1, hi, badpartsleft);
+  _qs_uv(L, left, badpartsleft);
+  _qs_uv(L+left, right, badpartsleft);
 }
-static void _qs_iv(IV* L, size_t lo, size_t hi, int badpartsleft) {
-  size_t p, size = hi-lo+1;
+static void _qs_iv(IV* L, size_t len, int badpartsleft) {
+  size_t left, right;
 
-  if (size <= 16)
-    { insertionsort_iv(L+lo, size);  return; }
+  if (len <= 16)
+    { insertionsort_iv(L, len);  return; }
 
-  p = _partition_iv(L, lo, hi);
+  left = _partition_iv(L, len);
+  right = len-left;
 
-  { /* check for unbalanced partitions, same as pdqsort */
-    size_t l_size = p - lo + 1;
-    size_t r_size = hi - (p+1) + 1;
-    bool highly_unbalanced = l_size < size / 8 || r_size < size / 8;
-    if (highly_unbalanced && --badpartsleft <= 0)
-      { heapsort_iv(L+lo, size);  return; }
-  }
+  /* Check for unbalanced partitions, same as pdqsort. */
+  if ((left < len/8 || right < len/8) && --badpartsleft <= 0)
+    { heapsort_iv(L, len);  return; }
 
-  _qs_iv(L, lo, p, badpartsleft);
-  _qs_iv(L, p+1, hi, badpartsleft);
+  _qs_iv(L, left, badpartsleft);
+  _qs_iv(L+left, right, badpartsleft);
 }
 
 static void quicksort_uv(UV *L, size_t len) {
-  if (len > 1) _qs_uv(L, 0, len-1, log2floor(len));
+  if (len > 1) _qs_uv(L, len, log2floor(len));
 }
 static void quicksort_iv(IV *L, size_t len) {
-  if (len > 1) _qs_iv(L, 0, len-1, log2floor(len));
+  if (len > 1) _qs_iv(L, len, log2floor(len));
 }
 
 

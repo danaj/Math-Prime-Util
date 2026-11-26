@@ -547,6 +547,16 @@ subtest 'vecsort', sub {
                "vecsort/vecrsort list, ref, in-place [$str]" );
   }
 
+  for my $len (16, 17, 40, 41, 399) {
+    for my $offset (0, 11) {
+      my @values = map { (37 * $_) % 23 - $offset } 0 .. $len-1;
+      my @expected = sort { $a <=> $b } @values;
+      vecsorti(\@values);
+      my $type = $offset ? "signed" : "unsigned";
+      is_deeply(\@values, \@expected, "vecsorti quicksort: $len $type values");
+    }
+  }
+
   my @s = ("5",2,1,3,4);
 
   my $in0_beg = length( do { no if $] >= 5.022, "feature", "bitwise"; no warnings "numeric"; $s[0] & "" }) ? "number" : "string";
