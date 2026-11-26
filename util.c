@@ -1340,30 +1340,49 @@ UV qnr(UV n) {
 }
 
 bool is_qr(UV a, UV n) {
-  bool res;
-  if (n == 0) return (a == 1);    /* Should return undef */
-  if (n <= 2) return 1;
-  if (a >= n) a %= n;
+  factored_t nf;
+  uint32_t i, nfactors;
+  int k;
+
+  if (n <= 2) return n != 0;  /* The public wrapper handles modulus zero. */
   if (a <= 1) return 1;
 
-  if (is_prob_prime(n)) {
-    res = (kronecker_uu(a,n) == 1);
-  } else {
-    factored_t nf;
-    uint32_t i;
-
-    nf = factorint(n);
-    for (i = 0, res = 1;  res && i < nf.nfactors;  i++) {
-      if (nf.e[i] == 1 && (nf.f[i] == 2 || gcd_ui(a,nf.f[i]) != 1))
-        res = 1;
-      else if (nf.e[i] == 1 || (nf.f[i] != 2 && gcd_ui(a,nf.f[i]) == 1))
-        res = (kronecker_uu(a,nf.f[i]) == 1);
-      else {
-        res = sqrtmod(0, a, ipow(nf.f[i],nf.e[i]));
-      }
+  if (!(n & 1)) {
+    UV r = a & ((n & (0-n))-1);  /* Reduce modulo the power of two in n. */
+    if (r > 1) {
+      unsigned v = ctz(r);
+      if ((v & 1) || ((r >> v) & 7) != 1) return 0;
     }
+    n >>= ctz(n);
+    if (n == 1) return 1;
   }
-  return res;
+
+  if (a >= n) {
+    a %= n;
+    if (a <= 1) return 1;
+  }
+  /* A negative Jacobi symbol rules out a square; zero implies n is composite. */
+  k = kronecker_uu(a,n);
+  if (k < 0) return 0;
+  if (k > 0 && is_prob_prime(n)) return 1;
+
+  nf = factorint(n);
+  nfactors = nf.nfactors;
+  /* If the Jacobi product is +1, a final odd exponent needs no separate
+   * check once all the earlier factors have passed. */
+  if (k > 0 && (nf.e[nfactors-1] & 1)) nfactors--;
+  for (i = 0; i < nfactors; i++) {
+    UV p = nf.f[i], x = a, r = x % p;
+    unsigned v = 0, e = nf.e[i];
+    /* Zero modulo p^e is a square; otherwise strip an even valuation. */
+    while (r == 0 && ++v < e) {
+      x /= p;
+      r = x % p;
+    }
+    if (v == e) continue;
+    if ((v & 1) || (r != 1 && kronecker_uu(r,p) == -1)) return 0;
+  }
+  return 1;
 }
 
 UV znorder(UV a, UV n) {

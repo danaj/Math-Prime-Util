@@ -8942,12 +8942,15 @@ sub is_qr {
   # return (defined Math::Prime::Util::sqrtmod($a,$n)) ? 1 : 0;
 
   return (undef,1,1)[$n] if $n <= 2;
-  $a = Mmodint($a,$n) if $a >= $n || $a < 0;;
+  $a = Mmodint($a,$n) if $a >= $n || $a < 0;
   return 1 if $a <= 1;
 
   foreach my $f (Mfactor_exp($n)) {
     my($p,$e) = @$f;
-    next if $e == 1 && Mkronecker($a,$p) == 1;
+    if ($e == 1) {
+      return 0 if $p != 2 && Mkronecker($a,$p) < 0;
+      next;
+    }
     return 0 unless defined _sqrtmod_prime_power($a,$p,$e);
   }
   1;

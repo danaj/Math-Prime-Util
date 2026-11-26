@@ -56,7 +56,7 @@ plan tests => 0
                 + scalar(keys %primroots) + 1  # znprimroot
                 + scalar(keys %primroots) + 6  # is_primitive_root
                 + 7                            # qnr
-                + 9                            # is_qr
+                + 15                           # is_qr
                 ;
 
 ###### znprimroot
@@ -101,3 +101,17 @@ is_deeply([map{is_qr($_,6)}0..10], [1,1,0,1,1,0,1,1,0,1,1], "is_qr(0..10,6)");
 is_deeply([map{is_qr($_,9)}0..20], [1,1,0,0,1,0,0,1,0,1,1,0,0,1,0,0,1,0,1,1,0], "is_qr(0..20,9)");
 is_deeply([map{is_qr($_,15)}0..32], [1,1,0,0,1,0,1,0,0,1,1,0,0,0,0,1,1,0,0,1,0,1,0,0,1,1,0,0,0,0,1,1,0], "is_qr(0..32,15)");
 is(is_qr("2636542937688", "3409243234243"), 1, "2636542937688 is a qr mod 3409243234243");
+is(is_qr(1,0), undef, "is_qr(1,0) also returns undef");
+is_deeply([map { is_qr($_,135) } 9,18,27,81], [1,0,0,1],
+          "is_qr handles non-unit residues of odd prime powers");
+is_deeply([map { is_qr($_,56) } 8,9,24,18,25], [1,1,0,0,1],
+          "is_qr checks the power of two and the odd part independently");
+is_deeply([is_qr(11,14), is_qr(8,16), is_qr(27,351)], [1,0,1],
+          "is_qr handles an even modulus and zero residues at prime powers");
+is_deeply([is_qr(18,27), is_qr(12,24), is_qr(20,80),
+           is_qr(-7, $use64 ? "-9223372036854775808" : "-2147483648")],
+          [0,1,1,1], "is_qr tests the unit at the remaining prime-power precision");
+# Modulo 7*2^61, both inputs vanish at the power of two.
+is_deeply([map { is_qr($_,"16140901064495857664") }
+               "2305843009213693952", "6917529027641081856"], [1,0],
+          "is_qr checks the odd part after a large power of two divides a");

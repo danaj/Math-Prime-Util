@@ -5212,7 +5212,7 @@ void is_qr(IN SV* sva, IN SV* svn)
     if (astatus != 0 && nstatus != 0) {
       if (n == 0) XSRETURN_UNDEF;
       if (n == 1) RETURN_NPARITY(1);
-      _mod_with(&a, astatus, n);
+      if (astatus < 0) _mod_with(&a, astatus, n);
       RETURN_NPARITY( is_qr(a,n) );
     }
     DISPATCHPP_RETURN();
