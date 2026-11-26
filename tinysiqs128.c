@@ -43,17 +43,6 @@
 #ifndef M_LN2
 # define M_LN2 0.69314718055994530942
 #endif
-#ifndef RESTRICT
-# if defined(_MSC_VER)
-#  define RESTRICT __restrict
-# elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#  define RESTRICT restrict
-# elif defined(__GNUC__) || defined(__clang__)
-#  define RESTRICT __restrict__
-# else
-#  define RESTRICT
-# endif
-#endif
 
 #define TS_U128_MAX             ((uint128_t)-1)
 #define TS_I128_MAX_MAG         (TS_U128_MAX >> 1)
